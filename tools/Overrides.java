@@ -181,7 +181,8 @@ public final class Overrides {
                     Map.entry("ROTTEN_FLESH", "Lorg/bukkit/Material;"),
                     Map.entry("WHEAT", "Lorg/bukkit/Material;"),
                     Map.entry("EMERALD", "Lorg/bukkit/Material;"),
-                    Map.entry("GLOWSTONE_DUST", "Lorg/bukkit/Material;")
+                    Map.entry("GLOWSTONE_DUST", "Lorg/bukkit/Material;"),
+                    Map.entry("STICK", "Lorg/bukkit/Material;")
             )
     );
 
