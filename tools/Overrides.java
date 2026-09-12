@@ -119,6 +119,10 @@ public final class Overrides {
             Map.entry("org/bukkit/scheduler/BukkitTask", List.of("cancel()V", "isCancelled()Z")),
             Map.entry("org/bukkit/event/server/PluginDisableEvent", List.of(
                     "getPlugin()Lorg/bukkit/plugin/Plugin;")),
+            Map.entry("org/bukkit/event/player/PlayerInteractEntityEvent", List.of(
+                    "getRightClicked()Lorg/bukkit/entity/Entity;",
+                    "getPlayer()Lorg/bukkit/entity/Player;",
+                    "setCancelled(Z)V")),
             Map.entry("org/bukkit/event/entity/EntityDamageEvent", List.of(
                     "getEntity()Lorg/bukkit/entity/Entity;",
                     "setCancelled(Z)V")),

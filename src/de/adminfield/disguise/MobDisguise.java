@@ -22,6 +22,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.PluginDisableEvent;
@@ -491,7 +492,28 @@ public final class MobDisguise implements Listener {
     @EventHandler
     public void onDamage(EntityDamageEvent event) {
         // Keine Trefferanimation und kein Schadenslaut an der Huelle.
-        if (this.isShell(event.getEntity())) {
+        if (this.active.isEmpty()) {
+            return;
+        }
+        if (this.isLiveShell(event.getEntity())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Niemand darf mit der Huelle hantieren.
+     *
+     * <p>Sonst koennte man das verkleidete "Schaf" scheren, die "Kuh" melken, das "Schwein"
+     * satteln und reiten, Tiere mit Weizen fuettern, ein Namensschild draufkleben oder beim
+     * Ruestungsstaender Sachen anziehen. Alles davon wuerde Items kosten, Items aus dem Nichts
+     * erzeugen oder der Huelle doch wieder einen Namen ueber den Kopf setzen.
+     */
+    @EventHandler
+    public void onInteract(PlayerInteractEntityEvent event) {
+        if (this.active.isEmpty()) {
+            return;
+        }
+        if (this.isLiveShell(event.getRightClicked())) {
             event.setCancelled(true);
         }
     }
