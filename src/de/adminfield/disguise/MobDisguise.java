@@ -116,6 +116,19 @@ public final class MobDisguise implements Listener {
             this.warn("Verkleidungs-Ticker", t);
         }
         this.removeStrayMobs();
+        int repaired = this.repairVisibility(false);
+        if (repaired > 0) {
+            this.plugin.getLogger().info("Mob-Verkleidung: " + repaired
+                    + " Spieler waren noch unsichtbar und wurden zurueckgesetzt.");
+        }
+    }
+
+    /** Sauber abschalten, ohne die Verwaltung extra hochzufahren, falls sie nie lief. */
+    public static synchronized void stop(AdminFieldPlugin plugin) {
+        if (instance != null && instance.plugin == plugin) {
+            instance.shutdown();
+            instance = null;
+        }
     }
 
     private void shutdown() {
@@ -341,12 +354,17 @@ public final class MobDisguise implements Listener {
 
     // ------------------------------------------------------------------ Sichtbarkeit
 
+    /**
+     * Blendet den Spieler bei allen anderen aus.
+     *
+     * <p>Bewusst <b>nur</b> ueber hideEntity/showEntity. setVisibleByDefault sieht praktischer
+     * aus, zaehlt aber nach einer Entweder-Oder-Regel gegen hideEntity: setzt man beides,
+     * loescht setVisibleByDefault(true) beim Zurueckverwandeln die hideEntity-Eintraege gleich
+     * mit, das anschliessende showEntity findet nichts mehr zum Aufheben - und der Spieler
+     * blieb fuer immer unsichtbar. Neu dazukommende Spieler deckt onJoin ab, alles andere der
+     * Ticker einmal pro Sekunde.
+     */
     private void hidePlayer(Player target) {
-        try {
-            // Deckt auch alle ab, die erst spaeter dazukommen.
-            target.setVisibleByDefault(false);
-        } catch (Throwable ignored) {
-        }
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             if (viewer.getUniqueId().equals(target.getUniqueId())) {
                 continue;
@@ -358,8 +376,10 @@ public final class MobDisguise implements Listener {
         }
     }
 
+    /** Macht den Spieler wieder fuer alle sichtbar - komme was wolle. */
     private void showPlayer(Player target) {
         try {
+            // Falls eine aeltere Version das noch gesetzt hat: zurueckdrehen.
             target.setVisibleByDefault(true);
         } catch (Throwable ignored) {
         }
@@ -375,10 +395,33 @@ public final class MobDisguise implements Listener {
             if (viewer.getUniqueId().equals(target.getUniqueId())) {
                 continue;
             }
-            try {
-                viewer.showEntity((Plugin) this.plugin, target);
-            } catch (Throwable ignored) {
+            forceShow(viewer, target);
+        }
+    }
+
+    /**
+     * Zwingt den Server, den Spieler neu zu uebertragen.
+     *
+     * <p>Ein blosses showEntity tut nur dann wirklich etwas, wenn vorher auch ein Eintrag da
+     * war. Deshalb erst verstecken, dann zeigen - so ist garantiert etwas aufzuheben und der
+     * Spieler wird neu geschickt, egal in welchem Zustand er vorher haengen geblieben ist.
+     */
+    private void forceShow(Player viewer, Player target) {
+        try {
+            if (viewer.canSee(target)) {
+                // Sieht ihn ohnehin schon - nicht unnoetig neu uebertragen, das wuerde flackern.
+                return;
             }
+        } catch (Throwable ignored) {
+            // canSee gibt es nicht? Dann eben stumpf neu uebertragen.
+        }
+        try {
+            viewer.hideEntity((Plugin) this.plugin, target);
+        } catch (Throwable ignored) {
+        }
+        try {
+            viewer.showEntity((Plugin) this.plugin, target);
+        } catch (Throwable ignored) {
         }
     }
 
@@ -468,6 +511,13 @@ public final class MobDisguise implements Listener {
             this.hidePlayer(joined);
             this.despawn(own);
             own.mob = this.spawnShell(joined, own.kind);
+            return;
+        }
+        // Sonst: haengt er von frueher unsichtbar fest, wird das hier wieder geradegezogen.
+        if (!this.isVanished(joined) && this.looksStuck(joined)) {
+            this.showPlayer(joined);
+            this.plugin.getLogger().info(joined.getName()
+                    + " hing noch unsichtbar von einer alten Verkleidung fest - wurde zurueckgesetzt.");
         }
     }
 
@@ -531,6 +581,38 @@ public final class MobDisguise implements Listener {
     }
 
     // ------------------------------------------------------------------ Aufraeumen
+
+    /**
+     * Holt Spieler zurueck, die von einer frueheren Verkleidung unsichtbar haengen geblieben sind.
+     *
+     * <p>Laeuft automatisch beim Serverstart und bei jedem Join. Zurueckhaltend: es wird nur
+     * angefasst, wer nachweislich auf "grundsaetzlich unsichtbar" steht - das setzt praktisch
+     * nur diese Verkleidung. Wer gerade verkleidet ist oder im Vanish steht, bleibt in Ruhe.
+     *
+     * @param force alles sichtbar machen, auch ohne diesen Nachweis (Knopf im Menue)
+     */
+    public int repairVisibility(boolean force) {
+        int repaired = 0;
+        for (Player target : Bukkit.getOnlinePlayers()) {
+            if (this.active.containsKey(target.getUniqueId()) || this.isVanished(target)) {
+                continue;
+            }
+            if (!force && !this.looksStuck(target)) {
+                continue;
+            }
+            this.showPlayer(target);
+            repaired++;
+        }
+        return repaired;
+    }
+
+    private boolean looksStuck(Player target) {
+        try {
+            return !target.isVisibleByDefault();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
 
     /** Entfernt Huellen, die ein Absturz oder ein harter Stop in der Welt zurueckgelassen hat. */
     public int removeStrayMobs() {

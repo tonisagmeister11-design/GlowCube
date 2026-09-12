@@ -121,6 +121,8 @@ public final class StubGen {
 
         applyOverrides();
 
+        inheritInterfaceMethods();
+
         emit(outDir);
         System.out.println("stub types: " + types.size());
     }
@@ -302,6 +304,30 @@ public final class StubGen {
             if (ti == null) return;
             fields.forEach((n, d) -> { noteDesc(d); ti.staticFields.putIfAbsent(n, d); });
         });
+    }
+
+
+    /**
+     * A stub class that implements a stub interface must carry that interface's methods, or a
+     * concrete subclass in the real source would not compile. Pull them down, transitively.
+     */
+    static void inheritInterfaceMethods() {
+        for (TypeInfo ti : types.values()) {
+            if (ti.iface || ti.ifaces.isEmpty()) continue;
+            Deque<String> todo = new ArrayDeque<>(ti.ifaces);
+            Set<String> seen = new HashSet<>();
+            while (!todo.isEmpty()) {
+                String name = todo.poll();
+                if (!seen.add(name)) continue;
+                TypeInfo it = types.get(name);
+                if (it == null) continue;
+                todo.addAll(it.ifaces);
+                for (MethodInfo mi : it.methods.values()) {
+                    if (mi.isStatic || mi.name.startsWith("<")) continue;
+                    ti.methods.putIfAbsent(mi.name + mi.desc, new MethodInfo(mi.name, mi.desc, false, false));
+                }
+            }
+        }
     }
 
     // ---------------- emission ----------------

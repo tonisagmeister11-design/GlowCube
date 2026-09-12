@@ -105,6 +105,19 @@ public final class MobDisguiseMenu extends Menu {
                             : "<gray>Aufgeräumt: <white>" + removed + "<gray> alte Hülle(n).");
                 });
 
+        this.set(49, Ui.icon(Material.GLOWSTONE_DUST, "<aqua>Unsichtbare sichtbar machen",
+                List.of("<gray>Macht jeden Spieler wieder sichtbar,",
+                        "<gray>der irgendwo hängen geblieben ist.",
+                        "",
+                        "<dark_gray>Verkleidete und Vanish bleiben in Ruhe.",
+                        "<yellow>➤ Klicken")),
+                event -> {
+                    int repaired = disguise.repairVisibility(true);
+                    this.plugin.send((CommandSender) this.viewer, repaired == 0
+                            ? "<gray>Es hing niemand fest."
+                            : "<green>" + repaired + "<gray> Spieler wieder sichtbar gemacht.");
+                });
+
         if (disguise.count() > 0) {
             this.set(50, Ui.icon(Material.TNT, "<red><bold>Alle Verkleidungen aufheben</bold>",
                     List.of("<gray>Setzt alle <white>" + disguise.count() + "<gray> Verkleidungen zurück.",

@@ -68,8 +68,11 @@ Neu bzw. geändert:
 * `src/de/adminfield/menu/MobDisguiseMenu.java` – Hauptmenü der Verkleidung
 * `src/de/adminfield/menu/MobTargetMenu.java` – Spielerauswahl
 * `src/de/adminfield/menu/MobPickMenu.java` – Mobauswahl
-* `src/de/adminfield/menu/MainMenu.java` – **einzige** geänderte Bestandsklasse: ein
-  Menüpunkt auf Slot 44 im Owner-Block
+* `src/de/adminfield/menu/MainMenu.java` – geänderte Bestandsklasse: ein Menüpunkt auf
+  Slot 44 im Owner-Block
+* `src/de/adminfield/AdminFieldPlugin.java` – geänderte Bestandsklasse: je eine Zeile in
+  `onEnable` und `onDisable`, damit die Verkleidung beim Serverstart aufräumt und beim
+  Herunterfahren sauber zurücksetzt
 
 ## Bauen
 
@@ -94,7 +97,8 @@ Vom Plugin gibt es nur die JAR, keinen Quellcode – und die Paper-API, gegen di
    plus die Platzhalter.
 3. Die neuen `.class`-Dateien werden in eine Kopie der Original-JAR gelegt.
 
-Ergebnis: alle 68 Original-Dateien bleiben Byte für Byte unverändert, bis auf
-`MainMenu.class`. Bei der wurde geprüft, dass sie nach dem Neuübersetzen exakt dieselbe
-öffentliche Signatur und dieselben externen Aufrufe hat wie vorher – bis auf den einen
-neuen Menüpunkt. `config.yml` und `plugin.yml` sind unangetastet.
+Ergebnis: von den 68 Original-Dateien bleiben 66 Byte für Byte unverändert. Nur
+`MainMenu.class` und `AdminFieldPlugin.class` werden neu übersetzt. Bei beiden wurde
+geprüft, dass sie danach exakt dieselbe öffentliche Signatur und dieselben externen
+Aufrufe haben wie vorher – der Quelltext-Diff zeigt nur die bewusst eingefügten Zeilen.
+`config.yml` und `plugin.yml` sind unangetastet.

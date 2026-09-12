@@ -95,6 +95,7 @@ public final class Overrides {
                     "setPersistent(Z)V",
                     "setCustomNameVisible(Z)V",
                     "setVisibleByDefault(Z)V",
+                    "isVisibleByDefault()Z",
                     "setRotation(FF)V",
                     "setFireTicks(I)V",
                     "addScoreboardTag(Ljava/lang/String;)Z",
@@ -170,7 +171,8 @@ public final class Overrides {
                     Map.entry("BOOK", "Lorg/bukkit/Material;"),
                     Map.entry("ROTTEN_FLESH", "Lorg/bukkit/Material;"),
                     Map.entry("WHEAT", "Lorg/bukkit/Material;"),
-                    Map.entry("EMERALD", "Lorg/bukkit/Material;")
+                    Map.entry("EMERALD", "Lorg/bukkit/Material;"),
+                    Map.entry("GLOWSTONE_DUST", "Lorg/bukkit/Material;")
             )
     );
 
@@ -188,7 +190,11 @@ public final class Overrides {
                     "java.util.List<org.bukkit.entity.Entity> getEntities();"),
             "org/bukkit/entity/Entity", Map.of(
                     "getScoreboardTags|()V",
-                    "java.util.Set<String> getScoreboardTags();")
+                    "java.util.Set<String> getScoreboardTags();"),
+            "org/bukkit/inventory/PlayerInventory", Map.of(
+                    "addItem|([Lorg/bukkit/inventory/ItemStack;)V",
+                    "java.util.HashMap<Integer, org.bukkit.inventory.ItemStack> addItem("
+                            + "org.bukkit.inventory.ItemStack... a0);")
     );
 
     private Overrides() {}
