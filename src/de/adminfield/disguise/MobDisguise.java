@@ -378,11 +378,6 @@ public final class MobDisguise implements Listener {
 
     /** Macht den Spieler wieder fuer alle sichtbar - komme was wolle. */
     private void showPlayer(Player target) {
-        try {
-            // Falls eine aeltere Version das noch gesetzt hat: zurueckdrehen.
-            target.setVisibleByDefault(true);
-        } catch (Throwable ignored) {
-        }
         if (this.isVanished(target)) {
             // Vanish hat Vorrang: sichtbar machen wuerde das Verstecken aufheben.
             try {
@@ -391,6 +386,7 @@ public final class MobDisguise implements Listener {
             }
             return;
         }
+        resetVisibility(target);
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             if (viewer.getUniqueId().equals(target.getUniqueId())) {
                 continue;
@@ -400,11 +396,31 @@ public final class MobDisguise implements Listener {
     }
 
     /**
-     * Zwingt den Server, den Spieler neu zu uebertragen.
+     * Setzt die Sichtbarkeit hart auf Werkseinstellung zurueck.
+     *
+     * <p>Das ist der entscheidende Handgriff: showEntity kommt nur an die Verstecken-Eintraege
+     * heran, die <em>diese</em> Instanz des Plugins selbst angelegt hat. Wird die JAR im
+     * laufenden Betrieb getauscht oder das Plugin neu geladen, bleiben die Eintraege der alten
+     * Instanz liegen und lassen sich auf normalem Weg nie wieder loswerden - der Spieler bleibt
+     * unsichtbar, auch ueber Tod, Respawn und Neu-Einloggen hinweg.
+     *
+     * <p>Das Umlegen dieses Schalters wirft dagegen die Eintraege <em>aller</em> Plugins weg und
+     * laesst den Spieler anschliessend frisch an alle uebertragen.
+     */
+    private static void resetVisibility(Player target) {
+        try {
+            target.setVisibleByDefault(false);
+            target.setVisibleByDefault(true);
+        } catch (Throwable ignored) {
+            // Aeltere Server ohne diesen Schalter: dann muss das Paar unten reichen.
+        }
+    }
+
+    /**
+     * Zwingt den Server, den Spieler an diesen Zuschauer neu zu uebertragen.
      *
      * <p>Ein blosses showEntity tut nur dann wirklich etwas, wenn vorher auch ein Eintrag da
-     * war. Deshalb erst verstecken, dann zeigen - so ist garantiert etwas aufzuheben und der
-     * Spieler wird neu geschickt, egal in welchem Zustand er vorher haengen geblieben ist.
+     * war. Deshalb erst verstecken, dann zeigen - so ist garantiert etwas aufzuheben.
      */
     private void forceShow(Player viewer, Player target) {
         try {
@@ -606,12 +622,34 @@ public final class MobDisguise implements Listener {
         return repaired;
     }
 
+    /**
+     * Haengt der Spieler unsichtbar fest?
+     *
+     * <p>Zwei Anzeichen: er steht auf "grundsaetzlich unsichtbar", oder irgendwer kann ihn
+     * schlicht nicht sehen, obwohl er weder verkleidet noch im Vanish ist. Das zweite ist
+     * wichtig, weil eine frueher geladene Fassung des Plugins ihren Verstecken-Eintrag
+     * hinterlassen haben kann, ohne den Schalter angefasst zu haben.
+     */
     private boolean looksStuck(Player target) {
         try {
-            return !target.isVisibleByDefault();
+            if (!target.isVisibleByDefault()) {
+                return true;
+            }
         } catch (Throwable ignored) {
-            return false;
         }
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            if (viewer.getUniqueId().equals(target.getUniqueId())) {
+                continue;
+            }
+            try {
+                if (!viewer.canSee(target)) {
+                    return true;
+                }
+            } catch (Throwable ignored) {
+                return false;
+            }
+        }
+        return false;
     }
 
     /** Entfernt Huellen, die ein Absturz oder ein harter Stop in der Welt zurueckgelassen hat. */
