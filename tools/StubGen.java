@@ -424,7 +424,8 @@ public final class StubGen {
         }
         if (Overrides.ENUMS.contains(internal)) { writeEnum(sb, ti, simple, indent, internal, all); return; }
         sb.append(indent).append("public ").append(nested ? "static " : "");
-        sb.append(ti.iface ? "interface " : "abstract class ").append(simple);
+        boolean concrete = Overrides.CONCRETE.contains(internal);
+        sb.append(ti.iface ? "interface " : (concrete ? "class " : "abstract class ")).append(simple);
         if (!ti.iface && ti.superName != null && !ti.superName.equals("java/lang/Object")) {
             sb.append(" extends ").append(src(ti.superName));
         }

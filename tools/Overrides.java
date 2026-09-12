@@ -7,6 +7,15 @@ public final class Overrides {
             "org/bukkit/event/EventPriority"
     );
 
+    /** Klassen, die im Quellcode mit "new" erzeugt werden - duerfen nicht abstract sein. */
+    public static final Set<String> CONCRETE = Set.of(
+            "org/bukkit/NamespacedKey",
+            "org/bukkit/inventory/ItemStack",
+            "org/bukkit/attribute/AttributeModifier",
+            "org/bukkit/Location",
+            "org/bukkit/util/Vector"
+    );
+
     public static final Set<String> INTERFACES = Set.of(
             "org/bukkit/plugin/Plugin",
             "org/bukkit/event/Listener",
