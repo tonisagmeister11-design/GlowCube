@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -195,7 +196,7 @@ public final class NameDisguise implements Listener {
         this.active.put(id, entry);
         this.lastNames.put(id, skin.name());
         this.setShownName(target, skin.name());
-        this.refresh(target);
+        this.refresh(target, true);
         return true;
     }
 
@@ -216,22 +217,38 @@ public final class NameDisguise implements Listener {
 
     /** Setzt Name und Skin wieder auf das echte Konto zurueck. */
     public void restore(UUID player) {
+        this.restore(player, true);
+    }
+
+    private void restore(UUID player, boolean allowDelay) {
         Active entry = this.active.remove(player);
         if (entry == null) {
             return;
         }
-        Player target = Bukkit.getPlayer(player);
-        if (target == null) {
-            return;
+        try {
+            Player target = Bukkit.getPlayer(player);
+            if (target == null) {
+                return;
+            }
+            writeProfile(target, entry.realName, player, entry.realTextures, entry.realSignature);
+            this.setShownName(target, null);
+            this.refresh(target, allowDelay);
+        } catch (Throwable t) {
+            this.fail("beim Zuruecksetzen: " + t.getClass().getSimpleName());
         }
-        writeProfile(target, entry.realName, player, entry.realTextures, entry.realSignature);
-        this.setShownName(target, null);
-        this.refresh(target);
     }
 
+    /**
+     * Setzt alle zurueck. Wird auch beim Herunterfahren gerufen, deshalb ohne Verzoegerung und
+     * ohne dass eine einzelne Panne die restlichen Spieler oder das Speichern des Plugins
+     * mitreisst.
+     */
     public void restoreAll() {
         for (UUID id : new ArrayList<>(this.active.keySet())) {
-            this.restore(id);
+            try {
+                this.restore(id, false);
+            } catch (Throwable ignored) {
+            }
         }
     }
 
@@ -243,39 +260,57 @@ public final class NameDisguise implements Listener {
      * <p>Erst dadurch schickt der Server das neue Profil an die Clients - sonst behalten alle
      * den alten Namen und Skin, bis sie sich neu verbinden.
      */
-    private void refresh(Player target) {
+    /**
+     * @param allowDelay {@code false} erzwingt sofortiges Einblenden. Beim Herunterfahren darf
+     *                   das Plugin nichts mehr einplanen - ein verzoegertes Einblenden kaeme
+     *                   dann nie, und der Spieler bliebe fuer immer unsichtbar.
+     */
+    private void refresh(Player target, boolean allowDelay) {
+        // Genau merken, wen wir ausgeblendet haben, damit auch genau die wieder drankommen.
+        List<Player> hidden = new ArrayList<>();
         for (Player viewer : Bukkit.getOnlinePlayers()) {
             if (viewer.getUniqueId().equals(target.getUniqueId())) {
                 continue;
             }
             try {
                 viewer.hideEntity((Plugin) this.plugin, target);
+                hidden.add(viewer);
             } catch (Throwable ignored) {
             }
         }
-        Bukkit.getScheduler().runTaskLater((Plugin) this.plugin, () -> {
-            boolean vanished = false;
+        Runnable show = () -> this.showAgain(target, hidden);
+        if (!allowDelay) {
+            show.run();
+            return;
+        }
+        try {
+            Bukkit.getScheduler().runTaskLater((Plugin) this.plugin, show, 3L);
+        } catch (Throwable ignored) {
+            // Liess sich nicht einplanen - dann eben sofort. Ausgeblendet lassen ist keine Option.
+            show.run();
+        }
+    }
+
+    /** Blendet den Spieler wieder ein. Darf unter keinen Umstaenden vorzeitig abbrechen. */
+    private void showAgain(Player target, List<Player> hidden) {
+        boolean vanished = false;
+        try {
+            vanished = this.plugin.state().isVanished(target);
+        } catch (Throwable ignored) {
+        }
+        for (Player viewer : hidden) {
             try {
-                vanished = this.plugin.state().isVanished(target);
+                viewer.showEntity((Plugin) this.plugin, target);
             } catch (Throwable ignored) {
             }
-            for (Player viewer : Bukkit.getOnlinePlayers()) {
-                if (viewer.getUniqueId().equals(target.getUniqueId())) {
-                    continue;
-                }
-                try {
-                    viewer.showEntity((Plugin) this.plugin, target);
-                } catch (Throwable ignored) {
-                }
+        }
+        if (vanished) {
+            // Vanish wieder herstellen, das Einblenden haette es sonst aufgehoben.
+            try {
+                this.plugin.state().setVanished(target, true);
+            } catch (Throwable ignored) {
             }
-            if (vanished) {
-                // Vanish wieder herstellen, das Einblenden haette es sonst aufgehoben.
-                try {
-                    this.plugin.state().setVanished(target, true);
-                } catch (Throwable ignored) {
-                }
-            }
-        }, 3L);
+        }
     }
 
     // ------------------------------------------------------------------ Profil schreiben
@@ -411,9 +446,13 @@ public final class NameDisguise implements Listener {
         // Nach dem Neu-Verbinden ist das echte Profil wieder aktiv - also noch einmal aufsetzen.
         Player joined = event.getPlayer();
         String wanted = entry.fakeName;
-        Bukkit.getScheduler().runTaskLater((Plugin) this.plugin,
-                () -> this.disguiseAsync(joined, wanted, message -> {
-                }), 20L);
+        try {
+            Bukkit.getScheduler().runTaskLater((Plugin) this.plugin,
+                    () -> this.disguiseAsync(joined, wanted, message -> {
+                    }), 20L);
+        } catch (Throwable ignored) {
+            // Server faehrt gerade herunter - dann bleibt er eben er selbst. Nichts kaputt.
+        }
     }
 
     /**

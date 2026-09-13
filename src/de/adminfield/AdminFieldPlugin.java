@@ -104,8 +104,18 @@ extends JavaPlugin {
     }
 
     public void onDisable() {
-        MobDisguise.stop(this);
-        NameDisguise.stop(this);
+        try {
+            MobDisguise.stop(this);
+        }
+        catch (Throwable throwable) {
+            this.getLogger().warning("Mob-Verkleidung liess sich nicht sauber beenden.");
+        }
+        try {
+            NameDisguise.stop(this);
+        }
+        catch (Throwable throwable) {
+            this.getLogger().warning("Namens-Verkleidung liess sich nicht sauber beenden.");
+        }
         if (this.assassin != null) {
             this.assassin.dismissAll();
         }
