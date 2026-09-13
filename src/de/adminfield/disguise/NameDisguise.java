@@ -11,11 +11,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.PluginDisableEvent;
@@ -66,6 +70,8 @@ public final class NameDisguise implements Listener {
 
     private final AdminFieldPlugin plugin;
     private final Map<UUID, Active> active = new LinkedHashMap<>();
+    /** Zuletzt benutzter Name je Spieler - damit der Schalter ihn wieder anknipsen kann. */
+    private final Map<UUID, String> lastNames = new LinkedHashMap<>();
 
     private NameDisguise(AdminFieldPlugin plugin) {
         this.plugin = plugin;
@@ -109,6 +115,11 @@ public final class NameDisguise implements Listener {
 
     public int count() {
         return this.active.size();
+    }
+
+    /** Der Name, auf den der Schalter im Menue zurueckgreift. */
+    public String lastName(UUID player) {
+        return this.lastNames.get(player);
     }
 
     public Collection<Active> all() {
@@ -165,24 +176,42 @@ public final class NameDisguise implements Listener {
     private boolean apply(Player target, SkinFetch.Skin skin) {
         UUID id = target.getUniqueId();
         Active entry = this.active.get(id);
-        if (entry == null) {
+        boolean fresh = entry == null;
+        if (fresh) {
             // Erstes Mal: den echten Namen und Skin merken, damit es ein Zurueck gibt.
             String[] own = ownTextures(target);
             entry = new Active(id, target.getName(), own[0], own[1]);
-            this.active.put(id, entry);
         }
-        entry.fakeName = skin.name();
 
-        boolean ok = writeProfile(target, skin.name(), id, skin.value(), skin.signature());
-        if (!ok) {
-            if (entry.fakeName == null) {
+        if (!writeProfile(target, skin.name(), id, skin.value(), skin.signature())) {
+            if (fresh) {
+                // Nichts angerichtet - also auch nichts merken.
                 this.active.remove(id);
             }
             return false;
         }
-        this.setListName(target, skin.name());
+
+        entry.fakeName = skin.name();
+        this.active.put(id, entry);
+        this.lastNames.put(id, skin.name());
+        this.setShownName(target, skin.name());
         this.refresh(target);
         return true;
+    }
+
+    /**
+     * Verkleidung als jemand, der gerade online ist.
+     *
+     * <p>Dessen Skin steht schon im Serverspeicher - damit geht es sofort und ohne Umweg ueber
+     * Mojang, selbst wenn deren Server gerade streiken.
+     */
+    public boolean disguiseAs(Player target, Player online) {
+        String[] textures = ownTextures(online);
+        if (textures[0] == null) {
+            return false;
+        }
+        return this.apply(target,
+                new SkinFetch.Skin(online.getUniqueId(), online.getName(), textures[0], textures[1]));
     }
 
     /** Setzt Name und Skin wieder auf das echte Konto zurueck. */
@@ -196,7 +225,7 @@ public final class NameDisguise implements Listener {
             return;
         }
         writeProfile(target, entry.realName, player, entry.realTextures, entry.realSignature);
-        this.setListName(target, null);
+        this.setShownName(target, null);
         this.refresh(target);
     }
 
@@ -330,12 +359,38 @@ public final class NameDisguise implements Listener {
         return null;
     }
 
-    private void setListName(Player target, String name) {
-        // Die Tabliste zieht normalerweise das Profil nach. Sicherheitshalber trotzdem setzen.
+    /**
+     * Setzt Tablisten- und Chatnamen.
+     *
+     * <p>Normalerweise zieht beides das Profil von selbst nach. Wir setzen es trotzdem
+     * ausdruecklich, damit in der Tabliste und im Chat verlaesslich der fremde Name steht.
+     * {@code null} stellt den Ausgangszustand wieder her.
+     */
+    private void setShownName(Player target, String name) {
+        Component shown = name == null ? null : Component.text(name);
+        applyName(target, "playerListName", shown);
+        applyName(target, "displayName", shown);
+        // Aeltere Namensvariante, falls die Component-Fassung fehlt.
         try {
             Method m = find(target.getClass(), "setPlayerListName", 1);
             if (m != null && m.getParameterTypes()[0] == String.class) {
                 m.invoke(target, name);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void applyName(Player target, String method, Component value) {
+        try {
+            for (Method m : target.getClass().getMethods()) {
+                if (!m.getName().equals(method) || m.getParameterCount() != 1) {
+                    continue;
+                }
+                if (!m.getParameterTypes()[0].isAssignableFrom(Component.class)) {
+                    continue;
+                }
+                m.invoke(target, value);
+                return;
             }
         } catch (Throwable ignored) {
         }
@@ -359,6 +414,67 @@ public final class NameDisguise implements Listener {
         Bukkit.getScheduler().runTaskLater((Plugin) this.plugin,
                 () -> this.disguiseAsync(joined, wanted, message -> {
                 }), 20L);
+    }
+
+    /**
+     * Schreibt den echten Namen in Todesmeldungen auf den fremden um.
+     *
+     * <p>HIGHEST, damit der Verlauf des Plugins (der bei NORMAL mitliest) noch den echten
+     * Namen protokolliert und nur die Meldung im Chat den fremden zeigt.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onDeath(PlayerDeathEvent event) {
+        if (this.active.isEmpty()) {
+            return;
+        }
+        String plain;
+        try {
+            Component message = event.deathMessage();
+            if (message == null) {
+                return;
+            }
+            plain = PlainTextComponentSerializer.plainText().serialize(message);
+        } catch (Throwable ignored) {
+            return;
+        }
+        String changed = plain;
+        for (Active entry : this.active.values()) {
+            if (entry.fakeName != null) {
+                changed = replaceWord(changed, entry.realName, entry.fakeName);
+            }
+        }
+        if (!changed.equals(plain)) {
+            try {
+                event.deathMessage(Component.text(changed));
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    /** Ersetzt einen Namen nur dort, wo er als ganzes Wort steht. */
+    static String replaceWord(String text, String from, String to) {
+        if (text == null || from == null || to == null || from.isEmpty() || from.equals(to)) {
+            return text;
+        }
+        StringBuilder out = new StringBuilder(text.length());
+        int at = 0;
+        while (at < text.length()) {
+            int found = text.indexOf(from, at);
+            if (found < 0) {
+                out.append(text, at, text.length());
+                break;
+            }
+            int end = found + from.length();
+            boolean freeLeft = found == 0 || !isNameChar(text.charAt(found - 1));
+            boolean freeRight = end >= text.length() || !isNameChar(text.charAt(end));
+            out.append(text, at, found).append(freeLeft && freeRight ? to : from);
+            at = end;
+        }
+        return out.toString();
+    }
+
+    private static boolean isNameChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     @EventHandler

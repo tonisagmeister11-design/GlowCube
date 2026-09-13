@@ -44,6 +44,9 @@ public final class Overrides {
             "org/bukkit/scheduler/BukkitTask",
             "org/bukkit/plugin/PluginManager",
             "org/bukkit/Server",
+            "net/kyori/adventure/text/Component",
+            "net/kyori/adventure/text/TextComponent",
+            "net/kyori/adventure/text/ComponentLike",
             "org/bukkit/entity/Creature",
             "org/bukkit/entity/Monster",
             "org/bukkit/entity/Animals",
@@ -82,6 +85,10 @@ public final class Overrides {
             Map.entry("org/bukkit/entity/Animals", List.of("org/bukkit/entity/Ageable")),
             Map.entry("org/bukkit/entity/EnderDragon", List.of("org/bukkit/entity/LivingEntity")),
             Map.entry("org/bukkit/entity/ArmorStand", List.of("org/bukkit/entity/LivingEntity")),
+            Map.entry("net/kyori/adventure/text/TextComponent",
+                    List.of("net/kyori/adventure/text/Component")),
+            Map.entry("net/kyori/adventure/text/Component",
+                    List.of("net/kyori/adventure/text/ComponentLike")),
             Map.entry("org/bukkit/plugin/java/JavaPlugin", List.of("org/bukkit/plugin/Plugin"))
     );
 
@@ -167,6 +174,8 @@ public final class Overrides {
     );
 
     public static final Map<String, Map<String, String>> EXTRA_FIELDS = Map.of(
+            "org/bukkit/event/EventPriority", Map.of(
+                    "HIGHEST", "Lorg/bukkit/event/EventPriority;"),
             "org/bukkit/Material", Map.ofEntries(
                     Map.entry("STONE", "Lorg/bukkit/Material;"),
                     Map.entry("NAME_TAG", "Lorg/bukkit/Material;"),
