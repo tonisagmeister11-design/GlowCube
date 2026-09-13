@@ -1,10 +1,14 @@
 package de.adminfield.disguise;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import de.adminfield.AdminFieldPlugin;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -338,37 +342,107 @@ public final class NameDisguise implements Listener {
      * <p>Komplett ueber Reflection, weil genau diese drei Aufrufe sich zwischen Serverversionen
      * am ehesten unterscheiden. Schlaegt etwas fehl, steht der Grund in der Konsole.
      */
+    /**
+     * Setzt Name und Skin auf den Spieler.
+     *
+     * <p>Zwei Wege, bewusst beide:
+     *
+     * <p>1. Die Paper-Methode setPlayerProfile. Die bringt den Skin sauber durch die interne
+     * Buchhaltung, laesst den <em>Namen</em> eines eingeloggten Spielers aber unangetastet -
+     * deshalb blieb der Nametag bisher der echte.
+     *
+     * <p>2. Das Spielerprofil im Server direkt austauschen. Daher holt der Server seinen
+     * Namen fuer Nametag, Tabliste, Chat und Todesmeldungen. Gesucht wird das Feld ueber
+     * seinen <em>Typ</em> statt ueber seinen Namen, damit es nicht an einer Umbenennung
+     * zwischen Serverversionen scheitert.
+     *
+     * <p>Reihenfolge ist wichtig: erst Paper, dann der Tausch - sonst wuerde Paper den
+     * fremden Namen gleich wieder ueberschreiben.
+     */
     private boolean writeProfile(Player target, String name, UUID id, String textures, String signature) {
+        boolean viaPaper = this.writeViaPaper(target, name, id, textures, signature);
+        boolean viaHandle = this.swapServerProfile(target, name, id, textures, signature);
+        if (!viaPaper && !viaHandle) {
+            return false;
+        }
+        if (!viaHandle) {
+            this.fail("der Name liess sich nicht setzen, nur der Skin - "
+                    + "Nametag und Todesmeldungen bleiben beim echten Namen");
+        }
+        return true;
+    }
+
+    /** Weg 1: die offizielle Paper-Methode. */
+    private boolean writeViaPaper(Player target, String name, UUID id, String textures, String signature) {
         try {
             Object profile = createProfile(id, name);
             if (profile == null) {
-                this.fail("Bukkit.createProfile(UUID, String) gibt es auf diesem Server nicht");
                 return false;
             }
             if (textures != null) {
                 Class<?> propertyType = Class.forName("com.destroystokyo.paper.profile.ProfileProperty");
                 Constructor<?> ctor = propertyType.getConstructor(String.class, String.class, String.class);
-                Object property = ctor.newInstance("textures", textures, signature);
                 Method setProperty = find(profile.getClass(), "setProperty", 1);
                 if (setProperty == null) {
-                    this.fail("PlayerProfile.setProperty fehlt");
                     return false;
                 }
-                setProperty.invoke(profile, property);
+                setProperty.invoke(profile, ctor.newInstance("textures", textures, signature));
             }
             Method setProfile = find(target.getClass(), "setPlayerProfile", 1);
             if (setProfile == null) {
-                this.fail("Player.setPlayerProfile fehlt - diese Paper-Version kann das nicht");
                 return false;
             }
             setProfile.invoke(target, profile);
             return true;
         } catch (Throwable t) {
-            Throwable cause = t.getCause() != null ? t.getCause() : t;
-            this.fail(cause.getClass().getSimpleName()
-                    + (cause.getMessage() == null ? "" : ": " + cause.getMessage()));
+            this.fail("setPlayerProfile: " + reason(t));
             return false;
         }
+    }
+
+    /** Weg 2: das Profil im Server austauschen - nur so aendert sich auch der Name. */
+    private boolean swapServerProfile(Player target, String name, UUID id, String textures, String signature) {
+        try {
+            GameProfile profile = new GameProfile(id, name);
+            if (textures != null) {
+                profile.properties().put("textures", new Property("textures", textures, signature));
+            }
+            Method getHandle = find(target.getClass(), "getHandle", 0);
+            if (getHandle == null) {
+                this.fail("an das Spielerobjekt des Servers kommt man hier nicht heran");
+                return false;
+            }
+            Object handle = getHandle.invoke(target);
+            if (handle == null) {
+                return false;
+            }
+            boolean any = false;
+            for (Class<?> type = handle.getClass(); type != null && type != Object.class;
+                    type = type.getSuperclass()) {
+                for (Field field : type.getDeclaredFields()) {
+                    if (Modifier.isStatic(field.getModifiers())
+                            || !GameProfile.class.getName().equals(field.getType().getName())) {
+                        continue;
+                    }
+                    field.setAccessible(true);
+                    field.set(handle, profile);
+                    any = true;
+                }
+            }
+            if (!any) {
+                this.fail("im Spielerobjekt steckt kein Profilfeld, das getauscht werden koennte");
+            }
+            return any;
+        } catch (Throwable t) {
+            this.fail("Profiltausch: " + reason(t));
+            return false;
+        }
+    }
+
+    private static String reason(Throwable t) {
+        Throwable cause = t.getCause() != null ? t.getCause() : t;
+        return cause.getClass().getSimpleName()
+                + (cause.getMessage() == null ? "" : ": " + cause.getMessage());
     }
 
     private static Object createProfile(UUID id, String name) throws Exception {

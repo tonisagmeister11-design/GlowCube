@@ -12,6 +12,8 @@ public final class Overrides {
             "org/bukkit/NamespacedKey",
             "org/bukkit/inventory/ItemStack",
             "org/bukkit/attribute/AttributeModifier",
+            "com/mojang/authlib/GameProfile",
+            "com/mojang/authlib/properties/Property",
             "org/bukkit/Location",
             "org/bukkit/util/Vector"
     );

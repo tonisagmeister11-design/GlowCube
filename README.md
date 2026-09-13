@@ -68,11 +68,16 @@ Neu bzw. geändert:
 * `src/de/adminfield/menu/MobDisguiseMenu.java` – Hauptmenü der Verkleidung
 * `src/de/adminfield/menu/MobTargetMenu.java` – Spielerauswahl
 * `src/de/adminfield/menu/MobPickMenu.java` – Mobauswahl
-* `src/de/adminfield/menu/MainMenu.java` – geänderte Bestandsklasse: ein Menüpunkt auf
-  Slot 44 im Owner-Block
+* `src/de/adminfield/disguise/NameDisguise.java` – Verkleidung als fremdes Konto
+* `src/de/adminfield/disguise/SkinFetch.java` – Skin-Abfrage bei Mojang
+* `src/de/adminfield/menu/NameDisguiseMenu.java`, `NameTargetMenu.java` – deren Menüs
+* `src/de/adminfield/menu/MainMenu.java` – geänderte Bestandsklasse: zwei Menüpunkte
+  (Slot 36 und 44) im Owner-Block
 * `src/de/adminfield/AdminFieldPlugin.java` – geänderte Bestandsklasse: je eine Zeile in
-  `onEnable` und `onDisable`, damit die Verkleidung beim Serverstart aufräumt und beim
-  Herunterfahren sauber zurücksetzt
+  `onEnable` und `onDisable`, damit die Verkleidungen beim Serverstart aufräumen und
+  beim Herunterfahren sauber zurücksetzen
+* `src/de/adminfield/OwnerItems.java`, `src/de/adminfield/menu/OwnerStuffMenu.java` –
+  geänderte Bestandsklassen: Glück 255 auf der Spitzhacke, zwei Knockback-Sticks
 
 ## Bauen
 
@@ -97,8 +102,8 @@ Vom Plugin gibt es nur die JAR, keinen Quellcode – und die Paper-API, gegen di
    plus die Platzhalter.
 3. Die neuen `.class`-Dateien werden in eine Kopie der Original-JAR gelegt.
 
-Ergebnis: von den 68 Original-Dateien bleiben 66 Byte für Byte unverändert. Nur
-`MainMenu.class` und `AdminFieldPlugin.class` werden neu übersetzt. Bei beiden wurde
-geprüft, dass sie danach exakt dieselbe öffentliche Signatur und dieselben externen
-Aufrufe haben wie vorher – der Quelltext-Diff zeigt nur die bewusst eingefügten Zeilen.
-`config.yml` und `plugin.yml` sind unangetastet.
+Ergebnis: keine der 68 Original-Dateien fehlt, und nur die wenigen oben genannten
+werden neu übersetzt. Bei jeder davon wird geprüft, dass sie danach exakt dieselbe
+öffentliche Signatur und dieselben externen Aufrufe hat wie vorher – der Quelltext-Diff
+zeigt jeweils nur die bewusst eingefügten Zeilen. `config.yml` und `plugin.yml` sind
+unangetastet.
