@@ -127,6 +127,8 @@ public final class Overrides {
             Map.entry("org/bukkit/entity/Creeper", List.of("setPowered(Z)V")),
             Map.entry("org/bukkit/entity/Boss", List.of("getBossBar()Lorg/bukkit/boss/BossBar;")),
             Map.entry("org/bukkit/scheduler/BukkitTask", List.of("cancel()V", "isCancelled()Z")),
+            Map.entry("org/bukkit/scheduler/BukkitScheduler", List.of(
+                    "runTaskAsynchronously(Lorg/bukkit/plugin/Plugin;Ljava/lang/Runnable;)Lorg/bukkit/scheduler/BukkitTask;")),
             Map.entry("org/bukkit/event/server/PluginDisableEvent", List.of(
                     "getPlugin()Lorg/bukkit/plugin/Plugin;")),
             Map.entry("org/bukkit/event/player/PlayerInteractEntityEvent", List.of(

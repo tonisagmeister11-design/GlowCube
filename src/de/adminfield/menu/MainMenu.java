@@ -15,6 +15,7 @@ import de.adminfield.menu.LogMenu;
 import de.adminfield.menu.LuckyBlockMenu;
 import de.adminfield.menu.Menu;
 import de.adminfield.menu.MobDisguiseMenu;
+import de.adminfield.menu.NameDisguiseMenu;
 import de.adminfield.menu.OwnerStuffMenu;
 import de.adminfield.menu.PlayerListMenu;
 import de.adminfield.menu.ServerMenu;
@@ -75,6 +76,8 @@ extends Menu {
             this.set(38, Ui.icon(Material.NOTE_BLOCK, "<gradient:#ffe259:#4f8bff><bold>Lucky Blocks</bold></gradient>", List.of("<gray>Lucky Blocks direkt ins Inventar holen.", "", bl ? "<gray>Normal und Super verfügbar," : "<red>Lucky-Block-Plugin nicht gefunden.", bl ? "<gray>Subscribe bleibt gesperrt." : "<dark_gray>Menü öffnet trotzdem.", "", "<yellow>➤ Klicken zum Öffnen")), inventoryClickEvent -> new LuckyBlockMenu(this.plugin, this).open(this.viewer));
             this.set(40, Ui.glowing(Material.BOOK, "<dark_red><bold>Death Note</bold></dark_red>", List.of("<gray>Einen Namen eintragen und sein", "<gray>Schicksal wählen.", "", "<gray>Es passiert erst, wenn er wirklich", "<gray>in die passende Lage kommt – und", "<gray>sieht dann aus wie normales Pech.", "", "<gray>Offene Einträge: <white>" + this.plugin.deathNote().count(), "<yellow>➤ Klicken zum Öffnen")), inventoryClickEvent -> new DeathNoteMenu(this.plugin, this).open(this.viewer));
             this.set(42, Ui.glowing(Material.GOLDEN_HELMET, "<gradient:#ffd166:#ff8a00><bold>Owner-Ausrüstung</bold></gradient>", List.of("<gray>Waffen, Rüstung und Stäbe,", "<gray>die es sonst nirgends gibt.", "", "<gray>Unter anderem: <white>Schärfe 255<gray>,", "<gray>TNT-Regen, Blitzstab, Eisstab.", "", "<yellow>➤ Klicken zum Öffnen")), inventoryClickEvent -> new OwnerStuffMenu(this.plugin, this).open(this.viewer));
+            String nameFake = de.adminfield.disguise.NameDisguise.get(this.plugin).nameOf(this.viewer.getUniqueId());
+            this.set(36, Ui.glowing(Material.PLAYER_HEAD, "<gradient:#5ad1ff:#a06bff><bold>Fremder Name</bold></gradient>", List.of("<gray>Gib dich als beliebiges Minecraft-Konto", "<gray>aus – mit Namen und echtem Skin.", "", "<gray>Auch von Leuten, die hier gar nicht", "<gray>spielen. Name über dem Kopf und in", "<gray>der Tabliste inklusive.", "", nameFake == null ? "<dark_gray>Zurzeit trägst du deinen Namen." : "<gray>Aktuell: <white>" + nameFake, "<yellow>➤ Klicken zum Öffnen")), inventoryClickEvent -> new NameDisguiseMenu(this.plugin, this).open(this.viewer));
             int n4 = de.adminfield.disguise.MobDisguise.get(this.plugin).count();
             this.set(44, Ui.glowing(Material.CREEPER_HEAD, "<gradient:#7bffb0:#00a86b><bold>Mob-Verkleidung</bold></gradient>", List.of("<gray>Verwandelt dich oder einen anderen", "<gray>Spieler in einen echten Mob –", "<gray>nicht nur optisch.", "", "<gray>Creeper, Baby-Zombie, Villager,", "<gray>Enderman, Wither, Eisengolem, Tiere.", "", "<gray>Ohne Nametag, ohne Chat-Meldung.", n4 > 0 ? "<gray>Verkleidet gerade: <white>" + n4 : "<dark_gray>Zurzeit ist niemand verkleidet.", "<yellow>➤ Klicken zum Öffnen")), inventoryClickEvent -> new MobDisguiseMenu(this.plugin, this).open(this.viewer));
         }

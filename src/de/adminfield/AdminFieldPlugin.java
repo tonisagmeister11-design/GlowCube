@@ -19,6 +19,7 @@ import de.adminfield.OwnerItems;
 import de.adminfield.OwnerPowers;
 import de.adminfield.Ui;
 import de.adminfield.disguise.MobDisguise;
+import de.adminfield.disguise.NameDisguise;
 import de.adminfield.menu.Menu;
 import de.adminfield.nms.PlayerDisguise;
 import java.lang.management.ManagementFactory;
@@ -97,12 +98,14 @@ extends JavaPlugin {
         Bukkit.getScheduler().runTaskTimer((Plugin)this, () -> this.deathNote.tick(), 100L, 100L);
         Bukkit.getScheduler().runTaskTimer((Plugin)this, () -> this.curses.tick(), 40L, 20L);
         MobDisguise.get(this);
+        NameDisguise.get(this);
         this.log.add(ActivityLog.Level.INFO, "AdminField gestartet");
         this.getLogger().info("AdminField aktiv - " + this.tracker.count() + " bekannte Baustellen.");
     }
 
     public void onDisable() {
         MobDisguise.stop(this);
+        NameDisguise.stop(this);
         if (this.assassin != null) {
             this.assassin.dismissAll();
         }
