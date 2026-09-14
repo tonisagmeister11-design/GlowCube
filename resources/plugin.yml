@@ -1,0 +1,55 @@
+name: AdminField
+version: 2.9.0
+main: de.adminfield.AdminFieldPlugin
+api-version: '26.2'
+author: AdminField
+description: Admin-Kontrollzentrum mit automatischer Bauerkennung, Spielerverwaltung und Live-Serverstatus.
+commands:
+  admin:
+    description: Oeffnet das AdminField-Kontrollzentrum
+    usage: /admin
+    aliases: [af, adminfield]
+  # ---- uebernommen aus GlowCubeUtils ----
+  sethome:
+    description: Setzt ein Home an deiner aktuellen Position (nur Oberwelt).
+    usage: /sethome [name]
+    aliases: [create-home, createhome]
+  home:
+    description: Teleportiert dich zu einem deiner Homes.
+    usage: /home [name]
+    aliases: [go-home, gohome]
+  delhome:
+    description: Loescht eines deiner Homes.
+    usage: /delhome <name>
+    aliases: [delete-home, deletehome, removehome]
+  homes:
+    description: Zeigt deine Homes an.
+    usage: /homes
+    aliases: [list-homes, listhomes, homelist]
+  movehome:
+    description: Verschiebt ein bestehendes Home an deine aktuelle Position.
+    usage: /movehome <name>
+    aliases: [move-home, uhome]
+permissions:
+  adminfield.use:
+    description: Darf das AdminField-Menue benutzen
+    default: op
+  adminfield.notify:
+    description: Bekommt Meldungen ueber neue Baustellen und Grief-Alarme
+    default: op
+  adminfield.inventory.edit:
+    description: Darf fremde Inventare bearbeiten und Items daraus entnehmen
+    default: op
+  # ---- uebernommen aus GlowCubeUtils ----
+  glowcube.home:
+    description: Erlaubt das Setzen, Nutzen und Loeschen von Homes.
+    default: true
+  glowcube.home.bypass-delay:
+    description: Teleportiert sofort ohne Countdown.
+    default: op
+  glowcube.home.bypass-max:
+    description: Ignoriert das Home-Limit.
+    default: op
+  glowcube.home.bypass-dimension:
+    description: Darf auch im Nether/End Homes setzen.
+    default: false

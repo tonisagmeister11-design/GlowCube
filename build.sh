@@ -16,6 +16,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK="${WORK:-$ROOT/.build}"
 ORIGINAL="$ROOT/lib/AdminField-original.jar"
+UTILS="$ROOT/lib/GlowCubeUtils-original.jar"
 OUTPUT="${OUTPUT:-$ROOT/dist/AdminField.jar}"
 
 JAVAC="${JAVAC:-javac}"
@@ -39,14 +40,18 @@ if [ ! -f "$ASM_JAR" ]; then
   curl -sSL -o "$ASM_JAR" "$ASM_URL"
 fi
 
-echo "==> entpacke Original-JAR"
+echo "==> entpacke Original-JARs"
 ( cd "$WORK/jar" && unzip -q -o "$ORIGINAL" )
+# Nur die Klassen des Home-Plugins - plugin.yml und config.yml kommen zusammengefuehrt
+# aus resources/, sonst wuerde eine die andere ueberschreiben.
+( cd "$WORK/jar" && unzip -q -o "$UTILS" 'com/*' )
+cp "$ROOT/resources/plugin.yml" "$ROOT/resources/config.yml" "$WORK/jar/"
 
 echo "==> baue StubGen"
 "$JAVAC" -nowarn -cp "$ASM_JAR" -d "$WORK/tools" "$ROOT/tools/StubGen.java" "$ROOT/tools/Overrides.java"
 
 echo "==> erzeuge API-Platzhalter"
-"$JAVA" -cp "$ASM_JAR:$WORK/tools" StubGen "$ORIGINAL" "$WORK/stubsrc"
+"$JAVA" -cp "$ASM_JAR:$WORK/tools" StubGen "$ORIGINAL" "$WORK/stubsrc" "$UTILS"
 find "$WORK/stubsrc" -name '*.java' > "$WORK/stubs.txt"
 "$JAVAC" -nowarn -proc:none -d "$WORK/stubs" "@$WORK/stubs.txt"
 

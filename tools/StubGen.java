@@ -100,16 +100,23 @@ public final class StubGen {
     }
 
     public static void main(String[] args) throws Exception {
-        Path jar = Paths.get(args[0]);
         Path outDir = Paths.get(args[1]);
 
+        // args[0] und alles ab args[2] sind Eingabe-JARs; deren eigene Klassen brauchen
+        // keine Platzhalter, alles andere schon.
+        List<Path> jars = new ArrayList<>();
+        jars.add(Paths.get(args[0]));
+        for (int i = 2; i < args.length; i++) jars.add(Paths.get(args[i]));
+
         List<byte[]> classes = new ArrayList<>();
-        try (JarFile jf = new JarFile(jar.toFile())) {
-            for (Enumeration<JarEntry> e = jf.entries(); e.hasMoreElements(); ) {
-                JarEntry je = e.nextElement();
-                if (!je.getName().endsWith(".class")) continue;
-                try (InputStream in = jf.getInputStream(je)) { classes.add(in.readAllBytes()); }
-                own.add(je.getName().substring(0, je.getName().length() - 6));
+        for (Path jar : jars) {
+            try (JarFile jf = new JarFile(jar.toFile())) {
+                for (Enumeration<JarEntry> e = jf.entries(); e.hasMoreElements(); ) {
+                    JarEntry je = e.nextElement();
+                    if (!je.getName().endsWith(".class")) continue;
+                    try (InputStream in = jf.getInputStream(je)) { classes.add(in.readAllBytes()); }
+                    own.add(je.getName().substring(0, je.getName().length() - 6));
+                }
             }
         }
         // pass 1: record what our own classes declare

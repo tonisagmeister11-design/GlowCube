@@ -4,7 +4,8 @@ import java.util.*;
 public final class Overrides {
 
     public static final Set<String> ENUMS = Set.of(
-            "org/bukkit/event/EventPriority"
+            "org/bukkit/event/EventPriority",
+            "org/bukkit/GameMode"
     );
 
     /** Klassen, die im Quellcode mit "new" erzeugt werden - duerfen nicht abstract sein. */
@@ -133,6 +134,9 @@ public final class Overrides {
             Map.entry("org/bukkit/entity/Wither", List.of(
                     "setInvulnerableTicks(I)V",
                     "getBossBar()Lorg/bukkit/boss/BossBar;")),
+            Map.entry("org/bukkit/configuration/file/YamlConfiguration", List.of(
+                    "contains(Ljava/lang/String;)Z",
+                    "get(Ljava/lang/String;)Ljava/lang/Object;")),
             Map.entry("org/bukkit/entity/Creeper", List.of("setPowered(Z)V")),
             Map.entry("org/bukkit/entity/Boss", List.of("getBossBar()Lorg/bukkit/boss/BossBar;")),
             Map.entry("org/bukkit/scheduler/BukkitTask", List.of("cancel()V", "isCancelled()Z")),
@@ -195,7 +199,9 @@ public final class Overrides {
                     Map.entry("WHEAT", "Lorg/bukkit/Material;"),
                     Map.entry("EMERALD", "Lorg/bukkit/Material;"),
                     Map.entry("GLOWSTONE_DUST", "Lorg/bukkit/Material;"),
-                    Map.entry("STICK", "Lorg/bukkit/Material;")
+                    Map.entry("STICK", "Lorg/bukkit/Material;"),
+                    Map.entry("RED_BED", "Lorg/bukkit/Material;"),
+                    Map.entry("COMPASS", "Lorg/bukkit/Material;")
             )
     );
 
@@ -214,6 +220,9 @@ public final class Overrides {
             "org/bukkit/entity/Entity", Map.of(
                     "getScoreboardTags|()V",
                     "java.util.Set<String> getScoreboardTags();"),
+            "org/bukkit/entity/Player", Map.of(
+                    "getActivePotionEffects|()V",
+                    "java.util.Collection<org.bukkit.potion.PotionEffect> getActivePotionEffects();"),
             "org/bukkit/inventory/PlayerInventory", Map.of(
                     "addItem|([Lorg/bukkit/inventory/ItemStack;)V",
                     "java.util.HashMap<Integer, org.bukkit.inventory.ItemStack> addItem("

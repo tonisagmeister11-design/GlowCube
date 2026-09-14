@@ -1,0 +1,192 @@
+# ============================================================
+#  AdminField – Konfiguration
+#  Paper 26.2
+# ============================================================
+
+# Zusätzlich zur Permission wirklich echte OP-Rechte verlangen.
+# true = nur echte Operatoren kommen ins Menü (empfohlen).
+require-op: true
+
+access:
+  # Code für den Owner-Rang. Es kann nur EINEN Owner geben.
+  # In Anführungszeichen lassen, sonst geht die führende Null verloren!
+  owner-code: "0510"
+  # Wie viele Fehlversuche, bevor gesperrt wird?
+  max-attempts: 3
+  # Wie lange ist danach gesperrt? (Sekunden)
+  lockout-seconds: 300
+
+ownerstuff:
+  # Wie viel TNT wirft der TNT-Regen ab? (maximal 500)
+  tnt-amount: 150
+  # Wie viel davon pro Tick, damit der Server nicht einbricht
+  tnt-per-tick: 20
+  # Streuradius um die anvisierte Stelle
+  tnt-spread: 5.0
+  # Wie lange friert der Eisstab Spieler ein? (Sekunden)
+  freeze-seconds: 10
+
+detection:
+  # Bauerkennung an/aus
+  enabled: true
+  # Ab wie vielen Blöcken an einer Stelle gilt es als "Bauwerk"?
+  block-threshold: 30
+  # Wie weit darf ein neuer Block vom Mittelpunkt einer Baustelle weg sein,
+  # damit er noch dazugezählt wird? (Blöcke)
+  merge-radius: 24
+  # Maximale Anzahl gemerkter Baustellen. Ältere/kleinere fliegen raus.
+  max-sites: 80
+  # Nach wie vielen Minuten ohne Aktivität gilt eine Baustelle als "fertig"?
+  idle-minutes: 15
+  # Baustellen, die so lange nicht angefasst wurden, werden ganz vergessen (Minuten).
+  # 0 = nie vergessen
+  forget-minutes: 0
+  # Chat-Meldung an Admins, sobald eine neue Baustelle erkannt wird
+  announce: true
+
+grief-alarm:
+  enabled: true
+  # So viele abgebaute Blöcke innerhalb des Zeitfensters lösen einen Alarm aus
+  blocks: 90
+  seconds: 12
+  # Bei Lava, TNT und Feuer sofort melden
+  watch-dangerous-blocks: true
+
+jail:
+  # Spielmodus, in dem Gefangene sitzen
+  gamemode: SURVIVAL
+  # Beim Freilassen den vorherigen Spielmodus wiederherstellen
+  restore-gamemode: true
+  # Wie weit darf sich ein Gefangener vom Gefängnis entfernen,
+  # bevor er zurückgeholt wird? (Blöcke)
+  radius: 12
+  # Ab welchem Hungerwert (0-20) gibt es Brot?
+  feed-below: 6
+  # Wie viele Brote bekommt er dann höchstens auf die Hand?
+  bread-amount: 2
+
+luckyblocks:
+  # Lucky Blocks aus dem Adminfeld holen.
+  # Braucht das Plugin GlowCubeLuckyBlocks – ohne das bleibt der Bereich gesperrt.
+  enabled: true
+  # Welche Stufen darf man sich holen?
+  # Der Subscribe Lucky Block ist fest gesperrt und lässt sich hier NICHT freischalten -
+  # ein Eintrag "subscribe" wird ignoriert. Die oberste Stufe gibt es nur auf dem normalen Weg.
+  allowed:
+    - normal
+    - super
+  # Stückzahl bei normalem Klick bzw. bei Shift-Klick
+  amount-click: 16
+  amount-shift: 64
+
+deathnote:
+  # Wie lange wartet das Plugin zwischen zwei Gelegenheiten? (Sekunden)
+  retry-seconds: 90
+  # Wie lange nach einer Gelegenheit zählt ein Tod noch als "Auftrag ausgeführt"? (Sekunden)
+  credit-seconds: 180
+  # In welchem Abstand hinter dem Spieler erscheinen die Mobs?
+  spawn-min-distance: 14
+  spawn-max-distance: 26
+
+cheatwatch:
+  # Ab dem wievielten Treffer derselben Art wird im Chat gemeldet?
+  # Davor bleibt es ein stiller Hinweis im Menü - ein einzelner Ausreißer ist kein Alarm.
+  alert-after-hits: 3
+  # Sekunden zwischen zwei gleichen Meldungen zum selben Spieler
+  alert-cooldown-seconds: 30
+  fly:
+    enabled: true
+    # Wie lange darf jemand in der Luft hängen, ohne zu fallen? (Ticks, 20 = 1 Sekunde)
+    hover-ticks: 30
+  speed:
+    enabled: true
+    # Erlaubte Grundgeschwindigkeit in Blöcken pro Sekunde (gegen echte Zeit gemessen,
+    # Server-Lag verfälscht das nicht). Sprinten ~5,6; Sprintsprünge ~7,1.
+    # Effekte, Tempo-Attribut, Eis und Seelensand werden automatisch dazugerechnet.
+    max-blocks-per-second: 10.5
+    # Wie viele Sekunden am Stück muss es zu schnell sein?
+    strikes: 4
+  xray:
+    enabled: true
+    # Sichtbare Erze (mit natürlicher Luft daneben) zählen grundsätzlich NICHT.
+    # Zusammenhängende Adern gelten als ein einziger Fund.
+    #
+    # Hauptsignal: wie oft darf jemand abbiegen und schnurgerade auf ein verstecktes Erz zugraben?
+    beelines: 4
+    # Nebensignal: ab wie vielen versteckten Adern ...
+    min-hidden-veins: 6
+    # ... mit weniger als so vielen Blöcken Umweg dazwischen (im Schnitt)?
+    max-average-gap: 25
+  reach:
+    enabled: true
+    # Abstand vom Auge zum nächsten Punkt der Trefferbox. Normal sind bis 3,0 -
+    # Latenz bekommt automatisch Spielraum obendrauf.
+    max-distance: 3.6
+    # Wie viele zu weite Treffer innerhalb von 30 Sekunden?
+    strikes: 3
+  nofall:
+    enabled: true
+    # Ab welcher Fallhöhe ohne jeden Schaden wird gezählt? Federfall erhöht das automatisch.
+    min-fall: 10.0
+
+assassin:
+  # EXPERIMENTELL - standardmäßig AUS.
+  # true = der Attentäter erscheint als echter Spieler mit Skin (über rohe Netzwerkpakete).
+  # Das ist versionsempfindlich: Passt ein Wert nicht exakt zu deiner Server-Version, kann es
+  # Spieler vom Server werfen. Läuft es bei dir sauber, kannst du es hier einschalten.
+  # false = zuverlässige Variante (gerüsteter Gegner mit Spielerkopf), wirft niemanden raus.
+  real-skin: false
+  # Abstand, in dem der Attentäter erscheint (möglichst hinter dem Ziel)
+  spawn-distance: 10
+  # Nach wie vielen Sekunden gibt er auf und verschwindet?
+  timeout-seconds: 180
+  # Diamant-Stufe
+  health: 60.0
+  damage: 9.0
+  # Netherite-Stufe
+  health-strong: 120.0
+  damage-strong: 14.0
+
+curses:
+  # Wie lange hält ein Fluch? 0 = bis der Owner ihn aufhebt.
+  duration-minutes: 0
+  # "Launenhaft": Abstand zwischen zwei zufälligen Effekten (Sekunden)
+  mood-interval-seconds: 25
+  # "Falsche Beute": bei wie viel Prozent der Abbauten wird vertauscht?
+  junk-drop-percent: 60
+  # "Schwindel": bei wie viel Prozent der Sprintstarts verreißt die Blickrichtung?
+  dizzy-percent: 45
+
+log:
+  # Wie viele Ereignisse werden im Verlauf behalten?
+  size: 200
+
+messages:
+  prefix: "<gradient:#5ad1ff:#a06bff><bold>AdminField</bold></gradient> <dark_gray>»</dark_gray> "
+
+# ============================================================
+#  Home-System (frueher GlowCubeUtils)
+# ============================================================
+# -- HOMES --
+# Maximale Anzahl Homes pro Spieler. 0 = unbegrenzt.
+max-homes: 0
+
+# Maximale Laenge eines Home-Namens.
+max-home-name-length: 32
+
+# Welten-Typen, in denen KEINE Homes gesetzt werden duerfen.
+# Moeglich: NETHER, THE_END, NORMAL
+blocked-environments:
+  - NETHER
+  - THE_END
+
+# -- TELEPORT --
+# Sekunden Countdown vor dem Teleport. 0 = sofort.
+teleport-delay: 3
+
+# Teleport abbrechen, wenn sich der Spieler waehrend des Countdowns bewegt.
+cancel-on-move: true
+
+# Vor dem Teleport pruefen, ob das Home sicher ist (kein Lava, keine Bloecke, kein Fall)
+# und ggf. den naechsten sicheren Punkt suchen.
+teleport-safety: true

@@ -56,6 +56,8 @@ beim Deaktivieren des Plugins sauber abgeräumt.
 | Pfad | Inhalt |
 | --- | --- |
 | `lib/AdminField-original.jar` | Das unveränderte Original-Plugin |
+| `lib/GlowCubeUtils-original.jar` | Das eingegliederte Home-Plugin, unverändert |
+| `resources/` | Zusammengeführte `plugin.yml` und `config.yml` |
 | `decompiled/` | Der dekompilierte Originalcode – nur als Nachschlagewerk |
 | `src/` | Nur das, was wirklich neu übersetzt wird |
 | `tools/` | Der Stub-Generator (siehe unten) |
@@ -78,6 +80,22 @@ Neu bzw. geändert:
   beim Herunterfahren sauber zurücksetzen
 * `src/de/adminfield/OwnerItems.java`, `src/de/adminfield/menu/OwnerStuffMenu.java` –
   geänderte Bestandsklassen: Glück 255 auf der Spitzhacke, zwei Knockback-Sticks
+* `src/de/adminfield/homes/Homes.java` – hängt GlowCubeUtils in dieses Plugin ein
+* `src/de/adminfield/menu/HomeListMenu.java` – Homes eines Spielers ansehen und hinspringen
+* `src/de/adminfield/menu/PlayerActionMenu.java` – geänderte Bestandsklasse: ein
+  Menüpunkt auf Slot 42
+
+## GlowCubeUtils ist eingegliedert
+
+Alle neun Klassen des früheren GlowCubeUtils liegen Byte für Byte unverändert in der
+JAR. Möglich ist das, weil seine Hilfsklassen ein schlichtes `JavaPlugin` entgegen-
+nehmen und nie die alte Hauptklasse verlangen – die wird gar nicht gebraucht.
+`Homes.start()` baut in `onEnable` genau dieselbe Reihenfolge auf wie das alte
+`GlowCubeUtils.onEnable`, `Homes.stop()` räumt wie dessen `onDisable` ab.
+
+Beim ersten Start werden `homes.yml` und die Home-Einstellungen aus dem alten
+Ordner `plugins/GlowCubeUtils/` übernommen. Die alte JAR muss aus dem `plugins`-
+Ordner entfernt werden, sonst streiten sich zwei Plugins um dieselben Befehle.
 
 ## Bauen
 

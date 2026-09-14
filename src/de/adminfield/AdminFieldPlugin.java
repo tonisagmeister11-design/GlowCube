@@ -20,6 +20,7 @@ import de.adminfield.OwnerPowers;
 import de.adminfield.Ui;
 import de.adminfield.disguise.MobDisguise;
 import de.adminfield.disguise.NameDisguise;
+import de.adminfield.homes.Homes;
 import de.adminfield.menu.Menu;
 import de.adminfield.nms.PlayerDisguise;
 import java.lang.management.ManagementFactory;
@@ -99,6 +100,7 @@ extends JavaPlugin {
         Bukkit.getScheduler().runTaskTimer((Plugin)this, () -> this.curses.tick(), 40L, 20L);
         MobDisguise.get(this);
         NameDisguise.get(this);
+        Homes.start(this);
         this.log.add(ActivityLog.Level.INFO, "AdminField gestartet");
         this.getLogger().info("AdminField aktiv - " + this.tracker.count() + " bekannte Baustellen.");
     }
@@ -115,6 +117,12 @@ extends JavaPlugin {
         }
         catch (Throwable throwable) {
             this.getLogger().warning("Namens-Verkleidung liess sich nicht sauber beenden.");
+        }
+        try {
+            Homes.stop(this);
+        }
+        catch (Throwable throwable) {
+            this.getLogger().warning("Home-System liess sich nicht sauber beenden.");
         }
         if (this.assassin != null) {
             this.assassin.dismissAll();
