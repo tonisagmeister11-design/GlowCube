@@ -391,6 +391,18 @@ public final class BanChest implements Listener {
         }
     }
 
+    /** Nimmt eine wartende Freigabe wieder zurueck. */
+    public boolean cancelRelease(UUID id, String name) {
+        boolean changed = id != null && this.pardons.remove(id) != null;
+        if (name != null && this.pardonNames.remove(name.trim().toLowerCase(Locale.ROOT))) {
+            changed = true;
+        }
+        if (changed) {
+            this.savePardons();
+        }
+        return changed;
+    }
+
     /** Wie viele Freigaben noch auf ihren Spieler warten. */
     public int pending() {
         return this.pardons.size() + this.pardonNames.size();

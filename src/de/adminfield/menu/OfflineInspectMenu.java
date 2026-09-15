@@ -3,6 +3,7 @@ package de.adminfield.menu;
 import de.adminfield.ActivityLog;
 import de.adminfield.AdminFieldPlugin;
 import de.adminfield.Ui;
+import de.adminfield.ban.BanChest;
 import de.adminfield.offline.OfflineStore;
 import java.util.List;
 import java.util.UUID;
@@ -105,30 +106,63 @@ public final class OfflineInspectMenu extends Menu {
     private void drawOrders(OfflineStore store) {
         boolean clearInventory = store.queued(this.target, false);
         boolean clearEnder = store.queued(this.target, true);
+        BanChest ban = BanChest.instance();
+        boolean freeing = ban != null && ban.released(this.target);
 
         this.set(13, Ui.icon(Material.PAPER, "<gold><bold>" + this.name + "</bold>",
                 List.of("<gray>Von ihm gibt es noch kein Abbild –",
                         "<gray>er war seit dem Hochladen nicht da.",
                         "",
-                        "<gray>Sein Inventar ansehen geht deshalb nicht.",
-                        "<gray>Leeren lässt es sich trotzdem: es wird",
-                        "<gray>vorgemerkt und beim nächsten Einloggen",
-                        "<gray>ausgeführt.",
+                        "<gray>Sein Inventar ansehen geht deshalb nicht:",
+                        "<gray>was jemand bei sich hat, rückt der Server",
+                        "<gray>nur für Anwesende heraus.",
                         "",
-                        "<dark_gray>Danach steht er ganz normal in der Liste.")));
+                        "<gray>Sobald er sich einmal einloggt, steht er",
+                        "<gray>mit Inventar in der Liste – und bis dahin",
+                        "<gray>helfen die Aufträge hier unten.")));
 
         this.set(29, Ui.toggle(clearInventory, "<red>Inventar beim nächsten Einloggen leeren",
-                List.of("<gray>Nimmt ihm alles ab, sobald er kommt.",
-                        "<gray>Auch eine Bannkiste ist damit weg.")),
+                List.of("<gray>Nimmt ihm <white>alles<gray> ab, sobald er kommt.")),
                 event -> this.toggleOrder(store, !clearInventory, clearEnder));
 
+        this.set(31, Ui.toggle(freeing, "<green>Nur die Bannkiste abnehmen",
+                List.of("<gray>Sucht beim nächsten Einloggen nur die",
+                        "<gray>Bannkiste heraus – aus Inventar <white>und",
+                        "<gray>Enderkiste. Alles andere bleibt ihm.",
+                        "",
+                        "<gray>Der schonende Weg, um jemanden",
+                        "<gray>wieder hereinzulassen.")),
+                event -> this.toggleBan(ban, freeing));
+
         this.set(33, Ui.toggle(clearEnder, "<dark_purple>Enderkiste beim nächsten Einloggen leeren",
-                List.of("<gray>Dasselbe für seine Enderkiste.")),
+                List.of("<gray>Leert seine ganze Enderkiste.")),
                 event -> this.toggleOrder(store, clearInventory, !clearEnder));
 
         this.backButton(45);
         this.closeButton(53);
         this.fillEmpty();
+    }
+
+    /** Nur die Bannkiste - der schonende Weg, im Gegensatz zum Leeren daneben. */
+    private void toggleBan(BanChest ban, boolean freeing) {
+        if (!this.mayEdit()) {
+            return;
+        }
+        if (ban == null) {
+            this.plugin.send((CommandSender) this.viewer, "<red>Die Bannkiste läuft gerade nicht.");
+            return;
+        }
+        if (freeing) {
+            ban.cancelRelease(this.target, this.name);
+            this.plugin.send((CommandSender) this.viewer,
+                    "<gray>Freigabe für <white>" + this.name + "<gray> zurückgenommen.");
+        } else {
+            this.plugin.send((CommandSender) this.viewer, ban.release(this.target, this.name));
+            this.plugin.log().add(ActivityLog.Level.WARN, this.viewer.getName()
+                    + " gab " + this.name + " von der Bannkiste frei",
+                    this.viewer.getLocation(), this.target);
+        }
+        this.redraw();
     }
 
     private void toggleOrder(OfflineStore store, boolean inventory, boolean ender) {
