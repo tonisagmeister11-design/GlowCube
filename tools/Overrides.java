@@ -140,6 +140,7 @@ public final class Overrides {
                     "setInvulnerableTicks(I)V",
                     "getBossBar()Lorg/bukkit/boss/BossBar;")),
             Map.entry("org/bukkit/configuration/file/YamlConfiguration", List.of(
+                    "getStringList(Ljava/lang/String;)Ljava/util/List;",
                     "contains(Ljava/lang/String;)Z",
                     "get(Ljava/lang/String;)Ljava/lang/Object;",
                     "getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
@@ -202,7 +203,8 @@ public final class Overrides {
                     "getEnderChest()Lorg/bukkit/inventory/Inventory;",
                     "updateInventory()V")),
             Map.entry("org/bukkit/Bukkit", List.of(
-                    "static getPlayer(Ljava/util/UUID;)Lorg/bukkit/entity/Player;")),
+                    "static getPlayer(Ljava/util/UUID;)Lorg/bukkit/entity/Player;",
+                    "static getOfflinePlayers()[Lorg/bukkit/OfflinePlayer;")),
             Map.entry("org/bukkit/Location", List.of(
                     "getYaw()F",
                     "getPitch()F",

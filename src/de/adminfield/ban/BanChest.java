@@ -5,8 +5,12 @@ import de.adminfield.Ui;
 import de.adminfield.offline.OfflineStore;
 import java.io.File;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -68,6 +72,14 @@ public final class BanChest implements Listener {
     private final AdminFieldPlugin plugin;
     /** Wer beim naechsten Einloggen befreit wird: Spieler-Kennung auf Namen. */
     private final Map<UUID, String> pardons = new LinkedHashMap<>();
+    /**
+     * Freigaben, zu denen wir nur den Namen haben - klein geschrieben.
+     *
+     * <p>Braucht es, weil die Kennung eines Spielers nicht immer aufzutreiben ist: kennt ihn
+     * weder ein Abbild noch der Zwischenspeicher des Servers, bleibt nur der Name. Das genuegt
+     * auch, denn eingeloest wird die Freigabe ohnehin erst, wenn er selbst wieder da ist.
+     */
+    private final Set<String> pardonNames = new LinkedHashSet<>();
     private BukkitTask watcher;
 
     private BanChest(AdminFieldPlugin plugin) {
@@ -196,7 +208,7 @@ public final class BanChest implements Listener {
         } catch (Throwable ignored) {
             return;
         }
-        if (player == null || !this.blocked(player.getUniqueId())) {
+        if (player == null || this.released(player) || !this.blocked(player.getUniqueId())) {
             return;
         }
         if (disallow(event, this.message())) {
@@ -209,7 +221,7 @@ public final class BanChest implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        if (this.pardons.containsKey(player.getUniqueId())) {
+        if (this.released(player)) {
             this.freeOnJoin(player);
             return;
         }
@@ -230,7 +242,7 @@ public final class BanChest implements Listener {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        if (this.exempt(player.getUniqueId()) || this.pardons.containsKey(player.getUniqueId())) {
+        if (this.exempt(player.getUniqueId()) || this.released(player)) {
             return;
         }
         ItemStack picked;
@@ -257,7 +269,7 @@ public final class BanChest implements Listener {
     /** Laeuft alle zwei Sekunden: wer die Kiste sonstwie bekommt, fliegt ebenfalls raus. */
     private void sweep() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (this.exempt(player.getUniqueId()) || this.pardons.containsKey(player.getUniqueId())) {
+            if (this.exempt(player.getUniqueId()) || this.released(player)) {
                 continue;
             }
             boolean hit;
@@ -311,35 +323,46 @@ public final class BanChest implements Listener {
         if (wanted.isEmpty()) {
             return "<red>Kein Name angegeben.";
         }
+        return this.release(this.findOffline(wanted), wanted);
+    }
 
-        Player online = null;
-        try {
-            online = Bukkit.getPlayerExact(wanted);
-        } catch (Throwable ignored) {
+    /**
+     * Dasselbe mit bekannter Kennung - aus der Liste heraus.
+     *
+     * <p>Ohne Kennung wird auf den Namen freigegeben. Das ist kein Notbehelf: eingeloest wird
+     * die Freigabe erst, wenn der Spieler wieder da ist, und dann steht sein Name ja fest.
+     */
+    public String release(UUID id, String name) {
+        String wanted = name == null ? "" : name.trim();
+        if (wanted.isEmpty() && id == null) {
+            return "<red>Kein Name angegeben.";
         }
+        if (id != null && this.exempt(id)) {
+            // Nicht dem Owner seine eigene Kiste wegnehmen.
+            return "<gray>Von der Bannkiste bist du sowieso ausgenommen.";
+        }
+
+        Player online = this.online(id, wanted);
         if (online != null) {
             if (this.exempt(online.getUniqueId())) {
-                // Nicht dem Owner seine eigene Kiste wegnehmen.
                 return "<gray>Von der Bannkiste bist du sowieso ausgenommen.";
             }
-            int removed = this.strip(online);
-            this.forget(online.getUniqueId());
+            int taken = this.strip(online);
+            this.forget(online);
             this.cleanSnapshot(online.getUniqueId());
             this.plugin.getLogger().info(online.getName() + " wurde von der Bannkiste befreit.");
-            return removed > 0
-                    ? "<gray>Bannkiste bei <white>" + online.getName() + "<gray> eingesammelt - er ist frei."
+            return taken > 0
+                    ? "<gray>Bannkiste bei <white>" + online.getName() + "<gray> eingesammelt – er ist frei."
                     : "<gray><white>" + online.getName() + "<gray> hatte gar keine Bannkiste dabei.";
         }
 
-        UUID id = this.findOffline(wanted);
-        if (id == null) {
-            return "<red>Ich kenne keinen Spieler namens <white>" + wanted + "<red>.";
+        int removed = 0;
+        if (id != null) {
+            removed = this.cleanSnapshot(id);
+            this.pardons.put(id, wanted.isEmpty() ? "?" : wanted);
+        } else {
+            this.pardonNames.add(wanted.toLowerCase(Locale.ROOT));
         }
-        if (this.exempt(id)) {
-            return "<gray>Du bist von der Bannkiste sowieso ausgenommen.";
-        }
-        int removed = this.cleanSnapshot(id);
-        this.pardons.put(id, wanted);
         this.savePardons();
         this.plugin.getLogger().info(wanted + " ist fuer die Bannkiste freigegeben.");
         return "<gray><white>" + wanted + "<gray> ist freigegeben. Er kommt wieder herein"
@@ -347,14 +370,47 @@ public final class BanChest implements Listener {
                 + (removed > 0 ? "<gray> (<white>" + removed + "<gray> aus dem Abbild entfernt)." : ".");
     }
 
+    /** Ist der Gemeinte gerade da? Dann kann die Kiste sofort weg. */
+    private Player online(UUID id, String name) {
+        if (id != null) {
+            try {
+                Player byId = Bukkit.getPlayer(id);
+                if (byId != null) {
+                    return byId;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        try {
+            return Bukkit.getPlayerExact(name);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     /** Wie viele Freigaben noch auf ihren Spieler warten. */
     public int pending() {
-        return this.pardons.size();
+        return this.pardons.size() + this.pardonNames.size();
     }
 
     /** Wartet fuer diesen Spieler eine Freigabe? */
     public boolean released(UUID player) {
         return this.pardons.containsKey(player);
+    }
+
+    /** Dasselbe fuer einen Anwesenden - hier zaehlt auch eine Freigabe auf seinen Namen. */
+    public boolean released(Player player) {
+        if (player == null) {
+            return false;
+        }
+        if (this.pardons.containsKey(player.getUniqueId())) {
+            return true;
+        }
+        String name = player.getName();
+        return name != null && this.pardonNames.contains(name.toLowerCase(Locale.ROOT));
     }
 
     /** Sucht die Kennung zu einem Namen - erst im Abbild, dann im Zwischenspeicher des Servers. */
@@ -397,20 +453,25 @@ public final class BanChest implements Listener {
                     return;
                 }
                 this.strip(player);
-                this.forget(player.getUniqueId());
+                this.forget(player);
                 this.cleanSnapshot(player.getUniqueId());
                 this.plugin.getLogger().info(player.getName()
                         + " wurde von der Bannkiste befreit.");
             }, 5L);
         } catch (Throwable ignored) {
-            this.forget(player.getUniqueId());
+            this.forget(player);
         }
         this.plugin.getLogger().info(player.getName() + " kam mit Freigabe herein ("
                 + removed + " Kisten sofort entfernt).");
     }
 
-    private void forget(UUID player) {
-        if (this.pardons.remove(player) != null) {
+    private void forget(Player player) {
+        boolean changed = this.pardons.remove(player.getUniqueId()) != null;
+        String name = player.getName();
+        if (name != null && this.pardonNames.remove(name.toLowerCase(Locale.ROOT))) {
+            changed = true;
+        }
+        if (changed) {
             this.savePardons();
         }
     }
@@ -492,6 +553,7 @@ public final class BanChest implements Listener {
 
     private void loadPardons() {
         this.pardons.clear();
+        this.pardonNames.clear();
         File file = this.pardonFile();
         if (!file.isFile()) {
             return;
@@ -508,6 +570,9 @@ public final class BanChest implements Listener {
                 } catch (Throwable ignored) {
                 }
             }
+            for (Object raw : data.getStringList("pardon-names")) {
+                this.pardonNames.add(String.valueOf(raw).toLowerCase(Locale.ROOT));
+            }
         } catch (Throwable ignored) {
         }
     }
@@ -518,6 +583,7 @@ public final class BanChest implements Listener {
             for (Map.Entry<UUID, String> waiting : this.pardons.entrySet()) {
                 data.set("pardons." + waiting.getKey(), waiting.getValue());
             }
+            data.set("pardon-names", new ArrayList<>(this.pardonNames));
             data.save(this.pardonFile());
         } catch (Throwable t) {
             this.plugin.getLogger().warning("Freigaben der Bannkiste liessen sich nicht sichern ("

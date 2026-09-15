@@ -9,7 +9,6 @@ import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.command.CommandSender;
 
 /**
  * Die Spieler, die gerade nicht da sind, deren Sachen sich aber trotzdem bearbeiten lassen.
@@ -75,7 +74,8 @@ public final class OfflinePlayerMenu extends Menu {
                             "<dark_gray>kein Abbild und fehlt deshalb.",
                             "",
                             "<gray>Jemanden von der Bannkiste befreien geht",
-                            "<gray>trotzdem: <white>Bann aufheben<gray> daneben.")));
+                            "<gray>trotzdem: <white>Bann aufheben<gray> daneben –",
+                            "<gray>dort steht jeder, der je hier war.")));
             this.fillEmpty();
             return;
         }
@@ -125,19 +125,8 @@ public final class OfflinePlayerMenu extends Menu {
                         "",
                         "<gray>Wartende Freigaben: <white>" + pending,
                         "",
-                        "<yellow>➤ Klicken, dann Namen in den Chat")),
-                event -> this.askForRelease());
-    }
-
-    private void askForRelease() {
-        this.plugin.state().prompt(this.viewer, "Wen soll die Bannkiste wieder freigeben?", text -> {
-            BanChest ban = BanChest.instance();
-            if (ban == null) {
-                this.plugin.send((CommandSender) this.viewer, "<red>Die Bannkiste läuft gerade nicht.");
-                return;
-            }
-            this.plugin.send((CommandSender) this.viewer, ban.release(text));
-        });
+                        "<yellow>➤ Klicken für die Liste")),
+                event -> new BanReleaseMenu(this.plugin, this).open(this.viewer));
     }
 
     private boolean isOwner() {
