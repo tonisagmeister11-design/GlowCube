@@ -108,6 +108,13 @@ public final class Homes {
             command.setExecutor((CommandExecutor) commands);
             command.setTabCompleter((TabCompleter) commands);
         }
+        PluginCommand menu = this.plugin.getCommand("homemenu");
+        if (menu == null) {
+            this.plugin.getLogger().warning("Befehl /homemenu fehlt in der plugin.yml");
+        } else {
+            menu.setExecutor((CommandExecutor) new HomeMenuCommand(this.plugin));
+        }
+
         this.sidebar.updateAll();
         this.plugin.getLogger().info("Home-System aktiv (" + this.homeManager.totalHomes() + " Homes).");
     }

@@ -30,6 +30,11 @@ commands:
     description: Verschiebt ein bestehendes Home an deine aktuelle Position.
     usage: /movehome <name>
     aliases: [move-home, uhome]
+  # ---- eigenes Home-Menue ----
+  homemenu:
+    description: Oeffnet dein Home-Menue.
+    usage: /homemenu
+    aliases: [hmenu, homegui, homemenue]
 permissions:
   adminfield.use:
     description: Darf das AdminField-Menue benutzen

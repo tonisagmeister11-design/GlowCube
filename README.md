@@ -82,6 +82,8 @@ Neu bzw. geändert:
   geänderte Bestandsklassen: Glück 255 auf der Spitzhacke, zwei Knockback-Sticks
 * `src/de/adminfield/homes/Homes.java` – hängt GlowCubeUtils in dieses Plugin ein
 * `src/de/adminfield/menu/HomeListMenu.java` – Homes eines Spielers ansehen und hinspringen
+* `src/de/adminfield/menu/MyHomesMenu.java`, `src/de/adminfield/homes/HomeMenuCommand.java` –
+  `/homemenu`: eigenes Home-Menü für jeden Spieler
 * `src/de/adminfield/menu/PlayerActionMenu.java` – geänderte Bestandsklasse: ein
   Menüpunkt auf Slot 42
 
@@ -92,6 +94,10 @@ JAR. Möglich ist das, weil seine Hilfsklassen ein schlichtes `JavaPlugin` entge
 nehmen und nie die alte Hauptklasse verlangen – die wird gar nicht gebraucht.
 `Homes.start()` baut in `onEnable` genau dieselbe Reihenfolge auf wie das alte
 `GlowCubeUtils.onEnable`, `Homes.stop()` räumt wie dessen `onDisable` ab.
+
+Für Spieler kommt `/homemenu` dazu – ein eigener Befehl mit eigenem Menü. Jede Aktion
+darin führt den passenden Home-Befehl aus, deshalb gelten überall dieselben Regeln.
+`/home`, `/homes`, `/sethome`, `/delhome` und `/movehome` bleiben unangetastet.
 
 Beim ersten Start werden `homes.yml` und die Home-Einstellungen aus dem alten
 Ordner `plugins/GlowCubeUtils/` übernommen. Die alte JAR muss aus dem `plugins`-

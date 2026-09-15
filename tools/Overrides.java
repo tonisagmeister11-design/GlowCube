@@ -137,6 +137,9 @@ public final class Overrides {
             Map.entry("org/bukkit/configuration/file/YamlConfiguration", List.of(
                     "contains(Ljava/lang/String;)Z",
                     "get(Ljava/lang/String;)Ljava/lang/Object;")),
+            Map.entry("org/bukkit/command/CommandExecutor", List.of(
+                    "onCommand(Lorg/bukkit/command/CommandSender;Lorg/bukkit/command/Command;"
+                            + "Ljava/lang/String;[Ljava/lang/String;)Z")),
             Map.entry("org/bukkit/entity/Creeper", List.of("setPowered(Z)V")),
             Map.entry("org/bukkit/entity/Boss", List.of("getBossBar()Lorg/bukkit/boss/BossBar;")),
             Map.entry("org/bukkit/scheduler/BukkitTask", List.of("cancel()V", "isCancelled()Z")),
@@ -148,6 +151,9 @@ public final class Overrides {
                     "getRightClicked()Lorg/bukkit/entity/Entity;",
                     "getPlayer()Lorg/bukkit/entity/Player;",
                     "setCancelled(Z)V")),
+            Map.entry("org/bukkit/event/inventory/InventoryClickEvent", List.of(
+                    "isRightClick()Z",
+                    "isShiftClick()Z")),
             Map.entry("org/bukkit/event/entity/EntityDamageEvent", List.of(
                     "getEntity()Lorg/bukkit/entity/Entity;",
                     "setCancelled(Z)V")),
@@ -169,7 +175,8 @@ public final class Overrides {
                     "isSneaking()Z",
                     "isGliding()Z",
                     "isSwimming()Z",
-                    "isOnline()Z")),
+                    "isOnline()Z",
+                    "performCommand(Ljava/lang/String;)Z")),
             Map.entry("org/bukkit/Bukkit", List.of(
                     "static getPlayer(Ljava/util/UUID;)Lorg/bukkit/entity/Player;")),
             Map.entry("org/bukkit/Location", List.of(
