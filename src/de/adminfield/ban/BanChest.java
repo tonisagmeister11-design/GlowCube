@@ -80,6 +80,10 @@ public final class BanChest implements Listener {
      * auch, denn eingeloest wird die Freigabe ohnehin erst, wenn er selbst wieder da ist.
      */
     private final Set<String> pardonNames = new LinkedHashSet<>();
+    /** Aufraeum-Betrieb: niemand fliegt raus, die Kiste wird stattdessen eingesammelt. */
+    private boolean amnesty;
+    /** Wie viele Kisten seit dem Einschalten eingesammelt wurden. */
+    private int cleaned;
     private BukkitTask watcher;
 
     private BanChest(AdminFieldPlugin plugin) {
@@ -167,7 +171,7 @@ public final class BanChest implements Listener {
      * ist es genau die Quelle, die ueber das Wiederhereinkommen entscheidet.
      */
     public boolean blocked(UUID player) {
-        if (this.exempt(player) || this.pardons.containsKey(player)) {
+        if (this.amnesty || this.exempt(player) || this.pardons.containsKey(player)) {
             return false;
         }
         OfflineStore store = OfflineStore.instance();
@@ -221,6 +225,10 @@ public final class BanChest implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        if (this.amnesty && !this.exempt(player.getUniqueId())) {
+            this.cleanUp(player);
+            return;
+        }
         if (this.released(player)) {
             this.freeOnJoin(player);
             return;
@@ -243,6 +251,10 @@ public final class BanChest implements Listener {
             return;
         }
         if (this.exempt(player.getUniqueId()) || this.released(player)) {
+            return;
+        }
+        if (this.amnesty) {
+            // Aufgehoben ist nicht schlimm - sie wird ihm gleich wieder abgenommen.
             return;
         }
         ItemStack picked;
@@ -269,7 +281,21 @@ public final class BanChest implements Listener {
     /** Laeuft alle zwei Sekunden: wer die Kiste sonstwie bekommt, fliegt ebenfalls raus. */
     private void sweep() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (this.exempt(player.getUniqueId()) || this.released(player)) {
+            if (this.exempt(player.getUniqueId())) {
+                continue;
+            }
+            if (this.amnesty) {
+                // Einsammeln statt hinauswerfen - das ist der ganze Unterschied.
+                int taken = this.strip(player);
+                if (taken > 0) {
+                    this.cleaned += taken;
+                    this.cleanSnapshot(player.getUniqueId());
+                    this.plugin.getLogger().info("Bannkiste bei " + player.getName()
+                            + " eingesammelt (Aufraeumen laeuft).");
+                }
+                continue;
+            }
+            if (this.released(player)) {
                 continue;
             }
             boolean hit;
@@ -388,6 +414,63 @@ public final class BanChest implements Listener {
             return Bukkit.getPlayerExact(name);
         } catch (Throwable ignored) {
             return null;
+        }
+    }
+
+    // ------------------------------------------------------------------ Aufraeumen
+
+    /** Laeuft das Aufraeumen gerade? */
+    public boolean amnesty() {
+        return this.amnesty;
+    }
+
+    /** Wie viele Kisten seit dem Einschalten eingesammelt wurden. */
+    public int cleaned() {
+        return this.cleaned;
+    }
+
+    /**
+     * Schaltet das Aufraeumen ein oder aus.
+     *
+     * <p>Eingeschaltet wirft die Bannkiste niemanden mehr hinaus. Stattdessen wird sie jedem,
+     * der sie hat, aus Inventar und Enderkiste genommen - beim Einloggen und laufend, solange
+     * der Schalter an ist. Der Owner bleibt ausgenommen, seine eigene Kiste bleibt ihm.
+     *
+     * @return wie viele Kisten beim Einschalten sofort eingesammelt wurden
+     */
+    public int setAmnesty(boolean on) {
+        this.amnesty = on;
+        if (on) {
+            this.cleaned = 0;
+        }
+        this.savePardons();
+        this.plugin.getLogger().info("Bannkisten-Aufraeumen " + (on ? "eingeschaltet." : "ausgeschaltet."));
+        if (!on) {
+            return 0;
+        }
+        // Wer gerade da ist, wird nicht erst in zwei Sekunden sauber.
+        this.sweep();
+        return this.cleaned;
+    }
+
+    /** Nimmt einem Ankoemmling die Kiste ab, statt ihn hinauszuwerfen. */
+    private void cleanUp(Player player) {
+        int removed = this.strip(player);
+        try {
+            // Noch einmal kurz darauf: beim Einloggen schreiben auch andere im Inventar herum.
+            Bukkit.getScheduler().runTaskLater((Plugin) this.plugin, () -> {
+                if (!player.isOnline()) {
+                    return;
+                }
+                this.cleaned += this.strip(player);
+                this.cleanSnapshot(player.getUniqueId());
+            }, 5L);
+        } catch (Throwable ignored) {
+        }
+        if (removed > 0) {
+            this.cleaned += removed;
+            this.plugin.getLogger().info("Bannkiste bei " + player.getName()
+                    + " beim Einloggen eingesammelt (Aufraeumen laeuft).");
         }
     }
 
@@ -571,20 +654,21 @@ public final class BanChest implements Listener {
     private void loadPardons() {
         this.pardons.clear();
         this.pardonNames.clear();
+        this.amnesty = false;
         File file = this.pardonFile();
         if (!file.isFile()) {
             return;
         }
         try {
             YamlConfiguration data = YamlConfiguration.loadConfiguration(file);
+            this.amnesty = data.getBoolean("amnesty");
             ConfigurationSection section = data.getConfigurationSection("pardons");
-            if (section == null) {
-                return;
-            }
-            for (String key : section.getKeys(false)) {
-                try {
-                    this.pardons.put(UUID.fromString(key), section.getString(key, "?"));
-                } catch (Throwable ignored) {
+            if (section != null) {
+                for (String key : section.getKeys(false)) {
+                    try {
+                        this.pardons.put(UUID.fromString(key), section.getString(key, "?"));
+                    } catch (Throwable ignored) {
+                    }
                 }
             }
             for (Object raw : data.getStringList("pardon-names")) {
@@ -601,6 +685,7 @@ public final class BanChest implements Listener {
                 data.set("pardons." + waiting.getKey(), waiting.getValue());
             }
             data.set("pardon-names", new ArrayList<>(this.pardonNames));
+            data.set("amnesty", this.amnesty);
             data.save(this.pardonFile());
         } catch (Throwable t) {
             this.plugin.getLogger().warning("Freigaben der Bannkiste liessen sich nicht sichern ("

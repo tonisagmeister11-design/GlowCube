@@ -1,5 +1,6 @@
 package de.adminfield.menu;
 
+import de.adminfield.ActivityLog;
 import de.adminfield.AdminFieldPlugin;
 import de.adminfield.Ui;
 import de.adminfield.ban.BanChest;
@@ -13,6 +14,7 @@ import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.command.CommandSender;
 
 /**
  * Die Spieler, die gerade nicht da sind, deren Sachen sich aber trotzdem bearbeiten lassen.
@@ -81,6 +83,7 @@ public final class OfflinePlayerMenu extends Menu {
                         "",
                         "<dark_gray>Wirksam wird alles beim nächsten Einloggen.")));
         this.releaseButton();
+        this.amnestyButton();
         this.closeButton(53);
 
         if (store == null) {
@@ -177,6 +180,56 @@ public final class OfflinePlayerMenu extends Menu {
                         "",
                         "<yellow>➤ Klicken für die Liste")),
                 event -> new BanReleaseMenu(this.plugin, this).open(this.viewer));
+    }
+
+    /**
+     * Der Wachbetrieb: Bannkisten einsammeln statt hinauswerfen.
+     *
+     * <p>Solange er laeuft, fliegt niemand mehr wegen der Kiste hinaus - sie wird ihm einfach
+     * abgenommen, und er spielt weiter. Gedacht fuer den Fall, dass man nicht mehr weiss, wer
+     * eine hat, oder eine loswerden will, ohne den Spieler zu suchen.
+     */
+    private void amnestyButton() {
+        if (!this.isOwner()) {
+            return;
+        }
+        BanChest ban = BanChest.instance();
+        boolean on = ban != null && ban.amnesty();
+        this.set(51, Ui.toggle(on, "<aqua><bold>Bannkisten einsammeln</bold>",
+                List.of("<gray>Solange das läuft, wirft die Bannkiste",
+                        "<gray>niemanden mehr hinaus.",
+                        "",
+                        "<gray>Stattdessen wird sie jedem, der sie hat,",
+                        "<gray>aus Inventar und Enderkiste genommen –",
+                        "<gray>beim Einloggen und laufend alle zwei",
+                        "<gray>Sekunden, solange der Schalter an ist.",
+                        "",
+                        "<gray>Eingesammelt seit dem Einschalten: <white>"
+                                + (ban == null ? 0 : ban.cleaned()),
+                        "",
+                        "<dark_gray>Du selbst bist ausgenommen – deine eigene",
+                        "<dark_gray>Kiste bleibt dir.")),
+                event -> this.toggleAmnesty(ban, on));
+    }
+
+    private void toggleAmnesty(BanChest ban, boolean on) {
+        if (ban == null) {
+            this.plugin.send((CommandSender) this.viewer, "<red>Die Bannkiste läuft gerade nicht.");
+            return;
+        }
+        int taken = ban.setAmnesty(!on);
+        if (on) {
+            this.plugin.send((CommandSender) this.viewer,
+                    "<gray>Einsammeln beendet – die Bannkiste sperrt wieder.");
+        } else {
+            this.plugin.send((CommandSender) this.viewer, "<gray>Einsammeln läuft."
+                    + (taken > 0 ? " <white>" + taken + "<gray> Kisten sofort eingesammelt." : ""));
+        }
+        this.plugin.log().add(ActivityLog.Level.WARN, this.viewer.getName()
+                + (on ? " beendete das Einsammeln der Bannkisten"
+                      : " startete das Einsammeln der Bannkisten"),
+                this.viewer.getLocation(), null);
+        this.redraw();
     }
 
     private boolean isOwner() {
