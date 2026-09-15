@@ -86,6 +86,24 @@ Neu bzw. geändert:
   `/homemenu`: eigenes Home-Menü für jeden Spieler
 * `src/de/adminfield/menu/PlayerActionMenu.java` – geänderte Bestandsklasse: ein
   Menüpunkt auf Slot 42
+* `src/de/adminfield/offline/OfflineStore.java` – Inventare abwesender Spieler
+* `src/de/adminfield/menu/OfflinePlayerMenu.java`, `OfflineInspectMenu.java` – deren Menüs
+* `src/de/adminfield/menu/PlayerListMenu.java` – geänderte Bestandsklasse: ein
+  Menüpunkt auf Slot 46
+
+## Offline-Inventare
+
+Beim Verlassen des Servers wird ein Abbild von Inventar und Enderkiste in
+`plugins/AdminField/offline/<uuid>.yml` abgelegt. Der Admin bearbeitet dieses Abbild,
+beim nächsten Einloggen landet es im echten Inventar.
+
+Bewusst **nicht** direkt in `playerdata/<uuid>.dat` geschrieben: dieses Format hängt eng
+an der Serverversion, und ein Fehler dort wäre unwiederbringlicher Itemverlust. Nötig ist
+es auch nicht – solange jemand offline ist, kann sich sein Inventar nicht ändern, das
+Abbild bleibt also die ganze Zeit exakt richtig. Die echte Spielerdatei wird nie angefasst.
+
+Grenze: Wer seit dieser Fassung nicht online war, hat noch kein Abbild und taucht deshalb
+nicht auf.
 
 ## GlowCubeUtils ist eingegliedert
 

@@ -15,6 +15,7 @@ public final class Overrides {
             "org/bukkit/attribute/AttributeModifier",
             "com/mojang/authlib/GameProfile",
             "com/mojang/authlib/properties/Property",
+            "org/bukkit/configuration/file/YamlConfiguration",
             "org/bukkit/Location",
             "org/bukkit/util/Vector"
     );
@@ -43,6 +44,7 @@ public final class Overrides {
             "org/bukkit/OfflinePlayer",
             "org/bukkit/inventory/InventoryHolder",
             "org/bukkit/inventory/Inventory",
+            "org/bukkit/inventory/PlayerInventory",
             "org/bukkit/scheduler/BukkitScheduler",
             "org/bukkit/scheduler/BukkitTask",
             "org/bukkit/plugin/PluginManager",
@@ -83,6 +85,8 @@ public final class Overrides {
             Map.entry("org/bukkit/entity/Slime", List.of("org/bukkit/entity/LivingEntity")),
             Map.entry("org/bukkit/entity/Phantom", List.of("org/bukkit/entity/LivingEntity")),
             Map.entry("org/bukkit/entity/Villager", List.of("org/bukkit/entity/LivingEntity")),
+            Map.entry("org/bukkit/inventory/PlayerInventory",
+                    List.of("org/bukkit/inventory/Inventory")),
             Map.entry("org/bukkit/entity/Creature", List.of("org/bukkit/entity/Mob")),
             Map.entry("org/bukkit/entity/Monster", List.of("org/bukkit/entity/Creature")),
             Map.entry("org/bukkit/entity/Animals", List.of("org/bukkit/entity/Ageable")),
@@ -136,7 +140,14 @@ public final class Overrides {
                     "getBossBar()Lorg/bukkit/boss/BossBar;")),
             Map.entry("org/bukkit/configuration/file/YamlConfiguration", List.of(
                     "contains(Ljava/lang/String;)Z",
-                    "get(Ljava/lang/String;)Ljava/lang/Object;")),
+                    "get(Ljava/lang/String;)Ljava/lang/Object;",
+                    "getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+                    "getLong(Ljava/lang/String;)J",
+                    "getBoolean(Ljava/lang/String;)Z")),
+            Map.entry("org/bukkit/configuration/ConfigurationSection", List.of(
+                    "getItemStack(Ljava/lang/String;)Lorg/bukkit/inventory/ItemStack;")),
+            Map.entry("org/bukkit/inventory/PlayerInventory", List.of(
+                    "getContents()[Lorg/bukkit/inventory/ItemStack;")),
             Map.entry("org/bukkit/command/CommandExecutor", List.of(
                     "onCommand(Lorg/bukkit/command/CommandSender;Lorg/bukkit/command/Command;"
                             + "Ljava/lang/String;[Ljava/lang/String;)Z")),
@@ -176,7 +187,9 @@ public final class Overrides {
                     "isGliding()Z",
                     "isSwimming()Z",
                     "isOnline()Z",
-                    "performCommand(Ljava/lang/String;)Z")),
+                    "performCommand(Ljava/lang/String;)Z",
+                    "getEnderChest()Lorg/bukkit/inventory/Inventory;",
+                    "updateInventory()V")),
             Map.entry("org/bukkit/Bukkit", List.of(
                     "static getPlayer(Ljava/util/UUID;)Lorg/bukkit/entity/Player;")),
             Map.entry("org/bukkit/Location", List.of(
@@ -224,6 +237,9 @@ public final class Overrides {
                     "java.util.List<org.bukkit.entity.Player> getPlayers();",
                     "getEntities|()V",
                     "java.util.List<org.bukkit.entity.Entity> getEntities();"),
+            "org/bukkit/configuration/ConfigurationSection", Map.of(
+                    "getKeys|(Z)V",
+                    "java.util.Set<String> getKeys(boolean a0);"),
             "org/bukkit/entity/Entity", Map.of(
                     "getScoreboardTags|()V",
                     "java.util.Set<String> getScoreboardTags();"),

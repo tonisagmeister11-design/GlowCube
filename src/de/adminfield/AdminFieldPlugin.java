@@ -21,6 +21,7 @@ import de.adminfield.Ui;
 import de.adminfield.disguise.MobDisguise;
 import de.adminfield.disguise.NameDisguise;
 import de.adminfield.homes.Homes;
+import de.adminfield.offline.OfflineStore;
 import de.adminfield.menu.Menu;
 import de.adminfield.nms.PlayerDisguise;
 import java.lang.management.ManagementFactory;
@@ -101,6 +102,7 @@ extends JavaPlugin {
         MobDisguise.get(this);
         NameDisguise.get(this);
         Homes.start(this);
+        OfflineStore.start(this);
         this.log.add(ActivityLog.Level.INFO, "AdminField gestartet");
         this.getLogger().info("AdminField aktiv - " + this.tracker.count() + " bekannte Baustellen.");
     }
@@ -123,6 +125,12 @@ extends JavaPlugin {
         }
         catch (Throwable throwable) {
             this.getLogger().warning("Home-System liess sich nicht sauber beenden.");
+        }
+        try {
+            OfflineStore.stop(this);
+        }
+        catch (Throwable throwable) {
+            this.getLogger().warning("Offline-Inventare liessen sich nicht sauber sichern.");
         }
         if (this.assassin != null) {
             this.assassin.dismissAll();
