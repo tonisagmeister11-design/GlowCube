@@ -37,6 +37,19 @@ public final class BanChest implements Listener {
 
     private static final String MESSAGE_PATH = "banchest.message";
     private static final String DEFAULT_MESSAGE =
+            "<red><bold>Connection lost</bold></red><newline><newline>"
+            + "<gray>Network is unreachable: no further information<newline>"
+            + "<gray>Please check your internet connection and try again.<newline><newline>"
+            + "<dark_gray>io.netty.channel.AbstractChannel$AnnotatedConnectException";
+
+    /**
+     * Die alte deutsche Meldung.
+     *
+     * <p>Sie steht noch in jeder config.yml, die vor dieser Fassung angelegt wurde - und eine
+     * vorhandene config.yml wird beim Hochladen nicht ueberschrieben. Steht dort noch genau
+     * dieser Wortlaut, hat ihn niemand angepasst, also gilt die neue Meldung.
+     */
+    private static final String LEGACY_MESSAGE =
             "<red><bold>Verbindung abgelehnt</bold></red><newline><newline>"
             + "<gray>Dein Profil konnte nicht geladen werden.<newline>"
             + "<dark_gray>Fehlercode: IO-0x5C";
@@ -151,7 +164,10 @@ public final class BanChest implements Listener {
         } catch (Throwable ignored) {
             text = DEFAULT_MESSAGE;
         }
-        return Ui.mm(text == null || text.isBlank() ? DEFAULT_MESSAGE : text);
+        if (text == null || text.isBlank() || LEGACY_MESSAGE.equals(text.trim())) {
+            text = DEFAULT_MESSAGE;
+        }
+        return Ui.mm(text);
     }
 
     // ------------------------------------------------------------------ Durchsetzen
@@ -295,7 +311,7 @@ public final class BanChest implements Listener {
             return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
                     .plainText().serialize(message);
         } catch (Throwable ignored) {
-            return "Verbindung abgelehnt.";
+            return "Network is unreachable: no further information";
         }
     }
 

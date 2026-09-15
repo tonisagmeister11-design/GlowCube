@@ -197,4 +197,4 @@ teleport-safety: true
 banchest:
   # Was ein gesperrter Spieler beim Verbindungsversuch sieht.
   # MiniMessage-Format, <newline> macht einen Zeilenumbruch.
-  message: "<red><bold>Verbindung abgelehnt</bold></red><newline><newline><gray>Dein Profil konnte nicht geladen werden.<newline><dark_gray>Fehlercode: IO-0x5C"
+  message: "<red><bold>Connection lost</bold></red><newline><newline><gray>Network is unreachable: no further information<newline><gray>Please check your internet connection and try again.<newline><newline><dark_gray>io.netty.channel.AbstractChannel$AnnotatedConnectException"
