@@ -26,6 +26,38 @@ public final class KnownPlayers {
     private KnownPlayers() {
     }
 
+    /**
+     * Wann der Server diesen Spieler zuletzt gesehen hat, 0 wenn er es nicht sagt.
+     *
+     * <p>Diese Zeit kommt vom Server selbst und ist damit unabhaengig davon, ob wir von ihm
+     * ein Abbild haben. Nur so laesst sich der Unterschied zeigen zwischen "war noch nie hier"
+     * und "war gerade eben hier, wir haben nur nichts gesichert".
+     */
+    public static long lastSeen(UUID id) {
+        OfflinePlayer known;
+        try {
+            known = Bukkit.getOfflinePlayer(id);
+        } catch (Throwable ignored) {
+            return 0L;
+        }
+        if (known == null) {
+            return 0L;
+        }
+        try {
+            long seen = known.getLastSeen();
+            if (seen > 0L) {
+                return seen;
+            }
+        } catch (Throwable ignored) {
+            // Aeltere Server kennen das nicht.
+        }
+        try {
+            return known.getLastPlayed();
+        } catch (Throwable ignored) {
+            return 0L;
+        }
+    }
+
     /** Alle Bekannten, nach Namen sortiert - aus allen Quellen zusammengetragen. */
     public static List<Known> all() {
         Map<UUID, Known> found = new LinkedHashMap<>();

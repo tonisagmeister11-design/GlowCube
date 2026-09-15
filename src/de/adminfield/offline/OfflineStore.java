@@ -102,6 +102,15 @@ public final class OfflineStore implements Listener {
             plugin.getLogger().warning("Offline-Inventare konnten sich nicht einhaengen ("
                     + t.getClass().getSimpleName() + ").");
         }
+        try {
+            // Wer jetzt schon da ist, hatte sein Einlogg-Ereignis vor uns - beim Neuladen im
+            // laufenden Betrieb zum Beispiel. Dann fehlt ausgerechnet der in der Liste, der
+            // gerade spielt. Also jetzt nachholen.
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                fresh.snapshot(online);
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     public static synchronized void stop(AdminFieldPlugin plugin) {

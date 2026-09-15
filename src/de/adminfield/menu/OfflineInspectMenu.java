@@ -4,6 +4,7 @@ import de.adminfield.ActivityLog;
 import de.adminfield.AdminFieldPlugin;
 import de.adminfield.Ui;
 import de.adminfield.ban.BanChest;
+import de.adminfield.offline.KnownPlayers;
 import de.adminfield.offline.OfflineStore;
 import java.util.List;
 import java.util.UUID;
@@ -109,17 +110,19 @@ public final class OfflineInspectMenu extends Menu {
         BanChest ban = BanChest.instance();
         boolean freeing = ban != null && ban.released(this.target);
 
+        long seen = KnownPlayers.lastSeen(this.target);
         this.set(13, Ui.icon(Material.PAPER, "<gold><bold>" + this.name + "</bold>",
-                List.of("<gray>Von ihm gibt es noch kein Abbild –",
-                        "<gray>er war seit dem Hochladen nicht da.",
+                List.of("<gray>Zuletzt gesehen: <white>"
+                                + (seen > 0L ? Ui.ago(System.currentTimeMillis() - seen) : "unbekannt"),
+                        "<gray>Ein Abbild gibt es von ihm noch nicht.",
                         "",
                         "<gray>Sein Inventar ansehen geht deshalb nicht:",
                         "<gray>was jemand bei sich hat, rückt der Server",
                         "<gray>nur für Anwesende heraus.",
                         "",
-                        "<gray>Sobald er sich einmal einloggt, steht er",
-                        "<gray>mit Inventar in der Liste – und bis dahin",
-                        "<gray>helfen die Aufträge hier unten.")));
+                        "<gray>Sobald er wieder einloggt, wird es gesichert",
+                        "<gray>und steht hier – bis dahin helfen die",
+                        "<gray>Aufträge hier unten.")));
 
         this.set(29, Ui.toggle(clearInventory, "<red>Inventar beim nächsten Einloggen leeren",
                 List.of("<gray>Nimmt ihm <white>alles<gray> ab, sobald er kommt.")),

@@ -174,7 +174,9 @@ public final class Overrides {
                     "getItemStack()Lorg/bukkit/inventory/ItemStack;")),
             Map.entry("org/bukkit/OfflinePlayer", List.of(
                     "getUniqueId()Ljava/util/UUID;",
-                    "getName()Ljava/lang/String;")),
+                    "getName()Ljava/lang/String;",
+                    "getLastSeen()J",
+                    "getLastPlayed()J")),
             Map.entry("org/bukkit/event/player/PlayerLoginEvent", List.of(
                     "getPlayer()Lorg/bukkit/entity/Player;")),
             Map.entry("org/bukkit/event/entity/EntityDamageEvent", List.of(

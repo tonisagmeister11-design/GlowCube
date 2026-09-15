@@ -132,8 +132,11 @@ public final class OfflinePlayerMenu extends Menu {
     /** Jemand ohne Abbild - sein Inventar kennen wir nicht, vormerken geht trotzdem. */
     private void drawUnknown(int slot, KnownPlayers.Known known, OfflineStore store, BanChest ban) {
         List<String> lore = new ArrayList<>();
-        lore.add("<dark_gray>Noch kein Abbild");
-        lore.add("<gray>Er war seit dem Hochladen nicht da.");
+        long seen = KnownPlayers.lastSeen(known.id());
+        lore.add("<gray>Zuletzt gesehen: <white>"
+                + (seen > 0L ? Ui.ago(System.currentTimeMillis() - seen) : "unbekannt"));
+        lore.add("<dark_gray>Kein Abbild – sein Inventar ist nicht einsehbar.");
+        lore.add("<dark_gray>Es erscheint, sobald er wieder einloggt.");
         if (store.queued(known.id(), false) || store.queued(known.id(), true)) {
             lore.add("");
             lore.add("<yellow>▪ Leeren ist vorgemerkt");
