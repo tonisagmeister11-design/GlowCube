@@ -84,6 +84,8 @@ public final class BanChest implements Listener {
     private boolean amnesty;
     /** Wie viele Kisten seit dem Einschalten eingesammelt wurden. */
     private int cleaned;
+    /** Ob der einmalige Grossreinemach-Lauf schon stattgefunden hat. */
+    private boolean resetDone;
     private BukkitTask watcher;
 
     private BanChest(AdminFieldPlugin plugin) {
@@ -103,6 +105,7 @@ public final class BanChest implements Listener {
             plugin.getLogger().warning("Bannkiste konnte sich nicht einhaengen ("
                     + t.getClass().getSimpleName() + ").");
         }
+        fresh.resetOnce();
         try {
             // Wer die Kiste im laufenden Spiel bekommt, fliegt ebenfalls raus.
             fresh.watcher = Bukkit.getScheduler().runTaskTimer((Plugin) plugin, fresh::sweep, 60L, 40L);
@@ -417,6 +420,72 @@ public final class BanChest implements Listener {
         }
     }
 
+    // ------------------------------------------------------------------ Grossreinemachen
+
+    /**
+     * Der einmalige Lauf beim ersten Start dieser Fassung: alle Sperren faellt.
+     *
+     * <p>Aus jedem gesicherten Abbild wird die Bannkiste genommen, damit niemand mehr beim
+     * Anmelden abgewiesen wird, und das Einsammeln wird eingeschaltet, damit auch die Kisten
+     * verschwinden, die noch in echten Inventaren liegen - die bekommt man nur zu fassen, wenn
+     * ihr Besitzer da ist.
+     *
+     * <p>Genau einmal, nicht bei jedem Start: sonst waere jeder Neustart eine Amnestie und die
+     * Bannkiste haette keine Wirkung mehr. Gemerkt wird es in bannkiste.yml.
+     */
+    private void resetOnce() {
+        if (this.resetDone) {
+            return;
+        }
+        OfflineStore store = OfflineStore.instance();
+        if (store == null) {
+            // Ohne Abbilder waere der Lauf halb - dann lieber beim naechsten Start.
+            this.plugin.getLogger().warning("Bannkisten-Amnestie verschoben: "
+                    + "die Offline-Verwaltung laeuft noch nicht.");
+            return;
+        }
+
+        int chests = 0;
+        int players = 0;
+        try {
+            for (OfflineStore.Entry entry : store.all()) {
+                ItemStack[] inventory = store.inventory(entry.id());
+                ItemStack[] ender = store.ender(entry.id());
+                int removed = wipe(inventory) + wipe(ender);
+                if (removed > 0) {
+                    // Berichtigen, nicht vormerken: ihr echtes Inventar ruehren wir hier nicht
+                    // an, und ein vorgemerktes Abbild wuerde es ihnen ueberstuelpen.
+                    store.rewrite(entry.id(), inventory, ender);
+                    chests += removed;
+                    players++;
+                }
+            }
+        } catch (Throwable t) {
+            this.plugin.getLogger().warning("Bannkisten-Amnestie unvollstaendig ("
+                    + t.getClass().getSimpleName() + ").");
+        }
+
+        // Wer gerade da ist, wird gleich mit sauber.
+        try {
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                if (!this.exempt(online.getUniqueId())) {
+                    chests += this.strip(online);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+
+        this.pardons.clear();
+        this.pardonNames.clear();
+        this.amnesty = true;
+        this.cleaned = 0;
+        this.resetDone = true;
+        this.savePardons();
+        this.plugin.getLogger().info("Bannkisten-Amnestie: " + chests + " Kisten aus "
+                + players + " Abbildern entfernt. Das Einsammeln ist eingeschaltet - wer noch "
+                + "eine im Inventar hat, wird sie beim Einloggen los.");
+    }
+
     // ------------------------------------------------------------------ Aufraeumen
 
     /** Laeuft das Aufraeumen gerade? */
@@ -655,6 +724,7 @@ public final class BanChest implements Listener {
         this.pardons.clear();
         this.pardonNames.clear();
         this.amnesty = false;
+        this.resetDone = false;
         File file = this.pardonFile();
         if (!file.isFile()) {
             return;
@@ -662,6 +732,7 @@ public final class BanChest implements Listener {
         try {
             YamlConfiguration data = YamlConfiguration.loadConfiguration(file);
             this.amnesty = data.getBoolean("amnesty");
+            this.resetDone = data.getBoolean("reset-done");
             ConfigurationSection section = data.getConfigurationSection("pardons");
             if (section != null) {
                 for (String key : section.getKeys(false)) {
@@ -686,6 +757,7 @@ public final class BanChest implements Listener {
             }
             data.set("pardon-names", new ArrayList<>(this.pardonNames));
             data.set("amnesty", this.amnesty);
+            data.set("reset-done", this.resetDone);
             data.save(this.pardonFile());
         } catch (Throwable t) {
             this.plugin.getLogger().warning("Freigaben der Bannkiste liessen sich nicht sichern ("
