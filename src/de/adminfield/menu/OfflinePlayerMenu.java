@@ -2,12 +2,14 @@ package de.adminfield.menu;
 
 import de.adminfield.AdminFieldPlugin;
 import de.adminfield.Ui;
+import de.adminfield.ban.BanChest;
 import de.adminfield.offline.OfflineStore;
 import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.command.CommandSender;
 
 /**
  * Die Spieler, die gerade nicht da sind, deren Sachen sich aber trotzdem bearbeiten lassen.
@@ -38,6 +40,7 @@ public final class OfflinePlayerMenu extends Menu {
     @Override
     protected void draw() {
         OfflineStore store = OfflineStore.instance();
+        BanChest ban = BanChest.instance();
         List<OfflineStore.Entry> list = store == null
                 ? new ArrayList<>()
                 : new ArrayList<>(store.all());
@@ -54,6 +57,7 @@ public final class OfflinePlayerMenu extends Menu {
                         "<gray>hier bearbeiten wie bei Anwesenden.",
                         "",
                         "<dark_gray>Wirksam wird es beim nächsten Einloggen.")));
+        this.releaseButton();
         this.closeButton(53);
 
         if (store == null) {
@@ -68,7 +72,10 @@ public final class OfflinePlayerMenu extends Menu {
                             "<gray>verlässt – ab dieser Plugin-Fassung.",
                             "",
                             "<dark_gray>Wer seither nicht online war, hat noch",
-                            "<dark_gray>kein Abbild und fehlt deshalb.")));
+                            "<dark_gray>kein Abbild und fehlt deshalb.",
+                            "",
+                            "<gray>Jemanden von der Bannkiste befreien geht",
+                            "<gray>trotzdem: <white>Bann aufheben<gray> daneben.")));
             this.fillEmpty();
             return;
         }
@@ -83,12 +90,61 @@ public final class OfflinePlayerMenu extends Menu {
                 lore.add("");
                 lore.add("<yellow>▪ Änderung wartet auf seinen nächsten Login");
             }
+            if (ban != null && ban.released(entry.id())) {
+                lore.add("<green>▪ Freigegeben – die Bannkiste wird ihm beim Einloggen abgenommen");
+            }
             lore.add("");
             lore.add("<yellow>➤ Klicken zum Bearbeiten");
             this.set(i, Ui.head(Bukkit.getOfflinePlayer(entry.id()),
                     "<white><bold>" + entry.name() + "</bold>", lore),
                     event -> new OfflineInspectMenu(this.plugin, this, entry.id(), entry.name(), false)
                             .open(this.viewer));
+        }
+    }
+
+    /**
+     * Die Bannkiste wieder abnehmen.
+     *
+     * <p>Ueber den Namen statt ueber die Liste: die Kiste liegt im echten Inventar des
+     * Spielers, und der taucht hier nur auf, wenn von ihm ein Abbild da ist. Genau dann, wenn
+     * es klemmt, ist es das nicht - deshalb muss der Weg auch ohne Liste funktionieren.
+     */
+    private void releaseButton() {
+        if (!this.isOwner()) {
+            return;
+        }
+        BanChest ban = BanChest.instance();
+        int pending = ban == null ? 0 : ban.pending();
+        this.set(47, Ui.icon(Material.NAME_TAG, "<green><bold>Bann aufheben</bold>",
+                List.of("<gray>Nimmt einem Spieler die Bannkiste ab –",
+                        "<gray>auch wenn er hier gar nicht auftaucht.",
+                        "",
+                        "<gray>Ist er offline, wird es vorgemerkt:",
+                        "<gray>er kommt wieder herein und die Kiste",
+                        "<gray>ist beim Einloggen weg.",
+                        "",
+                        "<gray>Wartende Freigaben: <white>" + pending,
+                        "",
+                        "<yellow>➤ Klicken, dann Namen in den Chat")),
+                event -> this.askForRelease());
+    }
+
+    private void askForRelease() {
+        this.plugin.state().prompt(this.viewer, "Wen soll die Bannkiste wieder freigeben?", text -> {
+            BanChest ban = BanChest.instance();
+            if (ban == null) {
+                this.plugin.send((CommandSender) this.viewer, "<red>Die Bannkiste läuft gerade nicht.");
+                return;
+            }
+            this.plugin.send((CommandSender) this.viewer, ban.release(text));
+        });
+    }
+
+    private boolean isOwner() {
+        try {
+            return this.viewer != null && this.plugin.access().isOwner(this.viewer.getUniqueId());
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 }

@@ -3,10 +3,16 @@ package de.adminfield.ban;
 import de.adminfield.AdminFieldPlugin;
 import de.adminfield.Ui;
 import de.adminfield.offline.OfflineStore;
+import java.io.File;
 import java.lang.reflect.Method;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -15,6 +21,7 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.server.PluginDisableEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
@@ -56,7 +63,11 @@ public final class BanChest implements Listener {
 
     private static BanChest instance;
 
+    private static final String PARDON_FILE = "bannkiste.yml";
+
     private final AdminFieldPlugin plugin;
+    /** Wer beim naechsten Einloggen befreit wird: Spieler-Kennung auf Namen. */
+    private final Map<UUID, String> pardons = new LinkedHashMap<>();
     private BukkitTask watcher;
 
     private BanChest(AdminFieldPlugin plugin) {
@@ -68,6 +79,7 @@ public final class BanChest implements Listener {
             return;
         }
         BanChest fresh = new BanChest(plugin);
+        fresh.loadPardons();
         instance = fresh;
         try {
             Bukkit.getPluginManager().registerEvents(fresh, (Plugin) plugin);
@@ -143,7 +155,7 @@ public final class BanChest implements Listener {
      * ist es genau die Quelle, die ueber das Wiederhereinkommen entscheidet.
      */
     public boolean blocked(UUID player) {
-        if (this.exempt(player)) {
+        if (this.exempt(player) || this.pardons.containsKey(player)) {
             return false;
         }
         OfflineStore store = OfflineStore.instance();
@@ -197,6 +209,10 @@ public final class BanChest implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        if (this.pardons.containsKey(player.getUniqueId())) {
+            this.freeOnJoin(player);
+            return;
+        }
         if (this.blocked(player.getUniqueId())) {
             this.kick(player);
         }
@@ -214,7 +230,7 @@ public final class BanChest implements Listener {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        if (this.exempt(player.getUniqueId())) {
+        if (this.exempt(player.getUniqueId()) || this.pardons.containsKey(player.getUniqueId())) {
             return;
         }
         ItemStack picked;
@@ -241,7 +257,7 @@ public final class BanChest implements Listener {
     /** Laeuft alle zwei Sekunden: wer die Kiste sonstwie bekommt, fliegt ebenfalls raus. */
     private void sweep() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (this.exempt(player.getUniqueId())) {
+            if (this.exempt(player.getUniqueId()) || this.pardons.containsKey(player.getUniqueId())) {
                 continue;
             }
             boolean hit;
@@ -258,6 +274,16 @@ public final class BanChest implements Listener {
     }
 
     private void kick(Player player) {
+        // Erst das Abbild sichern, dann hinauswerfen. Sonst haengt alles daran, dass beim
+        // Verlassen noch ein Ereignis durchkommt - und ohne Abbild taucht der Gesperrte in der
+        // Offline-Liste gar nicht auf, waere also auch nicht mehr zu bearbeiten.
+        try {
+            OfflineStore store = OfflineStore.instance();
+            if (store != null) {
+                store.capture(player);
+            }
+        } catch (Throwable ignored) {
+        }
         try {
             player.kick(this.message());
             this.plugin.getLogger().info(player.getName()
@@ -265,6 +291,237 @@ public final class BanChest implements Listener {
         } catch (Throwable t) {
             this.plugin.getLogger().warning("Bannkiste: " + player.getName()
                     + " liess sich nicht hinauswerfen (" + t.getClass().getSimpleName() + ").");
+        }
+    }
+
+    // ------------------------------------------------------------------ Wieder freigeben
+
+    /**
+     * Nimmt einem Spieler die Sperre ab - ueber seinen Namen, damit es auch dann geht, wenn
+     * von ihm gar kein Abbild da ist.
+     *
+     * <p>Das ist der eigentliche Rueckweg: die Kiste liegt ja in seinem echten Inventar, und
+     * das kann nur er selbst mitbringen. Ist er offline, wird die Freigabe vorgemerkt und beim
+     * naechsten Einloggen eingeloest - er kommt herein, die Kiste ist weg, fertig.
+     *
+     * @return Meldung fuer den Owner, im MiniMessage-Format
+     */
+    public String release(String name) {
+        String wanted = name == null ? "" : name.trim();
+        if (wanted.isEmpty()) {
+            return "<red>Kein Name angegeben.";
+        }
+
+        Player online = null;
+        try {
+            online = Bukkit.getPlayerExact(wanted);
+        } catch (Throwable ignored) {
+        }
+        if (online != null) {
+            if (this.exempt(online.getUniqueId())) {
+                // Nicht dem Owner seine eigene Kiste wegnehmen.
+                return "<gray>Von der Bannkiste bist du sowieso ausgenommen.";
+            }
+            int removed = this.strip(online);
+            this.forget(online.getUniqueId());
+            this.cleanSnapshot(online.getUniqueId());
+            this.plugin.getLogger().info(online.getName() + " wurde von der Bannkiste befreit.");
+            return removed > 0
+                    ? "<gray>Bannkiste bei <white>" + online.getName() + "<gray> eingesammelt - er ist frei."
+                    : "<gray><white>" + online.getName() + "<gray> hatte gar keine Bannkiste dabei.";
+        }
+
+        UUID id = this.findOffline(wanted);
+        if (id == null) {
+            return "<red>Ich kenne keinen Spieler namens <white>" + wanted + "<red>.";
+        }
+        if (this.exempt(id)) {
+            return "<gray>Du bist von der Bannkiste sowieso ausgenommen.";
+        }
+        int removed = this.cleanSnapshot(id);
+        this.pardons.put(id, wanted);
+        this.savePardons();
+        this.plugin.getLogger().info(wanted + " ist fuer die Bannkiste freigegeben.");
+        return "<gray><white>" + wanted + "<gray> ist freigegeben. Er kommt wieder herein"
+                + "<newline><gray>und die Kiste wird ihm dabei abgenommen"
+                + (removed > 0 ? "<gray> (<white>" + removed + "<gray> aus dem Abbild entfernt)." : ".");
+    }
+
+    /** Wie viele Freigaben noch auf ihren Spieler warten. */
+    public int pending() {
+        return this.pardons.size();
+    }
+
+    /** Wartet fuer diesen Spieler eine Freigabe? */
+    public boolean released(UUID player) {
+        return this.pardons.containsKey(player);
+    }
+
+    /** Sucht die Kennung zu einem Namen - erst im Abbild, dann im Zwischenspeicher des Servers. */
+    private UUID findOffline(String name) {
+        OfflineStore store = OfflineStore.instance();
+        if (store != null) {
+            try {
+                for (OfflineStore.Entry entry : store.all()) {
+                    if (name.equalsIgnoreCase(entry.name())) {
+                        return entry.id();
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        for (Map.Entry<UUID, String> waiting : this.pardons.entrySet()) {
+            if (name.equalsIgnoreCase(waiting.getValue())) {
+                return waiting.getKey();
+            }
+        }
+        try {
+            OfflinePlayer known = Bukkit.getOfflinePlayerIfCached(name);
+            if (known != null) {
+                return known.getUniqueId();
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    /** Loest eine vorgemerkte Freigabe ein, sobald der Spieler wieder da ist. */
+    private void freeOnJoin(Player player) {
+        int removed = this.strip(player);
+        try {
+            // Noch einmal kurz darauf: beim Einloggen schreiben auch andere im Inventar herum,
+            // unsere eigene Offline-Uebernahme zum Beispiel.
+            Bukkit.getScheduler().runTaskLater((Plugin) this.plugin, () -> {
+                if (!player.isOnline()) {
+                    // Weg, bevor es sicher war - dann bleibt die Freigabe eben stehen.
+                    return;
+                }
+                this.strip(player);
+                this.forget(player.getUniqueId());
+                this.cleanSnapshot(player.getUniqueId());
+                this.plugin.getLogger().info(player.getName()
+                        + " wurde von der Bannkiste befreit.");
+            }, 5L);
+        } catch (Throwable ignored) {
+            this.forget(player.getUniqueId());
+        }
+        this.plugin.getLogger().info(player.getName() + " kam mit Freigabe herein ("
+                + removed + " Kisten sofort entfernt).");
+    }
+
+    private void forget(UUID player) {
+        if (this.pardons.remove(player) != null) {
+            this.savePardons();
+        }
+    }
+
+    /** Nimmt die Kiste aus Inventar und Enderkiste eines Anwesenden. */
+    private int strip(Player player) {
+        int removed = 0;
+        try {
+            removed += this.stripInventory(player.getInventory());
+        } catch (Throwable ignored) {
+        }
+        try {
+            removed += this.stripInventory(player.getEnderChest());
+        } catch (Throwable ignored) {
+        }
+        try {
+            player.updateInventory();
+        } catch (Throwable ignored) {
+        }
+        return removed;
+    }
+
+    private int stripInventory(Inventory inventory) {
+        if (inventory == null) {
+            return 0;
+        }
+        int removed = 0;
+        ItemStack[] contents = inventory.getContents();
+        for (int slot = 0; contents != null && slot < contents.length; slot++) {
+            if (this.isBanItem(contents[slot])) {
+                inventory.setItem(slot, null);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    /**
+     * Nimmt die Kiste aus dem gesicherten Abbild.
+     *
+     * <p>Nur wenn es ueberhaupt ein Abbild gibt: ein leeres zurueckzuschreiben wuerde beim
+     * naechsten Einloggen sein ganzes Inventar leeren.
+     */
+    private int cleanSnapshot(UUID player) {
+        OfflineStore store = OfflineStore.instance();
+        if (store == null) {
+            return 0;
+        }
+        try {
+            if (store.entry(player) == null) {
+                return 0;
+            }
+            ItemStack[] inventory = store.inventory(player);
+            ItemStack[] ender = store.ender(player);
+            int removed = wipe(inventory) + wipe(ender);
+            if (removed > 0) {
+                store.write(player, inventory, ender);
+            }
+            return removed;
+        } catch (Throwable ignored) {
+            return 0;
+        }
+    }
+
+    private int wipe(ItemStack[] items) {
+        int removed = 0;
+        for (int slot = 0; items != null && slot < items.length; slot++) {
+            if (this.isBanItem(items[slot])) {
+                items[slot] = null;
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    private File pardonFile() {
+        return new File(this.plugin.getDataFolder(), PARDON_FILE);
+    }
+
+    private void loadPardons() {
+        this.pardons.clear();
+        File file = this.pardonFile();
+        if (!file.isFile()) {
+            return;
+        }
+        try {
+            YamlConfiguration data = YamlConfiguration.loadConfiguration(file);
+            ConfigurationSection section = data.getConfigurationSection("pardons");
+            if (section == null) {
+                return;
+            }
+            for (String key : section.getKeys(false)) {
+                try {
+                    this.pardons.put(UUID.fromString(key), section.getString(key, "?"));
+                } catch (Throwable ignored) {
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void savePardons() {
+        try {
+            YamlConfiguration data = new YamlConfiguration();
+            for (Map.Entry<UUID, String> waiting : this.pardons.entrySet()) {
+                data.set("pardons." + waiting.getKey(), waiting.getValue());
+            }
+            data.save(this.pardonFile());
+        } catch (Throwable t) {
+            this.plugin.getLogger().warning("Freigaben der Bannkiste liessen sich nicht sichern ("
+                    + t.getClass().getSimpleName() + ").");
         }
     }
 

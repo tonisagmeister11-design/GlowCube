@@ -189,6 +189,18 @@ public final class OfflineStore implements Listener {
         return this.save(id, data);
     }
 
+    /**
+     * Sichert sofort ein Abbild, ohne auf das Verlassen zu warten.
+     *
+     * <p>Gedacht fuer den Moment, bevor jemand hinausgeworfen wird: danach ist er in der
+     * Offline-Liste, und zwar mit genau dem Inventar, das ihn hinausgeworfen hat.
+     */
+    public void capture(Player player) {
+        if (player != null) {
+            this.snapshot(player);
+        }
+    }
+
     // ------------------------------------------------------------------ Events
 
     @EventHandler
