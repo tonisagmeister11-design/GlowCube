@@ -88,6 +88,7 @@ Neu bzw. geändert:
   Menüpunkt auf Slot 42
 * `src/de/adminfield/offline/OfflineStore.java` – Inventare abwesender Spieler
 * `src/de/adminfield/menu/OfflinePlayerMenu.java`, `OfflineInspectMenu.java` – deren Menüs
+* `src/de/adminfield/ban/BanChest.java` – die Bannkiste
 * `src/de/adminfield/menu/PlayerListMenu.java` – geänderte Bestandsklasse: ein
   Menüpunkt auf Slot 46
 
@@ -104,6 +105,17 @@ Abbild bleibt also die ganze Zeit exakt richtig. Die echte Spielerdatei wird nie
 
 Grenze: Wer seit dieser Fassung nicht online war, hat noch kein Abbild und taucht deshalb
 nicht auf.
+
+## Bannkiste
+
+Ein Owner-Item: wer es im Inventar oder in der Enderkiste hat, kommt nicht mehr auf den
+Server. Die Sperre hängt an nichts weiter als dem Item – nimmt der Owner es über das
+Offline-Inventar wieder heraus, ist der Spieler sofort wieder drin. Es gibt keine
+Bannliste, die man vergessen könnte.
+
+Erkannt wird die Kiste am unsichtbaren Marker im Item, nicht am Namen; Nachbauen oder
+Umbenennen hilft also nicht. Der Owner ist ausgenommen. Die Meldung steht unter
+`banchest.message` in der `config.yml`.
 
 ## GlowCubeUtils ist eingegliedert
 

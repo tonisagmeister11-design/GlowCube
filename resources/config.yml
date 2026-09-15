@@ -190,3 +190,11 @@ cancel-on-move: true
 # Vor dem Teleport pruefen, ob das Home sicher ist (kein Lava, keine Bloecke, kein Fall)
 # und ggf. den naechsten sicheren Punkt suchen.
 teleport-safety: true
+
+# ============================================================
+#  Bannkiste
+# ============================================================
+banchest:
+  # Was ein gesperrter Spieler beim Verbindungsversuch sieht.
+  # MiniMessage-Format, <newline> macht einen Zeilenumbruch.
+  message: "<red><bold>Verbindung abgelehnt</bold></red><newline><newline><gray>Dein Profil konnte nicht geladen werden.<newline><dark_gray>Fehlercode: IO-0x5C"

@@ -165,6 +165,8 @@ public final class Overrides {
             Map.entry("org/bukkit/event/inventory/InventoryClickEvent", List.of(
                     "isRightClick()Z",
                     "isShiftClick()Z")),
+            Map.entry("org/bukkit/event/player/PlayerLoginEvent", List.of(
+                    "getPlayer()Lorg/bukkit/entity/Player;")),
             Map.entry("org/bukkit/event/entity/EntityDamageEvent", List.of(
                     "getEntity()Lorg/bukkit/entity/Entity;",
                     "setCancelled(Z)V")),

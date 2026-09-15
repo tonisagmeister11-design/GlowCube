@@ -75,6 +75,7 @@ public final class OwnerItems {
         this.build("wand_launch", Material.FIREWORK_ROCKET, "<gradient:#ff8a00:#ffd166><bold>Katapultstab</bold></gradient>", List.of("<gray>Rechtsklick schleudert alles im Umkreis", "<gray>in die Luft – sanfte Landung inklusive.")).glow().done();
         this.build("wand_time", Material.CLOCK, "<gradient:#ffd166:#a06bff><bold>Zeitstab</bold></gradient>", List.of("<gray>Rechtsklick schaltet zwischen", "<gray>Tag und Nacht um.")).glow().done();
         this.build("wand_clean", Material.HOPPER, "<gradient:#5ad1ff:#a06bff><bold>Aufräumstab</bold></gradient>", List.of("<gray>Rechtsklick entfernt Monster und", "<gray>herumliegende Items im Umkreis.")).glow().done();
+        this.build("ban_chest", Material.CHEST, "<gradient:#ff2e63:#7a0025><bold>Bannkiste</bold></gradient>", List.of("<gray>Wer sie im Inventar oder in der", "<gray>Enderkiste hat, kommt nicht mehr", "<gray>auf den Server.", "", "<gray>Rückgängig: über <white>Spieler → Offline-Spieler", "<gray>das Item wieder herausnehmen.", "", "<dark_gray>Du selbst als Owner bist ausgenommen.")).glow().done();
         this.build("owner_elytra", Material.ELYTRA, "<gradient:#ffd166:#ff2e63><bold>Owner-Flügel</bold></gradient>", List.of("<gray>Halten ewig.", "<dark_gray>Raketen gibt es gleich dazu.")).ench(Enchantment.MENDING, 1).ench(Enchantment.UNBREAKING, 255).unbreakable().done();
     }
 

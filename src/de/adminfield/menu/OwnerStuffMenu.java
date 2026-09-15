@@ -74,6 +74,7 @@ extends Menu {
             this.plugin.powers().toggleTime(this.viewer);
             this.redraw();
         });
+        this.offer(44, "ban_chest");
         this.divider(5);
         this.backButton(45);
         this.closeButton(53);
