@@ -39,6 +39,10 @@ public final class OfflineInspectMenu extends Menu {
 
     @Override
     protected Component title() {
+        OfflineStore store = OfflineStore.instance();
+        if (store != null && !store.hasSnapshot(this.target)) {
+            return Ui.mm("<dark_gray>▏ <gold><bold>Aufträge</bold></gold> <dark_gray>· " + this.name);
+        }
         return Ui.mm("<dark_gray>▏ <gold><bold>" + (this.enderChest ? "Enderkiste" : "Inventar")
                 + "</bold></gold> <dark_gray>· " + this.name + " <dark_gray>(offline)");
     }
@@ -74,6 +78,12 @@ public final class OfflineInspectMenu extends Menu {
             return;
         }
 
+        if (!store.hasSnapshot(this.target)) {
+            // Von ihm ist noch nichts gesichert - dann eben Auftraege statt Inventar.
+            this.drawOrders(store);
+            return;
+        }
+
         ItemStack[] items = this.enderChest ? store.ender(this.target) : store.inventory(this.target);
         for (int slot = 0; slot < items.length && slot < this.slots(); slot++) {
             if (items[slot] != null) {
@@ -82,6 +92,55 @@ public final class OfflineInspectMenu extends Menu {
         }
         this.controls();
         this.fillLocked();
+    }
+
+    /**
+     * Was man ohne Abbild trotzdem tun kann.
+     *
+     * <p>Ansehen geht nicht - was jemand bei sich hat, weiss nur der Server, und der rueckt es
+     * erst heraus, wenn der Spieler da ist. Leeren geht aber sehr wohl: dafuer muss man nicht
+     * wissen, was drin ist. Beim naechsten Einloggen wird es ausgefuehrt, danach steht er mit
+     * Abbild in der Liste und alles Weitere geht wie gewohnt.
+     */
+    private void drawOrders(OfflineStore store) {
+        boolean clearInventory = store.queued(this.target, false);
+        boolean clearEnder = store.queued(this.target, true);
+
+        this.set(13, Ui.icon(Material.PAPER, "<gold><bold>" + this.name + "</bold>",
+                List.of("<gray>Von ihm gibt es noch kein Abbild –",
+                        "<gray>er war seit dem Hochladen nicht da.",
+                        "",
+                        "<gray>Sein Inventar ansehen geht deshalb nicht.",
+                        "<gray>Leeren lässt es sich trotzdem: es wird",
+                        "<gray>vorgemerkt und beim nächsten Einloggen",
+                        "<gray>ausgeführt.",
+                        "",
+                        "<dark_gray>Danach steht er ganz normal in der Liste.")));
+
+        this.set(29, Ui.toggle(clearInventory, "<red>Inventar beim nächsten Einloggen leeren",
+                List.of("<gray>Nimmt ihm alles ab, sobald er kommt.",
+                        "<gray>Auch eine Bannkiste ist damit weg.")),
+                event -> this.toggleOrder(store, !clearInventory, clearEnder));
+
+        this.set(33, Ui.toggle(clearEnder, "<dark_purple>Enderkiste beim nächsten Einloggen leeren",
+                List.of("<gray>Dasselbe für seine Enderkiste.")),
+                event -> this.toggleOrder(store, clearInventory, !clearEnder));
+
+        this.backButton(45);
+        this.closeButton(53);
+        this.fillEmpty();
+    }
+
+    private void toggleOrder(OfflineStore store, boolean inventory, boolean ender) {
+        if (!this.mayEdit()) {
+            return;
+        }
+        store.queueClear(this.target, this.name, inventory, ender);
+        this.plugin.log().add(ActivityLog.Level.WARN, this.viewer.getName()
+                + (inventory || ender ? " merkte vor: " : " nahm zurück: ")
+                + "Inventar leeren bei " + this.name + " (ohne Abbild)",
+                this.viewer.getLocation(), this.target);
+        this.redraw();
     }
 
     private void controls() {
@@ -122,13 +181,24 @@ public final class OfflineInspectMenu extends Menu {
         return slot >= 0 && slot < this.slots();
     }
 
+    /**
+     * Nur wo ein Abbild vorliegt, ist das Fenster ein Inventar.
+     *
+     * <p>Ohne Abbild zeigt es Auftragsknoepfe - die duerfen weder herausgenommen noch als sein
+     * Inventar gespeichert werden.
+     */
+    private boolean editable() {
+        OfflineStore store = OfflineStore.instance();
+        return store != null && store.hasSnapshot(this.target);
+    }
+
     private boolean mayEdit() {
         return this.viewer != null && this.viewer.hasPermission("adminfield.inventory.edit");
     }
 
     @Override
     public boolean allowClick(InventoryClickEvent event) {
-        if (!this.mayEdit() || Bukkit.getPlayer(this.target) != null) {
+        if (!this.mayEdit() || !this.editable() || Bukkit.getPlayer(this.target) != null) {
             return false;
         }
         Inventory clicked = event.getClickedInventory();
@@ -148,7 +218,7 @@ public final class OfflineInspectMenu extends Menu {
 
     @Override
     public boolean allowDrag(InventoryDragEvent event) {
-        if (!this.mayEdit() || Bukkit.getPlayer(this.target) != null) {
+        if (!this.mayEdit() || !this.editable() || Bukkit.getPlayer(this.target) != null) {
             return false;
         }
         int top = event.getView().getTopInventory().getSize();
@@ -175,7 +245,7 @@ public final class OfflineInspectMenu extends Menu {
     private void store() {
         OfflineStore store = OfflineStore.instance();
         Inventory inventory = this.getInventory();
-        if (store == null || inventory == null || !this.mayEdit()) {
+        if (store == null || inventory == null || !this.mayEdit() || !this.editable()) {
             return;
         }
         if (Bukkit.getPlayer(this.target) != null) {
@@ -191,7 +261,7 @@ public final class OfflineInspectMenu extends Menu {
     private void takeEverything() {
         OfflineStore store = OfflineStore.instance();
         Inventory inventory = this.getInventory();
-        if (store == null || inventory == null || !this.mayEdit()) {
+        if (store == null || inventory == null || !this.mayEdit() || !this.editable()) {
             return;
         }
         int taken = 0;

@@ -3,19 +3,13 @@ package de.adminfield.menu;
 import de.adminfield.AdminFieldPlugin;
 import de.adminfield.Ui;
 import de.adminfield.ban.BanChest;
-import de.adminfield.offline.OfflineStore;
+import de.adminfield.offline.KnownPlayers;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 
 /**
  * Wem die Bannkiste wieder abgenommen wird.
@@ -47,50 +41,10 @@ public final class BanReleaseMenu extends Menu {
         return true;
     }
 
-    /** Ein bekannter Spieler: Kennung und der Name, unter dem er zuletzt hier war. */
-    private record Known(UUID id, String name) {
-    }
-
-    /**
-     * Alle, die der Server kennt - aus mehreren Quellen zusammengetragen, damit niemand
-     * durchrutscht: Anwesende, unsere Abbilder und die Spielerdaten des Servers.
-     */
-    private List<Known> known() {
-        Map<UUID, Known> found = new LinkedHashMap<>();
-        try {
-            for (Player online : Bukkit.getOnlinePlayers()) {
-                found.put(online.getUniqueId(), new Known(online.getUniqueId(), online.getName()));
-            }
-        } catch (Throwable ignored) {
-        }
-        OfflineStore store = OfflineStore.instance();
-        if (store != null) {
-            try {
-                for (OfflineStore.Entry entry : store.all()) {
-                    found.putIfAbsent(entry.id(), new Known(entry.id(), entry.name()));
-                }
-            } catch (Throwable ignored) {
-            }
-        }
-        try {
-            for (OfflinePlayer past : Bukkit.getOfflinePlayers()) {
-                if (past == null || past.getName() == null) {
-                    continue;
-                }
-                found.putIfAbsent(past.getUniqueId(), new Known(past.getUniqueId(), past.getName()));
-            }
-        } catch (Throwable ignored) {
-            // Aeltere Server geben die Liste nicht her - dann bleibt der Weg ueber den Namen.
-        }
-        List<Known> out = new ArrayList<>(found.values());
-        out.sort((left, right) -> left.name().compareToIgnoreCase(right.name()));
-        return out;
-    }
-
     @Override
     protected void draw() {
         BanChest ban = BanChest.instance();
-        List<Known> list = this.known();
+        List<KnownPlayers.Known> list = KnownPlayers.all();
 
         this.divider(5);
         this.backButton(45);
@@ -126,7 +80,7 @@ public final class BanReleaseMenu extends Menu {
 
         int start = this.page * PER_PAGE;
         for (int i = 0; i < PER_PAGE && start + i < list.size(); i++) {
-            Known entry = list.get(start + i);
+            KnownPlayers.Known entry = list.get(start + i);
             boolean waiting = ban.released(entry.id());
             boolean locked = ban.blocked(entry.id());
             List<String> lore = new ArrayList<>();

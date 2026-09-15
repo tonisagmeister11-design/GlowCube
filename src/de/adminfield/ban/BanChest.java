@@ -528,7 +528,12 @@ public final class BanChest implements Listener {
             ItemStack[] ender = store.ender(player);
             int removed = wipe(inventory) + wipe(ender);
             if (removed > 0) {
-                store.write(player, inventory, ender);
+                if (Bukkit.getPlayer(player) != null) {
+                    // Er ist da, sein echtes Inventar ist schon sauber - nur nachziehen.
+                    store.rewrite(player, inventory, ender);
+                } else {
+                    store.write(player, inventory, ender);
+                }
             }
             return removed;
         } catch (Throwable ignored) {

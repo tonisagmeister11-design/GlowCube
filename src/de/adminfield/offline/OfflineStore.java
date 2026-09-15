@@ -141,6 +141,10 @@ public final class OfflineStore implements Listener {
             }
             try {
                 YamlConfiguration data = YamlConfiguration.loadConfiguration(file);
+                if (data.getLong("saved") <= 0L) {
+                    // Nur ein vorgemerkter Auftrag, noch kein Abbild.
+                    continue;
+                }
                 out.add(new Entry(id, data.getString("name", "Unbekannt"), data.getLong("saved"),
                         data.getBoolean("pending"), count(read(data, "inventory", INVENTORY_SLOTS))
                                 + count(read(data, "ender", ENDER_SLOTS))));
@@ -190,6 +194,24 @@ public final class OfflineStore implements Listener {
     }
 
     /**
+     * Berichtigt ein Abbild, ohne es als offenen Auftrag vorzumerken.
+     *
+     * <p>Fuer Spieler, die gerade da sind: bei denen ist das echte Inventar schon richtig, das
+     * Abbild hinkt nur hinterher. Wuerde man es vormerken, wuerde es ihm beim naechsten
+     * Einloggen uebergestuelpt - und alles, was er seither gesammelt hat, waere weg.
+     */
+    public boolean rewrite(UUID id, ItemStack[] inventory, ItemStack[] ender) {
+        YamlConfiguration data = this.load(id);
+        if (inventory != null) {
+            put(data, "inventory", inventory, INVENTORY_SLOTS);
+        }
+        if (ender != null) {
+            put(data, "ender", ender, ENDER_SLOTS);
+        }
+        return this.save(id, data);
+    }
+
+    /**
      * Sichert sofort ein Abbild, ohne auf das Verlassen zu warten.
      *
      * <p>Gedacht fuer den Moment, bevor jemand hinausgeworfen wird: danach ist er in der
@@ -198,6 +220,43 @@ public final class OfflineStore implements Listener {
     public void capture(Player player) {
         if (player != null) {
             this.snapshot(player);
+        }
+    }
+
+    // ------------------------------------------------------------------ Auftraege
+
+    /**
+     * Merkt vor, dass beim naechsten Einloggen geleert wird.
+     *
+     * <p>Der Weg fuer alle, von denen es noch kein Abbild gibt: man kann ihr Inventar nicht
+     * ansehen, solange sie weg sind - leeren geht trotzdem, denn dafuer muss man nicht wissen,
+     * was drin ist.
+     */
+    public boolean queueClear(UUID id, String name, boolean inventory, boolean ender) {
+        YamlConfiguration data = this.load(id);
+        if (name != null && !name.isBlank()) {
+            data.set("name", name);
+        }
+        data.set("clear-inventory", inventory);
+        data.set("clear-ender", ender);
+        return this.save(id, data);
+    }
+
+    /** Wartet fuer diesen Spieler ein Auftrag? */
+    public boolean queued(UUID id, boolean ender) {
+        try {
+            return this.load(id).getBoolean(ender ? "clear-ender" : "clear-inventory");
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** Gibt es von ihm ueberhaupt ein Abbild? */
+    public boolean hasSnapshot(UUID id) {
+        try {
+            return this.load(id).getLong("saved") > 0L;
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 
@@ -212,28 +271,42 @@ public final class OfflineStore implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         YamlConfiguration data = this.load(player.getUniqueId());
-        if (!data.getBoolean("pending")) {
-            return;
-        }
-        try {
-            ItemStack[] inventory = read(data, "inventory", INVENTORY_SLOTS);
-            ItemStack[] ender = read(data, "ender", ENDER_SLOTS);
-            apply(player.getInventory(), inventory);
-            apply(player.getEnderChest(), ender);
+        boolean pending = data.getBoolean("pending");
+        boolean clearInventory = data.getBoolean("clear-inventory");
+        boolean clearEnder = data.getBoolean("clear-ender");
+        if (pending || clearInventory || clearEnder) {
             try {
-                player.updateInventory();
-            } catch (Throwable ignored) {
+                if (pending) {
+                    apply(player.getInventory(), read(data, "inventory", INVENTORY_SLOTS));
+                    apply(player.getEnderChest(), read(data, "ender", ENDER_SLOTS));
+                }
+                // Nach dem Abbild, damit ein Leeren-Auftrag das letzte Wort hat.
+                if (clearInventory) {
+                    clear(player.getInventory());
+                }
+                if (clearEnder) {
+                    clear(player.getEnderChest());
+                }
+                try {
+                    player.updateInventory();
+                } catch (Throwable ignored) {
+                }
+                this.plugin.getLogger().info("Offline vorgemerkte Aenderungen an "
+                        + player.getName() + " uebernommen.");
+            } catch (Throwable t) {
+                this.plugin.getLogger().warning("Offline-Aenderungen an " + player.getName()
+                        + " liessen sich nicht uebernehmen (" + t.getClass().getSimpleName() + ").");
+                return;
             }
-            this.plugin.getLogger().info("Offline vorgemerkte Aenderungen an "
-                    + player.getName() + " uebernommen.");
-        } catch (Throwable t) {
-            this.plugin.getLogger().warning("Offline-Aenderungen an " + player.getName()
-                    + " liessen sich nicht uebernehmen (" + t.getClass().getSimpleName() + ").");
-            return;
+            // Erledigt - das Abbild spiegelt jetzt den echten Stand.
+            data.set("pending", false);
+            data.set("clear-inventory", false);
+            data.set("clear-ender", false);
+            this.save(player.getUniqueId(), data);
         }
-        // Erledigt - das Abbild spiegelt jetzt den echten Stand.
-        data.set("pending", false);
-        this.save(player.getUniqueId(), data);
+        // Ab jetzt ist er bekannt: ein Abbild schon beim Einloggen, nicht erst beim Verlassen.
+        // Sonst taucht in der Liste nur auf, wer seit dem Hochladen einmal hinausgegangen ist.
+        this.snapshot(player);
     }
 
     @EventHandler
@@ -263,6 +336,15 @@ public final class OfflineStore implements Listener {
         } catch (Throwable t) {
             this.plugin.getLogger().warning("Abbild von " + player.getName()
                     + " konnte nicht gesichert werden (" + t.getClass().getSimpleName() + ").");
+        }
+    }
+
+    private static void clear(Inventory target) {
+        if (target == null) {
+            return;
+        }
+        for (int slot = 0; slot < target.getSize(); slot++) {
+            target.setItem(slot, null);
         }
     }
 
