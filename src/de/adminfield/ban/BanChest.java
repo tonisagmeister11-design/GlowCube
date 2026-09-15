@@ -437,35 +437,54 @@ public final class BanChest implements Listener {
         if (this.resetDone) {
             return;
         }
-        OfflineStore store = OfflineStore.instance();
-        if (store == null) {
+        if (OfflineStore.instance() == null) {
             // Ohne Abbilder waere der Lauf halb - dann lieber beim naechsten Start.
             this.plugin.getLogger().warning("Bannkisten-Amnestie verschoben: "
                     + "die Offline-Verwaltung laeuft noch nicht.");
             return;
         }
+        int chests = this.clearEverywhere();
+        this.pardons.clear();
+        this.pardonNames.clear();
+        this.amnesty = true;
+        this.cleaned = 0;
+        this.resetDone = true;
+        this.savePardons();
+        this.plugin.getLogger().info("Bannkisten-Amnestie: " + chests + " Kisten entfernt. "
+                + "Das Einsammeln ist eingeschaltet - wer noch eine im Inventar hat, wird sie "
+                + "beim Einloggen los.");
+    }
 
+    /**
+     * Nimmt ueberall die Bannkiste heraus: aus jedem gesicherten Abbild und von jedem, der
+     * gerade da ist.
+     *
+     * <p>Was in den echten Inventaren der Abwesenden liegt, bleibt liegen - daran kommt man
+     * nur heran, wenn sie selbst da sind. Dafuer gibt es das Einsammeln.
+     *
+     * @return wie viele Kisten verschwunden sind
+     */
+    public int clearEverywhere() {
         int chests = 0;
-        int players = 0;
-        try {
-            for (OfflineStore.Entry entry : store.all()) {
-                ItemStack[] inventory = store.inventory(entry.id());
-                ItemStack[] ender = store.ender(entry.id());
-                int removed = wipe(inventory) + wipe(ender);
-                if (removed > 0) {
-                    // Berichtigen, nicht vormerken: ihr echtes Inventar ruehren wir hier nicht
-                    // an, und ein vorgemerktes Abbild wuerde es ihnen ueberstuelpen.
-                    store.rewrite(entry.id(), inventory, ender);
-                    chests += removed;
-                    players++;
+        OfflineStore store = OfflineStore.instance();
+        if (store != null) {
+            try {
+                for (OfflineStore.Entry entry : store.all()) {
+                    ItemStack[] inventory = store.inventory(entry.id());
+                    ItemStack[] ender = store.ender(entry.id());
+                    int removed = wipe(inventory) + wipe(ender);
+                    if (removed > 0) {
+                        // Berichtigen, nicht vormerken: ihr echtes Inventar ruehren wir hier
+                        // nicht an, und ein vorgemerktes Abbild wuerde es ihnen ueberstuelpen.
+                        store.rewrite(entry.id(), inventory, ender);
+                        chests += removed;
+                    }
                 }
+            } catch (Throwable t) {
+                this.plugin.getLogger().warning("Bannkisten nicht vollstaendig entfernt ("
+                        + t.getClass().getSimpleName() + ").");
             }
-        } catch (Throwable t) {
-            this.plugin.getLogger().warning("Bannkisten-Amnestie unvollstaendig ("
-                    + t.getClass().getSimpleName() + ").");
         }
-
-        // Wer gerade da ist, wird gleich mit sauber.
         try {
             for (Player online : Bukkit.getOnlinePlayers()) {
                 if (!this.exempt(online.getUniqueId())) {
@@ -474,16 +493,7 @@ public final class BanChest implements Listener {
             }
         } catch (Throwable ignored) {
         }
-
-        this.pardons.clear();
-        this.pardonNames.clear();
-        this.amnesty = true;
-        this.cleaned = 0;
-        this.resetDone = true;
-        this.savePardons();
-        this.plugin.getLogger().info("Bannkisten-Amnestie: " + chests + " Kisten aus "
-                + players + " Abbildern entfernt. Das Einsammeln ist eingeschaltet - wer noch "
-                + "eine im Inventar hat, wird sie beim Einloggen los.");
+        return chests;
     }
 
     // ------------------------------------------------------------------ Aufraeumen

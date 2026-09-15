@@ -3,8 +3,10 @@
  */
 package de.adminfield.menu;
 
+import de.adminfield.ActivityLog;
 import de.adminfield.AdminFieldPlugin;
 import de.adminfield.Ui;
+import de.adminfield.ban.BanChest;
 import de.adminfield.menu.Menu;
 import java.util.ArrayList;
 import java.util.List;
@@ -77,8 +79,68 @@ extends Menu {
         this.offer(44, "ban_chest");
         this.divider(5);
         this.backButton(45);
+        this.banControls();
         this.closeButton(53);
         this.fillEmpty();
+    }
+
+    /**
+     * Die beiden Schalter zur Bannkiste - dort, wo auch die Kiste selbst liegt.
+     *
+     * <p>Dieselben Knoepfe stehen auch bei den Offline-Spielern; sie arbeiten auf demselben
+     * Stand, es ist gleich, wo man sie drueckt.
+     */
+    private void banControls() {
+        BanChest ban = BanChest.instance();
+        boolean on = ban != null && ban.amnesty();
+        this.set(47, Ui.icon(Material.HOPPER, "<aqua><bold>Alle Bannkisten löschen</bold>",
+                List.of("<gray>Nimmt die Bannkiste sofort aus jedem",
+                        "<gray>gesicherten Inventar und von jedem,",
+                        "<gray>der gerade da ist.",
+                        "",
+                        "<gray>Danach ist niemand mehr gesperrt.",
+                        "<dark_gray>Wer gerade nicht da ist, hat sie noch bei",
+                        "<dark_gray>sich – dafür den Schalter daneben anlassen.",
+                        "",
+                        "<yellow>➤ Klicken")),
+                event -> this.clearAllChests(ban));
+        this.set(51, Ui.toggle(on, "<aqua><bold>Bannkisten einsammeln</bold>",
+                List.of("<gray>Solange das läuft, wirft die Bannkiste",
+                        "<gray>niemanden mehr hinaus – sie wird ihm",
+                        "<gray>beim Einloggen abgenommen.",
+                        "",
+                        "<gray>Eingesammelt seit dem Einschalten: <white>"
+                                + (ban == null ? 0 : ban.cleaned()),
+                        "",
+                        "<dark_gray>Deine eigene Kiste bleibt dir.")),
+                event -> this.toggleCollecting(ban, on));
+    }
+
+    private void clearAllChests(BanChest ban) {
+        if (ban == null) {
+            this.plugin.send((CommandSender) this.viewer, "<red>Die Bannkiste läuft gerade nicht.");
+            return;
+        }
+        int removed = ban.clearEverywhere();
+        this.plugin.send((CommandSender) this.viewer, removed > 0
+                ? "<gray><white>" + removed + "<gray> Bannkisten gelöscht – niemand ist mehr gesperrt."
+                : "<gray>Es war keine einzige Bannkiste zu finden.");
+        this.plugin.log().add(ActivityLog.Level.WARN, this.viewer.getName()
+                + " löschte alle Bannkisten (" + removed + ")", this.viewer.getLocation(), null);
+        this.redraw();
+    }
+
+    private void toggleCollecting(BanChest ban, boolean on) {
+        if (ban == null) {
+            this.plugin.send((CommandSender) this.viewer, "<red>Die Bannkiste läuft gerade nicht.");
+            return;
+        }
+        int taken = ban.setAmnesty(!on);
+        this.plugin.send((CommandSender) this.viewer, on
+                ? "<gray>Einsammeln beendet – die Bannkiste sperrt wieder."
+                : "<gray>Einsammeln läuft."
+                        + (taken > 0 ? " <white>" + taken + "<gray> Kisten sofort eingesammelt." : ""));
+        this.redraw();
     }
 
     private void offer(int n, String string) {

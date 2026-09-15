@@ -84,6 +84,7 @@ public final class OfflinePlayerMenu extends Menu {
                         "<dark_gray>Wirksam wird alles beim nächsten Einloggen.")));
         this.releaseButton();
         this.amnestyButton();
+        this.clearAllButton();
         this.closeButton(53);
 
         if (store == null) {
@@ -210,6 +211,39 @@ public final class OfflinePlayerMenu extends Menu {
                         "<dark_gray>Du selbst bist ausgenommen – deine eigene",
                         "<dark_gray>Kiste bleibt dir.")),
                 event -> this.toggleAmnesty(ban, on));
+    }
+
+    /** Derselbe Knopf wie in der Owner-Ausrüstung: alle Bannkisten auf einmal weg. */
+    private void clearAllButton() {
+        if (!this.isOwner()) {
+            return;
+        }
+        this.set(52, Ui.icon(Material.HOPPER, "<aqua><bold>Alle Bannkisten löschen</bold>",
+                List.of("<gray>Nimmt die Bannkiste sofort aus jedem",
+                        "<gray>gesicherten Inventar und von jedem,",
+                        "<gray>der gerade da ist.",
+                        "",
+                        "<gray>Danach ist niemand mehr gesperrt.",
+                        "<dark_gray>Wer gerade nicht da ist, hat sie noch bei",
+                        "<dark_gray>sich – dafür das Einsammeln anlassen.",
+                        "",
+                        "<yellow>➤ Klicken")),
+                event -> this.clearAllChests());
+    }
+
+    private void clearAllChests() {
+        BanChest ban = BanChest.instance();
+        if (ban == null) {
+            this.plugin.send((CommandSender) this.viewer, "<red>Die Bannkiste läuft gerade nicht.");
+            return;
+        }
+        int removed = ban.clearEverywhere();
+        this.plugin.send((CommandSender) this.viewer, removed > 0
+                ? "<gray><white>" + removed + "<gray> Bannkisten gelöscht – niemand ist mehr gesperrt."
+                : "<gray>Es war keine einzige Bannkiste zu finden.");
+        this.plugin.log().add(ActivityLog.Level.WARN, this.viewer.getName()
+                + " löschte alle Bannkisten (" + removed + ")", this.viewer.getLocation(), null);
+        this.redraw();
     }
 
     private void toggleAmnesty(BanChest ban, boolean on) {
