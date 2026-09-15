@@ -8,6 +8,7 @@ import de.adminfield.AdminFieldPlugin;
 import de.adminfield.AdminRole;
 import de.adminfield.Ui;
 import de.adminfield.menu.BuildMenu;
+import de.adminfield.menu.BuildToolMenu;
 import de.adminfield.menu.CheatMenu;
 import de.adminfield.menu.DeathNoteMenu;
 import de.adminfield.menu.JailMenu;
@@ -91,6 +92,9 @@ extends Menu {
             this.viewer.teleportAsync(location);
             this.plugin.send((CommandSender)this.viewer, "<gray>Zurück bei <white>" + Ui.pos(location) + "<gray>.");
         });
+        if (this.viewer.hasPermission("adminfield.build")) {
+            this.set(22, Ui.glowing(Material.BRICKS, "<gradient:#7bdcff:#3a7bff><bold>Bauen</bold></gradient>", List.of("<gray>Zwei Ecken setzen, Block wählen,", "<gray>und die Fläche füllen \u2013 Mauern,", "<gray>Böden, Decken, ganze Flächen.", "", "<gray>Mit Rückgängig, falls es doch", "<gray>nicht passt.", "", "<yellow>➤ Klicken zum Öffnen")), inventoryClickEvent -> new BuildToolMenu(this.plugin, this).open(this.viewer));
+        }
         this.closeButton(50);
         int n3 = this.plugin.cheats().count();
         this.set(35, n3 > 0 ? Ui.glowing(Material.SPYGLASS, "<red><bold>Cheat-Überwachung</bold>", List.of("<gray>Beobachtet gerade: <white>" + n3 + " Spieler", "", "<gray>Fliegen, Speed, X-Ray, Reach, NoFall.", "<yellow>➤ Klicken zum Öffnen")) : Ui.icon(Material.SPYGLASS, "<gray><bold>Cheat-Überwachung</bold>", List.of("<gray>Zurzeit wird niemand beobachtet.", "", "<gray>Einschalten im Spielermenü beim", "<gray>jeweiligen Spieler.", "<yellow>➤ Klicken zum Öffnen")), inventoryClickEvent -> new CheatMenu(this.plugin, this).open(this.viewer));

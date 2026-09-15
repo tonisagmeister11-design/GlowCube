@@ -42,6 +42,9 @@ permissions:
   adminfield.notify:
     description: Bekommt Meldungen ueber neue Baustellen und Grief-Alarme
     default: op
+  adminfield.build:
+    description: Darf mit dem Bau-Werkzeug grosse Flaechen setzen
+    default: op
   adminfield.inventory.edit:
     description: Darf fremde Inventare bearbeiten und Items daraus entnehmen
     default: op

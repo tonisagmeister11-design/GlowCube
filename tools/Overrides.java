@@ -40,6 +40,8 @@ public final class Overrides {
             "org/bukkit/entity/Villager",
             "org/bukkit/entity/Boss",
             "org/bukkit/entity/Item",
+            "org/bukkit/block/Block",
+            "org/bukkit/block/data/BlockData",
             "org/bukkit/boss/BossBar",
             "org/bukkit/World",
             "org/bukkit/OfflinePlayer",
@@ -104,7 +106,8 @@ public final class Overrides {
     public static final Map<String, List<String>> EXTRA_METHODS = Map.ofEntries(
             Map.entry("org/bukkit/Material", List.of(
                     "static valueOf(Ljava/lang/String;)Lorg/bukkit/Material;",
-                    "name()Ljava/lang/String;")),
+                    "name()Ljava/lang/String;",
+                    "isBlock()Z")),
             Map.entry("org/bukkit/entity/EntityType", List.of(
                     "static valueOf(Ljava/lang/String;)Lorg/bukkit/entity/EntityType;",
                     "name()Ljava/lang/String;")),
@@ -149,7 +152,8 @@ public final class Overrides {
             Map.entry("org/bukkit/configuration/ConfigurationSection", List.of(
                     "getItemStack(Ljava/lang/String;)Lorg/bukkit/inventory/ItemStack;")),
             Map.entry("org/bukkit/inventory/PlayerInventory", List.of(
-                    "getContents()[Lorg/bukkit/inventory/ItemStack;")),
+                    "getContents()[Lorg/bukkit/inventory/ItemStack;",
+                    "getItemInMainHand()Lorg/bukkit/inventory/ItemStack;")),
             Map.entry("org/bukkit/command/CommandExecutor", List.of(
                     "onCommand(Lorg/bukkit/command/CommandSender;Lorg/bukkit/command/Command;"
                             + "Ljava/lang/String;[Ljava/lang/String;)Z")),
@@ -172,6 +176,10 @@ public final class Overrides {
                     "getItem()Lorg/bukkit/entity/Item;")),
             Map.entry("org/bukkit/entity/Item", List.of(
                     "getItemStack()Lorg/bukkit/inventory/ItemStack;")),
+            Map.entry("org/bukkit/block/Block", List.of(
+                    "setType(Lorg/bukkit/Material;Z)V",
+                    "getBlockData()Lorg/bukkit/block/data/BlockData;",
+                    "setBlockData(Lorg/bukkit/block/data/BlockData;Z)V")),
             Map.entry("org/bukkit/OfflinePlayer", List.of(
                     "getUniqueId()Ljava/util/UUID;",
                     "getName()Ljava/lang/String;",

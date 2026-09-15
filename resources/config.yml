@@ -192,6 +192,17 @@ cancel-on-move: true
 teleport-safety: true
 
 # ============================================================
+#  Bauen (Bau-Stab)
+# ============================================================
+build:
+  # Wie viele Bloecke darf ein einzelner Auftrag umfassen?
+  # Gesetzt wird haeppchenweise ueber mehrere Ticks, der Server bleibt also
+  # bedienbar - aber irgendwo muss eine Grenze sein.
+  # Fuer jeden gesetzten Block wird ausserdem der alte Zustand aufgehoben, damit
+  # "Rueckgaengig" funktioniert - je hoeher die Grenze, desto mehr Arbeitsspeicher.
+  max-blocks: 50000
+
+# ============================================================
 #  Bannkiste
 # ============================================================
 banchest:
