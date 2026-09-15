@@ -39,6 +39,7 @@ public final class Overrides {
             "org/bukkit/entity/Phantom",
             "org/bukkit/entity/Villager",
             "org/bukkit/entity/Boss",
+            "org/bukkit/entity/Item",
             "org/bukkit/boss/BossBar",
             "org/bukkit/World",
             "org/bukkit/OfflinePlayer",
@@ -165,6 +166,11 @@ public final class Overrides {
             Map.entry("org/bukkit/event/inventory/InventoryClickEvent", List.of(
                     "isRightClick()Z",
                     "isShiftClick()Z")),
+            Map.entry("org/bukkit/event/entity/EntityPickupItemEvent", List.of(
+                    "getEntity()Lorg/bukkit/entity/LivingEntity;",
+                    "getItem()Lorg/bukkit/entity/Item;")),
+            Map.entry("org/bukkit/entity/Item", List.of(
+                    "getItemStack()Lorg/bukkit/inventory/ItemStack;")),
             Map.entry("org/bukkit/event/player/PlayerLoginEvent", List.of(
                     "getPlayer()Lorg/bukkit/entity/Player;")),
             Map.entry("org/bukkit/event/entity/EntityDamageEvent", List.of(

@@ -11,6 +11,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.server.PluginDisableEvent;
@@ -185,7 +186,43 @@ public final class BanChest implements Listener {
         }
     }
 
-    /** Laeuft alle zwei Sekunden: wer die Kiste im Spiel bekommt, fliegt sofort raus. */
+    /**
+     * Aufheben zaehlt sofort - liegt die Kiste am Boden, ist sie eine Falle.
+     *
+     * <p>Der Waechter unten wuerde es auch merken, aber erst bis zu zwei Sekunden spaeter.
+     * Das Aufsammeln wird bewusst nicht abgebrochen: die Kiste soll im Inventar landen, damit
+     * sie beim Verlassen im Abbild steht und die Anmeldesperre greift.
+     */
+    @EventHandler
+    public void onPickup(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        if (this.exempt(player.getUniqueId())) {
+            return;
+        }
+        ItemStack picked;
+        try {
+            picked = event.getItem().getItemStack();
+        } catch (Throwable ignored) {
+            return;
+        }
+        if (!this.isBanItem(picked)) {
+            return;
+        }
+        try {
+            // Einen Tick warten, damit die Kiste wirklich im Inventar liegt.
+            Bukkit.getScheduler().runTaskLater((Plugin) this.plugin, () -> {
+                if (player.isOnline()) {
+                    this.kick(player);
+                }
+            }, 1L);
+        } catch (Throwable ignored) {
+            this.kick(player);
+        }
+    }
+
+    /** Laeuft alle zwei Sekunden: wer die Kiste sonstwie bekommt, fliegt ebenfalls raus. */
     private void sweep() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (this.exempt(player.getUniqueId())) {
