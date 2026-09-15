@@ -88,12 +88,17 @@ public final class MyHomesMenu extends Menu {
         }
         lore.add("");
         lore.add("<yellow>➤ Linksklick <gray>· hinteleportieren");
+        lore.add("<green>➤ Shift + Linksklick <gray>· umbenennen");
         lore.add("<aqua>➤ Rechtsklick <gray>· hierher verschieben");
         lore.add("<red>➤ Shift + Rechtsklick <gray>· löschen");
 
         this.set(slot, Ui.icon(at == null ? Material.GRAY_DYE : Material.RED_BED,
                 "<green><bold>" + home.name() + "</bold>", lore), event -> {
             if (!event.isRightClick()) {
+                if (event.isShiftClick()) {
+                    this.askRename(home.name());
+                    return;
+                }
                 this.viewer.closeInventory();
                 this.run("home " + home.name());
                 return;
@@ -118,6 +123,21 @@ public final class MyHomesMenu extends Menu {
                         "<yellow>➤ Klicken, dann Namen in den Chat")),
                 event -> this.plugin.state().prompt(this.viewer, "Wie soll das neue Home heißen?",
                         text -> this.run("sethome " + text.trim())));
+    }
+
+    /** Fragt den neuen Namen im Chat ab und benennt das Home dann um. */
+    private void askRename(String oldName) {
+        this.plugin.state().prompt(this.viewer, "Wie soll \"" + oldName + "\" künftig heißen?", text -> {
+            Homes homes = Homes.instance();
+            if (homes == null) {
+                this.plugin.send((CommandSender) this.viewer, "<red>Das Home-System läuft gerade nicht.");
+                return;
+            }
+            String problem = homes.rename(this.viewer, oldName, text);
+            this.plugin.send((CommandSender) this.viewer, problem != null ? problem
+                    : "<green>Home <white>" + oldName + "<green> heißt jetzt <white>" + text.trim() + "<green>.");
+            new MyHomesMenu(this.plugin).open(this.viewer);
+        });
     }
 
     /** Fuehrt den passenden Befehl des Home-Systems aus - so gelten ueberall dieselben Regeln. */

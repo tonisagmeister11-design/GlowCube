@@ -18,6 +18,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -191,6 +192,57 @@ public final class Homes {
     }
 
     // ------------------------------------------------------------------ Fuer das Spielermenue
+
+    /** Namen wie beim Setzen eines Homes: Buchstaben, Zahlen, Unterstrich und Bindestrich. */
+    private static final java.util.regex.Pattern VALID_NAME =
+            java.util.regex.Pattern.compile("[A-Za-z0-9_\\-]+");
+
+    /**
+     * Benennt ein bestehendes Home um, ohne es zu verschieben.
+     *
+     * <p>Das Home-System kennt dafuer keinen Befehl - hier wird der Eintrag deshalb ueber
+     * seine oeffentliche Verwaltung neu abgelegt und der alte entfernt. Die Regeln fuer den
+     * Namen sind dieselben wie bei /sethome.
+     *
+     * @return {@code null}, wenn es geklappt hat, sonst die fertige Fehlermeldung
+     */
+    public String rename(Player player, String oldName, String newName) {
+        UUID id = player.getUniqueId();
+        Home existing = this.homeManager.getHome(id, oldName);
+        if (existing == null) {
+            return "<red>Das Home <white>" + oldName + "<red> gibt es nicht mehr.";
+        }
+        String wanted = newName == null ? "" : newName.trim();
+        if (wanted.isEmpty() || !VALID_NAME.matcher(wanted).matches()) {
+            return "<red>Ungültiger Name. Erlaubt sind Buchstaben, Zahlen, <yellow>_<red> und <yellow>-<red>.";
+        }
+        int max = this.homeManager.getMaxNameLength();
+        if (wanted.length() > max) {
+            return "<red>Der Name ist zu lang (maximal <yellow>" + max + "<red> Zeichen).";
+        }
+        boolean sameName = wanted.equalsIgnoreCase(oldName);
+        if (!sameName && this.homeManager.hasHome(id, wanted)) {
+            return "<red>Du hast schon ein Home namens <white>" + wanted + "<red>.";
+        }
+
+        this.homeManager.setHome(id, new Home(wanted, existing.worldId(), existing.worldName(),
+                existing.x(), existing.y(), existing.z(), existing.yaw(), existing.pitch()));
+        if (!sameName) {
+            // Nur wenn sich der Schluessel wirklich unterscheidet - sonst wuerde das gerade
+            // gesetzte Home gleich wieder geloescht.
+            this.homeManager.deleteHome(id, oldName);
+        }
+        this.refreshSidebar(player);
+        return null;
+    }
+
+    /** Zieht die Seitenleiste nach, damit die Home-Zahl darin stimmt. */
+    public void refreshSidebar(Player player) {
+        try {
+            this.sidebar.update(player);
+        } catch (Throwable ignored) {
+        }
+    }
 
     /** Die Homes eines Spielers, aufsteigend nach Namen. */
     public List<Home> of(UUID player) {
