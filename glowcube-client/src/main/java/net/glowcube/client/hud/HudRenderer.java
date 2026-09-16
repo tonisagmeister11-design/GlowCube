@@ -33,7 +33,7 @@ public final class HudRenderer {
 
     private void drawWatermark(GuiGraphics gfx) {
         String name = "GLOWCUBE";
-        String tag = GlowCubeClient.TARGET;
+        String tag = GlowCubeClient.target();
         float w = Render2D.width(name) + Render2D.width(tag) + 22;
         float h = 16;
 

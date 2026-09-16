@@ -11,6 +11,7 @@ bisherige Wert stehen - dann meldet sich spaeter der Build selbst.
 """
 
 import json
+import os
 import pathlib
 import re
 import sys
@@ -19,7 +20,9 @@ import xml.etree.ElementTree as ET
 
 META = "https://meta.fabricmc.net/v2/versions"
 MAVEN = "https://maven.fabricmc.net"
-PROPS = pathlib.Path(__file__).with_name("gradle.properties")
+HERE = pathlib.Path(__file__).parent
+PROPS = HERE / "gradle.properties"
+MOD_JSON = HERE / "src/main/resources/fabric.mod.json"
 
 
 def fetch(url, timeout=30):
@@ -104,6 +107,16 @@ def main():
     except Exception as error:
         report.append(f"Loom           UNVERAENDERT ({props.get('loom_version')}) - {error}")
 
+    # --- fabric.mod.json auf die wirklich gebaute Fassung ziehen, sonst
+    #     weigert sich der Loader spaeter, den Mod ueberhaupt zu laden.
+    manifest = json.loads(MOD_JSON.read_text(encoding="utf-8"))
+    before = manifest["depends"].get("minecraft")
+    manifest["depends"]["minecraft"] = f">={minecraft}"
+    MOD_JSON.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+                        encoding="utf-8")
+    if before != f">={minecraft}":
+        report.append(f"fabric.mod.json angepasst: minecraft {before} -> >={minecraft}")
+
     print("=" * 62)
     print("Verwendete Fassungen")
     print("=" * 62)
@@ -112,6 +125,18 @@ def main():
     print("=" * 62)
     print()
     print(PROPS.read_text(encoding="utf-8"))
+
+    # Als Annotation, damit die Fassungen oben am Lauf stehen und nicht im Log
+    # gesucht werden muessen.
+    print("::notice title=Fabric-Versionen::" + "%0A".join(report))
+
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as handle:
+            handle.write("### Verwendete Fassungen\n\n")
+            for line in report:
+                handle.write(f"- `{line}`\n")
+            handle.write("\n")
     return 0
 
 

@@ -98,7 +98,7 @@ public final class ClickGuiScreen extends Screen {
 
         Render2D.textGradient(gfx, "GLOWCUBE", x, textY,
                 ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
-        Render2D.text(gfx, "v" + GlowCubeClient.VERSION + "  ·  " + GlowCubeClient.TARGET,
+        Render2D.text(gfx, "v" + GlowCubeClient.VERSION + "  ·  " + GlowCubeClient.target(),
                 x, textY + 12, ColorUtil.fade(Theme.TEXT_FAINT, alpha));
 
         // Suchfeld rechts im Kopf.

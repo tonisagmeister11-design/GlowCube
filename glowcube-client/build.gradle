@@ -19,7 +19,11 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // Kein mappings-Eintrag: unobfuskierte Fassungen brauchen keine.
+    // Loom besteht auf einem mappings-Eintrag, auch wenn es nichts zu
+    // deobfuskieren gibt. Die offiziellen Mojang-Namen sind genau die, die
+    // dieser Quelltext benutzt (Minecraft, LocalPlayer, BlockState ...),
+    // und sie gelten fuer jede Fassung - Yarn wird nicht mehr gepflegt.
+    mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
