@@ -35,6 +35,14 @@ jobs:
       - name: Aktuelle Fabric-Versionen eintragen
         run: python3 resolve-versions.py
 
+      # SeedCrackerX mit in die JAR legen, damit nur eine Datei in den
+      # mods-Ordner muss. Schlaegt es fehl, laeuft der Build normal weiter.
+      - name: SeedCrackerX einbauen
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 bundle-seedcracker.py
+
       - name: Gradle einrichten
         uses: gradle/actions/setup-gradle@v4
 

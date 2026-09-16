@@ -1,3 +1,4 @@
 .build/
 glowcube-client/build/
 glowcube-client/.gradle/
+glowcube-client/src/main/resources/META-INF/jars/

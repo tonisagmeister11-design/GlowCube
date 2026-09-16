@@ -44,6 +44,13 @@ Vorlage fuer das geplante `OreSim`: die Erzvorhersage aus dem Weltseed ueber
 Angebunden ueber die von dort vorgesehene Schnittstelle `SeedCrackerAPI`.
 Kein Code uebernommen.
 
+**Mitgeliefert:** Der Build legt die zur Spielfassung passende
+SeedCrackerX-JAR unveraendert unter `META-INF/jars/` in die GlowCube-JAR, so
+dass nur eine Datei in den `mods`-Ordner muss. Die MIT-Lizenz erlaubt das
+ausdruecklich; die Lizenzdatei liegt in der eingebetteten JAR bei. Wer
+SeedCrackerX lieber selbst pflegt, loescht `bundle-seedcracker.py` aus dem
+Ablauf und legt es wie bisher daneben.
+
 ## Was das bedeutet
 
 Der Quelltext hier ist eigener Code in GlowCubes eigenem Rahmen - kein
