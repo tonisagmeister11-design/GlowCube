@@ -4,54 +4,54 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
+import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.integration.SeedBridge;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Fliegt den Spieler selbsttaetig eine Spirale ab.
+ * Faehrt selbsttaetig Flaeche ab, damit SeedCrackerX zusammenbekommt, was es
+ * zum Rechnen braucht.
  *
- * SeedCrackerX rechnet aus Merkmalen der Welt - Erzadern, Dungeons, Strukturen -
- * den Seed zurueck. Es braucht davon genug, und es sieht nur, was der Client
- * ohnehin geladen bekommt. Wer stehen bleibt, wartet also ewig; wer Flaeche
- * abfliegt, ist schnell fertig. Genau das macht dieses Modul, damit man nicht
- * selbst stundenlang umherfliegen muss.
+ * Der Cracker sieht nur, was der Client ohnehin geladen bekommt. Entscheidend
+ * ist also nicht die Hoehe, sondern **wie viele neue Chunks je Minute**
+ * durchlaufen werden. Deshalb: dicht ueber dem Boden bleiben, dafuer schnell
+ * unterwegs sein. Hoch zu den Wolken zu steigen bringt gar nichts - die
+ * Ladeentfernung ist waagerecht dieselbe, man sieht nur weiter.
  *
- * Die Spirale wird in Chunk-Schritten aufgebaut und waechst nach aussen, so
- * dass um den Startpunkt herum keine Luecken bleiben.
+ * Die Bahn ist eine fortlaufende Spirale, keine Folge von Geraden: dadurch
+ * gibt es keine Bremspunkte an den Ecken und das Tempo bleibt oben.
  */
 public final class SeedHunt extends Module {
+    private final ModeSetting mode = register(new ModeSetting("Mode",
+            "Fliegen oder am Boden laufen", "Fliegen", "Fliegen", "Laufen"));
     private final NumberSetting speed = register(new NumberSetting("Speed",
-            "Bloecke pro Tick", 1.2, 0.2, 4.0, 0.1));
+            "Bloecke pro Tick - hoch heisst schnell", 2.5, 0.2, 6.0, 0.1));
     private final NumberSetting height = register(new NumberSetting("Height",
-            "Hoehe ueber dem Startpunkt", 80, 0, 200, 10));
+            "Bloecke ueber dem Boden, nicht ueber dem Meer", 12, 2, 80, 2));
     private final NumberSetting spacing = register(new NumberSetting("Spacing",
-            "Abstand der Bahnen in Bloecken", 96, 32, 256, 16));
-    private final NumberSetting legs = register(new NumberSetting("Legs",
-            "Wie viele Teilstrecken, dann ist Schluss", 64, 4, 512, 4));
+            "Abstand der Bahnen - kleiner heisst dichter", 128, 32, 384, 16));
     private final BooleanSetting stopOnSeed = register(new BooleanSetting("StopOnSeed",
             "Aufhoeren, sobald der Seed da ist", true));
     private final BooleanSetting autoStart = register(new BooleanSetting("AutoStart",
             "Beim Betreten einer Welt von selbst losfliegen", false));
+    private final NumberSetting report = register(new NumberSetting("Report",
+            "Sekunden zwischen zwei Standmeldungen", 5, 1, 60, 1));
 
-    /** Wird vom ModuleManager beim Betreten einer Welt abgefragt. */
-    public boolean autoStart() {
-        return autoStart.get();
-    }
-
-    // Startpunkt und Stand der Spirale.
     private Vec3 anker = Vec3.ZERO;
-    private int bein;
-    private int schritteImBein;
-    private int gelaufen;
-    private int richtung;
-    private Vec3 ziel = Vec3.ZERO;
-    private int ansage;
+    private double winkel;
+    private int ticks;
+    private double gefahren;
 
     public SeedHunt() {
-        super("SeedHunt", "Fliegt eine Spirale ab, damit SeedCracker satt wird",
+        super("SeedHunt", "Faehrt Flaeche ab und meldet den Fortschritt",
                 Category.MISC, InputConstants.KEY_B);
+    }
+
+    public boolean autoStart() {
+        return autoStart.get();
     }
 
     @Override
@@ -60,87 +60,90 @@ public final class SeedHunt extends Module {
             return;
         }
         anker = player().position();
-        bein = 1;
-        schritteImBein = 1;
-        gelaufen = 0;
-        richtung = 0;
-        ansage = 0;
-        naechstesZiel();
-        melden("SeedHunt laeuft - Spirale um den Startpunkt");
+        winkel = 0.0;
+        ticks = 0;
+        gefahren = 0.0;
+        melden("SeedHunt laeuft - " + mode.get().toLowerCase(java.util.Locale.ROOT));
     }
 
     @Override
     public void onDisable() {
         if (inGame()) {
-            player().setDeltaMovement(0.0, 0.0, 0.0);
+            Vec3 jetzt = player().getDeltaMovement();
+            player().setDeltaMovement(0.0, jetzt.y, 0.0);
         }
     }
 
     @Override
     public void onTick() {
         if (stopOnSeed.get() && SeedBridge.seed() != null) {
-            melden("Seed gefunden: " + SeedBridge.seed() + " - SeedHunt aus");
+            melden("Seed gefunden: " + SeedBridge.seed());
             setEnabled(false);
             return;
         }
-        if (bein > legs.getInt()) {
-            melden("Spirale abgeflogen - SeedHunt aus");
-            setEnabled(false);
-            return;
-        }
+
+        double tempo = speed.get();
+
+        // Fortlaufende Spirale: der Radius waechst je Umlauf um genau den
+        // Bahnabstand, dadurch bleiben zwischen den Bahnen keine Luecken.
+        double radius = Math.max(4.0, spacing.get() * winkel / (2.0 * Math.PI));
+        // Bogenlaenge = Radius mal Winkelschritt - so bleibt das Tempo gleich,
+        // egal wie weit aussen man gerade ist.
+        winkel += tempo / radius;
+        gefahren += tempo;
+
+        Vec3 ziel = new Vec3(
+                anker.x + Math.cos(winkel) * radius,
+                player().position().y,
+                anker.z + Math.sin(winkel) * radius);
 
         Vec3 hier = player().position();
         double dx = ziel.x - hier.x;
         double dz = ziel.z - hier.z;
-        double entfernung = Math.sqrt(dx * dx + dz * dz);
-
-        if (entfernung < 2.0) {
-            naechstesZiel();
+        double laenge = Math.sqrt(dx * dx + dz * dz);
+        if (laenge < 0.01) {
             return;
         }
 
-        // Waagerecht auf das Ziel zu, senkrecht auf die Wunschhoehe.
-        double tempo = speed.get();
-        double zielHoehe = anker.y + height.get();
-        double dy = Math.max(-tempo, Math.min(tempo, zielHoehe - hier.y));
+        double vx = dx / laenge * tempo;
+        double vz = dz / laenge * tempo;
 
-        player().setDeltaMovement(dx / entfernung * tempo, dy, dz / entfernung * tempo);
-        player().setOnGround(false);
-        player().resetFallDistance();
+        if (mode.is("Laufen")) {
+            // Am Boden nur waagerecht schieben - die Schwerkraft macht den Rest.
+            player().setDeltaMovement(vx, player().getDeltaMovement().y, vz);
+            player().setSprinting(true);
+        } else {
+            // Dicht ueber dem Gelaende bleiben: die Wunschhoehe zaehlt ab
+            // Boden, nicht ab Meereshoehe, sonst schrammt man an Bergen und
+            // haengt ueber Taelern sinnlos hoch.
+            int boden = level().getHeight(Heightmap.Types.MOTION_BLOCKING,
+                    (int) Math.floor(hier.x), (int) Math.floor(hier.z));
+            double wunsch = boden + height.get();
+            double dy = Math.max(-tempo, Math.min(tempo, wunsch - hier.y));
+            player().setDeltaMovement(vx, dy, vz);
+            player().setOnGround(false);
+            player().resetFallDistance();
+        }
 
-        // Blickrichtung mitziehen, sonst fliegt man seitwaerts durch die Welt.
-        player().setYRot((float) (Math.toDegrees(Math.atan2(-dx, dz))));
+        // Blick in Fahrtrichtung, sonst fliegt man seitwaerts.
+        player().setYRot((float) Math.toDegrees(Math.atan2(-vx, vz)));
 
-        if (++ansage >= 100) {
-            ansage = 0;
-            melden("SeedHunt: Bahn " + bein + " von " + legs.getInt());
+        if (++ticks >= report.getInt() * 20) {
+            ticks = 0;
+            melden(stand());
         }
     }
 
-    /**
-     * Quadratische Spirale: zwei Teilstrecken gleicher Laenge, dann wird die
-     * Laenge um einen Schritt groesser. So entsteht eine Bahn ohne Luecken.
-     */
-    private void naechstesZiel() {
-        if (gelaufen >= schritteImBein) {
-            gelaufen = 0;
-            richtung = (richtung + 1) % 4;
-            bein++;
-            if (bein % 2 == 1) {
-                schritteImBein++;
-            }
-        }
-        gelaufen++;
-
-        double weite = spacing.get();
-        Vec3 versatz = switch (richtung) {
-            case 0 -> new Vec3(weite, 0, 0);
-            case 1 -> new Vec3(0, 0, weite);
-            case 2 -> new Vec3(-weite, 0, 0);
-            default -> new Vec3(0, 0, -weite);
-        };
-        Vec3 bisher = ziel.equals(Vec3.ZERO) ? player().position() : ziel;
-        ziel = bisher.add(versatz.x, 0.0, versatz.z);
+    /** Was in der Standmeldung und im HUD steht. */
+    private String stand() {
+        Double bits = SeedBridge.bits();
+        String fortschritt = bits == null
+                ? "SeedCracker nicht da"
+                : String.format(java.util.Locale.ROOT, "%.1f Bit", bits);
+        return String.format(java.util.Locale.ROOT,
+                "%s  |  %.0f Bloecke  |  Radius %.0f",
+                fortschritt, gefahren,
+                Math.max(4.0, spacing.get() * winkel / (2.0 * Math.PI)));
     }
 
     private void melden(String text) {
@@ -151,6 +154,7 @@ public final class SeedHunt extends Module {
 
     @Override
     public String hudSuffix() {
-        return "Bahn " + bein;
+        Double bits = SeedBridge.bits();
+        return bits == null ? mode.get() : String.format(java.util.Locale.ROOT, "%.1f Bit", bits);
     }
 }

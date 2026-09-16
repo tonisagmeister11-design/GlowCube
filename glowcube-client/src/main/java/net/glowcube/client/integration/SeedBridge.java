@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,6 +31,56 @@ public final class SeedBridge implements SeedCrackerAPI {
     /** Der zuletzt gefundene Seed, oder null. */
     public static Long seed() {
         return gefundenerSeed;
+    }
+
+    // ---------------------------------------------------------- Fortschritt
+
+    /**
+     * Wie viele Bit an Information SeedCrackerX bisher gesammelt hat.
+     *
+     * Der Weltseed hat 48 nutzbare Bit; sobald genug Merkmale beisammen sind,
+     * faellt die Rechnung durch. Die Zahl waechst also sichtbar mit, waehrend
+     * man Flaeche abfaehrt - das ist der Fortschrittsbalken, den es sonst
+     * nicht gibt.
+     *
+     * Abgefragt wird ueber Reflexion, mit Absicht: SeedCrackerX ist optional,
+     * und je nach Fassung kann die Klasse anders aussehen. Faellt etwas davon
+     * weg, gibt es hier null statt eines Absturzes.
+     */
+    private static Method bitsMethode;
+    private static Method storageMethode;
+    private static Method getMethode;
+    private static boolean reflexionVersucht;
+
+    public static Double bits() {
+        if (!reflexionVersucht) {
+            reflexionVersucht = true;
+            try {
+                Class<?> cracker = Class.forName("kaptainwutax.seedcrackerX.SeedCracker");
+                getMethode = cracker.getMethod("get");
+                storageMethode = cracker.getMethod("getDataStorage");
+                bitsMethode = storageMethode.getReturnType().getMethod("getBaseBits");
+            } catch (Throwable egal) {
+                GlowCubeClient.LOGGER.info("SeedCrackerX nicht gefunden - keine Bit-Anzeige");
+                bitsMethode = null;
+            }
+        }
+        if (bitsMethode == null) {
+            return null;
+        }
+        try {
+            Object instanz = getMethode.invoke(null);
+            if (instanz == null) {
+                return null;
+            }
+            Object speicher = storageMethode.invoke(instanz);
+            if (speicher == null) {
+                return null;
+            }
+            return ((Number) bitsMethode.invoke(speicher)).doubleValue();
+        } catch (Throwable egal) {
+            return null;
+        }
     }
 
     @Override
