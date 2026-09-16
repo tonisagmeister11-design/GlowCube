@@ -27,28 +27,51 @@ public final class HoleEsp extends Module {
     private final BooleanSetting nurBedrock = register(new BooleanSetting("OnlyBedrock",
             "Nur die wirklich sicheren zeigen", false));
 
+    /** Gefundene Loecher mit ihrer Farbe - einmal je Tick gefuellt. */
+    private final java.util.Map<BlockPos, Integer> gefunden = new java.util.LinkedHashMap<>();
+
     public HoleEsp() {
         super("HoleESP", "Zeigt sichere Loecher", Category.RENDER);
     }
 
     @Override
-    public void onWorldRender(WorldRenderContext context) {
-        if (!inGame()) {
-            return;
-        }
+    public void onDisable() {
+        gefunden.clear();
+    }
+
+    /**
+     * Gesucht wird im Tick, nicht im Bild.
+     *
+     * Vorher lief die Suche bei jedem Frame - bei Reichweite 12 waren das
+     * 15.625 Bloecke mal sechzig Bilder je Sekunde. Einmal je Tick reicht
+     * voellig, denn Loecher entstehen nicht zwischen zwei Bildern. Senkrecht
+     * wird ausserdem nur ein schmales Band geprueft: ein Loch drei Stockwerke
+     * ueber einem nuetzt nichts.
+     */
+    @Override
+    public void onTick() {
+        gefunden.clear();
         int radius = range.getInt();
         BlockPos mitte = player().blockPosition();
 
         for (int x = -radius; x <= radius; x++) {
             for (int z = -radius; z <= radius; z++) {
-                for (int y = -radius; y <= radius; y++) {
+                for (int y = -3; y <= 3; y++) {
                     BlockPos stelle = mitte.offset(x, y, z);
                     int farbe = pruefen(stelle);
                     if (farbe != 0) {
-                        Render3D.box(context, new AABB(stelle).deflate(0.05), farbe, true);
+                        gefunden.put(stelle, farbe);
                     }
                 }
             }
+        }
+    }
+
+    @Override
+    public void onWorldRender(WorldRenderContext context) {
+        for (var eintrag : gefunden.entrySet()) {
+            Render3D.box(context, new AABB(eintrag.getKey()).deflate(0.05),
+                    eintrag.getValue(), true);
         }
     }
 

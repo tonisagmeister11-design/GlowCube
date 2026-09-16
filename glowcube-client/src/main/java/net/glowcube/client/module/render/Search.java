@@ -27,15 +27,18 @@ public final class Search extends Module {
             "minecraft:ancient_debris", "minecraft:spawner", "minecraft:trial_spawner",
             "minecraft:vault", "minecraft:budding_amethyst"));
     private final NumberSetting range = register(new NumberSetting("Range",
-            "Umkreis in Bloecken", 32, 8, 96, 8));
-    private final NumberSetting interval = register(new NumberSetting("Interval",
-            "Ticks zwischen zwei Durchlaeufen", 20, 5, 100, 5));
+            "Umkreis in Bloecken", 32, 8, 64, 8));
+    private final NumberSetting perTick = register(new NumberSetting("LayersPerTick",
+            "Wie viele Hoehenschichten je Tick geprueft werden", 6, 1, 32, 1));
 
     private static final int FARBE = 0xFF5FE3A1;
 
-    /** Gefundene Stellen, damit nicht jeder Frame neu gesucht wird. */
+    /** Gefundene Stellen - gezeichnet wird aus dieser Liste, nicht neu gesucht. */
     private final java.util.List<BlockPos> treffer = new java.util.ArrayList<>();
-    private int ticks;
+    /** Was gerade zusammengesucht wird; erst am Ende wird umgeschaltet. */
+    private java.util.List<BlockPos> imBau = new java.util.ArrayList<>();
+    /** Aktuelle Hoehenschicht des laufenden Durchgangs. */
+    private int schicht;
 
     public Search() {
         super("Search", "Markiert gesuchte Bloecke, ohne die Sicht zu veraendern",
@@ -44,48 +47,55 @@ public final class Search extends Module {
 
     @Override
     public void onEnable() {
-        ticks = 0;
+        schicht = 0;
         treffer.clear();
+        imBau = new java.util.ArrayList<>();
     }
 
     @Override
     public void onDisable() {
         treffer.clear();
+        imBau.clear();
     }
 
+    /**
+     * Sucht schichtweise statt auf einen Schlag.
+     *
+     * Bei Reichweite 32 sind das 274.625 Bloecke - alle in einem Tick zu
+     * pruefen laesst das Bild sichtbar stocken. Deshalb wandert der
+     * Durchgang Hoehenschicht fuer Hoehenschicht durch und schaltet erst um,
+     * wenn er ganz durch ist. So bleibt die angezeigte Liste immer
+     * vollstaendig, statt zwischendurch halb leer zu sein.
+     */
     @Override
     public void onTick() {
-        // Die Suche laeuft nicht jeden Frame, sondern in Abstaenden - sonst
-        // kostet sie mehr Bilder pro Sekunde, als sie wert ist.
-        if (++ticks < interval.getInt()) {
-            return;
-        }
-        ticks = 0;
-        suchen();
-    }
-
-    private void suchen() {
-        treffer.clear();
         int radius = range.getInt();
+        int hoehen = radius * 2 + 1;
         BlockPos mitte = player().blockPosition();
         BlockPos.MutableBlockPos stelle = new BlockPos.MutableBlockPos();
 
-        for (int x = -radius; x <= radius; x++) {
-            for (int z = -radius; z <= radius; z++) {
-                for (int y = -radius; y <= radius; y++) {
-                    // Ausserhalb der Welthoehe liefert getBlockState Luft -
-                    // eine eigene Pruefung braucht es dafuer nicht.
-                    stelle.set(mitte.getX() + x, mitte.getY() + y, mitte.getZ() + z);
+        for (int n = 0; n < perTick.getInt() && schicht < hoehen; n++, schicht++) {
+            int y = mitte.getY() - radius + schicht;
+            for (int x = -radius; x <= radius; x++) {
+                for (int z = -radius; z <= radius; z++) {
+                    stelle.set(mitte.getX() + x, y, mitte.getZ() + z);
                     BlockState zustand = level().getBlockState(stelle);
                     if (zustand.isAir()) {
                         continue;
                     }
                     String id = BuiltInRegistries.BLOCK.getKey(zustand.getBlock()).toString();
                     if (blocks.contains(id)) {
-                        treffer.add(stelle.immutable());
+                        imBau.add(stelle.immutable());
                     }
                 }
             }
+        }
+
+        if (schicht >= hoehen) {
+            treffer.clear();
+            treffer.addAll(imBau);
+            imBau = new java.util.ArrayList<>();
+            schicht = 0;
         }
     }
 

@@ -8,6 +8,7 @@ import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.core.setting.Setting;
+import net.glowcube.client.integration.SeedBridge;
 import net.glowcube.client.util.Anim;
 import net.glowcube.client.util.ColorUtil;
 import net.glowcube.client.util.Render2D;
@@ -38,6 +39,7 @@ public final class ClickGuiScreen extends Screen {
     private static final int ROW_H = 16;
     private static final int GAP = 5;
     private static final int PAD = 12;
+    private static final int FOOTER_H = 20;
 
     // Bleibt zwischen zwei Oeffnungen stehen - man findet sich schneller zurecht.
     private static Category category = Category.RENDER;
@@ -93,6 +95,7 @@ public final class ClickGuiScreen extends Screen {
         drawHeader(gfx, y, mouseX, mouseY, progress);
         drawRail(gfx, y, mouseX, mouseY, progress);
         drawContent(gfx, y, mouseX, mouseY, progress);
+        drawFooter(gfx, y, progress);
     }
 
     private void drawHeader(GuiGraphics gfx, float top, int mouseX, int mouseY, float alpha) {
@@ -149,13 +152,15 @@ public final class ClickGuiScreen extends Screen {
                         ColorUtil.fade(Theme.PANEL_LIGHT, lit * 0.9f * alpha));
             }
             if (active) {
-                // Der leuchtende Streifen links markiert die offene Kategorie.
-                Render2D.roundedGradientH(gfx, x + 8, cursor + 6, 3, 16, 1,
-                        ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
+                // Der leuchtende Streifen links markiert die offene Kategorie -
+                // in ihrer eigenen Farbe, damit man sie am Rand wiedererkennt.
+                Render2D.roundedRect(gfx, x + 8, cursor + 6, 3, 16, 1,
+                        ColorUtil.fade(value.color(), alpha));
             }
 
             int textColor = active ? Theme.TEXT : hover ? Theme.TEXT_DIM : Theme.TEXT_FAINT;
-            Render2D.text(gfx, value.icon(), x + 20, cursor + 10, ColorUtil.fade(textColor, alpha));
+            Render2D.text(gfx, value.icon(), x + 20, cursor + 10,
+                    ColorUtil.fade(active || hover ? value.color() : textColor, alpha));
             Render2D.text(gfx, value.label(), x + 34, cursor + 10, ColorUtil.fade(textColor, alpha));
 
             int count = countEnabled(value);
@@ -163,8 +168,8 @@ public final class ClickGuiScreen extends Screen {
                 String badge = String.valueOf(count);
                 float badgeX = x + RAIL_W - 16 - Render2D.width(badge) - 6;
                 Render2D.roundedRect(gfx, badgeX, cursor + 8, Render2D.width(badge) + 10, 12, 6,
-                        ColorUtil.fade(Theme.accentStart(), 0.20f * alpha));
-                Render2D.text(gfx, badge, badgeX + 5, cursor + 10, ColorUtil.fade(Theme.accentStart(), alpha));
+                        ColorUtil.fade(value.color(), 0.22f * alpha));
+                Render2D.text(gfx, badge, badgeX + 5, cursor + 10, ColorUtil.fade(value.color(), alpha));
             }
             cursor += 32;
         }
@@ -174,11 +179,50 @@ public final class ClickGuiScreen extends Screen {
                 ColorUtil.fade(binding != null ? Theme.accentStart() : Theme.TEXT_FAINT, alpha));
     }
 
+    /**
+     * Fussleiste: wie viele Module laufen, und wie weit SeedCrackerX ist.
+     * Die Bit-Zahl steht hier, weil sie beim Seedsuchen das Einzige ist,
+     * worauf man wirklich wartet.
+     */
+    private void drawFooter(GuiGraphics gfx, float top, float alpha) {
+        float y = top + PANEL_H - 16;
+        float x = panelX + RAIL_W + PAD + 1;
+
+        Render2D.rect(gfx, panelX + RAIL_W + 1, y - 4, PANEL_W - RAIL_W - 2, 1,
+                ColorUtil.fade(Theme.OUTLINE_SOFT, alpha));
+
+        int aktiv = 0;
+        for (Module module : GlowCubeClient.modules().all()) {
+            if (module.isEnabled()) {
+                aktiv++;
+            }
+        }
+        String links = aktiv + " von " + GlowCubeClient.modules().all().size() + " aktiv";
+        Render2D.text(gfx, links, x, y, ColorUtil.fade(Theme.TEXT_FAINT, alpha));
+
+        Double bits = SeedBridge.bits();
+        Long seed = SeedBridge.seed();
+        String rechts;
+        int farbe;
+        if (seed != null) {
+            rechts = "Seed " + seed;
+            farbe = Theme.ACCENT_A;
+        } else if (bits != null) {
+            rechts = String.format(java.util.Locale.ROOT, "SeedCracker %.1f / 48 Bit", bits);
+            farbe = Theme.accentStart();
+        } else {
+            rechts = "GLOWCUBE";
+            farbe = Theme.TEXT_FAINT;
+        }
+        Render2D.text(gfx, rechts, panelX + PANEL_W - PAD - Render2D.width(rechts), y,
+                ColorUtil.fade(farbe, alpha));
+    }
+
     private void drawContent(GuiGraphics gfx, float top, int mouseX, int mouseY, float alpha) {
         float areaX = panelX + RAIL_W + 1;
         float areaY = top + HEADER_H;
         float areaW = PANEL_W - RAIL_W - 2;
-        float areaH = PANEL_H - HEADER_H - 1;
+        float areaH = PANEL_H - HEADER_H - 1 - FOOTER_H;
 
         List<Row> rows = buildRows(areaY);
         float contentHeight = rows.isEmpty() ? 0 : rows.get(rows.size() - 1).y + rows.get(rows.size() - 1).height - areaY;
