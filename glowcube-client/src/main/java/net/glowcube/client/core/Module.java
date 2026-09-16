@@ -1,7 +1,6 @@
 package net.glowcube.client.core;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.glowcube.client.core.setting.Setting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -50,10 +49,6 @@ public abstract class Module {
 
     /** Jeden Client-Tick, nur solange das Modul an ist und eine Welt existiert. */
     public void onTick() {
-    }
-
-    /** Jeden Frame in der Welt, nach den Entities. */
-    public void onWorldRender(WorldRenderContext context) {
     }
 
     // ----------------------------------------------------------------- Zustand

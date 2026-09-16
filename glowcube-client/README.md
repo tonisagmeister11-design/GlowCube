@@ -1,7 +1,14 @@
 # GlowCube
 
 Ein clientseitiger Werkzeugkasten fuer Minecraft Java 26.2 auf Fabric:
-X-Ray, ESP, Tracers, Flight, KillAura und ein ClickGUI.
+X-Ray, Fullbright, Flight, Speed, KillAura und mehr.
+
+**Stand:** Minecraft 26.2 hat die Zeichen-API ausgetauscht (kein `GuiGraphics`
+und kein `MultiBufferSource` mehr, stattdessen ein Einreiche-Modell). Deshalb
+kommen die zwoelf Module, die nichts zeichnen, zuerst - bedient ueber Tasten.
+ClickGUI, HUD und die ESP-Module liegen unter `spaeter/` und folgen, sobald
+sie auf das neue Modell umgeschrieben sind; dort steht auch die vollstaendige
+Gegenueberstellung der alten und neuen Namen.
 
 > Auf oeffentlichen Servern faellt das sofort auf und ist dort Bannmaterial.
 > Gedacht ist es fuer Einzelspieler und den eigenen Testserver.
@@ -42,24 +49,42 @@ fuer 26.2. Eine Fassung daneben und das Spiel startet nicht.
 
 ## Bedienen
 
+Ab Werk sind drei Tasten belegt:
+
 | Taste | Wirkung |
 | --- | --- |
-| `Rechte Umschalt` | ClickGUI oeffnen |
 | `X` | X-Ray |
 | `F` | Flight |
 | `C` | Zoom |
 
-Im ClickGUI:
+Was geschaltet wurde, steht kurz ueber der Hotbar.
 
-* **Linksklick** schaltet ein Modul an oder aus
-* **Rechtsklick** klappt seine Einstellungen auf
-* **Mittelklick** belegt die Taste neu - danach die gewuenschte Taste druecken
-  (`ESC` nimmt die Belegung weg)
-* Einfach **lostippen** sucht ueber alle Kategorien
-* Bei X-Ray auf **Blocks** klicken: dort suchst du Bloecke und klickst sie an
-  oder ab
+Die uebrigen neun Module haben noch keine Taste. Bis das ClickGUI wieder da
+ist, werden sie in `.minecraft/config/glowcube.json` eingeschaltet: dort steht
+zu jedem Modul `enabled` und `key`. Als `key` traegt man die GLFW-Nummer der
+Taste ein (`71` ist G, `72` H, `82` R, `86` V); `-1` heisst keine Taste.
+Die Datei entsteht beim ersten Start und wird beim Beenden zurueckgeschrieben -
+also Minecraft schliessen, bearbeiten, wieder starten.
 
-Alles wird in `.minecraft/config/glowcube.json` gemerkt.
+Dieselbe Datei enthaelt unter X-Ray die Liste der sichtbaren Bloecke. Voreingestellt
+sind alle Erze, Kisten, Spawner und Portale.
+
+## Die Module
+
+| Modul | Was es tut |
+| --- | --- |
+| X-Ray | Blendet alles aus, was nicht auf der Liste steht |
+| Fullbright | Keine Dunkelheit mehr |
+| Zoom | Fernglas |
+| Flight | Fliegen ohne Kreativmodus (Motion oder Abilities) |
+| Speed | Schneller laufen |
+| Step | Bloecke hochlaufen ohne Sprung |
+| NoFall | Kein Sturzschaden |
+| AutoSprint | Immer sprinten |
+| KillAura | Greift Ziele in Reichweite an |
+| AutoTool | Bestes Werkzeug beim Abbauen |
+| AutoRespawn | Sofort wieder einsteigen |
+| AntiAFK | Haelt dich auf dem Server |
 
 ## Wenn etwas nicht klappt
 
