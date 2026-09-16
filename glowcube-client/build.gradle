@@ -29,6 +29,13 @@ repositories {
     mavenCentral()
 }
 
+// Das klassische Loom remappt Mods und legt dafuer modImplementation an.
+// Das neue remappt nichts, kennt die Konfiguration also gar nicht - dort
+// sind Mods ganz normale Abhaengigkeiten. Statt das aus der Plugin-Kennung
+// abzuleiten, wird schlicht nachgesehen, was existiert.
+def modConfiguration = configurations.findByName('modImplementation') ? 'modImplementation' : 'implementation'
+logger.lifecycle("GlowCube: Mod-Abhaengigkeiten ueber ${modConfiguration}")
+
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
@@ -42,15 +49,21 @@ dependencies {
         mappings "net.fabricmc:intermediary:${project.minecraft_version}:v2"
     }
 
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    add(modConfiguration, "net.fabricmc:fabric-loader:${project.loader_version}")
+    add(modConfiguration, "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}")
 }
 
-loom {
-    mixin {
-        // Ohne Obfuskation gibt es nichts zu remappen - die alte
-        // Annotation-Processor-Kette entfaellt samt refmap.
-        useLegacyMixinAp = false
+// Denselben Gedanken noch einmal: der mixin-Block schaltet die alte
+// Remapping-Kette samt refmap ab. Wo nichts remappt wird, gibt es ihn nicht.
+if (project.extensions.findByName('loom') != null) {
+    loom {
+        try {
+            mixin {
+                useLegacyMixinAp = false
+            }
+        } catch (MissingMethodException ignored) {
+            logger.lifecycle('GlowCube: Loom kennt keinen mixin-Block - unobfuskiert, nichts abzuschalten.')
+        }
     }
 }
 
