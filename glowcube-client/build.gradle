@@ -84,3 +84,18 @@ tasks.withType(JavaCompile).configureEach {
     it.options.encoding = 'UTF-8'
     it.options.release = 25
 }
+
+// Schreibt heraus, welche JARs beim Uebersetzen wirklich benutzt werden.
+// probe-imports.py liest das und sagt, wie die Klassen in dieser Fassung
+// heissen - das ist schneller, als jeden Namen einzeln per Fehlversuch zu
+// erfragen.
+tasks.register('classpathReport') {
+    doLast {
+        def ziel = layout.buildDirectory.file('classpath.txt').get().asFile
+        ziel.parentFile.mkdirs()
+        ziel.text = sourceSets.main.compileClasspath.files
+                .collect { it.absolutePath }
+                .join('\n')
+        println "Classpath steht in ${ziel}"
+    }
+}

@@ -33,6 +33,14 @@ jobs:
       - name: Gradle einrichten
         uses: gradle/actions/setup-gradle@v4
 
+      # Meldet umbenannte Klassen, bricht aber nicht ab - der Build danach
+      # findet zusaetzlich die Fehler, die tiefer als der Import sitzen.
+      - name: Klassennamen gegen die echten JARs pruefen
+        continue-on-error: true
+        run: |
+          gradle classpathReport --no-daemon -q
+          python3 probe-imports.py build/classpath.txt
+
       - name: Bauen
         run: |
           set -o pipefail
@@ -52,7 +60,7 @@ jobs:
               s = line.strip()
               if s.startswith("at ") or s.startswith("... "):
                   continue          # Stacktrace-Rahmen sagen nichts
-              if re.match(r"(Caused by:|FAILURE:|> |\* What went wrong|.*\.java:\d+: error:)", s):
+              if re.match(r"(Caused by:|FAILURE:|> |\* What went wrong|symbol:|location:|.*\.java:\d+: error:)", s):
                   keep.append(s[:300])
           seen, unique = set(), []
           for line in keep:
