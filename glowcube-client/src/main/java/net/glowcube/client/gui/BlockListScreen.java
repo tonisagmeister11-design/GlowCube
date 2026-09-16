@@ -9,7 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -123,7 +123,7 @@ public final class BlockListScreen extends Screen {
         }
         String needle = input.toLowerCase(Locale.ROOT);
         List<String> found = new ArrayList<>();
-        for (ResourceLocation id : BuiltInRegistries.BLOCK.keySet()) {
+        for (Identifier id : BuiltInRegistries.BLOCK.keySet()) {
             String text = id.toString();
             if (text.contains(needle)) {
                 found.add(text);

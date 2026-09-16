@@ -114,7 +114,7 @@ def main():
         print(f"       gebraucht in: {', '.join(dateien)}")
         kurz = f"{name} -> {vorschlag}"
         if not alternativen:
-            kurz += " | Paket: " + (", ".join(nachbarn[:12]) if nachbarn else "leer")
+            kurz += " | Paket: " + (", ".join(nachbarn[:80]) if nachbarn else "leer")
         zeilen.append(kurz)
 
     print("::error title=Umbenannte Klassen::" + "%0A".join(zeilen[:25]))
