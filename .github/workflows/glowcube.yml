@@ -48,10 +48,13 @@ jobs:
           # Wo der Name nicht weiterhilft, fragt man dort nach, wo die Klasse
           # benutzt wird: was nimmt Screen.render() heute entgegen?
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.world.entity.Entity:ViewVector|position|getEye"
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode:" \
+            "net.minecraft.client.multiplayer.ClientPacketListener:send|getConnection" \
+            "net.minecraft.world.inventory.ClickType:" \
+            "net.minecraft.client.Minecraft:imer|Delta|pause"
           # Die alte Zeichen-API ist komplett ersetzt. Weder Name noch Paket
           # helfen da weiter - also nach Begriffen suchen.
-          python3 probe-search.py build/classpath.txt RenderTypes
+          python3 probe-search.py build/classpath.txt DeltaTracker
 
       - name: Bauen
         run: |
