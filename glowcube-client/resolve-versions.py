@@ -131,15 +131,42 @@ def main():
     except Exception as error:
         report.append(f"Fabric API     UNVERAENDERT ({props.get('fabric_version')}) - {error}")
 
-    # --- Loom. Zwei Baustellen auf einmal: welche Plugin-Kennung es gibt und
-    #     in welcher Fassung. Seit den unobfuskierten Fassungen liegt neben
-    #     dem alten 'fabric-loom' ein 'net.fabricmc.fabric-loom', das nicht
-    #     mehr remappt - und nur dieses kommt ohne mappings aus. Welches
-    #     vorhanden ist, entscheidet der Marker im Maven, nicht eine Annahme.
+    # --- Erst bei Mojang nachsehen, wie die Fassung beschaffen ist: braucht
+    #     sie Mappings, und welches Java verlangt sie? Beides steht dort.
+    mode = "none"
+    java = props.get("java_version", "21")
+    try:
+        listing = json.loads(fetch("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"))
+        entry = next((v for v in listing["versions"] if v["id"] == minecraft), None)
+        if entry:
+            detail = json.loads(fetch(entry["url"]))
+            if "client_mappings" in detail.get("downloads", {}):
+                mode = "mojang"
+            java = str(detail.get("javaVersion", {}).get("majorVersion", java))
+            report.append(f"Mappings       {mode}  "
+                          f"({'Mojang liefert welche' if mode == 'mojang' else 'unobfuskiert, keine noetig'})")
+            report.append(f"Java           {java}")
+        else:
+            report.append(f"Mappings       none  ({minecraft} steht nicht im Mojang-Verzeichnis)")
+    except Exception as error:
+        report.append(f"Mappings       none  (Mojang nicht erreichbar: {error})")
+    write_prop("mappings_mode", mode)
+    write_prop("java_version", java)
+
+    # --- Loom. Es gibt zwei Plugins, und welches passt, haengt genau daran:
+    #     'fabric-loom' remappt und braucht Mappings, 'net.fabricmc.fabric-loom'
+    #     remappt nicht und kommt nur mit unobfuskierten Fassungen klar.
+    if mode == "none":
+        kandidaten = [("net.fabricmc.fabric-loom",
+                       "net/fabricmc/fabric-loom/net.fabricmc.fabric-loom.gradle.plugin"),
+                      ("fabric-loom", "fabric-loom/fabric-loom.gradle.plugin")]
+    else:
+        kandidaten = [("fabric-loom", "fabric-loom/fabric-loom.gradle.plugin"),
+                      ("net.fabricmc.fabric-loom",
+                       "net/fabricmc/fabric-loom/net.fabricmc.fabric-loom.gradle.plugin")]
+
     loom = loom_id = None
-    for plugin_id, marker in (
-            ("net.fabricmc.fabric-loom", "net/fabricmc/fabric-loom/net.fabricmc.fabric-loom.gradle.plugin"),
-            ("fabric-loom", "fabric-loom/fabric-loom.gradle.plugin")):
+    for plugin_id, marker in kandidaten:
         try:
             found = newest_in_maven(marker)
         except Exception as error:
@@ -151,7 +178,6 @@ def main():
             break
 
     if not loom:
-        # Notnagel: die Bibliothek selbst, mit der alten Kennung.
         try:
             loom, loom_id = newest_in_maven("net/fabricmc/fabric-loom"), "fabric-loom"
             report.append(f"Loom-Plugin    fabric-loom  {loom}  (ueber die Bibliothek)")
@@ -163,34 +189,15 @@ def main():
         write_prop("loom_plugin_id", loom_id)
     else:
         emit(report)
-        print("::error title=Loom::Keine Loom-Fassung gefunden. Ohne die ist "
-              "jeder weitere Fehler nur Folgeschaden.")
+        print("::error title=Loom::Keine Loom-Fassung gefunden.")
         return 1
-
-    # --- Braucht diese Spielfassung ueberhaupt Mappings? Seit 26.1 ist
-    #     Minecraft unobfuskiert und liefert keine mappings-Datei mehr mit.
-    #     Statt zu raten wird bei Mojang nachgesehen.
-    mode = "none"
-    try:
-        listing = json.loads(fetch("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"))
-        entry = next((v for v in listing["versions"] if v["id"] == minecraft), None)
-        if entry:
-            detail = json.loads(fetch(entry["url"]))
-            if "client_mappings" in detail.get("downloads", {}):
-                mode = "mojang"
-            report.append(f"Mappings       {mode}  "
-                          f"({'Mojang liefert welche' if mode == 'mojang' else 'unobfuskiert, keine noetig'})")
-        else:
-            report.append(f"Mappings       none  ({minecraft} steht nicht im Mojang-Verzeichnis)")
-    except Exception as error:
-        report.append(f"Mappings       none  (Mojang nicht erreichbar: {error})")
-    write_prop("mappings_mode", mode)
 
     # --- fabric.mod.json auf die wirklich gebaute Fassung ziehen, sonst
     #     weigert sich der Loader spaeter, den Mod ueberhaupt zu laden.
     manifest = json.loads(MOD_JSON.read_text(encoding="utf-8"))
     before = manifest["depends"].get("minecraft")
     manifest["depends"]["minecraft"] = f">={minecraft}"
+    manifest["depends"]["java"] = f">={java}"
     MOD_JSON.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
                         encoding="utf-8")
     if before != f">={minecraft}":

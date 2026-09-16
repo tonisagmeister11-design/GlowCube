@@ -1,6 +1,7 @@
 package net.glowcube.client.core;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.glowcube.client.core.setting.Setting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -49,6 +50,10 @@ public abstract class Module {
 
     /** Jeden Client-Tick, nur solange das Modul an ist und eine Welt existiert. */
     public void onTick() {
+    }
+
+    /** Jeden Frame in der Welt, nach den Entities. */
+    public void onWorldRender(WorldRenderContext context) {
     }
 
     // ----------------------------------------------------------------- Zustand
@@ -102,14 +107,11 @@ public abstract class Module {
         return key != InputConstants.UNKNOWN.getValue();
     }
 
-    /**
-     * Die Taste als Text. Bewusst nur die GLFW-Nummer: den huebschen Namen gab
-     * es ueber InputConstants.getKey, dessen Signatur sich in 26.2 geaendert
-     * hat - und gebraucht wurde er nur im ClickGUI, das gerade nicht gebaut
-     * wird. Dieselbe Nummer steht auch in der Konfigurationsdatei.
-     */
     public String keyName() {
-        return hasKey() ? "Taste " + key : "--";
+        if (!hasKey()) {
+            return "--";
+        }
+        return InputConstants.getKey(key, 0).getDisplayName().getString().toUpperCase(java.util.Locale.ROOT);
     }
 
     /** Was im HUD hinter dem Namen steht, z.B. "Speed [2.5]". Null heisst: nichts. */

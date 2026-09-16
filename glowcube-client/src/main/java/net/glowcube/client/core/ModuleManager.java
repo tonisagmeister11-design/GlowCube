@@ -1,15 +1,21 @@
 package net.glowcube.client.core;
 
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.movement.AutoSprint;
 import net.glowcube.client.module.movement.Flight;
 import net.glowcube.client.module.movement.NoFall;
 import net.glowcube.client.module.movement.Speed;
 import net.glowcube.client.module.movement.Step;
+import net.glowcube.client.module.misc.ClickGuiModule;
 import net.glowcube.client.module.misc.SeedHunt;
 import net.glowcube.client.module.player.AntiAfk;
+import net.glowcube.client.module.player.AutoRespawn;
 import net.glowcube.client.module.player.AutoTool;
+import net.glowcube.client.module.render.EntityEsp;
 import net.glowcube.client.module.render.FullBright;
+import net.glowcube.client.module.render.StorageEsp;
+import net.glowcube.client.module.render.Tracers;
 import net.glowcube.client.module.render.XRay;
 import net.glowcube.client.module.render.Zoom;
 import net.minecraft.client.Minecraft;
@@ -37,6 +43,9 @@ public final class ModuleManager {
         // Render
         add(new XRay());
         add(new FullBright());
+        add(new StorageEsp());
+        add(new EntityEsp());
+        add(new Tracers());
         add(new Zoom());
         // Movement
         add(new Flight());
@@ -48,9 +57,11 @@ public final class ModuleManager {
         add(new KillAura());
         // Player
         add(new AutoTool());
+        add(new AutoRespawn());
         add(new AntiAfk());
         // Misc
         add(new SeedHunt());
+        add(new ClickGuiModule());
     }
 
     private void add(Module module) {
@@ -141,6 +152,14 @@ public final class ModuleManager {
         }
     }
 
+    public void onWorldRender(WorldRenderContext context) {
+        for (Module module : modules) {
+            if (module.isEnabled()) {
+                module.onWorldRender(context);
+            }
+        }
+    }
+
     /** Ein Tastendruck ausserhalb von Textfeldern. */
     public void onKey(int key) {
         for (Module module : modules) {
@@ -162,8 +181,8 @@ public final class ModuleManager {
             return;
         }
         String zustand = module.isEnabled() ? "an" : "aus";
-        player.sendOverlayMessage(
-                Component.literal("[GlowCube] " + module.name() + ": " + zustand));
+        player.displayClientMessage(
+                Component.literal("[GlowCube] " + module.name() + ": " + zustand), true);
     }
 
     /**

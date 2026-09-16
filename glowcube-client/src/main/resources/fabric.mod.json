@@ -3,7 +3,7 @@
   "id": "glowcube",
   "version": "${version}",
   "name": "GlowCube",
-  "description": "Ein clientseitiger Werkzeugkasten: X-Ray, Fullbright, Zoom, Flight, Speed, Step, NoFall, AutoSprint, KillAura, AutoTool, AntiAFK.",
+  "description": "Ein clientseitiger Werkzeugkasten mit X-Ray, ESP, ClickGUI, SeedHunt und OreSim.",
   "authors": ["GlowCube"],
   "license": "MIT",
   "environment": "client",
@@ -23,7 +23,7 @@
   "depends": {
     "fabricloader": ">=0.17.0",
     "fabric-api": "*",
-    "minecraft": ">=26.2",
-    "java": ">=25"
+    "minecraft": ">=1.21.11",
+    "java": ">=21"
   }
 }

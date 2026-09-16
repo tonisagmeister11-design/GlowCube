@@ -28,7 +28,9 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '25'
+          java-version: |
+            21
+            25
 
       - name: Aktuelle Fabric-Versionen eintragen
         run: python3 resolve-versions.py
@@ -46,15 +48,14 @@ jobs:
           # Wo der Name nicht weiterhilft, fragt man dort nach, wo die Klasse
           # benutzt wird: was nimmt Screen.render() heute entgegen?
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.client.renderer.LevelRenderer:" \
-            "net.minecraft.client.Minecraft:gameRenderer|BlockColors|gui|getChat" \
-            "net.minecraft.client.renderer.GameRenderer:Camera" \
-            "net.minecraft.client.gui.Gui:hat" \
-            "net.minecraft.client.multiplayer.ClientLevel:ection|irty" \
-            "net.minecraft.client.player.LocalPlayer:essage|ystem"
+            "net.minecraft.client.gui.GuiGraphics:fill|drawString|Scissor|guiWidth" \
+            "com.mojang.blaze3d.vertex.VertexConsumer:addVertex|setColor|setNormal" \
+            "net.minecraft.client.renderer.LevelRenderer:allChanged" \
+            "net.minecraft.world.entity.player.Inventory:elected|getItem" \
+            "net.minecraft.world.entity.player.Player:displayClientMessage|sendSystemMessage"
           # Die alte Zeichen-API ist komplett ersetzt. Weder Name noch Paket
           # helfen da weiter - also nach Begriffen suchen.
-          python3 probe-search.py build/classpath.txt ChatComponent BlockColors
+          python3 probe-search.py build/classpath.txt WorldRenderContext
 
       - name: Bauen
         run: |

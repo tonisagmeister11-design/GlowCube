@@ -57,12 +57,17 @@ dependencies {
 // Remapping-Kette samt refmap ab. Wo nichts remappt wird, gibt es ihn nicht.
 if (project.extensions.findByName('loom') != null) {
     loom {
-        try {
-            mixin {
-                useLegacyMixinAp = false
+        // Die alte Annotation-Processor-Kette erzeugt die refmap, mit der
+        // Mixin obfuskierte Namen findet. Nur wo nichts obfuskiert ist,
+        // darf sie weg.
+        if (project.mappings_mode == 'none') {
+            try {
+                mixin {
+                    useLegacyMixinAp = false
+                }
+            } catch (MissingMethodException ignored) {
+                logger.lifecycle('GlowCube: Loom kennt keinen mixin-Block.')
             }
-        } catch (MissingMethodException ignored) {
-            logger.lifecycle('GlowCube: Loom kennt keinen mixin-Block - unobfuskiert, nichts abzuschalten.')
         }
     }
 }
@@ -81,15 +86,20 @@ processResources {
     }
 }
 
+// Welche Java-Fassung noetig ist, haengt an der Spielfassung: 1.21.x will 21,
+// 26.x will 25. resolve-versions.py liest das aus dem Mojang-Verzeichnis.
+def javaZiel = Integer.parseInt(project.java_version)
+
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(javaZiel)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = 'UTF-8'
-    it.options.release = 25
+    it.options.release = javaZiel
 }
 
 // Schreibt heraus, welche JARs beim Uebersetzen wirklich benutzt werden.

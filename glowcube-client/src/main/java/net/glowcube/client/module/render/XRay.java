@@ -67,11 +67,9 @@ public final class XRay extends Module {
      * braucht.
      */
     private void reloadChunks() {
-        if (mc.levelRenderer == null || mc.level == null || mc.gameRenderer == null) {
-            return;
+        if (mc.levelRenderer != null) {
+            mc.levelRenderer.allChanged();
         }
-        mc.levelRenderer.invalidateCompiledGeometry(
-                mc.level, mc.options, mc.gameRenderer.mainCamera(), mc.getBlockColors());
     }
 
     public BlockListSetting blocks() {

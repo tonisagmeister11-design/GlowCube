@@ -145,7 +145,7 @@ public final class SeedHunt extends Module {
 
     private void melden(String text) {
         if (inGame()) {
-            player().sendOverlayMessage(Component.literal("[GlowCube] " + text));
+            player().displayClientMessage(Component.literal("[GlowCube] " + text), true);
         }
     }
 
