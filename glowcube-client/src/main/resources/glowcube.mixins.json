@@ -8,6 +8,7 @@
   "client": [
     "BlockMixin",
     "OptionInstanceAccessor",
-    "ServerboundMovePlayerPacketMixin"
+    "ServerboundMovePlayerPacketMixin",
+    "DeltaTrackerTimerMixin"
   ]
 }
