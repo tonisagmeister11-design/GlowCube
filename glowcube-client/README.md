@@ -83,7 +83,6 @@ sind alle Erze, Kisten, Spawner und Portale.
 | AutoSprint | Immer sprinten |
 | KillAura | Greift Ziele in Reichweite an |
 | AutoTool | Bestes Werkzeug beim Abbauen |
-| AutoRespawn | Sofort wieder einsteigen |
 | AntiAFK | Haelt dich auf dem Server |
 
 ## Wenn etwas nicht klappt

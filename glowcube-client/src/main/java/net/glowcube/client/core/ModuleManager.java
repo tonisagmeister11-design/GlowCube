@@ -7,7 +7,6 @@ import net.glowcube.client.module.movement.NoFall;
 import net.glowcube.client.module.movement.Speed;
 import net.glowcube.client.module.movement.Step;
 import net.glowcube.client.module.player.AntiAfk;
-import net.glowcube.client.module.player.AutoRespawn;
 import net.glowcube.client.module.player.AutoTool;
 import net.glowcube.client.module.render.FullBright;
 import net.glowcube.client.module.render.XRay;
@@ -46,7 +45,6 @@ public final class ModuleManager {
         add(new KillAura());
         // Player
         add(new AutoTool());
-        add(new AutoRespawn());
         add(new AntiAfk());
     }
 
@@ -149,8 +147,8 @@ public final class ModuleManager {
             return;
         }
         String zustand = module.isEnabled() ? "an" : "aus";
-        player.displayClientMessage(
-                Component.literal("[GlowCube] " + module.name() + ": " + zustand), true);
+        player.sendOverlayMessage(
+                Component.literal("[GlowCube] " + module.name() + ": " + zustand));
     }
 
     /**

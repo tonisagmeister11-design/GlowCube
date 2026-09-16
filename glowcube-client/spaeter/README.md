@@ -47,6 +47,7 @@ Die Fabric-Gegenstuecke liegen in
 | `module/render/StorageEsp.java` | Kisten durch Waende |
 | `module/render/EntityEsp.java`, `Tracers.java`, `EntityGroups.java` | Kaesten und Linien zu Entities |
 | `module/misc/ClickGuiModule.java` | Oeffnet das Fenster |
+| `module/player/AutoRespawn.java` | Braucht den Totenbildschirm - `Minecraft.screen` gibt es nicht mehr zum Lesen, und `LocalPlayer.respawn()` auch nicht. Der Weg fuehrt ueber `player.connection` und ein `ServerboundClientCommandPacket`, das ist aber noch nicht geprueft. |
 
 `Theme`, `ColorUtil` und `Anim` benutzen ueberhaupt keine Minecraft-Klassen.
 Die koennen unveraendert zurueckwandern.

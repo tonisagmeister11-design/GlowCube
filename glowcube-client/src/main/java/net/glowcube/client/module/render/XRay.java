@@ -57,10 +57,13 @@ public final class XRay extends Module {
         reloadChunks();
     }
 
-    /** Ohne Neuaufbau der Chunk-Meshes aendert sich am Bild nichts. */
+    /**
+     * Ohne Neuaufbau der Chunk-Meshes aendert sich am Bild nichts. In 26.2
+     * heisst der Aufruf nicht mehr allChanged().
+     */
     private void reloadChunks() {
         if (mc.levelRenderer != null) {
-            mc.levelRenderer.allChanged();
+            mc.levelRenderer.resetLevelRenderData();
         }
     }
 
