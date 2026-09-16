@@ -1,5 +1,6 @@
 package net.glowcube.client.module.movement;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 
@@ -12,7 +13,7 @@ public final class NoFall extends Module {
     private static NoFall instance;
 
     public NoFall() {
-        super("NoFall", "Kein Sturzschaden", Category.MOVEMENT);
+        super("NoFall", "Kein Sturzschaden", Category.MOVEMENT, InputConstants.KEY_N);
         instance = this;
     }
 

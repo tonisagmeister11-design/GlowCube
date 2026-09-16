@@ -1,5 +1,6 @@
 package net.glowcube.client.module.player;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.minecraft.world.item.ItemStack;
@@ -10,7 +11,7 @@ import net.minecraft.world.phys.HitResult;
 /** Waehlt beim Abbauen das schnellste Werkzeug aus der Hotbar. */
 public final class AutoTool extends Module {
     public AutoTool() {
-        super("AutoTool", "Bestes Werkzeug beim Abbauen", Category.PLAYER);
+        super("AutoTool", "Bestes Werkzeug beim Abbauen", Category.PLAYER, InputConstants.KEY_K);
     }
 
     @Override

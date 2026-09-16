@@ -1,5 +1,6 @@
 package net.glowcube.client.module.movement;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
@@ -14,7 +15,7 @@ public final class Speed extends Module {
             "Nur am Boden - in der Luft faellt es sofort auf", true));
 
     public Speed() {
-        super("Speed", "Schneller laufen", Category.MOVEMENT);
+        super("Speed", "Schneller laufen", Category.MOVEMENT, InputConstants.KEY_G);
     }
 
     @Override

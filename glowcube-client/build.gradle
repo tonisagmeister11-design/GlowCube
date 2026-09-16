@@ -67,6 +67,13 @@ if (project.extensions.findByName('loom') != null) {
     }
 }
 
+// Die nachgebaute SeedCrackerX-Schnittstelle dient nur dem Uebersetzen.
+// Zur Laufzeit gilt die echte aus SeedCrackerX - waere unsere Fassung mit in
+// der JAR, koennten zwei Klassen desselben Namens aufeinandertreffen.
+jar {
+    exclude 'kaptainwutax/**'
+}
+
 processResources {
     inputs.property 'version', project.version
     filesMatching('fabric.mod.json') {

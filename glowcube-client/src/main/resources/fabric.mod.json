@@ -8,7 +8,8 @@
   "license": "MIT",
   "environment": "client",
   "entrypoints": {
-    "client": ["net.glowcube.client.GlowCubeClient"]
+    "client": ["net.glowcube.client.GlowCubeClient"],
+    "seedcrackerx": ["net.glowcube.client.integration.SeedBridge"]
   },
   "mixins": [
     {
@@ -16,6 +17,9 @@
       "environment": "client"
     }
   ],
+  "suggests": {
+    "seedcrackerx": ">=2.16.0"
+  },
   "depends": {
     "fabricloader": ">=0.17.0",
     "fabric-api": "*",

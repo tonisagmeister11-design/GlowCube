@@ -1,5 +1,6 @@
 package net.glowcube.client.module.player;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
@@ -18,7 +19,7 @@ public final class AntiAfk extends Module {
     private int ticks;
 
     public AntiAfk() {
-        super("AntiAFK", "Haelt dich auf dem Server", Category.PLAYER);
+        super("AntiAFK", "Haelt dich auf dem Server", Category.PLAYER, InputConstants.KEY_M);
     }
 
     @Override

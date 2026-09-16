@@ -1,5 +1,6 @@
 package net.glowcube.client.module.movement;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.NumberSetting;
@@ -14,7 +15,7 @@ public final class Step extends Module {
             "Wie hoch ohne Sprung", 1.0, 0.6, 3.0, 0.1));
 
     public Step() {
-        super("Step", "Stufen hochlaufen", Category.MOVEMENT);
+        super("Step", "Stufen hochlaufen", Category.MOVEMENT, InputConstants.KEY_V);
     }
 
     @Override

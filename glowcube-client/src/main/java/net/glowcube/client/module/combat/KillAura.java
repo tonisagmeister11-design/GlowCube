@@ -1,5 +1,6 @@
 package net.glowcube.client.module.combat;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
@@ -31,7 +32,7 @@ public final class KillAura extends Module {
             "Auf die Waffenaufladung warten", true));
 
     public KillAura() {
-        super("KillAura", "Greift Ziele in Reichweite an", Category.COMBAT);
+        super("KillAura", "Greift Ziele in Reichweite an", Category.COMBAT, InputConstants.KEY_R);
     }
 
     @Override

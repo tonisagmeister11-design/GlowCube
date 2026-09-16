@@ -51,22 +51,24 @@ fuer 26.2. Eine Fassung daneben und das Spiel startet nicht.
 
 ## Bedienen
 
-Ab Werk sind drei Tasten belegt:
+Jedes Modul hat eine Taste. Was geschaltet wurde, steht kurz ueber der Hotbar.
 
-| Taste | Wirkung |
-| --- | --- |
-| `X` | X-Ray |
-| `F` | Flight |
-| `C` | Zoom |
+| Taste | Modul | | Taste | Modul |
+| --- | --- | --- | --- | --- |
+| `X` | X-Ray | | `R` | KillAura |
+| `H` | Fullbright | | `K` | AutoTool |
+| `C` | Zoom | | `M` | AntiAFK |
+| `F` | Flight | | `B` | SeedHunt |
+| `G` | Speed | | `N` | NoFall |
+| `V` | Step | | `J` | AutoSprint |
 
-Was geschaltet wurde, steht kurz ueber der Hotbar.
+Die Belegungen meiden alles, was Minecraft selbst benutzt - mit einer
+Ausnahme: `F` tauscht in Vanilla die Zweithand. Wem das dazwischenkommt, der
+aendert `key` fuer Flight in `.minecraft/config/glowcube.json` (GLFW-Nummern,
+`-1` heisst keine Taste).
 
-Die uebrigen neun Module haben noch keine Taste. Bis das ClickGUI wieder da
-ist, werden sie in `.minecraft/config/glowcube.json` eingeschaltet: dort steht
-zu jedem Modul `enabled` und `key`. Als `key` traegt man die GLFW-Nummer der
-Taste ein (`71` ist G, `72` H, `82` R, `86` V); `-1` heisst keine Taste.
-Die Datei entsteht beim ersten Start und wird beim Beenden zurueckgeschrieben -
-also Minecraft schliessen, bearbeiten, wieder starten.
+Im Chat und in Menues schalten die Tasten nicht - das wird am Mauszeiger
+erkannt.
 
 Dieselbe Datei enthaelt unter X-Ray die Liste der sichtbaren Bloecke. Voreingestellt
 sind alle Erze, Kisten, Spawner und Portale.
@@ -86,6 +88,38 @@ sind alle Erze, Kisten, Spawner und Portale.
 | KillAura | Greift Ziele in Reichweite an |
 | AutoTool | Bestes Werkzeug beim Abbauen |
 | AntiAFK | Haelt dich auf dem Server |
+| SeedHunt | Fliegt selbsttaetig eine Spirale ab, damit SeedCrackerX schnell genug Daten bekommt |
+
+## Zusammenspiel mit SeedCrackerX
+
+[SeedCrackerX](https://github.com/19MisterX98/SeedcrackerX) rechnet aus
+Merkmalen der Welt - Erzadern, Dungeons, Strukturen - den Weltseed zurueck.
+Die Fassung 2.16.1 ist fuer genau Minecraft 26.2 gebaut und laeuft ohne
+Zutun: einfach mit in den `mods`-Ordner legen. Sie bringt ihre eigenen
+Abhaengigkeiten (cloth-config und die noetigen Fabric-Module) selbst mit.
+
+GlowCube haengt sich an zwei Stellen ein:
+
+* **Der Seed geht nicht mehr verloren.** SeedCrackerX bietet anderen Mods die
+  Schnittstelle `SeedCrackerAPI` an und ruft sie auf, sobald es fertig ist.
+  GlowCube meldet sich dort an, zeigt den Seed ueber der Hotbar und schreibt
+  ihn mit Zeitstempel nach `.minecraft/config/glowcube-seeds.txt`. Eine
+  Chatzeile kann man verpassen, die Datei nicht.
+* **SeedHunt fliegt die Arbeit ab.** SeedCrackerX sieht nur, was der Client
+  ohnehin geladen bekommt - wer stehen bleibt, wartet ewig. `B` startet eine
+  quadratische Spirale um den Startpunkt, die nach aussen waechst und dabei
+  Chunk um Chunk laedt. Sobald der Seed da ist, schaltet sich SeedHunt selbst
+  ab. Abstand der Bahnen, Hoehe, Tempo und Laenge stehen in der
+  Konfigurationsdatei.
+
+Ohne SeedCrackerX laeuft GlowCube unveraendert weiter - die Verbindung ist
+freiwillig, keine Voraussetzung.
+
+**Im Einzelspieler** ist das eine Spielerei: `/seed` sagt es dir sofort.
+Interessant ist es als Probe, ob der Cracker die Welt auch von aussen
+errechnen kann. **Auf fremden Servern** ist der Weltseed ein handfester
+Vorteil (Festungen, Slime-Chunks, Strukturen) und praktisch ueberall
+verboten - dort kostet es den Zugang.
 
 ## Wenn etwas nicht klappt
 

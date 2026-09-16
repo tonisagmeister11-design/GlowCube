@@ -6,6 +6,7 @@ import net.glowcube.client.module.movement.Flight;
 import net.glowcube.client.module.movement.NoFall;
 import net.glowcube.client.module.movement.Speed;
 import net.glowcube.client.module.movement.Step;
+import net.glowcube.client.module.misc.SeedHunt;
 import net.glowcube.client.module.player.AntiAfk;
 import net.glowcube.client.module.player.AutoTool;
 import net.glowcube.client.module.render.FullBright;
@@ -46,6 +47,8 @@ public final class ModuleManager {
         // Player
         add(new AutoTool());
         add(new AntiAfk());
+        // Misc
+        add(new SeedHunt());
     }
 
     private void add(Module module) {
