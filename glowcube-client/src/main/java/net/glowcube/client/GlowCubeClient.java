@@ -78,13 +78,14 @@ public final class GlowCubeClient implements ClientModInitializer {
             if (!held.add(key)) {
                 continue;
             }
-            // OFFEN: In 26.2 laesst sich nicht mehr abfragen, ob gerade ein
-            // Bildschirm offen ist - Minecraft.screen ist weg und es gibt
-            // keinen Lesezugriff dafuer. Solange schaltet eine belegte Taste
-            // auch dann, wenn man im Chat tippt. Der Ersatz wird gerade
-            // ermittelt; bis dahin lieber bedienbar als gar nicht.
-            modules.onKey(key);
-            config.save();
+            // Nur ausserhalb von Menues und Chat, sonst tippt man Module an.
+            // Minecraft.screen gibt es in 26.2 nicht mehr zum Lesen; ob ein
+            // Bildschirm offen ist, verraet aber der Mauszeiger: im Spiel ist
+            // er gefangen, in jedem Menue und im Chat nicht.
+            if (mc.mouseHandler.isMouseGrabbed()) {
+                modules.onKey(key);
+                config.save();
+            }
         }
     }
 
