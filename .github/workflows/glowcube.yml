@@ -48,8 +48,9 @@ jobs:
           # Wo der Name nicht weiterhilft, fragt man dort nach, wo die Klasse
           # benutzt wird: was nimmt Screen.render() heute entgegen?
           python3 probe-api.py build/classpath.txt \
-            "net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext:" \
-            "net.minecraft.client.renderer.rendertype.RenderType:ines|debug|LINES"
+            "net.minecraft.client.renderer.GameRenderer:amera" \
+            "net.minecraft.client.Camera:osition|ook" \
+            "net.minecraft.client.renderer.rendertype.RenderTypes:ines"
           # Die alte Zeichen-API ist komplett ersetzt. Weder Name noch Paket
           # helfen da weiter - also nach Begriffen suchen.
           python3 probe-search.py build/classpath.txt RenderTypes

@@ -4,7 +4,9 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
@@ -21,12 +23,13 @@ public final class Render3D {
     /** Kasten um eine Box. Zeichnet zusaetzlich eine blasse, groessere Box als Schimmer. */
     public static void box(WorldRenderContext context, AABB box, int color, boolean glow) {
         MultiBufferSource consumers = context.consumers();
-        PoseStack matrices = context.matrixStack();
+        PoseStack matrices = context.matrices();
         if (consumers == null || matrices == null) {
             return;
         }
-        Vec3 camera = context.camera().getPosition();
-        VertexConsumer lines = consumers.getBuffer(RenderType.lines());
+        Camera kamera = Minecraft.getInstance().gameRenderer.getMainCamera();
+        Vec3 camera = kamera.getPosition();
+        VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
 
         matrices.pushPose();
         matrices.translate(-camera.x, -camera.y, -camera.z);
@@ -44,16 +47,17 @@ public final class Render3D {
     /** Eine Linie von der Blickmitte zu einem Punkt in der Welt. */
     public static void tracer(WorldRenderContext context, Vec3 target, int color) {
         MultiBufferSource consumers = context.consumers();
-        PoseStack matrices = context.matrixStack();
+        PoseStack matrices = context.matrices();
         if (consumers == null || matrices == null) {
             return;
         }
-        Vec3 camera = context.camera().getPosition();
-        Vector3f look = context.camera().getLookVector();
+        Camera kamera = Minecraft.getInstance().gameRenderer.getMainCamera();
+        Vec3 camera = kamera.getPosition();
+        Vector3f look = kamera.getLookVector();
         // Startpunkt knapp vor der Kamera, sonst verschwindet die Linie in der Near-Plane.
         Vec3 start = camera.add(look.x() * 0.6, look.y() * 0.6, look.z() * 0.6);
 
-        VertexConsumer lines = consumers.getBuffer(RenderType.lines());
+        VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
         matrices.pushPose();
         matrices.translate(-camera.x, -camera.y, -camera.z);
         line(lines, matrices.last(),
