@@ -43,17 +43,14 @@ jobs:
           # Wo der Name nicht weiterhilft, fragt man dort nach, wo die Klasse
           # benutzt wird: was nimmt Screen.render() heute entgegen?
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.client.gui.screens.Screen:render|mouse|keyPressed|charTyped" \
-            "net.minecraft.client.Minecraft:font|options|player|level|screen|gameMode|hitResult|getWindow|levelRenderer|getInstance" \
-            "net.minecraft.client.gui.components.Renderable:" \
-            "net.minecraft.client.gui.components.events.GuiEventListener:" \
-            "net.minecraft.client.gui.Gui:render|draw|submit" \
-            "net.minecraft.client.gui.Hud:render|draw|submit" \
-            "net.minecraft.world.entity.player.Player:displayClientMessage|swing|getAbilities|getAttackStrengthScale" \
-            "net.minecraft.world.entity.player.Inventory:setSelectedSlot|getItem"
+            "com.mojang.blaze3d.platform.InputConstants:getKey|isKeyDown" \
+            "net.minecraft.client.Minecraft:creen" \
+            "net.minecraft.client.renderer.LevelRenderer:" \
+            "net.minecraft.client.player.LocalPlayer:" \
+            "net.minecraft.world.entity.player.Player:essage|isplay|Chat"
           # Die alte Zeichen-API ist komplett ersetzt. Weder Name noch Paket
           # helfen da weiter - also nach Begriffen suchen.
-          python3 probe-search.py build/classpath.txt Graphics Submit HudRender WorldRender
+          python3 probe-search.py build/classpath.txt ScreenManager ChunkRenderer
 
       - name: Bauen
         run: |
