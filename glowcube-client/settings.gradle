@@ -1,9 +1,3 @@
-pluginManagement {
-    repositories {
-        maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-
+// Loom kommt ueber den buildscript-Block in build.gradle, nicht ueber
+// pluginManagement - deshalb steht hier nur noch der Projektname.
 rootProject.name = 'glowcube'

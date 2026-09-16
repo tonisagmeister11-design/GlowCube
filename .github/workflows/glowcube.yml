@@ -34,7 +34,33 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Bauen
-        run: gradle build --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle build --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
+
+      - name: Fehler herausziehen
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          log = pathlib.Path("/tmp/gradle.log")
+          if not log.exists():
+              print("::error title=Build::Kein Gradle-Log - der Abbruch kam vorher.")
+              raise SystemExit(0)
+          keep = []
+          for line in log.read_text(errors="replace").splitlines():
+              s = line.strip()
+              if s.startswith("at ") or s.startswith("... "):
+                  continue          # Stacktrace-Rahmen sagen nichts
+              if re.match(r"(Caused by:|FAILURE:|> |\* What went wrong|.*\.java:\d+: error:)", s):
+                  keep.append(s[:300])
+          seen, unique = set(), []
+          for line in keep:
+              if line not in seen:
+                  seen.add(line)
+                  unique.append(line)
+          print("::error title=Build-Fehler::" + "%0A".join(unique[:15]))
+          PY
 
       - name: JAR anzeigen
         run: |

@@ -131,24 +131,37 @@ def main():
     except Exception as error:
         report.append(f"Fabric API     UNVERAENDERT ({props.get('fabric_version')}) - {error}")
 
-    # --- Loom. Hier lag beim zweiten Lauf der Hund begraben: der geratene
-    #     Pfad lief in einen 404, also blieb eine uralte Fassung stehen, die
-    #     mit Minecraft von 2026 nichts anfangen kann. Darum mehrere
-    #     Kandidaten - und ein harter Abbruch, wenn keiner traegt.
-    loom = None
-    for path in ("net/fabricmc/fabric-loom",                 # die Bibliothek
-                 "fabric-loom/fabric-loom.gradle.plugin"):   # der Plugin-Marker
+    # --- Loom. Zwei Baustellen auf einmal: welche Plugin-Kennung es gibt und
+    #     in welcher Fassung. Seit den unobfuskierten Fassungen liegt neben
+    #     dem alten 'fabric-loom' ein 'net.fabricmc.fabric-loom', das nicht
+    #     mehr remappt - und nur dieses kommt ohne mappings aus. Welches
+    #     vorhanden ist, entscheidet der Marker im Maven, nicht eine Annahme.
+    loom = loom_id = None
+    for plugin_id, marker in (
+            ("net.fabricmc.fabric-loom", "net/fabricmc/fabric-loom/net.fabricmc.fabric-loom.gradle.plugin"),
+            ("fabric-loom", "fabric-loom/fabric-loom.gradle.plugin")):
         try:
-            loom = newest_in_maven(path)
-            if loom:
-                report.append(f"Loom           {loom}  (aus {path})")
-                break
+            found = newest_in_maven(marker)
         except Exception as error:
-            report.append(f"Loom           {path} liefert nichts: {error}")
+            report.append(f"Loom-Plugin    {plugin_id}: nicht da ({error})")
+            continue
+        if found:
+            loom, loom_id = found, plugin_id
+            report.append(f"Loom-Plugin    {plugin_id}  {found}")
+            break
+
+    if not loom:
+        # Notnagel: die Bibliothek selbst, mit der alten Kennung.
+        try:
+            loom, loom_id = newest_in_maven("net/fabricmc/fabric-loom"), "fabric-loom"
+            report.append(f"Loom-Plugin    fabric-loom  {loom}  (ueber die Bibliothek)")
+        except Exception as error:
+            report.append(f"Loom-Plugin    NICHT AUFLOESBAR - {error}")
+
     if loom:
         write_prop("loom_version", loom)
+        write_prop("loom_plugin_id", loom_id)
     else:
-        report.append("Loom           NICHT AUFLOESBAR - Abbruch")
         emit(report)
         print("::error title=Loom::Keine Loom-Fassung gefunden. Ohne die ist "
               "jeder weitere Fehler nur Folgeschaden.")

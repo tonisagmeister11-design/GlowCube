@@ -1,9 +1,21 @@
-plugins {
-    // Ab Minecraft 26.1 ist das Spiel unobfuskiert - Loom bringt keine Mappings
-    // mehr mit und remappt auch nichts mehr. Yarn ist damit Geschichte.
-    id 'fabric-loom' version "${loom_version}"
-    id 'maven-publish'
+// Loom wird ueber buildscript geladen statt ueber den plugins-Block, weil die
+// Plugin-Kennung nicht mehr feststeht: fuer obfuskierte Fassungen heisst sie
+// 'fabric-loom', fuer die unobfuskierten ab 26.1 'net.fabricmc.fabric-loom'.
+// Nur so laesst sie sich aus gradle.properties setzen - der plugins-Block
+// erlaubt dort keine Variablen.
+buildscript {
+    repositories {
+        maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath "net.fabricmc:fabric-loom:${loom_version}"
+    }
 }
+
+apply plugin: project.loom_plugin_id
+apply plugin: 'maven-publish'
 
 version = project.mod_version
 group = project.maven_group
