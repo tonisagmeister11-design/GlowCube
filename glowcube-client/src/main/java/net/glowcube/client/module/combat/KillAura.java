@@ -13,10 +13,8 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.AxeItem;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.SwordItem;
-import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -226,13 +224,18 @@ public final class KillAura extends Module {
         return frei ? abstand <= range.get() : abstand <= wallsRange.get();
     }
 
-    /** Auf eine Waffe wechseln und das vorherige Feld merken. */
+    /**
+     * Auf eine Waffe wechseln und das vorherige Feld merken.
+     *
+     * Erkannt wird ueber Item-Tags, nicht ueber Klassen - so macht es Meteor
+     * auch. Seit 1.21 sind Werkzeuge datengesteuert, eine Klasse SwordItem
+     * gibt es gar nicht mehr; was ein Schwert ist, entscheidet das Tag.
+     */
     private void waffeWaehlen() {
         int beste = -1;
         for (int feld = 0; feld < 9; feld++) {
             ItemStack stack = player().getInventory().getItem(feld);
-            var item = stack.getItem();
-            if (item instanceof SwordItem || item instanceof AxeItem || item instanceof TridentItem) {
+            if (stack.is(ItemTags.SWORDS) || stack.is(ItemTags.AXES)) {
                 beste = feld;
                 break;
             }
