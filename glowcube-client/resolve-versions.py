@@ -49,12 +49,48 @@ def write_prop(key, value):
     PROPS.write_text(text, encoding="utf-8")
 
 
+def newest_in_maven(group_path):
+    """Die aktuellste Fassung laut maven-metadata.xml.
+
+    Bei Loom sind SNAPSHOT-Fassungen der Normalfall, nicht die Ausnahme -
+    deshalb wird hier nicht danach gefiltert.
+    """
+    root = ET.fromstring(fetch(f"{MAVEN}/{group_path}/maven-metadata.xml"))
+    latest = root.findtext("versioning/latest")
+    if latest:
+        return latest
+    versions = [v.text for v in root.iter("version") if v.text]
+    return versions[-1] if versions else None
+
+
 def latest_in_maven(group_path, predicate=lambda v: True):
     """Neueste Version aus einer maven-metadata.xml, die zum Filter passt."""
     root = ET.fromstring(fetch(f"{MAVEN}/{group_path}/maven-metadata.xml"))
     versions = [v.text for v in root.iter("version") if v.text]
     matching = [v for v in versions if predicate(v)]
     return matching[-1] if matching else None
+
+
+def emit(report):
+    """Bericht ins Log, als Annotation und in die Zusammenfassung des Laufs."""
+    print("=" * 62)
+    print("Verwendete Fassungen")
+    print("=" * 62)
+    for line in report:
+        print("  " + line)
+    print("=" * 62)
+    print()
+    print(PROPS.read_text(encoding="utf-8"))
+
+    print("::notice title=Fabric-Versionen::" + "%0A".join(report))
+
+    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary, "a", encoding="utf-8") as handle:
+            handle.write("### Verwendete Fassungen\n\n")
+            for line in report:
+                handle.write(f"- `{line}`\n")
+            handle.write("\n")
 
 
 def main():
@@ -95,17 +131,47 @@ def main():
     except Exception as error:
         report.append(f"Fabric API     UNVERAENDERT ({props.get('fabric_version')}) - {error}")
 
-    # --- Loom: neueste Ausgabe ohne SNAPSHOT.
+    # --- Loom. Hier lag beim zweiten Lauf der Hund begraben: der geratene
+    #     Pfad lief in einen 404, also blieb eine uralte Fassung stehen, die
+    #     mit Minecraft von 2026 nichts anfangen kann. Darum mehrere
+    #     Kandidaten - und ein harter Abbruch, wenn keiner traegt.
+    loom = None
+    for path in ("net/fabricmc/fabric-loom",                 # die Bibliothek
+                 "fabric-loom/fabric-loom.gradle.plugin"):   # der Plugin-Marker
+        try:
+            loom = newest_in_maven(path)
+            if loom:
+                report.append(f"Loom           {loom}  (aus {path})")
+                break
+        except Exception as error:
+            report.append(f"Loom           {path} liefert nichts: {error}")
+    if loom:
+        write_prop("loom_version", loom)
+    else:
+        report.append("Loom           NICHT AUFLOESBAR - Abbruch")
+        emit(report)
+        print("::error title=Loom::Keine Loom-Fassung gefunden. Ohne die ist "
+              "jeder weitere Fehler nur Folgeschaden.")
+        return 1
+
+    # --- Braucht diese Spielfassung ueberhaupt Mappings? Seit 26.1 ist
+    #     Minecraft unobfuskiert und liefert keine mappings-Datei mehr mit.
+    #     Statt zu raten wird bei Mojang nachgesehen.
+    mode = "none"
     try:
-        loom = latest_in_maven("net/fabricmc/fabric-loom/fabric-loom.gradle.plugin",
-                               lambda v: "SNAPSHOT" not in v.upper())
-        if loom:
-            write_prop("loom_version", loom)
-            report.append(f"Loom           {loom}")
+        listing = json.loads(fetch("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"))
+        entry = next((v for v in listing["versions"] if v["id"] == minecraft), None)
+        if entry:
+            detail = json.loads(fetch(entry["url"]))
+            if "client_mappings" in detail.get("downloads", {}):
+                mode = "mojang"
+            report.append(f"Mappings       {mode}  "
+                          f"({'Mojang liefert welche' if mode == 'mojang' else 'unobfuskiert, keine noetig'})")
         else:
-            report.append(f"Loom           UNVERAENDERT ({props.get('loom_version')})")
+            report.append(f"Mappings       none  ({minecraft} steht nicht im Mojang-Verzeichnis)")
     except Exception as error:
-        report.append(f"Loom           UNVERAENDERT ({props.get('loom_version')}) - {error}")
+        report.append(f"Mappings       none  (Mojang nicht erreichbar: {error})")
+    write_prop("mappings_mode", mode)
 
     # --- fabric.mod.json auf die wirklich gebaute Fassung ziehen, sonst
     #     weigert sich der Loader spaeter, den Mod ueberhaupt zu laden.
@@ -117,26 +183,7 @@ def main():
     if before != f">={minecraft}":
         report.append(f"fabric.mod.json angepasst: minecraft {before} -> >={minecraft}")
 
-    print("=" * 62)
-    print("Verwendete Fassungen")
-    print("=" * 62)
-    for line in report:
-        print("  " + line)
-    print("=" * 62)
-    print()
-    print(PROPS.read_text(encoding="utf-8"))
-
-    # Als Annotation, damit die Fassungen oben am Lauf stehen und nicht im Log
-    # gesucht werden muessen.
-    print("::notice title=Fabric-Versionen::" + "%0A".join(report))
-
-    summary = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary:
-        with open(summary, "a", encoding="utf-8") as handle:
-            handle.write("### Verwendete Fassungen\n\n")
-            for line in report:
-                handle.write(f"- `{line}`\n")
-            handle.write("\n")
+    emit(report)
     return 0
 
 

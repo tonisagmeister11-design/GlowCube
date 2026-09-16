@@ -19,11 +19,17 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // Loom besteht auf einem mappings-Eintrag, auch wenn es nichts zu
-    // deobfuskieren gibt. Die offiziellen Mojang-Namen sind genau die, die
-    // dieser Quelltext benutzt (Minecraft, LocalPlayer, BlockState ...),
-    // und sie gelten fuer jede Fassung - Yarn wird nicht mehr gepflegt.
-    mappings loom.officialMojangMappings()
+
+    // Ob es hier etwas zu tun gibt, haengt an der Spielfassung: seit 26.1 ist
+    // Minecraft unobfuskiert und bringt gar keine mappings-Datei mehr mit.
+    // resolve-versions.py sieht bei Mojang nach und setzt mappings_mode -
+    // geraten wird hier nichts mehr.
+    if (project.mappings_mode == 'mojang') {
+        mappings loom.officialMojangMappings()
+    } else if (project.mappings_mode == 'intermediary') {
+        mappings "net.fabricmc:intermediary:${project.minecraft_version}:v2"
+    }
+
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
