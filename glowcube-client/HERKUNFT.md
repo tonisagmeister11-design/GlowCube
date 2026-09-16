@@ -51,6 +51,27 @@ ausdruecklich; die Lizenzdatei liegt in der eingebetteten JAR bei. Wer
 SeedCrackerX lieber selbst pflegt, loescht `bundle-seedcracker.py` aus dem
 Ablauf und legt es wie bisher daneben.
 
+## Zwei Arten, ein Modul zu bauen
+
+Anfangs habe ich die Module **aus dem Verstaendnis nachgebaut**: angesehen,
+was das Vorbild tut, und es selbst geschrieben. Das ist schneller, faellt
+aber schlechter aus - meine erste KillAura hatte sechs Einstellungen, Meteors
+hat dreiundzwanzig.
+
+Seitdem gilt der bessere Weg: **den echten Quelltext holen und
+originalgetreu uebertragen.** Die Reihenfolge der Pruefungen, die
+Zielauswahl, die Grenzfaelle - alles bleibt, wie es dort steht. Uebersetzt
+wird nur das Geruest: ihr `Module` wird unseres, ihre `Setting.Builder`
+werden unsere Setting-Klassen, ihr Event-Bus wird `onTick`.
+
+Die Entscheidungen bleiben damit ihre, nicht meine. Das ist so nah an einer
+Eins-zu-eins-Uebernahme, wie es geht, ohne ihr ganzes Geruest mitzuschleppen.
+
+| Modul | Vorlage | Art |
+| --- | --- | --- |
+| `KillAura` | Meteor Client | originalgetreu uebertragen |
+| alle uebrigen | BleachHack | aus dem Verstaendnis nachgebaut (wird nachgezogen) |
+
 ## Was das bedeutet
 
 Der Quelltext hier ist eigener Code in GlowCubes eigenem Rahmen - kein
