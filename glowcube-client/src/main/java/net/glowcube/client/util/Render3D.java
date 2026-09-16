@@ -9,7 +9,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Vector3f;
 
 /**
  * Linien in der Welt. Die Kanten werden von Hand geschrieben statt ueber einen
@@ -28,7 +27,7 @@ public final class Render3D {
             return;
         }
         Camera kamera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        Vec3 camera = kamera.getPosition();
+        Vec3 camera = kamera.position();
         VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
 
         matrices.pushPose();
@@ -52,10 +51,12 @@ public final class Render3D {
             return;
         }
         Camera kamera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        Vec3 camera = kamera.getPosition();
-        Vector3f look = kamera.getLookVector();
+        Vec3 camera = kamera.position();
+        // Die Kamera gibt keinen Blickvektor mehr heraus; der Spieler schon,
+        // und in der Ich-Perspektive zeigt der in dieselbe Richtung.
+        Vec3 look = Minecraft.getInstance().player.getViewVector(1.0f);
         // Startpunkt knapp vor der Kamera, sonst verschwindet die Linie in der Near-Plane.
-        Vec3 start = camera.add(look.x() * 0.6, look.y() * 0.6, look.z() * 0.6);
+        Vec3 start = camera.add(look.x * 0.6, look.y * 0.6, look.z * 0.6);
 
         VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
         matrices.pushPose();
