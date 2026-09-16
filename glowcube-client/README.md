@@ -103,6 +103,10 @@ sind alle Erze, Kisten, Spawner und Portale.
 | Criticals | Treffer zaehlen als kritisch |
 | AutoRespawn | Sofort wieder einsteigen |
 | ClickGUI | Das Fenster |
+| Nuker | Baut alles im Umkreis ab - drei Betriebsarten |
+| Spammer | Schickt regelmaessig eine Chatnachricht |
+| AutoTotem | Haelt ein Totem in der Zweithand |
+| Scaffold | Baut den Boden unter dir mit |
 
 Die Kategorien folgen der Einteilung von BleachHack: Combat, Movement,
 Render, Player, World, Exploits, Misc. Woher was stammt, steht in

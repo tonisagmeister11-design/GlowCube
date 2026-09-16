@@ -6,6 +6,7 @@ import net.glowcube.client.module.combat.Criticals;
 import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.movement.AutoSprint;
 import net.glowcube.client.module.movement.AutoWalk;
+import net.glowcube.client.module.movement.Scaffold;
 import net.glowcube.client.module.movement.Flight;
 import net.glowcube.client.module.movement.NoFall;
 import net.glowcube.client.module.movement.Speed;
@@ -65,6 +66,7 @@ public final class ModuleManager {
         add(new NoFall());
         add(new AutoSprint());
         add(new AutoWalk());
+        add(new Scaffold());
         // Combat
         add(new KillAura());
         add(new Criticals());
