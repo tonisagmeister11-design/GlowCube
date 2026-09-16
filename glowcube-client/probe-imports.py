@@ -12,6 +12,7 @@ Aufruf: probe-imports.py <datei-mit-classpath>
 """
 
 import collections
+import io
 import pathlib
 import re
 import sys
@@ -35,20 +36,32 @@ def imports_aus_quelltext():
     return gefunden
 
 
+def klassen_aus_jar(quelle, alle, tiefe=0):
+    """Klassen eines JARs - samt der JARs, die darin liegen.
+
+    Fabric API liefert seine Module als JARs innerhalb der JAR aus. Wer nur
+    die oberste Ebene liest, haelt saemtliche Fabric-Klassen faelschlich fuer
+    verschwunden - genau das ist mir beim ersten Anlauf passiert.
+    """
+    try:
+        with zipfile.ZipFile(quelle) as archiv:
+            for eintrag in archiv.namelist():
+                if eintrag.endswith(".class"):
+                    alle.add(eintrag[:-len(".class")].replace("/", "."))
+                elif eintrag.endswith(".jar") and tiefe < 2:
+                    with archiv.open(eintrag) as innen:
+                        klassen_aus_jar(io.BytesIO(innen.read()), alle, tiefe + 1)
+    except (zipfile.BadZipFile, OSError):
+        pass
+
+
 def klassen_im_classpath(classpath_datei):
     """Alle Klassennamen aus allen JARs des Classpath."""
     alle = set()
     for zeile in pathlib.Path(classpath_datei).read_text(encoding="utf-8").splitlines():
         pfad = zeile.strip()
-        if not pfad.endswith(".jar") or not pathlib.Path(pfad).exists():
-            continue
-        try:
-            with zipfile.ZipFile(pfad) as archiv:
-                for eintrag in archiv.namelist():
-                    if eintrag.endswith(".class"):
-                        alle.add(eintrag[:-len(".class")].replace("/", "."))
-        except zipfile.BadZipFile:
-            continue
+        if pfad.endswith(".jar") and pathlib.Path(pfad).exists():
+            klassen_aus_jar(pfad, alle)
     return alle
 
 
@@ -78,7 +91,10 @@ def main():
         if not alternativen:
             alternativen = [k for k in vorhanden
                             if k.rsplit(".", 1)[-1].replace("$", ".").endswith(kurz)][:5]
-        fehlend.append((name, sorted(alternativen)[:5], sorted(dateien)))
+        paket = name.rsplit(".", 1)[0]
+        nachbarn = sorted({k.rsplit(".", 1)[-1] for k in vorhanden
+                           if k.rsplit(".", 1)[0] == paket and "$" not in k})
+        fehlend.append((name, sorted(alternativen)[:5], sorted(dateien), nachbarn))
 
     if not fehlend:
         print("Alle Importe sind im Classpath vorhanden.")
@@ -88,14 +104,18 @@ def main():
     print("=" * 70)
     print(f"{len(fehlend)} Importe gehen ins Leere")
     print("=" * 70)
-    for name, alternativen, dateien in fehlend:
+    for name, alternativen, dateien, nachbarn in fehlend:
         vorschlag = alternativen[0] if alternativen else "KEIN TREFFER"
         print(f"\n  {name}")
         print(f"    -> {vorschlag}")
         if len(alternativen) > 1:
             print(f"       weitere: {', '.join(alternativen[1:])}")
+        print(f"       Paket enthaelt: {', '.join(nachbarn) if nachbarn else '(nichts - Paket gibt es nicht mehr)'}")
         print(f"       gebraucht in: {', '.join(dateien)}")
-        zeilen.append(f"{name}  ->  {vorschlag}")
+        kurz = f"{name} -> {vorschlag}"
+        if not alternativen:
+            kurz += " | Paket: " + (", ".join(nachbarn[:12]) if nachbarn else "leer")
+        zeilen.append(kurz)
 
     print("::error title=Umbenannte Klassen::" + "%0A".join(zeilen[:25]))
     return 1
