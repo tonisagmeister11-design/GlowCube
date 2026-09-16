@@ -1,0 +1,53 @@
+name: GlowCube bauen
+
+# Laeuft bei jeder Aenderung am Client und laesst sich im Reiter "Actions"
+# jederzeit von Hand starten ("Run workflow").
+on:
+  push:
+    paths:
+      - 'glowcube-client/**'
+      - '.github/workflows/glowcube.yml'
+  workflow_dispatch:
+
+jobs:
+  bauen:
+    name: Mod uebersetzen und JAR ablegen
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: glowcube-client
+
+    steps:
+      - name: Quelltext holen
+        uses: actions/checkout@v4
+
+      - name: JDK einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Aktuelle Fabric-Versionen eintragen
+        run: python3 resolve-versions.py
+
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Bauen
+        run: gradle build --no-daemon --stacktrace
+
+      - name: JAR anzeigen
+        run: |
+          echo "### Fertige Dateien" >> "$GITHUB_STEP_SUMMARY"
+          ls -la build/libs/
+          for jar in build/libs/*.jar; do
+            echo "- \`$(basename "$jar")\` ($(du -h "$jar" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: JAR zum Herunterladen bereitstellen
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlowCube-Mod
+          path: glowcube-client/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 90

@@ -1,1 +1,3 @@
 .build/
+glowcube-client/build/
+glowcube-client/.gradle/

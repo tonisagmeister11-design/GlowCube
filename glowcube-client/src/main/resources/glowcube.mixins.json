@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "net.glowcube.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "BlockMixin",
+    "OptionInstanceAccessor",
+    "ServerboundMovePlayerPacketMixin"
+  ]
+}

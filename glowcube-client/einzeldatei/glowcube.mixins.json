@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "net.glowcube.client",
+  "compatibilityLevel": "JAVA_21",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "GlowCubeClient$BlockMixin",
+    "GlowCubeClient$OptionInstanceAccessor",
+    "GlowCubeClient$ServerboundMovePlayerPacketMixin"
+  ]
+}

@@ -1,0 +1,2754 @@
+package net.glowcube.client;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.OptionInstance;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.DeathScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BarrelBlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.block.entity.DispenserBlockEntity;
+import net.minecraft.world.level.block.entity.EnderChestBlockEntity;
+import net.minecraft.world.level.block.entity.HopperBlockEntity;
+import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.gen.Accessor;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+
+/** Einstiegspunkt. Haelt die drei Bausteine zusammen und verteilt die Ereignisse. */
+public final class GlowCubeClient implements ClientModInitializer {
+    public static final String MOD_ID = "glowcube";
+    public static final String NAME = "GlowCube";
+    public static final String VERSION = "1.0.0";
+    public static final String TARGET = "Fabric 26.2";
+    public static final Logger LOGGER = LoggerFactory.getLogger(NAME);
+
+    private static ModuleManager modules;
+    private static ConfigManager config;
+
+    private final HudRenderer hud = new HudRenderer();
+    /** Welche Tasten gerade unten sind - fuer die Flanke statt Dauerfeuer. */
+    private final Set<Integer> held = new HashSet<>();
+
+    @Override
+    public void onInitializeClient() {
+        modules = new ModuleManager();
+        config = new ConfigManager(modules);
+        config.load();
+        modules.armLoaded();
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> onTick());
+        WorldRenderEvents.AFTER_ENTITIES.register(context -> modules.onWorldRender(context));
+        HudRenderCallback.EVENT.register((gfx, tickCounter) -> hud.render(gfx));
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> modules.onWorldLeave());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> config.save());
+
+        LOGGER.info("{} {} geladen - {} Module", NAME, VERSION, modules.all().size());
+    }
+
+    private void onTick() {
+        pollKeys();
+        modules.onTick();
+    }
+
+    /**
+     * Tasten direkt am Fenster abgefragt statt ueber KeyMappings: so laesst sich
+     * jede Taste im GUI neu belegen, ohne sie vorher registriert zu haben.
+     */
+    private void pollKeys() {
+        Minecraft mc = Minecraft.getInstance();
+        long window = mc.getWindow().getWindow();
+
+        Set<Integer> bound = new HashSet<>();
+        for (Module module : modules.all()) {
+            if (module.hasKey()) {
+                bound.add(module.key());
+            }
+        }
+
+        for (int key : bound) {
+            boolean down = InputConstants.isKeyDown(window, key);
+            if (!down) {
+                held.remove(key);
+                continue;
+            }
+            // Nur die Flanke zaehlt, sonst schaltet ein Halten im Dauerfeuer.
+            if (!held.add(key)) {
+                continue;
+            }
+            // Nur ausserhalb von Menues und Chat, sonst tippt man Module an.
+            if (mc.screen == null) {
+                modules.onKey(key);
+                config.save();
+            }
+        }
+    }
+
+    public static ModuleManager modules() {
+        return modules;
+    }
+
+    public static ConfigManager config() {
+        return config;
+    }
+
+    // ==========================================================================
+    // Ab hier alles, was sonst in eigenen Dateien laege.
+    // ==========================================================================
+
+    /** Die Kategorien der linken Leiste im ClickGUI. */
+    public enum Category {
+        COMBAT("Combat", "\u2694"),
+        MOVEMENT("Movement", "\u27a4"),
+        RENDER("Render", "\u25c6"),
+        PLAYER("Player", "\u2617"),
+        MISC("Misc", "\u2699");
+
+        private final String label;
+        private final String icon;
+
+        Category(String label, String icon) {
+            this.label = label;
+            this.icon = icon;
+        }
+
+        public String label() {
+            return label;
+        }
+
+        public String icon() {
+            return icon;
+        }
+    }
+
+    /** Basis aller Einstellungen. Jede Einstellung kann sich selbst nach JSON schreiben und zurueck lesen. */
+    public abstract static class Setting {
+        private final String name;
+        private final String description;
+
+        protected Setting(String name, String description) {
+            this.name = name;
+            this.description = description;
+        }
+
+        public String name() {
+            return name;
+        }
+
+        public String description() {
+            return description;
+        }
+
+        public abstract JsonElement save();
+
+        public abstract void load(JsonElement json);
+    }
+
+    public static final class BooleanSetting extends Setting {
+        private boolean value;
+
+        public BooleanSetting(String name, String description, boolean value) {
+            super(name, description);
+            this.value = value;
+        }
+
+        public boolean get() {
+            return value;
+        }
+
+        public void set(boolean value) {
+            this.value = value;
+        }
+
+        public void toggle() {
+            value = !value;
+        }
+
+        @Override
+        public JsonElement save() {
+            return new JsonPrimitive(value);
+        }
+
+        @Override
+        public void load(JsonElement json) {
+            if (json != null && json.isJsonPrimitive()) {
+                value = json.getAsBoolean();
+            }
+        }
+    }
+
+    /** Ein Schieberegler. Rastet auf `step` ein, damit im GUI runde Werte stehen. */
+    public static final class NumberSetting extends Setting {
+        private final double min;
+        private final double max;
+        private final double step;
+        private double value;
+
+        public NumberSetting(String name, String description, double value, double min, double max, double step) {
+            super(name, description);
+            this.min = min;
+            this.max = max;
+            this.step = step;
+            this.value = value;
+        }
+
+        public double get() {
+            return value;
+        }
+
+        public float getFloat() {
+            return (float) value;
+        }
+
+        public int getInt() {
+            return (int) Math.round(value);
+        }
+
+        public void set(double raw) {
+            double clamped = Math.max(min, Math.min(max, raw));
+            this.value = Math.round(clamped / step) * step;
+        }
+
+        /** 0..1 - so haelt das GUI den Regler, ohne min/max zu kennen. */
+        public double ratio() {
+            if (max - min == 0.0) {
+                return 0.0;
+            }
+            return (value - min) / (max - min);
+        }
+
+        public void setRatio(double ratio) {
+            set(min + (max - min) * Math.max(0.0, Math.min(1.0, ratio)));
+        }
+
+        public String display() {
+            if (step >= 1.0) {
+                return String.valueOf(getInt());
+            }
+            return String.format(java.util.Locale.ROOT, "%.2f", value);
+        }
+
+        @Override
+        public JsonElement save() {
+            return new JsonPrimitive(value);
+        }
+
+        @Override
+        public void load(JsonElement json) {
+            if (json != null && json.isJsonPrimitive()) {
+                set(json.getAsDouble());
+            }
+        }
+    }
+
+    /** Eine Auswahl aus festen Werten, im GUI durch Klick weitergeschaltet. */
+    public static final class ModeSetting extends Setting {
+        private final List<String> modes;
+        private int index;
+
+        public ModeSetting(String name, String description, String selected, String... modes) {
+            super(name, description);
+            this.modes = Arrays.asList(modes);
+            this.index = Math.max(0, this.modes.indexOf(selected));
+        }
+
+        public String get() {
+            return modes.get(index);
+        }
+
+        public boolean is(String mode) {
+            return get().equalsIgnoreCase(mode);
+        }
+
+        public void cycle(int direction) {
+            int size = modes.size();
+            index = ((index + direction) % size + size) % size;
+        }
+
+        public List<String> modes() {
+            return modes;
+        }
+
+        @Override
+        public JsonElement save() {
+            return new JsonPrimitive(get());
+        }
+
+        @Override
+        public void load(JsonElement json) {
+            if (json != null && json.isJsonPrimitive()) {
+                int found = modes.indexOf(json.getAsString());
+                if (found >= 0) {
+                    index = found;
+                }
+            }
+        }
+    }
+
+    /** Eine Liste von Block-IDs ("minecraft:diamond_ore") - das Herz von X-Ray. */
+    public static final class BlockListSetting extends Setting {
+        private final Set<String> ids = new LinkedHashSet<>();
+
+        public BlockListSetting(String name, String description, String... defaults) {
+            super(name, description);
+            for (String id : defaults) {
+                ids.add(normalise(id));
+            }
+        }
+
+        private static String normalise(String id) {
+            String trimmed = id.trim().toLowerCase(java.util.Locale.ROOT);
+            return trimmed.contains(":") ? trimmed : "minecraft:" + trimmed;
+        }
+
+        public boolean contains(String id) {
+            return ids.contains(id);
+        }
+
+        public boolean add(String id) {
+            return ids.add(normalise(id));
+        }
+
+        public boolean remove(String id) {
+            return ids.remove(normalise(id));
+        }
+
+        public Set<String> ids() {
+            return ids;
+        }
+
+        public int size() {
+            return ids.size();
+        }
+
+        @Override
+        public JsonElement save() {
+            JsonArray array = new JsonArray();
+            for (String id : ids) {
+                array.add(id);
+            }
+            return array;
+        }
+
+        @Override
+        public void load(JsonElement json) {
+            if (json == null || !json.isJsonArray()) {
+                return;
+            }
+            ids.clear();
+            for (JsonElement element : json.getAsJsonArray()) {
+                ids.add(normalise(element.getAsString()));
+            }
+        }
+    }
+
+    /**
+     * Basis jedes Features. Ein Modul kennt seinen Zustand, seine Einstellungen und
+     * seine Taste; alles andere macht der ModuleManager.
+     */
+    public abstract static class Module {
+        protected static final Minecraft mc = Minecraft.getInstance();
+
+        private final String name;
+        private final String description;
+        private final Category category;
+        private final List<Setting> settings = new ArrayList<>();
+
+        private boolean enabled;
+        private int key;
+        /** 0..1, laeuft beim Ein-/Ausschalten weich hoch bzw. runter - nur fuer die Darstellung. */
+        private float animation;
+
+        protected Module(String name, String description, Category category) {
+            this(name, description, category, InputConstants.UNKNOWN.getValue());
+        }
+
+        protected Module(String name, String description, Category category, int key) {
+            this.name = name;
+            this.description = description;
+            this.category = category;
+            this.key = key;
+        }
+
+        // ------------------------------------------------------------------ Haken
+
+        /** Wird beim Einschalten gerufen. */
+        public void onEnable() {
+        }
+
+        /** Wird beim Ausschalten gerufen - auch beim Verlassen der Welt. */
+        public void onDisable() {
+        }
+
+        /** Jeden Client-Tick, nur solange das Modul an ist und eine Welt existiert. */
+        public void onTick() {
+        }
+
+        /** Jeden Frame in der Welt, nach den Entities. */
+        public void onWorldRender(WorldRenderContext context) {
+        }
+
+        // ----------------------------------------------------------------- Zustand
+
+        public void toggle() {
+            setEnabled(!enabled);
+        }
+
+        public void setEnabled(boolean value) {
+            if (this.enabled == value) {
+                return;
+            }
+            this.enabled = value;
+            if (value) {
+                onEnable();
+            } else {
+                onDisable();
+            }
+        }
+
+        /** Schaltet ohne onEnable/onDisable - fuer das Laden der Konfiguration. */
+        public void setEnabledSilently(boolean value) {
+            this.enabled = value;
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public String name() {
+            return name;
+        }
+
+        public String description() {
+            return description;
+        }
+
+        public Category category() {
+            return category;
+        }
+
+        public int key() {
+            return key;
+        }
+
+        public void setKey(int key) {
+            this.key = key;
+        }
+
+        public boolean hasKey() {
+            return key != InputConstants.UNKNOWN.getValue();
+        }
+
+        public String keyName() {
+            if (!hasKey()) {
+                return "--";
+            }
+            return InputConstants.getKey(key, 0).getDisplayName().getString().toUpperCase(java.util.Locale.ROOT);
+        }
+
+        /** Was im HUD hinter dem Namen steht, z.B. "Speed [2.5]". Null heisst: nichts. */
+        public String hudSuffix() {
+            return null;
+        }
+
+        public float animation() {
+            return animation;
+        }
+
+        public void setAnimation(float animation) {
+            this.animation = animation;
+        }
+
+        // --------------------------------------------------------------- Settings
+
+        protected <T extends Setting> T register(T setting) {
+            settings.add(setting);
+            return setting;
+        }
+
+        public List<Setting> settings() {
+            return settings;
+        }
+
+        // --------------------------------------------------------------- Abkuerzer
+
+        protected LocalPlayer player() {
+            return mc.player;
+        }
+
+        protected ClientLevel level() {
+            return mc.level;
+        }
+
+        protected boolean inGame() {
+            return mc.player != null && mc.level != null;
+        }
+    }
+
+    /** Haelt alle Module, verteilt Ticks und Tastendruecke. */
+    public static final class ModuleManager {
+        private final List<Module> modules = new ArrayList<>();
+        private final Map<String, Module> byName = new LinkedHashMap<>();
+        /** Module, die an sind, deren onEnable aber noch aussteht. */
+        private final Set<Module> pending = new HashSet<>();
+
+        public ModuleManager() {
+            // Render
+            add(new XRay());
+            add(new FullBright());
+            add(new StorageEsp());
+            add(new EntityEsp());
+            add(new Tracers());
+            add(new Zoom());
+            // Movement
+            add(new Flight());
+            add(new Speed());
+            add(new Step());
+            add(new NoFall());
+            add(new AutoSprint());
+            // Combat
+            add(new KillAura());
+            // Player
+            add(new AutoTool());
+            add(new AutoRespawn());
+            add(new AntiAfk());
+            // Misc
+            add(new ClickGuiModule());
+        }
+
+        private void add(Module module) {
+            modules.add(module);
+            byName.put(module.name().toLowerCase(java.util.Locale.ROOT), module);
+        }
+
+        public List<Module> all() {
+            return modules;
+        }
+
+        public Module get(String name) {
+            return byName.get(name.toLowerCase(java.util.Locale.ROOT));
+        }
+
+        public <T extends Module> T get(Class<T> type) {
+            for (Module module : modules) {
+                if (type.isInstance(module)) {
+                    return type.cast(module);
+                }
+            }
+            throw new IllegalArgumentException("Unbekanntes Modul: " + type.getName());
+        }
+
+        public List<Module> inCategory(Category category) {
+            List<Module> result = new ArrayList<>();
+            for (Module module : modules) {
+                if (module.category() == category) {
+                    result.add(module);
+                }
+            }
+            result.sort(Comparator.comparing(Module::name));
+            return result;
+        }
+
+        public List<Module> enabled() {
+            List<Module> result = new ArrayList<>();
+            for (Module module : modules) {
+                if (module.isEnabled()) {
+                    result.add(module);
+                }
+            }
+            return result;
+        }
+
+        // ----------------------------------------------------------------- Events
+
+        public void onTick() {
+            Minecraft mc = Minecraft.getInstance();
+            boolean inGame = mc.player != null && mc.level != null;
+            if (!inGame) {
+                return;
+            }
+            // Nachgeholtes onEnable: beim Start und nach einem Weltwechsel.
+            if (!pending.isEmpty()) {
+                for (Module module : new ArrayList<>(pending)) {
+                    module.onEnable();
+                }
+                pending.clear();
+            }
+            for (Module module : modules) {
+                if (module.isEnabled()) {
+                    module.onTick();
+                }
+            }
+        }
+
+        /**
+         * Nach dem Laden der Konfiguration: die dort eingeschalteten Module wollen
+         * ihr onEnable noch haben - aber erst, wenn es eine Welt gibt. Zu diesem
+         * Zeitpunkt steht die halbe Spielinstanz noch gar nicht.
+         */
+        public void armLoaded() {
+            for (Module module : modules) {
+                if (module.isEnabled()) {
+                    pending.add(module);
+                }
+            }
+        }
+
+        public void onWorldRender(WorldRenderContext context) {
+            for (Module module : modules) {
+                if (module.isEnabled()) {
+                    module.onWorldRender(context);
+                }
+            }
+        }
+
+        /** Ein Tastendruck ausserhalb von Textfeldern. */
+        public void onKey(int key) {
+            for (Module module : modules) {
+                if (module.hasKey() && module.key() == key) {
+                    module.toggle();
+                }
+            }
+        }
+
+        /**
+         * Beim Verlassen der Welt alles herunterfahren, damit nichts haengen bleibt -
+         * die Module bleiben aber eingeschaltet und melden sich in der naechsten
+         * Welt von selbst zurueck.
+         */
+        public void onWorldLeave() {
+            pending.clear();
+            for (Module module : modules) {
+                if (module.isEnabled()) {
+                    module.onDisable();
+                    pending.add(module);
+                }
+            }
+        }
+    }
+
+    /** Schreibt und liest glowcube.json im Config-Ordner. */
+    public static final class ConfigManager {
+        private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+        private final ModuleManager modules;
+        private final Path file;
+
+        public ConfigManager(ModuleManager modules) {
+            this.modules = modules;
+            this.file = FabricLoader.getInstance().getConfigDir().resolve(GlowCubeClient.MOD_ID + ".json");
+        }
+
+        public void save() {
+            JsonObject root = new JsonObject();
+            root.addProperty("version", GlowCubeClient.VERSION);
+
+            JsonObject moduleTree = new JsonObject();
+            for (Module module : modules.all()) {
+                JsonObject entry = new JsonObject();
+                entry.addProperty("enabled", module.isEnabled());
+                entry.addProperty("key", module.key());
+
+                JsonObject settings = new JsonObject();
+                for (Setting setting : module.settings()) {
+                    settings.add(setting.name(), setting.save());
+                }
+                entry.add("settings", settings);
+                moduleTree.add(module.name(), entry);
+            }
+            root.add("modules", moduleTree);
+
+            try {
+                Files.createDirectories(file.getParent());
+                Files.write(file, GSON.toJson(root).getBytes(StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                GlowCubeClient.LOGGER.error("Konnte {} nicht schreiben", file, e);
+            }
+        }
+
+        public void load() {
+            if (!Files.exists(file)) {
+                return;
+            }
+            try {
+                String text = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+                JsonObject root = JsonParser.parseString(text).getAsJsonObject();
+                if (!root.has("modules")) {
+                    return;
+                }
+                JsonObject moduleTree = root.getAsJsonObject("modules");
+
+                for (Module module : modules.all()) {
+                    if (!moduleTree.has(module.name())) {
+                        continue;
+                    }
+                    JsonObject entry = moduleTree.getAsJsonObject(module.name());
+                    if (entry.has("key")) {
+                        module.setKey(entry.get("key").getAsInt());
+                    }
+                    if (entry.has("settings")) {
+                        JsonObject settings = entry.getAsJsonObject("settings");
+                        for (Setting setting : module.settings()) {
+                            setting.load(settings.get(setting.name()));
+                        }
+                    }
+                    // Zuletzt: erst wenn die Settings stehen, darf onEnable laufen.
+                    if (entry.has("enabled") && entry.get("enabled").getAsBoolean()) {
+                        module.setEnabledSilently(true);
+                    }
+                }
+            } catch (Exception e) {
+                GlowCubeClient.LOGGER.error("Konnte {} nicht lesen - nehme Standardwerte", file, e);
+            }
+        }
+    }
+
+    public static final class ColorUtil {
+        private ColorUtil() {
+        }
+
+        public static int argb(int a, int r, int g, int b) {
+            return (a & 0xFF) << 24 | (r & 0xFF) << 16 | (g & 0xFF) << 8 | (b & 0xFF);
+        }
+
+        public static int alpha(int color) {
+            return color >>> 24 & 0xFF;
+        }
+
+        public static int red(int color) {
+            return color >> 16 & 0xFF;
+        }
+
+        public static int green(int color) {
+            return color >> 8 & 0xFF;
+        }
+
+        public static int blue(int color) {
+            return color & 0xFF;
+        }
+
+        /** Setzt die Deckkraft neu, 0..1. */
+        public static int withAlpha(int color, float alpha) {
+            int a = (int) (Math.max(0.0f, Math.min(1.0f, alpha)) * 255.0f);
+            return a << 24 | (color & 0x00FFFFFF);
+        }
+
+        /** Multipliziert die vorhandene Deckkraft - fuer Ein-/Ausblenden. */
+        public static int fade(int color, float factor) {
+            return withAlpha(color, alpha(color) / 255.0f * factor);
+        }
+
+        public static int lerp(int from, int to, float t) {
+            float f = Math.max(0.0f, Math.min(1.0f, t));
+            return argb(
+                    Math.round(alpha(from) + (alpha(to) - alpha(from)) * f),
+                    Math.round(red(from) + (red(to) - red(from)) * f),
+                    Math.round(green(from) + (green(to) - green(from)) * f),
+                    Math.round(blue(from) + (blue(to) - blue(from)) * f));
+        }
+
+        /** Ringfoermiger Verlauf ueber drei Farben, t = 0..1. */
+        public static int gradient(int a, int b, int c, float t) {
+            float p = t % 1.0f;
+            if (p < 1.0f / 3.0f) {
+                return lerp(a, b, p * 3.0f);
+            }
+            if (p < 2.0f / 3.0f) {
+                return lerp(b, c, (p - 1.0f / 3.0f) * 3.0f);
+            }
+            return lerp(c, a, (p - 2.0f / 3.0f) * 3.0f);
+        }
+
+        /** Heller/dunkler machen, ohne den Farbton zu verlieren. */
+        public static int shade(int color, float factor) {
+            return argb(alpha(color),
+                    Math.min(255, Math.round(red(color) * factor)),
+                    Math.min(255, Math.round(green(color) * factor)),
+                    Math.min(255, Math.round(blue(color) * factor)));
+        }
+    }
+
+    /**
+     * Die Farbwelt von GlowCube: tiefes Anthrazit als Grund, ein Verlauf von
+     * Tuerkis nach Violett als Akzent. Der Akzent wandert langsam - deshalb sind
+     * es Methoden und keine Konstanten.
+     */
+    public static final class Theme {
+        private Theme() {
+        }
+
+        public static final int BACKDROP      = 0xC8070810;
+        public static final int PANEL         = 0xF20E1018;
+        public static final int PANEL_LIGHT   = 0xFF151926;
+        public static final int RAIL          = 0xFF0B0D14;
+        public static final int CARD          = 0xFF141826;
+        public static final int CARD_HOVER    = 0xFF1B2133;
+        public static final int OUTLINE       = 0x26FFFFFF;
+        public static final int OUTLINE_SOFT  = 0x14FFFFFF;
+
+        public static final int TEXT          = 0xFFF2F5FF;
+        public static final int TEXT_DIM      = 0xFF8A93AC;
+        public static final int TEXT_FAINT    = 0xFF565E75;
+
+        public static final int ACCENT_A      = 0xFF3BF0D4;
+        public static final int ACCENT_B      = 0xFF9B6BFF;
+        public static final int ACCENT_C      = 0xFFFF5FA2;
+
+        private static final long CYCLE_NANOS = 8_000_000_000L;
+
+        /** Wandert in 8 Sekunden einmal durch den Verlauf. */
+        public static float phase() {
+            // floorMod, weil nanoTime laut Spezifikation auch negativ sein darf.
+            return Math.floorMod(System.nanoTime(), CYCLE_NANOS) / (float) CYCLE_NANOS;
+        }
+
+        /** Der linke Ton des laufenden Verlaufs. */
+        public static int accentStart() {
+            return ColorUtil.gradient(ACCENT_A, ACCENT_B, ACCENT_C, phase());
+        }
+
+        /** Der rechte Ton - eine Viertelrunde spaeter, damit immer Kontrast da ist. */
+        public static int accentEnd() {
+            return ColorUtil.gradient(ACCENT_A, ACCENT_B, ACCENT_C, (phase() + 0.25f) % 1.0f);
+        }
+
+        /** Derselbe Verlauf, aber pro Zeile versetzt - fuer HUD-Listen. */
+        public static int accentAt(float offset) {
+            return ColorUtil.gradient(ACCENT_A, ACCENT_B, ACCENT_C, (phase() + offset) % 1.0f);
+        }
+    }
+
+    /**
+     * Ein Wert, der seinem Ziel weich folgt. Rechnet mit echter Zeit, nicht mit
+     * Ticks - dadurch laeuft das GUI bei jeder Framerate gleich schnell.
+     */
+    public static final class Anim {
+        private float value;
+        private float target;
+        private final float speed;
+        private long last = System.nanoTime();
+
+        public Anim(float start, float speed) {
+            this.value = start;
+            this.target = start;
+            this.speed = speed;
+        }
+
+        public void target(float target) {
+            this.target = target;
+        }
+
+        public void snap(float value) {
+            this.value = value;
+            this.target = value;
+        }
+
+        public float value() {
+            long now = System.nanoTime();
+            float delta = (now - last) / 1_000_000_000.0f;
+            last = now;
+            // Framerate-unabhaengiges Nachziehen.
+            float factor = 1.0f - (float) Math.exp(-speed * Math.min(delta, 0.1f));
+            value += (target - value) * factor;
+            if (Math.abs(target - value) < 0.001f) {
+                value = target;
+            }
+            return value;
+        }
+
+        public float target() {
+            return target;
+        }
+
+        public static float easeOut(float t) {
+            float p = Math.max(0.0f, Math.min(1.0f, t));
+            return 1.0f - (1.0f - p) * (1.0f - p) * (1.0f - p);
+        }
+    }
+
+    /**
+     * Alles, was GlowCube auf den Bildschirm malt. Bewusst nur mit fill() und
+     * fillGradient() gebaut - das sind die zwei Zeichenbefehle, die sich zwischen
+     * den Minecraft-Fassungen am wenigsten bewegen.
+     */
+    public static final class Render2D {
+        private Render2D() {
+        }
+
+        private static Font font() {
+            return Minecraft.getInstance().font;
+        }
+
+        // ------------------------------------------------------------- Rechtecke
+
+        public static void rect(GuiGraphics gfx, float x, float y, float w, float h, int color) {
+            gfx.fill(Math.round(x), Math.round(y), Math.round(x + w), Math.round(y + h), color);
+        }
+
+        /** Senkrechter Verlauf - ein einziger Zeichenbefehl. */
+        public static void gradientV(GuiGraphics gfx, float x, float y, float w, float h, int top, int bottom) {
+            gfx.fillGradient(Math.round(x), Math.round(y), Math.round(x + w), Math.round(y + h), top, bottom);
+        }
+
+        /** Rechteck mit runden Ecken, zeilenweise aufgebaut. */
+        public static void roundedRect(GuiGraphics gfx, float x, float y, float w, float h, float radius, int color) {
+            int xi = Math.round(x);
+            int yi = Math.round(y);
+            int wi = Math.round(w);
+            int hi = Math.round(h);
+            if (wi <= 0 || hi <= 0) {
+                return;
+            }
+            int r = Math.max(0, Math.min(Math.round(radius), Math.min(wi, hi) / 2));
+
+            for (int i = 0; i < r; i++) {
+                int inset = arcInset(r, i);
+                gfx.fill(xi + inset, yi + i, xi + wi - inset, yi + i + 1, color);
+                gfx.fill(xi + inset, yi + hi - i - 1, xi + wi - inset, yi + hi - i, color);
+            }
+            gfx.fill(xi, yi + r, xi + wi, yi + hi - r, color);
+        }
+
+        /** Waagerechter Verlauf mit runden Enden - spaltenweise. */
+        public static void roundedGradientH(GuiGraphics gfx, float x, float y, float w, float h,
+                                            float radius, int left, int right) {
+            int xi = Math.round(x);
+            int yi = Math.round(y);
+            int wi = Math.round(w);
+            int hi = Math.round(h);
+            if (wi <= 0 || hi <= 0) {
+                return;
+            }
+            int r = Math.max(0, Math.min(Math.round(radius), Math.min(wi, hi) / 2));
+
+            for (int col = 0; col < wi; col++) {
+                int distance = Math.min(col, wi - col - 1);
+                int inset = distance < r ? arcInset(r, distance) : 0;
+                int color = ColorUtil.lerp(left, right, wi <= 1 ? 0.0f : (float) col / (wi - 1));
+                gfx.fill(xi + col, yi + inset, xi + col + 1, yi + hi - inset, color);
+            }
+        }
+
+        /** Wie weit eine Zeile/Spalte im Abstand {@code i} von der Ecke eingerueckt ist. */
+        private static int arcInset(int radius, int i) {
+            double d = radius - i - 0.5;
+            return (int) Math.round(radius - Math.sqrt(Math.max(0.0, radius * radius - d * d)));
+        }
+
+        /** 1px-Rahmen mit runden Ecken. */
+        public static void roundedOutline(GuiGraphics gfx, float x, float y, float w, float h, float radius, int color) {
+            int xi = Math.round(x);
+            int yi = Math.round(y);
+            int wi = Math.round(w);
+            int hi = Math.round(h);
+            int r = Math.max(0, Math.min(Math.round(radius), Math.min(wi, hi) / 2));
+
+            for (int i = 0; i < r; i++) {
+                int inset = arcInset(r, i);
+                int next = i + 1 < r ? arcInset(r, i + 1) : 0;
+                int thickness = Math.max(1, inset - next);
+                gfx.fill(xi + inset, yi + i, xi + inset + thickness, yi + i + 1, color);
+                gfx.fill(xi + wi - inset - thickness, yi + i, xi + wi - inset, yi + i + 1, color);
+                gfx.fill(xi + inset, yi + hi - i - 1, xi + inset + thickness, yi + hi - i, color);
+                gfx.fill(xi + wi - inset - thickness, yi + hi - i - 1, xi + wi - inset, yi + hi - i, color);
+            }
+            gfx.fill(xi, yi + r, xi + 1, yi + hi - r, color);
+            gfx.fill(xi + wi - 1, yi + r, xi + wi, yi + hi - r, color);
+            gfx.fill(xi + r, yi, xi + wi - r, yi + 1, color);
+            gfx.fill(xi + r, yi + hi - 1, xi + wi - r, yi + hi, color);
+        }
+
+        /** Weiches Leuchten hinter einer Flaeche. */
+        public static void glow(GuiGraphics gfx, float x, float y, float w, float h, float radius, int color, int layers) {
+            for (int i = layers; i >= 1; i--) {
+                float spread = i * 1.5f;
+                int faded = ColorUtil.withAlpha(color, 0.10f * (1.0f - (float) i / (layers + 1)));
+                roundedRect(gfx, x - spread, y - spread, w + spread * 2, h + spread * 2, radius + spread, faded);
+            }
+        }
+
+        // ------------------------------------------------------------------ Text
+
+        public static void text(GuiGraphics gfx, String text, float x, float y, int color) {
+            gfx.drawString(font(), text, Math.round(x), Math.round(y), color, false);
+        }
+
+        public static void textShadow(GuiGraphics gfx, String text, float x, float y, int color) {
+            gfx.drawString(font(), text, Math.round(x), Math.round(y), color, true);
+        }
+
+        public static void textCentered(GuiGraphics gfx, String text, float centerX, float y, int color) {
+            text(gfx, text, centerX - width(text) / 2.0f, y, color);
+        }
+
+        /** Buchstabe fuer Buchstabe durch einen Verlauf gefaerbt. */
+        public static void textGradient(GuiGraphics gfx, String text, float x, float y, int from, int to) {
+            float cursor = x;
+            int length = text.length();
+            for (int i = 0; i < length; i++) {
+                String ch = String.valueOf(text.charAt(i));
+                int color = ColorUtil.lerp(from, to, length <= 1 ? 0.0f : (float) i / (length - 1));
+                text(gfx, ch, cursor, y, color);
+                cursor += width(ch);
+            }
+        }
+
+        public static int width(String text) {
+            return font().width(text);
+        }
+
+        public static int lineHeight() {
+            return font().lineHeight;
+        }
+
+        /** Kuerzt mit "..." ab, damit nichts aus seiner Karte laeuft. */
+        public static String clip(String text, int maxWidth) {
+            if (width(text) <= maxWidth) {
+                return text;
+            }
+            StringBuilder builder = new StringBuilder();
+            for (char c : text.toCharArray()) {
+                if (width(builder.toString() + c + "...") > maxWidth) {
+                    break;
+                }
+                builder.append(c);
+            }
+            return builder + "...";
+        }
+
+        // --------------------------------------------------------------- Bereich
+
+        public static void pushScissor(GuiGraphics gfx, float x, float y, float w, float h) {
+            gfx.enableScissor(Math.round(x), Math.round(y), Math.round(x + w), Math.round(y + h));
+        }
+
+        public static void popScissor(GuiGraphics gfx) {
+            gfx.disableScissor();
+        }
+
+        public static boolean hovered(double mouseX, double mouseY, float x, float y, float w, float h) {
+            return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
+        }
+    }
+
+    /**
+     * Linien in der Welt. Die Kanten werden von Hand geschrieben statt ueber einen
+     * Vanilla-Helfer - der ist zwischen den Fassungen schon mehrfach umgezogen,
+     * VertexConsumer nicht.
+     */
+    public static final class Render3D {
+        private Render3D() {
+        }
+
+        /** Kasten um eine Box. Zeichnet zusaetzlich eine blasse, groessere Box als Schimmer. */
+        public static void box(WorldRenderContext context, AABB box, int color, boolean glow) {
+            MultiBufferSource consumers = context.consumers();
+            PoseStack matrices = context.matrixStack();
+            if (consumers == null || matrices == null) {
+                return;
+            }
+            Vec3 camera = context.camera().getPosition();
+            VertexConsumer lines = consumers.getBuffer(RenderType.lines());
+
+            matrices.pushPose();
+            matrices.translate(-camera.x, -camera.y, -camera.z);
+            PoseStack.Pose pose = matrices.last();
+
+            if (glow) {
+                AABB wide = box.inflate(0.03);
+                edges(lines, pose, wide, ColorUtil.fade(color, 0.35f));
+            }
+            edges(lines, pose, box, color);
+
+            matrices.popPose();
+        }
+
+        /** Eine Linie von der Blickmitte zu einem Punkt in der Welt. */
+        public static void tracer(WorldRenderContext context, Vec3 target, int color) {
+            MultiBufferSource consumers = context.consumers();
+            PoseStack matrices = context.matrixStack();
+            if (consumers == null || matrices == null) {
+                return;
+            }
+            Vec3 camera = context.camera().getPosition();
+            Vector3f look = context.camera().getLookVector();
+            // Startpunkt knapp vor der Kamera, sonst verschwindet die Linie in der Near-Plane.
+            Vec3 start = camera.add(look.x() * 0.6, look.y() * 0.6, look.z() * 0.6);
+
+            VertexConsumer lines = consumers.getBuffer(RenderType.lines());
+            matrices.pushPose();
+            matrices.translate(-camera.x, -camera.y, -camera.z);
+            line(lines, matrices.last(),
+                    (float) start.x, (float) start.y, (float) start.z,
+                    (float) target.x, (float) target.y, (float) target.z, color);
+            matrices.popPose();
+        }
+
+        private static void edges(VertexConsumer buffer, PoseStack.Pose pose, AABB box, int color) {
+            float x1 = (float) box.minX;
+            float y1 = (float) box.minY;
+            float z1 = (float) box.minZ;
+            float x2 = (float) box.maxX;
+            float y2 = (float) box.maxY;
+            float z2 = (float) box.maxZ;
+
+            // Boden
+            line(buffer, pose, x1, y1, z1, x2, y1, z1, color);
+            line(buffer, pose, x2, y1, z1, x2, y1, z2, color);
+            line(buffer, pose, x2, y1, z2, x1, y1, z2, color);
+            line(buffer, pose, x1, y1, z2, x1, y1, z1, color);
+            // Decke
+            line(buffer, pose, x1, y2, z1, x2, y2, z1, color);
+            line(buffer, pose, x2, y2, z1, x2, y2, z2, color);
+            line(buffer, pose, x2, y2, z2, x1, y2, z2, color);
+            line(buffer, pose, x1, y2, z2, x1, y2, z1, color);
+            // Pfosten
+            line(buffer, pose, x1, y1, z1, x1, y2, z1, color);
+            line(buffer, pose, x2, y1, z1, x2, y2, z1, color);
+            line(buffer, pose, x2, y1, z2, x2, y2, z2, color);
+            line(buffer, pose, x1, y1, z2, x1, y2, z2, color);
+        }
+
+        private static void line(VertexConsumer buffer, PoseStack.Pose pose,
+                                 float x1, float y1, float z1, float x2, float y2, float z2, int color) {
+            float dx = x2 - x1;
+            float dy = y2 - y1;
+            float dz = z2 - z1;
+            float length = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (length == 0.0f) {
+                return;
+            }
+            float nx = dx / length;
+            float ny = dy / length;
+            float nz = dz / length;
+
+            int a = ColorUtil.alpha(color);
+            int r = ColorUtil.red(color);
+            int g = ColorUtil.green(color);
+            int b = ColorUtil.blue(color);
+
+            buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a).setNormal(pose, nx, ny, nz);
+            buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a).setNormal(pose, nx, ny, nz);
+        }
+    }
+
+    /**
+     * Bewegungseingabe direkt von den Tastenbelegungen gelesen. Absichtlich nicht
+     * ueber das Input-Objekt des Spielers - dessen Aufbau aendert sich staendig,
+     * die KeyMappings in den Options nicht.
+     */
+    public static final class Movement {
+        private Movement() {
+        }
+
+        private static Minecraft mc() {
+            return Minecraft.getInstance();
+        }
+
+        public static double forward() {
+            return (mc().options.keyUp.isDown() ? 1.0 : 0.0) - (mc().options.keyDown.isDown() ? 1.0 : 0.0);
+        }
+
+        public static double strafe() {
+            return (mc().options.keyLeft.isDown() ? 1.0 : 0.0) - (mc().options.keyRight.isDown() ? 1.0 : 0.0);
+        }
+
+        public static boolean jumping() {
+            return mc().options.keyJump.isDown();
+        }
+
+        public static boolean sneaking() {
+            return mc().options.keyShift.isDown();
+        }
+
+        public static boolean moving() {
+            return forward() != 0.0 || strafe() != 0.0;
+        }
+
+        /** Die Eingabe in Weltkoordinaten, auf {@code speed} normiert. Y bleibt 0. */
+        public static Vec3 direction(Player player, double speed) {
+            double forward = forward();
+            double strafe = strafe();
+            if (forward == 0.0 && strafe == 0.0) {
+                return Vec3.ZERO;
+            }
+            float yaw = player.getYRot() * Mth.DEG_TO_RAD;
+            double sin = Mth.sin(yaw);
+            double cos = Mth.cos(yaw);
+            double length = Math.sqrt(forward * forward + strafe * strafe);
+            double x = (strafe * cos - forward * sin) / length * speed;
+            double z = (forward * cos + strafe * sin) / length * speed;
+            return new Vec3(x, 0.0, z);
+        }
+    }
+
+    /**
+     * Helligkeit ueber den erlaubten Bereich hinaus. Der Regler im Menue klemmt bei
+     * 1.0, der Wert dahinter nicht - deshalb wird er direkt gesetzt.
+     * Mehrere Module wollen das gleichzeitig, darum ein Zaehler statt eines Schalters.
+     */
+    public static final class Gamma {
+        private Gamma() {
+        }
+
+        private static int holders;
+        private static double original = -1.0;
+
+        public static void acquire() {
+            if (holders++ == 0) {
+                Minecraft mc = Minecraft.getInstance();
+                original = mc.options.gamma().get();
+                setRaw(16.0);
+            }
+        }
+
+        public static void release() {
+            if (holders > 0 && --holders == 0 && original >= 0.0) {
+                setRaw(original);
+                original = -1.0;
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        private static void setRaw(double value) {
+            Minecraft mc = Minecraft.getInstance();
+            ((OptionInstanceAccessor<Double>) (Object) mc.options.gamma()).glowcube$setValue(value);
+        }
+    }
+
+    /**
+     * Eine Zeile der Liste - entweder eine Modulkarte oder eine ihrer
+     * Einstellungen. Zeichnen und Klicken laufen ueber dieselbe Liste, damit
+     * beides nie auseinanderlaufen kann.
+     */
+    public static final class Row {
+        final Module module;
+        final Setting setting;
+        final float y;
+        final float height;
+
+        Row(Module module, Setting setting, float y, float height) {
+            this.module = module;
+            this.setting = setting;
+            this.y = y;
+            this.height = height;
+        }
+
+        boolean isCard() {
+            return setting == null;
+        }
+    }
+
+    /** Das Fenster von GlowCube. */
+    public static final class ClickGuiScreen extends Screen {
+        private static final int PANEL_W = 478;
+        private static final int PANEL_H = 302;
+        private static final int HEADER_H = 46;
+        private static final int RAIL_W = 122;
+        private static final int CARD_H = 34;
+        private static final int ROW_H = 16;
+        private static final int GAP = 5;
+        private static final int PAD = 12;
+
+        // Bleibt zwischen zwei Oeffnungen stehen - man findet sich schneller zurecht.
+        private static Category category = Category.RENDER;
+        private static final Set<String> expanded = new HashSet<>();
+        private static String search = "";
+
+        private final Anim opening = new Anim(0.0f, 14.0f);
+        private final Map<String, Anim> toggles = new HashMap<>();
+        private final Map<Category, Anim> tabs = new HashMap<>();
+
+        private float scroll;
+        private float scrollTarget;
+        private Module binding;
+        private NumberSetting dragging;
+
+        private int panelX;
+        private int panelY;
+
+        public ClickGuiScreen() {
+            super(Component.literal(GlowCubeClient.NAME));
+        }
+
+        @Override
+        protected void init() {
+            opening.snap(0.0f);
+            opening.target(1.0f);
+            panelX = (width - PANEL_W) / 2;
+            panelY = (height - PANEL_H) / 2;
+        }
+
+        @Override
+        public boolean isPauseScreen() {
+            return false;
+        }
+
+        // ---------------------------------------------------------------- Zeichnen
+
+        @Override
+        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            float progress = Anim.easeOut(opening.value());
+            panelX = (width - PANEL_W) / 2;
+            panelY = (height - PANEL_H) / 2;
+            // Faehrt beim Oeffnen ein paar Pixel hoch und blendet dabei ein.
+            float lift = (1.0f - progress) * 14.0f;
+            float y = panelY + lift;
+
+            Render2D.rect(gfx, 0, 0, width, height, ColorUtil.fade(Theme.BACKDROP, progress));
+
+            Render2D.glow(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.accentStart(), progress), 5);
+            Render2D.roundedRect(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.PANEL, progress));
+            Render2D.roundedOutline(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.OUTLINE, progress));
+
+            drawHeader(gfx, y, mouseX, mouseY, progress);
+            drawRail(gfx, y, mouseX, mouseY, progress);
+            drawContent(gfx, y, mouseX, mouseY, progress);
+        }
+
+        private void drawHeader(GuiGraphics gfx, float top, int mouseX, int mouseY, float alpha) {
+            float x = panelX + PAD;
+            float textY = top + 13;
+
+            Render2D.textGradient(gfx, "GLOWCUBE", x, textY,
+                    ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
+            Render2D.text(gfx, "v" + GlowCubeClient.VERSION + "  \u00b7  " + GlowCubeClient.TARGET,
+                    x, textY + 12, ColorUtil.fade(Theme.TEXT_FAINT, alpha));
+
+            // Suchfeld rechts im Kopf.
+            float boxW = 150;
+            float boxX = panelX + PANEL_W - PAD - boxW;
+            float boxY = top + 14;
+            boolean hover = Render2D.hovered(mouseX, mouseY, boxX, boxY, boxW, 18);
+            Render2D.roundedRect(gfx, boxX, boxY, boxW, 18, 9, ColorUtil.fade(Theme.RAIL, alpha));
+            Render2D.roundedOutline(gfx, boxX, boxY, boxW, 18, 9,
+                    ColorUtil.fade(hover || !search.isEmpty() ? Theme.accentStart() : Theme.OUTLINE_SOFT, alpha));
+
+            String label = search.isEmpty() ? "Suchen \u2026" : search;
+            int labelColor = search.isEmpty() ? Theme.TEXT_FAINT : Theme.TEXT;
+            Render2D.text(gfx, "\u2315", boxX + 8, boxY + 5, ColorUtil.fade(Theme.TEXT_DIM, alpha));
+            Render2D.text(gfx, Render2D.clip(label, (int) boxW - 30), boxX + 20, boxY + 5,
+                    ColorUtil.fade(labelColor, alpha));
+            if (!search.isEmpty() && (System.currentTimeMillis() / 500) % 2 == 0) {
+                float caret = boxX + 20 + Render2D.width(Render2D.clip(label, (int) boxW - 30));
+                Render2D.rect(gfx, caret + 1, boxY + 4, 1, 10, ColorUtil.fade(Theme.accentStart(), alpha));
+            }
+
+            Render2D.rect(gfx, panelX + 1, top + HEADER_H - 1, PANEL_W - 2, 1,
+                    ColorUtil.fade(Theme.OUTLINE_SOFT, alpha));
+        }
+
+        private void drawRail(GuiGraphics gfx, float top, int mouseX, int mouseY, float alpha) {
+            float x = panelX + 1;
+            float y = top + HEADER_H;
+            float h = PANEL_H - HEADER_H - 1;
+
+            Render2D.rect(gfx, x, y, RAIL_W, h, ColorUtil.fade(Theme.RAIL, alpha));
+            Render2D.rect(gfx, x + RAIL_W, y, 1, h, ColorUtil.fade(Theme.OUTLINE_SOFT, alpha));
+
+            float cursor = y + 10;
+            for (Category value : Category.values()) {
+                boolean active = value == category;
+                boolean hover = Render2D.hovered(mouseX, mouseY, x + 8, cursor, RAIL_W - 16, 28);
+
+                Anim anim = tabs.computeIfAbsent(value, key -> new Anim(0.0f, 16.0f));
+                anim.target(active ? 1.0f : hover ? 0.4f : 0.0f);
+                float lit = anim.value();
+
+                if (lit > 0.01f) {
+                    Render2D.roundedRect(gfx, x + 8, cursor, RAIL_W - 16, 28, 7,
+                            ColorUtil.fade(Theme.PANEL_LIGHT, lit * 0.9f * alpha));
+                }
+                if (active) {
+                    // Der leuchtende Streifen links markiert die offene Kategorie.
+                    Render2D.roundedGradientH(gfx, x + 8, cursor + 6, 3, 16, 1,
+                            ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
+                }
+
+                int textColor = active ? Theme.TEXT : hover ? Theme.TEXT_DIM : Theme.TEXT_FAINT;
+                Render2D.text(gfx, value.icon(), x + 20, cursor + 10, ColorUtil.fade(textColor, alpha));
+                Render2D.text(gfx, value.label(), x + 34, cursor + 10, ColorUtil.fade(textColor, alpha));
+
+                int count = countEnabled(value);
+                if (count > 0) {
+                    String badge = String.valueOf(count);
+                    float badgeX = x + RAIL_W - 16 - Render2D.width(badge) - 6;
+                    Render2D.roundedRect(gfx, badgeX, cursor + 8, Render2D.width(badge) + 10, 12, 6,
+                            ColorUtil.fade(Theme.accentStart(), 0.20f * alpha));
+                    Render2D.text(gfx, badge, badgeX + 5, cursor + 10, ColorUtil.fade(Theme.accentStart(), alpha));
+                }
+                cursor += 32;
+            }
+
+            String hint = binding != null ? "Taste druecken \u2026" : "Rechtsklick = Optionen";
+            Render2D.text(gfx, Render2D.clip(hint, RAIL_W - 16), x + 10, top + PANEL_H - 18,
+                    ColorUtil.fade(binding != null ? Theme.accentStart() : Theme.TEXT_FAINT, alpha));
+        }
+
+        private void drawContent(GuiGraphics gfx, float top, int mouseX, int mouseY, float alpha) {
+            float areaX = panelX + RAIL_W + 1;
+            float areaY = top + HEADER_H;
+            float areaW = PANEL_W - RAIL_W - 2;
+            float areaH = PANEL_H - HEADER_H - 1;
+
+            List<Row> rows = buildRows(areaY);
+            float contentHeight = rows.isEmpty() ? 0 : rows.get(rows.size() - 1).y + rows.get(rows.size() - 1).height - areaY;
+            float maxScroll = Math.max(0.0f, contentHeight + PAD * 2 - areaH);
+            scrollTarget = Math.max(0.0f, Math.min(maxScroll, scrollTarget));
+            scroll += (scrollTarget - scroll) * 0.35f;
+
+            Render2D.pushScissor(gfx, areaX, areaY, areaW, areaH);
+
+            if (rows.isEmpty()) {
+                Render2D.textCentered(gfx, "Nichts gefunden", areaX + areaW / 2, areaY + areaH / 2 - 4,
+                        ColorUtil.fade(Theme.TEXT_FAINT, alpha));
+            }
+
+            float cardX = areaX + PAD;
+            float cardW = areaW - PAD * 2;
+
+            for (Row row : rows) {
+                float y = row.y - scroll;
+                if (y + row.height < areaY - 4 || y > areaY + areaH + 4) {
+                    continue;
+                }
+                if (row.isCard()) {
+                    drawCard(gfx, row.module, cardX, y, cardW, mouseX, mouseY, alpha);
+                } else {
+                    drawSetting(gfx, row.module, row.setting, cardX + 10, y, cardW - 20, mouseX, mouseY, alpha);
+                }
+            }
+
+            Render2D.popScissor(gfx);
+
+            if (maxScroll > 0) {
+                float trackH = areaH - PAD * 2;
+                float thumbH = Math.max(20.0f, trackH * (areaH / (contentHeight + PAD * 2)));
+                float thumbY = areaY + PAD + (trackH - thumbH) * (scroll / maxScroll);
+                Render2D.roundedRect(gfx, areaX + areaW - 5, areaY + PAD, 2, trackH, 1,
+                        ColorUtil.fade(Theme.OUTLINE_SOFT, alpha));
+                Render2D.roundedGradientH(gfx, areaX + areaW - 5, thumbY, 2, thumbH, 1,
+                        ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
+            }
+        }
+
+        private void drawCard(GuiGraphics gfx, Module module, float x, float y, float w,
+                              int mouseX, int mouseY, float alpha) {
+            boolean hover = Render2D.hovered(mouseX, mouseY, x, y, w, CARD_H);
+            boolean on = module.isEnabled();
+
+            Anim anim = toggles.computeIfAbsent(module.name(), key -> new Anim(on ? 1.0f : 0.0f, 16.0f));
+            anim.target(on ? 1.0f : 0.0f);
+            float lit = anim.value();
+
+            Render2D.roundedRect(gfx, x, y, w, CARD_H, 7,
+                    ColorUtil.fade(hover ? Theme.CARD_HOVER : Theme.CARD, alpha));
+            if (lit > 0.01f) {
+                Render2D.roundedRect(gfx, x, y, w, CARD_H, 7,
+                        ColorUtil.fade(Theme.accentStart(), 0.07f * lit * alpha));
+                Render2D.roundedGradientH(gfx, x + 1, y + 7, 3, CARD_H - 14, 1,
+                        ColorUtil.fade(Theme.accentStart(), lit * alpha), ColorUtil.fade(Theme.accentEnd(), lit * alpha));
+            }
+            if (hover) {
+                Render2D.roundedOutline(gfx, x, y, w, CARD_H, 7, ColorUtil.fade(Theme.OUTLINE, alpha));
+            }
+
+            float textX = x + 12;
+            String name = module.name();
+            String suffix = module.hudSuffix();
+            Render2D.text(gfx, name, textX, y + 8,
+                    ColorUtil.fade(on ? Theme.TEXT : Theme.TEXT_DIM, alpha));
+            if (suffix != null) {
+                Render2D.text(gfx, suffix, textX + Render2D.width(name) + 6, y + 8,
+                        ColorUtil.fade(Theme.accentStart(), (on ? 1.0f : 0.45f) * alpha));
+            }
+            Render2D.text(gfx, Render2D.clip(module.description(), (int) w - 120), textX, y + 19,
+                    ColorUtil.fade(Theme.TEXT_FAINT, alpha));
+
+            // Schalter rechts.
+            float pillW = 26;
+            float pillH = 13;
+            float pillX = x + w - 14 - pillW;
+            float pillY = y + (CARD_H - pillH) / 2.0f;
+            if (lit > 0.01f) {
+                Render2D.roundedGradientH(gfx, pillX, pillY, pillW, pillH, pillH / 2,
+                        ColorUtil.fade(Theme.accentStart(), lit * alpha), ColorUtil.fade(Theme.accentEnd(), lit * alpha));
+            }
+            if (lit < 0.99f) {
+                Render2D.roundedRect(gfx, pillX, pillY, pillW, pillH, pillH / 2,
+                        ColorUtil.fade(Theme.PANEL_LIGHT, (1.0f - lit) * alpha));
+            }
+            float knobX = pillX + 2 + (pillW - pillH) * lit;
+            Render2D.roundedRect(gfx, knobX, pillY + 2, pillH - 4, pillH - 4, (pillH - 4) / 2.0f,
+                    ColorUtil.fade(0xFFFFFFFF, alpha));
+
+            // Taste und Aufklapp-Zeichen.
+            boolean waiting = binding == module;
+            String key = waiting ? "\u2026" : module.keyName();
+            Render2D.text(gfx, key, pillX - 8 - Render2D.width(key), y + 13,
+                    ColorUtil.fade(waiting ? Theme.accentStart() : Theme.TEXT_FAINT, alpha));
+
+            if (!module.settings().isEmpty()) {
+                String chevron = expanded.contains(module.name()) ? "\u25be" : "\u25b8";
+                Render2D.text(gfx, chevron, x + w - 8, y + 13, ColorUtil.fade(Theme.TEXT_FAINT, alpha));
+            }
+        }
+
+        private void drawSetting(GuiGraphics gfx, Module module, Setting setting, float x, float y, float w,
+                                 int mouseX, int mouseY, float alpha) {
+            boolean hover = Render2D.hovered(mouseX, mouseY, x, y, w, ROW_H);
+            if (hover) {
+                Render2D.roundedRect(gfx, x, y, w, ROW_H, 4, ColorUtil.fade(Theme.PANEL_LIGHT, 0.6f * alpha));
+            }
+            Render2D.text(gfx, setting.name(), x + 10, y + 4, ColorUtil.fade(Theme.TEXT_DIM, alpha));
+
+            float right = x + w - 10;
+
+            if (setting instanceof BooleanSetting flag) {
+                float boxW = 18;
+                float boxH = 9;
+                float boxX = right - boxW;
+                float boxY = y + (ROW_H - boxH) / 2.0f;
+                if (flag.get()) {
+                    Render2D.roundedGradientH(gfx, boxX, boxY, boxW, boxH, boxH / 2,
+                            ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
+                } else {
+                    Render2D.roundedRect(gfx, boxX, boxY, boxW, boxH, boxH / 2,
+                            ColorUtil.fade(Theme.CARD_HOVER, alpha));
+                }
+                float knob = boxX + 1.5f + (boxW - boxH) * (flag.get() ? 1.0f : 0.0f);
+                Render2D.roundedRect(gfx, knob, boxY + 1.5f, boxH - 3, boxH - 3, (boxH - 3) / 2.0f,
+                        ColorUtil.fade(0xFFFFFFFF, alpha));
+
+            } else if (setting instanceof NumberSetting number) {
+                String value = number.display();
+                Render2D.text(gfx, value, right - Render2D.width(value), y + 4,
+                        ColorUtil.fade(Theme.TEXT, alpha));
+                float trackW = 86;
+                float trackX = right - Render2D.width(value) - 8 - trackW;
+                float trackY = y + ROW_H / 2.0f - 1;
+                Render2D.roundedRect(gfx, trackX, trackY, trackW, 3, 1.5f,
+                        ColorUtil.fade(Theme.CARD_HOVER, alpha));
+                float filled = trackW * (float) number.ratio();
+                if (filled > 1) {
+                    Render2D.roundedGradientH(gfx, trackX, trackY, filled, 3, 1.5f,
+                            ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
+                }
+                Render2D.roundedRect(gfx, trackX + filled - 2.5f, trackY - 2.5f, 6, 8, 3,
+                        ColorUtil.fade(0xFFFFFFFF, alpha));
+
+            } else if (setting instanceof ModeSetting mode) {
+                String value = mode.get();
+                float pillW = Render2D.width(value) + 14;
+                Render2D.roundedRect(gfx, right - pillW, y + 2, pillW, ROW_H - 4, (ROW_H - 4) / 2.0f,
+                        ColorUtil.fade(Theme.accentStart(), 0.16f * alpha));
+                Render2D.text(gfx, value, right - pillW + 7, y + 4, ColorUtil.fade(Theme.accentStart(), alpha));
+
+            } else if (setting instanceof BlockListSetting list) {
+                String value = list.size() + " Bloecke  \u203a";
+                Render2D.text(gfx, value, right - Render2D.width(value), y + 4,
+                        ColorUtil.fade(Theme.accentStart(), alpha));
+            }
+        }
+
+        // ------------------------------------------------------------------ Aufbau
+
+        /** Die sichtbaren Zeilen in Reihenfolge - Grundlage fuer Zeichnen und Klicken. */
+        private List<Row> buildRows(float areaY) {
+            List<Row> rows = new ArrayList<>();
+            float cursor = areaY + PAD;
+
+            for (Module module : visibleModules()) {
+                rows.add(new Row(module, null, cursor, CARD_H));
+                cursor += CARD_H;
+                if (expanded.contains(module.name()) && !module.settings().isEmpty()) {
+                    cursor += 2;
+                    for (Setting setting : module.settings()) {
+                        rows.add(new Row(module, setting, cursor, ROW_H));
+                        cursor += ROW_H;
+                    }
+                    cursor += 4;
+                }
+                cursor += GAP;
+            }
+            return rows;
+        }
+
+        private List<Module> visibleModules() {
+            List<Module> modules = new ArrayList<>();
+            String needle = search.toLowerCase(Locale.ROOT);
+            for (Module module : GlowCubeClient.modules().all()) {
+                if (!needle.isEmpty()) {
+                    // Bei aktiver Suche zaehlt die Kategorie nicht mehr.
+                    if (module.name().toLowerCase(Locale.ROOT).contains(needle)
+                            || module.description().toLowerCase(Locale.ROOT).contains(needle)) {
+                        modules.add(module);
+                    }
+                } else if (module.category() == category) {
+                    modules.add(module);
+                }
+            }
+            modules.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+            return modules;
+        }
+
+        private int countEnabled(Category value) {
+            int count = 0;
+            for (Module module : GlowCubeClient.modules().inCategory(value)) {
+                if (module.isEnabled()) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        // ------------------------------------------------------------------ Maus
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            float top = panelY;
+
+            // Kategorien.
+            float railX = panelX + 1;
+            float cursor = top + HEADER_H + 10;
+            for (Category value : Category.values()) {
+                if (Render2D.hovered(mouseX, mouseY, railX + 8, cursor, RAIL_W - 16, 28)) {
+                    category = value;
+                    scrollTarget = 0.0f;
+                    search = "";
+                    return true;
+                }
+                cursor += 32;
+            }
+
+            float areaX = panelX + RAIL_W + 1;
+            float areaY = top + HEADER_H;
+            float areaW = PANEL_W - RAIL_W - 2;
+            float areaH = PANEL_H - HEADER_H - 1;
+            float cardX = areaX + PAD;
+            float cardW = areaW - PAD * 2;
+
+            // Weggescrollte Zeilen liegen rechnerisch weiter aussen, sind aber
+            // abgeschnitten - ohne diese Schranke waeren sie trotzdem anklickbar.
+            if (!Render2D.hovered(mouseX, mouseY, areaX, areaY, areaW, areaH)) {
+                return super.mouseClicked(mouseX, mouseY, button);
+            }
+
+            for (Row row : buildRows(areaY)) {
+                float y = row.y - scroll;
+
+                if (row.isCard() && Render2D.hovered(mouseX, mouseY, cardX, y, cardW, CARD_H)) {
+                    if (button == 1) {
+                        if (!row.module.settings().isEmpty()) {
+                            if (!expanded.remove(row.module.name())) {
+                                expanded.add(row.module.name());
+                            }
+                        }
+                    } else if (button == 2) {
+                        binding = row.module;
+                    } else {
+                        row.module.toggle();
+                        GlowCubeClient.config().save();
+                    }
+                    return true;
+                }
+
+                if (!row.isCard() && Render2D.hovered(mouseX, mouseY, cardX + 10, y, cardW - 20, ROW_H)) {
+                    clickSetting(row.setting, button, mouseX, cardX + 10, cardW - 20);
+                    return true;
+                }
+            }
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
+
+        private void clickSetting(Setting setting, int button, double mouseX, float rowX, float rowW) {
+            if (setting instanceof BooleanSetting flag) {
+                flag.toggle();
+            } else if (setting instanceof ModeSetting mode) {
+                mode.cycle(button == 1 ? -1 : 1);
+            } else if (setting instanceof NumberSetting number) {
+                dragging = number;
+                applySlider(number, mouseX, rowX, rowW);
+            } else if (setting instanceof BlockListSetting list) {
+                minecraft.setScreen(new BlockListScreen(this, list));
+                return;
+            }
+            GlowCubeClient.config().save();
+        }
+
+        private void applySlider(NumberSetting number, double mouseX, float rowX, float rowW) {
+            float right = rowX + rowW - 10;
+            float trackW = 86;
+            float trackX = right - Render2D.width(number.display()) - 8 - trackW;
+            number.setRatio((mouseX - trackX) / trackW);
+        }
+
+        @Override
+        public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+            if (dragging != null) {
+                float areaX = panelX + RAIL_W + 1;
+                float areaW = PANEL_W - RAIL_W - 2;
+                applySlider(dragging, mouseX, areaX + PAD + 10, areaW - PAD * 2 - 20);
+                return true;
+            }
+            return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        }
+
+        @Override
+        public boolean mouseReleased(double mouseX, double mouseY, int button) {
+            if (dragging != null) {
+                dragging = null;
+                GlowCubeClient.config().save();
+                return true;
+            }
+            return super.mouseReleased(mouseX, mouseY, button);
+        }
+
+        @Override
+        public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+            scrollTarget -= (float) scrollY * 26.0f;
+            return true;
+        }
+
+        // ---------------------------------------------------------------- Tastatur
+
+        @Override
+        public boolean keyPressed(int key, int scancode, int modifiers) {
+            if (binding != null) {
+                binding.setKey(key == GLFW.GLFW_KEY_ESCAPE ? GLFW.GLFW_KEY_UNKNOWN : key);
+                binding = null;
+                GlowCubeClient.config().save();
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
+                search = search.substring(0, search.length() - 1);
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ESCAPE && !search.isEmpty()) {
+                search = "";
+                return true;
+            }
+            return super.keyPressed(key, scancode, modifiers);
+        }
+
+        @Override
+        public boolean charTyped(char character, int modifiers) {
+            if (character >= ' ' && character != 127) {
+                search += character;
+                scrollTarget = 0.0f;
+                return true;
+            }
+            return super.charTyped(character, modifiers);
+        }
+
+        @Override
+        public void onClose() {
+            GlowCubeClient.config().save();
+            super.onClose();
+        }
+    }
+
+    /** Die Blockliste von X-Ray bearbeiten, mit Vorschlaegen aus der Registry. */
+    public static final class BlockListScreen extends Screen {
+        private static final int PANEL_W = 300;
+        private static final int PANEL_H = 260;
+        private static final int ROW_H = 15;
+        private static final int PAD = 12;
+
+        private final Screen parent;
+        private final BlockListSetting list;
+        private final Anim opening = new Anim(0.0f, 14.0f);
+
+        private String input = "";
+        private float scroll;
+        private float scrollTarget;
+        private int panelX;
+        private int panelY;
+
+        public BlockListScreen(Screen parent, BlockListSetting list) {
+            super(Component.literal("X-Ray Blocks"));
+            this.parent = parent;
+            this.list = list;
+        }
+
+        @Override
+        public boolean isPauseScreen() {
+            return false;
+        }
+
+        @Override
+        protected void init() {
+            opening.snap(0.0f);
+            opening.target(1.0f);
+        }
+
+        @Override
+        public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
+            float alpha = Anim.easeOut(opening.value());
+            panelX = (width - PANEL_W) / 2;
+            panelY = (height - PANEL_H) / 2;
+            float y = panelY + (1.0f - alpha) * 12.0f;
+
+            Render2D.rect(gfx, 0, 0, width, height, ColorUtil.fade(Theme.BACKDROP, alpha));
+            Render2D.glow(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.accentStart(), alpha), 4);
+            Render2D.roundedRect(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.PANEL, alpha));
+            Render2D.roundedOutline(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.OUTLINE, alpha));
+
+            Render2D.textGradient(gfx, "X-RAY BLOCKS", panelX + PAD, y + 13,
+                    ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
+            String count = list.size() + " Eintraege";
+            Render2D.text(gfx, count, panelX + PANEL_W - PAD - Render2D.width(count), y + 13,
+                    ColorUtil.fade(Theme.TEXT_FAINT, alpha));
+
+            // Eingabefeld.
+            float fieldY = y + 30;
+            Render2D.roundedRect(gfx, panelX + PAD, fieldY, PANEL_W - PAD * 2, 18, 9,
+                    ColorUtil.fade(Theme.RAIL, alpha));
+            Render2D.roundedOutline(gfx, panelX + PAD, fieldY, PANEL_W - PAD * 2, 18, 9,
+                    ColorUtil.fade(input.isEmpty() ? Theme.OUTLINE_SOFT : Theme.accentStart(), alpha));
+            String shown = input.isEmpty() ? "Block suchen, Enter fuegt hinzu" : input;
+            Render2D.text(gfx, shown, panelX + PAD + 10, fieldY + 5,
+                    ColorUtil.fade(input.isEmpty() ? Theme.TEXT_FAINT : Theme.TEXT, alpha));
+
+            float listY = fieldY + 26;
+            float listH = PANEL_H - (listY - y) - PAD;
+            List<String> entries = entries();
+
+            float maxScroll = Math.max(0.0f, entries.size() * ROW_H - listH);
+            scrollTarget = Math.max(0.0f, Math.min(maxScroll, scrollTarget));
+            scroll += (scrollTarget - scroll) * 0.35f;
+
+            Render2D.pushScissor(gfx, panelX + PAD, listY, PANEL_W - PAD * 2, listH);
+            for (int i = 0; i < entries.size(); i++) {
+                float rowY = listY + i * ROW_H - scroll;
+                if (rowY + ROW_H < listY || rowY > listY + listH) {
+                    continue;
+                }
+                String id = entries.get(i);
+                boolean present = list.contains(id);
+                boolean hover = Render2D.hovered(mouseX, mouseY, panelX + PAD, rowY, PANEL_W - PAD * 2, ROW_H);
+
+                if (hover) {
+                    Render2D.roundedRect(gfx, panelX + PAD, rowY, PANEL_W - PAD * 2, ROW_H, 4,
+                            ColorUtil.fade(Theme.CARD_HOVER, alpha));
+                }
+                if (present) {
+                    Render2D.roundedGradientH(gfx, panelX + PAD + 2, rowY + 4, 2, ROW_H - 8, 1,
+                            ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
+                }
+                Render2D.text(gfx, Render2D.clip(id.replace("minecraft:", ""), PANEL_W - PAD * 2 - 40),
+                        panelX + PAD + 10, rowY + 4,
+                        ColorUtil.fade(present ? Theme.TEXT : Theme.TEXT_FAINT, alpha));
+                if (hover) {
+                    String action = present ? "\u2212" : "+";
+                    Render2D.text(gfx, action, panelX + PANEL_W - PAD - 14, rowY + 4,
+                            ColorUtil.fade(present ? Theme.ACCENT_C : Theme.ACCENT_A, alpha));
+                }
+            }
+            Render2D.popScissor(gfx);
+        }
+
+        /** Ohne Eingabe die aktive Liste, mit Eingabe die passenden Bloecke aus der Registry. */
+        private List<String> entries() {
+            if (input.isEmpty()) {
+                return new ArrayList<>(list.ids());
+            }
+            String needle = input.toLowerCase(Locale.ROOT);
+            List<String> found = new ArrayList<>();
+            for (ResourceLocation id : BuiltInRegistries.BLOCK.keySet()) {
+                String text = id.toString();
+                if (text.contains(needle)) {
+                    found.add(text);
+                    if (found.size() >= 64) {
+                        break;
+                    }
+                }
+            }
+            return found;
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            float listY = panelY + 56;
+            float listH = PANEL_H - 56 - PAD;
+            List<String> entries = entries();
+
+            for (int i = 0; i < entries.size(); i++) {
+                float rowY = listY + i * ROW_H - scroll;
+                if (rowY < listY - ROW_H || rowY > listY + listH) {
+                    continue;
+                }
+                if (Render2D.hovered(mouseX, mouseY, panelX + PAD, rowY, PANEL_W - PAD * 2, ROW_H)) {
+                    String id = entries.get(i);
+                    if (list.contains(id)) {
+                        list.remove(id);
+                    } else {
+                        list.add(id);
+                    }
+                    return true;
+                }
+            }
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
+
+        @Override
+        public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+            scrollTarget -= (float) scrollY * 24.0f;
+            return true;
+        }
+
+        @Override
+        public boolean keyPressed(int key, int scancode, int modifiers) {
+            if (key == GLFW.GLFW_KEY_BACKSPACE) {
+                if (!input.isEmpty()) {
+                    input = input.substring(0, input.length() - 1);
+                }
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ENTER && !input.isEmpty()) {
+                List<String> found = entries();
+                if (!found.isEmpty()) {
+                    list.add(found.get(0));
+                    input = "";
+                }
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                onClose();
+                return true;
+            }
+            return super.keyPressed(key, scancode, modifiers);
+        }
+
+        @Override
+        public boolean charTyped(char character, int modifiers) {
+            if (character >= ' ' && character != 127) {
+                input += character;
+                scrollTarget = 0.0f;
+                return true;
+            }
+            return super.charTyped(character, modifiers);
+        }
+
+        @Override
+        public void onClose() {
+            minecraft.setScreen(parent);
+        }
+    }
+
+    /** Wasserzeichen links oben, Modulliste rechts oben. */
+    public static final class HudRenderer {
+        private static final int MARGIN = 6;
+
+        public void render(GuiGraphics gfx) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.options.hideGui || mc.player == null) {
+                return;
+            }
+            // Im eigenen Fenster waere es doppelt gemoppelt.
+            if (mc.screen instanceof ClickGuiScreen) {
+                return;
+            }
+            drawWatermark(gfx);
+            drawModuleList(gfx, gfx.guiWidth());
+        }
+
+        private void drawWatermark(GuiGraphics gfx) {
+            String name = "GLOWCUBE";
+            String tag = GlowCubeClient.TARGET;
+            float w = Render2D.width(name) + Render2D.width(tag) + 22;
+            float h = 16;
+
+            Render2D.roundedRect(gfx, MARGIN, MARGIN, w, h, 8, 0xB0101420);
+            Render2D.roundedGradientH(gfx, MARGIN + 5, MARGIN + 5, 2, 6, 1, Theme.accentStart(), Theme.accentEnd());
+            Render2D.textGradient(gfx, name, MARGIN + 11, MARGIN + 4, Theme.accentStart(), Theme.accentEnd());
+            Render2D.text(gfx, tag, MARGIN + 11 + Render2D.width(name) + 6, MARGIN + 4, Theme.TEXT_FAINT);
+        }
+
+        private void drawModuleList(GuiGraphics gfx, int screenWidth) {
+            List<Module> active = new ArrayList<>();
+            for (Module module : GlowCubeClient.modules().all()) {
+                if (module.isEnabled() && module.category() != Category.MISC) {
+                    active.add(module);
+                }
+            }
+            // Nach Breite sortiert ergibt die Treppe, die man von Wurst kennt.
+            active.sort(Comparator.comparingInt((Module module) -> Render2D.width(label(module))).reversed());
+
+            float y = MARGIN;
+            int index = 0;
+            for (Module module : active) {
+                String text = label(module);
+                float textWidth = Render2D.width(text);
+                float x = screenWidth - MARGIN - textWidth - 8;
+
+                int accent = Theme.accentAt(index * 0.06f);
+                Render2D.rect(gfx, x - 4, y, textWidth + 12, 12, 0x99101420);
+                Render2D.rect(gfx, screenWidth - MARGIN, y, 2, 12, accent);
+                Render2D.text(gfx, module.name(), x, y + 2, Theme.TEXT);
+
+                String suffix = module.hudSuffix();
+                if (suffix != null) {
+                    Render2D.text(gfx, suffix, x + Render2D.width(module.name()) + 4, y + 2,
+                            ColorUtil.fade(accent, 0.9f));
+                }
+                y += 13;
+                index++;
+            }
+        }
+
+        private String label(Module module) {
+            String suffix = module.hudSuffix();
+            return suffix == null ? module.name() : module.name() + " " + suffix;
+        }
+    }
+
+    /**
+     * Blendet alles aus, was nicht auf der Liste steht. Die eigentliche Arbeit
+     * macht der BlockMixin - hier stehen nur Liste und Zustand.
+     */
+    public static final class XRay extends Module {
+        private static XRay instance;
+
+        private final BlockListSetting blocks = register(new BlockListSetting("Blocks",
+                "Was sichtbar bleibt",
+                "minecraft:diamond_ore", "minecraft:deepslate_diamond_ore",
+                "minecraft:ancient_debris",
+                "minecraft:emerald_ore", "minecraft:deepslate_emerald_ore",
+                "minecraft:gold_ore", "minecraft:deepslate_gold_ore",
+                "minecraft:iron_ore", "minecraft:deepslate_iron_ore",
+                "minecraft:copper_ore", "minecraft:deepslate_copper_ore",
+                "minecraft:redstone_ore", "minecraft:deepslate_redstone_ore",
+                "minecraft:lapis_ore", "minecraft:deepslate_lapis_ore",
+                "minecraft:coal_ore", "minecraft:deepslate_coal_ore",
+                "minecraft:nether_gold_ore", "minecraft:nether_quartz_ore",
+                "minecraft:chest", "minecraft:trapped_chest", "minecraft:barrel",
+                "minecraft:spawner", "minecraft:trial_spawner", "minecraft:vault",
+                "minecraft:budding_amethyst", "minecraft:raw_iron_block",
+                "minecraft:water", "minecraft:lava", "minecraft:portal", "minecraft:end_portal_frame"));
+
+        private final BooleanSetting brighten = register(new BooleanSetting("Brighten",
+                "Helligkeit hochziehen, damit die Adern im Dunkeln stehen", true));
+
+        public XRay() {
+            super("X-Ray", "Laesst nur ausgewaehlte Bloecke stehen", Category.RENDER, InputConstants.KEY_X);
+            instance = this;
+        }
+
+        @Override
+        public void onEnable() {
+            if (brighten.get()) {
+                Gamma.acquire();
+            }
+            reloadChunks();
+        }
+
+        @Override
+        public void onDisable() {
+            if (brighten.get()) {
+                Gamma.release();
+            }
+            reloadChunks();
+        }
+
+        /** Ohne Neuaufbau der Chunk-Meshes aendert sich am Bild nichts. */
+        private void reloadChunks() {
+            if (mc.levelRenderer != null) {
+                mc.levelRenderer.allChanged();
+            }
+        }
+
+        public BlockListSetting blocks() {
+            return blocks;
+        }
+
+        // ------------------------------------------------- vom Mixin aus gerufen
+
+        /** True, wenn gerade gefiltert wird. */
+        public static boolean active() {
+            return instance != null && instance.isEnabled();
+        }
+
+        /** True, wenn dieser Block sichtbar bleiben soll. */
+        public static boolean visible(BlockState state) {
+            if (instance == null) {
+                return true;
+            }
+            return instance.blocks.contains(BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+        }
+    }
+
+    public static final class FullBright extends Module {
+        public FullBright() {
+            super("Fullbright", "Keine Dunkelheit mehr", Category.RENDER);
+        }
+
+        @Override
+        public void onEnable() {
+            Gamma.acquire();
+        }
+
+        @Override
+        public void onDisable() {
+            Gamma.release();
+        }
+    }
+
+    public static final class Zoom extends Module {
+        private final NumberSetting factor = register(new NumberSetting("Factor",
+                "Wie stark herangeholt wird", 4.0, 1.5, 12.0, 0.5));
+
+        private int original = -1;
+
+        public Zoom() {
+            super("Zoom", "Fernglas auf Tastendruck", Category.RENDER, InputConstants.KEY_C);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public void onEnable() {
+            original = mc.options.fov().get();
+            ((OptionInstanceAccessor<Integer>) (Object) mc.options.fov())
+                    .glowcube$setValue((int) Math.max(1, Math.round(original / factor.get())));
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public void onDisable() {
+            if (original > 0) {
+                ((OptionInstanceAccessor<Integer>) (Object) mc.options.fov()).glowcube$setValue(original);
+                original = -1;
+            }
+        }
+
+        @Override
+        public String hudSuffix() {
+            return factor.display() + "x";
+        }
+    }
+
+    /** Eine Einteilung, die sich EntityESP und Tracers teilen. */
+    public static final class EntityGroups {
+        static final int PLAYER  = 0xFFFF4D6D;
+        static final int HOSTILE = 0xFFFF9F45;
+        static final int PASSIVE = 0xFF3BF0D4;
+        static final int ITEM    = 0xFF7FC4FF;
+
+        private EntityGroups() {
+        }
+
+        /** 0 heisst: nicht anzeigen. */
+        static int colorFor(Entity entity, boolean players, boolean hostile, boolean passive, boolean items) {
+            if (entity instanceof Player) {
+                return players ? PLAYER : 0;
+            }
+            if (entity instanceof Monster) {
+                return hostile ? HOSTILE : 0;
+            }
+            if (entity instanceof Animal) {
+                return passive ? PASSIVE : 0;
+            }
+            if (entity instanceof ItemEntity) {
+                return items ? ITEM : 0;
+            }
+            return 0;
+        }
+    }
+
+    /** Kisten, Faesser, Shulker und Trichter durch Waende. */
+    public static final class StorageEsp extends Module {
+        private static final int CHEST   = 0xFFFFC53D;
+        private static final int ENDER   = 0xFF9B6BFF;
+        private static final int SHULKER = 0xFFFF5FA2;
+        private static final int HOPPER  = 0xFF9AA3B8;
+
+        private final NumberSetting range = register(new NumberSetting("Range",
+                "Umkreis in Chunks", 6, 1, 16, 1));
+        private final BooleanSetting chests = register(new BooleanSetting("Chests", "Kisten und Faesser", true));
+        private final BooleanSetting enderChests = register(new BooleanSetting("Ender", "Enderkisten", true));
+        private final BooleanSetting shulkers = register(new BooleanSetting("Shulker", "Shulkerkisten", true));
+        private final BooleanSetting hoppers = register(new BooleanSetting("Hopper", "Trichter, Werfer, Spender", false));
+
+        public StorageEsp() {
+            super("StorageESP", "Behaelter durch Waende", Category.RENDER);
+        }
+
+        @Override
+        public void onWorldRender(WorldRenderContext context) {
+            if (!inGame()) {
+                return;
+            }
+            int radius = range.getInt();
+            int centerX = player().chunkPosition().x;
+            int centerZ = player().chunkPosition().z;
+
+            for (int x = centerX - radius; x <= centerX + radius; x++) {
+                for (int z = centerZ - radius; z <= centerZ + radius; z++) {
+                    LevelChunk chunk = level().getChunkSource().getChunk(x, z, false);
+                    if (chunk == null) {
+                        continue;
+                    }
+                    for (BlockEntity entity : chunk.getBlockEntities().values()) {
+                        int color = colorFor(entity);
+                        if (color != 0) {
+                            Render3D.box(context, boxFor(entity.getBlockPos()), color, true);
+                        }
+                    }
+                }
+            }
+        }
+
+        private int colorFor(BlockEntity entity) {
+            if (entity instanceof EnderChestBlockEntity) {
+                return enderChests.get() ? ENDER : 0;
+            }
+            if (entity instanceof ShulkerBoxBlockEntity) {
+                return shulkers.get() ? SHULKER : 0;
+            }
+            if (entity instanceof ChestBlockEntity || entity instanceof BarrelBlockEntity) {
+                return chests.get() ? CHEST : 0;
+            }
+            if (entity instanceof HopperBlockEntity || entity instanceof DispenserBlockEntity) {
+                return hoppers.get() ? HOPPER : 0;
+            }
+            return 0;
+        }
+
+        /** Minimal geschrumpft, sonst liegt die Linie genau im Blockgitter und flimmert. */
+        private AABB boxFor(BlockPos pos) {
+            return new AABB(pos).deflate(0.02);
+        }
+    }
+
+    /** Kaesten um Lebewesen und Items. */
+    public static final class EntityEsp extends Module {
+        private final NumberSetting range = register(new NumberSetting("Range",
+                "Umkreis in Bloecken", 64, 8, 256, 8));
+        private final BooleanSetting players = register(new BooleanSetting("Players", "Spieler", true));
+        private final BooleanSetting hostile = register(new BooleanSetting("Hostile", "Monster", true));
+        private final BooleanSetting passive = register(new BooleanSetting("Passive", "Tiere", false));
+        private final BooleanSetting items = register(new BooleanSetting("Items", "Liegende Gegenstaende", false));
+
+        public EntityEsp() {
+            super("EntityESP", "Kaesten um Entities", Category.RENDER);
+        }
+
+        @Override
+        public void onWorldRender(WorldRenderContext context) {
+            if (!inGame()) {
+                return;
+            }
+            double maxDistanceSq = range.get() * range.get();
+            for (Entity entity : level().entitiesForRendering()) {
+                if (entity == player() || entity.distanceToSqr(player()) > maxDistanceSq) {
+                    continue;
+                }
+                int color = EntityGroups.colorFor(entity, players.get(), hostile.get(), passive.get(), items.get());
+                if (color != 0) {
+                    Render3D.box(context, entity.getBoundingBox(), color, true);
+                }
+            }
+        }
+    }
+
+    /** Linien vom Fadenkreuz zu allem, was zaehlt. */
+    public static final class Tracers extends Module {
+        private final NumberSetting range = register(new NumberSetting("Range",
+                "Umkreis in Bloecken", 96, 8, 256, 8));
+        private final BooleanSetting players = register(new BooleanSetting("Players", "Spieler", true));
+        private final BooleanSetting hostile = register(new BooleanSetting("Hostile", "Monster", false));
+        private final BooleanSetting passive = register(new BooleanSetting("Passive", "Tiere", false));
+        private final BooleanSetting items = register(new BooleanSetting("Items", "Liegende Gegenstaende", false));
+
+        public Tracers() {
+            super("Tracers", "Linien zu Entities", Category.RENDER);
+        }
+
+        @Override
+        public void onWorldRender(WorldRenderContext context) {
+            if (!inGame()) {
+                return;
+            }
+            double maxDistanceSq = range.get() * range.get();
+            for (Entity entity : level().entitiesForRendering()) {
+                if (entity == player() || entity.distanceToSqr(player()) > maxDistanceSq) {
+                    continue;
+                }
+                int color = EntityGroups.colorFor(entity, players.get(), hostile.get(), passive.get(), items.get());
+                if (color != 0) {
+                    Render3D.tracer(context, entity.getBoundingBox().getCenter(), color);
+                }
+            }
+        }
+    }
+
+    /**
+     * Zwei Wege: ABILITIES setzt das Kreativ-Flugrecht clientseitig (weich, aber
+     * fuer jeden Server offensichtlich), MOTION schiebt den Spieler jeden Tick
+     * selbst - das sieht von aussen nach normalem Laufen in der Luft aus.
+     */
+    public static final class Flight extends Module {
+        private final ModeSetting mode = register(new ModeSetting("Mode",
+                "Wie geflogen wird", "Motion", "Motion", "Abilities"));
+        private final NumberSetting speed = register(new NumberSetting("Speed",
+                "Bloecke pro Tick", 0.6, 0.05, 3.0, 0.05));
+        private final NumberSetting vertical = register(new NumberSetting("Vertical",
+                "Steigen und Sinken", 0.5, 0.05, 3.0, 0.05));
+
+        public Flight() {
+            super("Flight", "Fliegen ohne Kreativmodus", Category.MOVEMENT, InputConstants.KEY_F);
+        }
+
+        @Override
+        public void onTick() {
+            if (mode.is("Abilities")) {
+                player().getAbilities().mayfly = true;
+                player().getAbilities().flying = true;
+                player().getAbilities().setFlyingSpeed(speed.getFloat() * 0.5f);
+                player().resetFallDistance();
+                return;
+            }
+
+            Vec3 horizontal = Movement.direction(player(), speed.get());
+            double y = 0.0;
+            if (Movement.jumping()) {
+                y += vertical.get();
+            }
+            if (Movement.sneaking()) {
+                y -= vertical.get();
+            }
+            player().setDeltaMovement(horizontal.x, y, horizontal.z);
+            player().setOnGround(false);
+            player().resetFallDistance();
+        }
+
+        @Override
+        public void onDisable() {
+            if (!inGame()) {
+                return;
+            }
+            // Im Kreativmodus darf das Flugrecht bleiben, sonst muss es weg.
+            if (!player().isCreative() && !player().isSpectator()) {
+                player().getAbilities().mayfly = false;
+                player().getAbilities().flying = false;
+                player().getAbilities().setFlyingSpeed(0.05f);
+            }
+        }
+
+        @Override
+        public String hudSuffix() {
+            return mode.get();
+        }
+    }
+
+    public static final class Speed extends Module {
+        private final NumberSetting factor = register(new NumberSetting("Factor",
+                "Vielfaches der normalen Laufgeschwindigkeit", 2.0, 1.1, 6.0, 0.1));
+        private final BooleanSetting onlyOnGround = register(new BooleanSetting("Ground",
+                "Nur am Boden - in der Luft faellt es sofort auf", true));
+
+        public Speed() {
+            super("Speed", "Schneller laufen", Category.MOVEMENT);
+        }
+
+        @Override
+        public void onTick() {
+            if (!Movement.moving()) {
+                return;
+            }
+            if (onlyOnGround.get() && !player().onGround()) {
+                return;
+            }
+            // 0.13 entspricht ungefaehr dem Sprinttempo eines Spielers pro Tick.
+            Vec3 push = Movement.direction(player(), 0.13 * factor.get());
+            Vec3 current = player().getDeltaMovement();
+            player().setDeltaMovement(push.x, current.y, push.z);
+        }
+
+        @Override
+        public String hudSuffix() {
+            return factor.display() + "x";
+        }
+    }
+
+    /** Stufenhoehe hochsetzen - man laeuft Bloecke hoch, ohne zu springen. */
+    public static final class Step extends Module {
+        private static final double VANILLA = 0.6;
+
+        private final NumberSetting height = register(new NumberSetting("Height",
+                "Wie hoch ohne Sprung", 1.0, 0.6, 3.0, 0.1));
+
+        public Step() {
+            super("Step", "Stufen hochlaufen", Category.MOVEMENT);
+        }
+
+        @Override
+        public void onTick() {
+            apply(height.get());
+        }
+
+        @Override
+        public void onDisable() {
+            if (inGame()) {
+                apply(VANILLA);
+            }
+        }
+
+        private void apply(double value) {
+            AttributeInstance attribute = player().getAttribute(Attributes.STEP_HEIGHT);
+            if (attribute != null && attribute.getBaseValue() != value) {
+                attribute.setBaseValue(value);
+            }
+        }
+
+        @Override
+        public String hudSuffix() {
+            return height.display();
+        }
+    }
+
+    /**
+     * Sagt dem Server in jedem Bewegungspaket, man stehe auf dem Boden - dann
+     * rechnet er keinen Sturz. Gesetzt wird das im
+     * ServerboundMovePlayerPacketMixin, hier steht nur der Schalter.
+     */
+    public static final class NoFall extends Module {
+        private static NoFall instance;
+
+        public NoFall() {
+            super("NoFall", "Kein Sturzschaden", Category.MOVEMENT);
+            instance = this;
+        }
+
+        @Override
+        public void onTick() {
+            player().resetFallDistance();
+        }
+
+        public static boolean active() {
+            return instance != null && instance.isEnabled();
+        }
+    }
+
+    public static final class AutoSprint extends Module {
+        public AutoSprint() {
+            super("AutoSprint", "Immer sprinten", Category.MOVEMENT);
+        }
+
+        @Override
+        public void onTick() {
+            if (Movement.forward() > 0.0 && !player().isUsingItem()) {
+                player().setSprinting(true);
+            }
+        }
+
+        @Override
+        public void onDisable() {
+            if (inGame()) {
+                player().setSprinting(false);
+            }
+        }
+    }
+
+    /** Schlaegt zu, was in Reichweite kommt. */
+    public static final class KillAura extends Module {
+        private final NumberSetting range = register(new NumberSetting("Range",
+                "Reichweite in Bloecken", 4.0, 2.0, 6.0, 0.1));
+        private final ModeSetting priority = register(new ModeSetting("Priority",
+                "Wer zuerst drankommt", "Distance", "Distance", "Health"));
+        private final BooleanSetting players = register(new BooleanSetting("Players", "Spieler", true));
+        private final BooleanSetting hostile = register(new BooleanSetting("Hostile", "Monster", true));
+        private final BooleanSetting passive = register(new BooleanSetting("Passive", "Tiere", false));
+        private final BooleanSetting throughWalls = register(new BooleanSetting("Walls",
+                "Auch durch Waende - faellt sofort auf", false));
+        private final BooleanSetting waitCooldown = register(new BooleanSetting("Cooldown",
+                "Auf die Waffenaufladung warten", true));
+
+        public KillAura() {
+            super("KillAura", "Greift Ziele in Reichweite an", Category.COMBAT);
+        }
+
+        @Override
+        public void onTick() {
+            if (waitCooldown.get() && player().getAttackStrengthScale(0.0f) < 1.0f) {
+                return;
+            }
+
+            LivingEntity target = findTarget();
+            if (target == null) {
+                return;
+            }
+            mc.gameMode.attack(player(), target);
+            player().swing(InteractionHand.MAIN_HAND);
+        }
+
+        private LivingEntity findTarget() {
+            double reach = range.get();
+            AABB area = player().getBoundingBox().inflate(reach);
+            List<Entity> candidates = level().getEntities(player(), area, this::isTarget);
+
+            Comparator<Entity> order = priority.is("Health")
+                    ? Comparator.comparingDouble(entity -> ((LivingEntity) entity).getHealth())
+                    : Comparator.comparingDouble(entity -> entity.distanceToSqr(player()));
+
+            return candidates.stream()
+                    .filter(entity -> entity.distanceTo(player()) <= reach)
+                    .min(order)
+                    .map(entity -> (LivingEntity) entity)
+                    .orElse(null);
+        }
+
+        private boolean isTarget(Entity entity) {
+            if (!(entity instanceof LivingEntity living) || living == player()) {
+                return false;
+            }
+            if (!living.isAlive() || living.isInvulnerable()) {
+                return false;
+            }
+            if (!throughWalls.get() && !player().hasLineOfSight(living)) {
+                return false;
+            }
+            if (living instanceof Player) {
+                return players.get();
+            }
+            if (living instanceof Monster) {
+                return hostile.get();
+            }
+            if (living instanceof Animal) {
+                return passive.get();
+            }
+            return false;
+        }
+
+        @Override
+        public String hudSuffix() {
+            return range.display();
+        }
+    }
+
+    /** Waehlt beim Abbauen das schnellste Werkzeug aus der Hotbar. */
+    public static final class AutoTool extends Module {
+        public AutoTool() {
+            super("AutoTool", "Bestes Werkzeug beim Abbauen", Category.PLAYER);
+        }
+
+        @Override
+        public void onTick() {
+            if (!mc.options.keyAttack.isDown()) {
+                return;
+            }
+            if (!(mc.hitResult instanceof BlockHitResult hit) || mc.hitResult.getType() != HitResult.Type.BLOCK) {
+                return;
+            }
+
+            BlockState state = level().getBlockState(hit.getBlockPos());
+            int best = -1;
+            float bestSpeed = 0.0f;
+
+            for (int slot = 0; slot < 9; slot++) {
+                ItemStack stack = player().getInventory().getItem(slot);
+                float speed = stack.getDestroySpeed(state);
+                if (speed > bestSpeed) {
+                    bestSpeed = speed;
+                    best = slot;
+                }
+            }
+
+            // Nur wechseln, wenn es wirklich besser ist als das, was in der Hand liegt.
+            if (best >= 0 && bestSpeed > player().getMainHandItem().getDestroySpeed(state)) {
+                player().getInventory().setSelectedSlot(best);
+            }
+        }
+    }
+
+    public static final class AutoRespawn extends Module {
+        public AutoRespawn() {
+            super("AutoRespawn", "Sofort wieder einsteigen", Category.PLAYER);
+        }
+
+        @Override
+        public void onTick() {
+            if (mc.screen instanceof DeathScreen) {
+                player().respawn();
+                mc.setScreen(null);
+            }
+        }
+    }
+
+    /** Kleine Bewegungen gegen den AFK-Rauswurf. */
+    public static final class AntiAfk extends Module {
+        private final NumberSetting interval = register(new NumberSetting("Interval",
+                "Sekunden zwischen zwei Regungen", 20, 5, 120, 5));
+        private final BooleanSetting turn = register(new BooleanSetting("Turn", "Umsehen", true));
+        private final BooleanSetting jump = register(new BooleanSetting("Jump", "Springen", false));
+
+        private final Random random = new Random();
+        private int ticks;
+
+        public AntiAfk() {
+            super("AntiAFK", "Haelt dich auf dem Server", Category.PLAYER);
+        }
+
+        @Override
+        public void onEnable() {
+            ticks = 0;
+        }
+
+        @Override
+        public void onTick() {
+            if (++ticks < interval.getInt() * 20) {
+                return;
+            }
+            ticks = 0;
+
+            if (turn.get()) {
+                player().setYRot(player().getYRot() + (random.nextFloat() - 0.5f) * 60.0f);
+            }
+            if (jump.get() && player().onGround()) {
+                player().jumpFromGround();
+            }
+        }
+    }
+
+    /**
+     * Kein Dauerzustand, sondern ein Knopf: einschalten heisst Fenster auf, und
+     * das Modul schaltet sich selbst wieder aus.
+     */
+    public static final class ClickGuiModule extends Module {
+        public ClickGuiModule() {
+            super("ClickGUI", "Das Fenster hier", Category.MISC, InputConstants.KEY_RSHIFT);
+        }
+
+        @Override
+        public void onEnable() {
+            mc.setScreen(new ClickGuiScreen());
+            setEnabledSilently(false);
+        }
+    }
+
+    /**
+     * Schreibt den Wert einer Option direkt. Der normale Weg ueber set() laesst
+     * den Pruefer laufen, der Helligkeit bei 1.0 und Sichtfeld bei 30 abschneidet.
+     */
+    @Mixin(OptionInstance.class)
+    public interface OptionInstanceAccessor<T> {
+        @Accessor("value")
+        void glowcube$setValue(T value);
+    }
+
+    /**
+     * X-Ray. Minecraft fragt hier, ob eine Blockseite ueberhaupt gezeichnet werden
+     * muss - normalerweise nur, wenn dahinter Luft ist. Solange X-Ray laeuft,
+     * entscheidet stattdessen die Liste: Bloecke darauf zeigen immer alle Seiten,
+     * alle anderen keine.
+     */
+    @Mixin(Block.class)
+    public static final class BlockMixin {
+
+        @Inject(method = "shouldRenderFace(Lnet/minecraft/world/level/block/state/BlockState;"
+                + "Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/core/Direction;)Z",
+                at = @At("HEAD"), cancellable = true)
+        private static void glowcube$xray(BlockState state, BlockState neighbour, Direction face,
+                                          CallbackInfoReturnable<Boolean> info) {
+            if (XRay.active()) {
+                info.setReturnValue(XRay.visible(state));
+            }
+        }
+    }
+
+    /**
+     * NoFall. Der Server rechnet den Sturzschaden aus dem, was der Client ueber
+     * seine eigene Lage meldet. Steht in jedem Bewegungspaket "ich stehe",
+     * entsteht nie ein Sturz.
+     */
+    @Mixin(ServerboundMovePlayerPacket.class)
+    public abstract static class ServerboundMovePlayerPacketMixin {
+
+        @Shadow
+        @Final
+        @Mutable
+        private boolean onGround;
+
+        @Inject(method = "<init>", at = @At("RETURN"))
+        private void glowcube$noFall(CallbackInfo info) {
+            if (NoFall.active()) {
+                this.onGround = true;
+            }
+        }
+    }
+}

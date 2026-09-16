@@ -1,0 +1,51 @@
+plugins {
+    // Ab Minecraft 26.1 ist das Spiel unobfuskiert - Loom bringt keine Mappings
+    // mehr mit und remappt auch nichts mehr. Yarn ist damit Geschichte.
+    id 'fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Kein mappings-Eintrag: unobfuskierte Fassungen brauchen keine.
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+loom {
+    mixin {
+        // Ohne Obfuskation gibt es nichts zu remappen - die alte
+        // Annotation-Processor-Kette entfaellt samt refmap.
+        useLegacyMixinAp = false
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = 'UTF-8'
+    it.options.release = 25
+}
