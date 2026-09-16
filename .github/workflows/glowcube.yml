@@ -56,8 +56,7 @@ jobs:
           # Wo der Name nicht weiterhilft, fragt man dort nach, wo die Klasse
           # benutzt wird: was nimmt Screen.render() heute entgegen?
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.client.multiplayer.MultiPlayerGameMode:lick|Inventory|use" \
-            "net.minecraft.world.phys.BlockHitResult:" \
+            "net.minecraft.client.DeltaTracker\$Timer:" \
             "net.minecraft.client.DeltaTracker:"
           # Die alte Zeichen-API ist komplett ersetzt. Weder Name noch Paket
           # helfen da weiter - also nach Begriffen suchen.
@@ -133,6 +132,7 @@ jobs:
             "" \
             "Automatisch gebaut aus Commit ${GITHUB_SHA}.")
 
+          # "neueste" ist der immer gleiche Link auf die aktuelle Fassung.
           if gh release view neueste >/dev/null 2>&1; then
             gh release upload neueste "$jar" --clobber
             gh release edit neueste --notes "$hinweis"
@@ -141,6 +141,20 @@ jobs:
               --title "GlowCube - neueste Fassung" \
               --notes "$hinweis"
           fi
+
+          # Zusaetzlich eine bleibende Fassung, damit alte Staende erhalten
+          # bleiben und man zurueck kann. Benannt nach der Laufnummer, die
+          # nie wieder vorkommt.
+          nummer="${GITHUB_RUN_NUMBER}"
+          bleibend="v${nummer}"
+          benannt="glowcube-client-${nummer}.jar"
+          cp "$jar" "$benannt"
+          if ! gh release view "$bleibend" >/dev/null 2>&1; then
+            gh release create "$bleibend" "$benannt" \
+              --title "GlowCube Client ${nummer}" \
+              --notes "$hinweis"
+          fi
+          echo "- Bleibende Fassung: **GlowCube Client ${nummer}** (\`$bleibend\`)" >> "$GITHUB_STEP_SUMMARY"
 
           echo "### Direkter Download" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"

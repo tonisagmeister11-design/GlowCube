@@ -15,6 +15,7 @@ import net.glowcube.client.module.misc.ClickGuiModule;
 import net.glowcube.client.module.misc.SeedHunt;
 import net.glowcube.client.module.misc.Spammer;
 import net.glowcube.client.module.world.Nuker;
+import net.glowcube.client.module.world.Timer;
 import net.glowcube.client.module.player.AntiAfk;
 import net.glowcube.client.module.player.AutoRespawn;
 import net.glowcube.client.module.player.AutoTool;
@@ -81,6 +82,8 @@ public final class ModuleManager {
         add(new ClickGuiModule());
         // World
         add(new Nuker());
+        // Exploits
+        add(new Timer());
     }
 
     private void add(Module module) {
