@@ -9,6 +9,9 @@ on:
       - '.github/workflows/glowcube.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   bauen:
     name: Mod uebersetzen und JAR ablegen
@@ -93,3 +96,41 @@ jobs:
           path: glowcube-client/build/libs/*.jar
           if-no-files-found: error
           retention-days: 90
+
+      # Artifacts kann nur herunterladen, wer bei GitHub angemeldet ist.
+      # Ein Release-Anhang dagegen haengt an einer normalen Adresse, die in
+      # jedem Browser funktioniert - auch ohne Konto.
+      - name: Als Release veroeffentlichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Nur die eigentliche Mod, nicht die Quelltext-JAR daneben.
+          jar=$(ls build/libs/*.jar | grep -v -- '-sources' | head -1)
+          echo "Veroeffentliche $jar"
+
+          hinweis=$(printf '%s\n' \
+            "Fertig gebaute Mod fuer Minecraft Java 26.2 (Fabric)." \
+            "" \
+            "1. glowcube-1.0.0.jar unten anklicken und herunterladen" \
+            "2. Fabric API fuer 26.2 von modrinth.com holen" \
+            "3. Beide JARs nach %appdata%\\.minecraft\\mods" \
+            "4. Profil fabric-loader-26.2 starten" \
+            "" \
+            "Tasten: X = X-Ray, F = Flight, C = Zoom." \
+            "Alles weitere in glowcube-client/README.md." \
+            "" \
+            "Automatisch gebaut aus Commit ${GITHUB_SHA}.")
+
+          if gh release view neueste >/dev/null 2>&1; then
+            gh release upload neueste "$jar" --clobber
+            gh release edit neueste --notes "$hinweis"
+          else
+            gh release create neueste "$jar" \
+              --title "GlowCube - neueste Fassung" \
+              --notes "$hinweis"
+          fi
+
+          echo "### Direkter Download" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "<https://github.com/${GITHUB_REPOSITORY}/releases/latest>" >> "$GITHUB_STEP_SUMMARY"

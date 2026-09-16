@@ -16,17 +16,19 @@ Gegenueberstellung der alten und neuen Namen.
 ## An die fertige Datei kommen
 
 Du brauchst **keine** Entwicklungsumgebung. GitHub uebersetzt den Client bei
-jeder Aenderung selbst:
+jeder Aenderung selbst und haengt ihn an den Release **neueste**:
 
-1. Oben im Repo auf **Actions** klicken.
-2. Links **GlowCube bauen** auswaehlen, dann den obersten (neuesten) Lauf anklicken.
-   Ein gruener Haken heisst: fertig.
-3. Ganz unten unter **Artifacts** liegt **GlowCube-Mod**. Herunterladen.
-4. Das ist eine ZIP-Datei. Entpacken - darin liegt `glowcube-1.0.0.jar`.
-   Die brauchst du. (`glowcube-1.0.0-sources.jar` kannst du wegwerfen, das ist
-   nur der Quelltext.)
+**<https://github.com/tonisagmeister11-design/GlowCube/releases/latest>**
 
-Laeuft gerade kein Build? Auf **Run workflow** klicken, dann startet einer.
+Dort unter *Assets* auf `glowcube-1.0.0.jar` klicken - fertig. Keine ZIP, kein
+Entpacken, keine Anmeldung noetig.
+
+### Der andere Weg (nur mit GitHub-Konto)
+
+Unter **Actions** liegt zu jedem Lauf dasselbe als *Artifact* `GlowCube-Mod`.
+Das ist eine ZIP und laesst sich **nur herunterladen, wenn man bei GitHub
+angemeldet ist** - ohne Konto ist der Name kein Link. Deshalb ist der Release
+oben der bequemere Weg.
 
 ## Einbauen
 
