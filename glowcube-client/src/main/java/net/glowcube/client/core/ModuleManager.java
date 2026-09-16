@@ -11,6 +11,8 @@ import net.glowcube.client.module.movement.Speed;
 import net.glowcube.client.module.movement.Step;
 import net.glowcube.client.module.misc.ClickGuiModule;
 import net.glowcube.client.module.misc.SeedHunt;
+import net.glowcube.client.module.misc.Spammer;
+import net.glowcube.client.module.world.Nuker;
 import net.glowcube.client.module.player.AntiAfk;
 import net.glowcube.client.module.player.AutoRespawn;
 import net.glowcube.client.module.player.AutoTool;
@@ -71,7 +73,10 @@ public final class ModuleManager {
         add(new AntiAfk());
         // Misc
         add(new SeedHunt());
+        add(new Spammer());
         add(new ClickGuiModule());
+        // World
+        add(new Nuker());
     }
 
     private void add(Module module) {

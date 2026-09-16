@@ -49,9 +49,9 @@ def main():
         for zeile in zeilen[:40]:
             print("   " + zeile)
         bericht.append(f"--- {klasse}")
-        bericht.extend("   " + z for z in zeilen[:14])
+        bericht.extend("   " + z for z in zeilen[:40])
 
-    print("::notice title=Echte Signaturen::" + "%0A".join(bericht[:60]))
+    print("::notice title=Echte Signaturen::" + "%0A".join(bericht[:160]))
     return 0
 
 
