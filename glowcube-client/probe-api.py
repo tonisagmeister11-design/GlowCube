@@ -48,10 +48,14 @@ def main():
         print(f"\n===== {klasse} " + ("(gefiltert: " + muster + ")" if muster else ""))
         for zeile in zeilen[:40]:
             print("   " + zeile)
-        bericht.append(f"--- {klasse}")
-        bericht.extend("   " + z for z in zeilen[:40])
+        # Eine Meldung je Klasse statt einer grossen: eine zu lange
+        # Annotation verwirft GitHub stillschweigend, und dann steht man ohne
+        # Antwort da, obwohl der Lauf gruen war.
+        kurz = klasse.rsplit(".", 1)[-1]
+        print(f"::notice title=API {kurz}::" + "%0A".join(zeilen[:30]))
+        bericht.append(kurz)
 
-    print("::notice title=Echte Signaturen::" + "%0A".join(bericht[:160]))
+    print("::notice title=Abgefragt::" + ", ".join(bericht))
     return 0
 
 

@@ -1,6 +1,7 @@
 package net.glowcube.client.core;
 
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.module.combat.AutoTotem;
 import net.glowcube.client.module.combat.Criticals;
 import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.movement.AutoSprint;
@@ -67,6 +68,7 @@ public final class ModuleManager {
         // Combat
         add(new KillAura());
         add(new Criticals());
+        add(new AutoTotem());
         // Player
         add(new AutoTool());
         add(new AutoRespawn());
