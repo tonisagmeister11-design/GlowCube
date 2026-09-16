@@ -1,8 +1,10 @@
 package net.glowcube.client.core;
 
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.module.combat.Criticals;
 import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.movement.AutoSprint;
+import net.glowcube.client.module.movement.AutoWalk;
 import net.glowcube.client.module.movement.Flight;
 import net.glowcube.client.module.movement.NoFall;
 import net.glowcube.client.module.movement.Speed;
@@ -13,9 +15,12 @@ import net.glowcube.client.module.player.AntiAfk;
 import net.glowcube.client.module.player.AutoRespawn;
 import net.glowcube.client.module.player.AutoTool;
 import net.glowcube.client.module.render.EntityEsp;
+import net.glowcube.client.module.render.HoleEsp;
 import net.glowcube.client.module.render.FullBright;
 import net.glowcube.client.module.render.StorageEsp;
+import net.glowcube.client.module.render.Search;
 import net.glowcube.client.module.render.Tracers;
+import net.glowcube.client.module.render.Trajectories;
 import net.glowcube.client.module.render.XRay;
 import net.glowcube.client.module.render.Zoom;
 import net.minecraft.client.Minecraft;
@@ -46,6 +51,9 @@ public final class ModuleManager {
         add(new StorageEsp());
         add(new EntityEsp());
         add(new Tracers());
+        add(new Search());
+        add(new HoleEsp());
+        add(new Trajectories());
         add(new Zoom());
         // Movement
         add(new Flight());
@@ -53,8 +61,10 @@ public final class ModuleManager {
         add(new Step());
         add(new NoFall());
         add(new AutoSprint());
+        add(new AutoWalk());
         // Combat
         add(new KillAura());
+        add(new Criticals());
         // Player
         add(new AutoTool());
         add(new AutoRespawn());

@@ -31,7 +31,7 @@ import java.util.Set;
 /** Das Fenster von GlowCube. */
 public final class ClickGuiScreen extends Screen {
     private static final int PANEL_W = 478;
-    private static final int PANEL_H = 302;
+    private static final int PANEL_H = 338;
     private static final int HEADER_H = 46;
     private static final int RAIL_W = 122;
     private static final int CARD_H = 34;

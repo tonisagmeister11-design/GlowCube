@@ -67,6 +67,24 @@ public final class Render3D {
         matrices.popPose();
     }
 
+    /** Eine einzelne Linie zwischen zwei Punkten der Welt. */
+    public static void line(WorldRenderContext context, Vec3 von, Vec3 bis, int color) {
+        MultiBufferSource consumers = context.consumers();
+        PoseStack matrices = context.matrices();
+        if (consumers == null || matrices == null) {
+            return;
+        }
+        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+        VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
+
+        matrices.pushPose();
+        matrices.translate(-camera.x, -camera.y, -camera.z);
+        line(lines, matrices.last(),
+                (float) von.x, (float) von.y, (float) von.z,
+                (float) bis.x, (float) bis.y, (float) bis.z, color);
+        matrices.popPose();
+    }
+
     private static void edges(VertexConsumer buffer, PoseStack.Pose pose, AABB box, int color) {
         float x1 = (float) box.minX;
         float y1 = (float) box.minY;

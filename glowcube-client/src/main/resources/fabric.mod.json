@@ -5,7 +5,7 @@
   "name": "GlowCube",
   "description": "Ein clientseitiger Werkzeugkasten mit X-Ray, ESP, ClickGUI, SeedHunt und OreSim.",
   "authors": ["GlowCube"],
-  "license": "MIT",
+  "license": "GPL-3.0-or-later",
   "environment": "client",
   "entrypoints": {
     "client": ["net.glowcube.client.GlowCubeClient"],

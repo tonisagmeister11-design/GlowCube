@@ -55,12 +55,16 @@ Jedes Modul hat eine Taste. Was geschaltet wurde, steht kurz ueber der Hotbar.
 
 | Taste | Modul | | Taste | Modul |
 | --- | --- | --- | --- | --- |
-| `X` | X-Ray | | `R` | KillAura |
-| `H` | Fullbright | | `K` | AutoTool |
-| `C` | Zoom | | `M` | AntiAFK |
-| `F` | Flight | | `B` | SeedHunt |
-| `G` | Speed | | `N` | NoFall |
-| `V` | Step | | `J` | AutoSprint |
+| `Rechte Umschalt` | ClickGUI | | `R` | KillAura |
+| `X` | X-Ray | | `K` | AutoTool |
+| `H` | Fullbright | | `M` | AntiAFK |
+| `C` | Zoom | | `B` | SeedHunt |
+| `F` | Flight | | `N` | NoFall |
+| `G` | Speed | | `J` | AutoSprint |
+| `V` | Step | | `L` | Search |
+
+Ohne Taste, ueber das ClickGUI erreichbar: StorageESP, EntityESP, Tracers,
+HoleESP, Trajectories, AutoWalk, Criticals, AutoRespawn.
 
 Die Belegungen meiden alles, was Minecraft selbst benutzt - mit einer
 Ausnahme: `F` tauscht in Vanilla die Zweithand. Wem das dazwischenkommt, der
@@ -89,6 +93,20 @@ sind alle Erze, Kisten, Spawner und Portale.
 | AutoTool | Bestes Werkzeug beim Abbauen |
 | AntiAFK | Haelt dich auf dem Server |
 | SeedHunt | Fliegt selbsttaetig eine Spirale ab, damit SeedCrackerX schnell genug Daten bekommt |
+| StorageESP | Kisten, Faesser, Shulker durch Waende |
+| EntityESP | Kaesten um Spieler, Monster, Tiere, Items |
+| Tracers | Linien vom Fadenkreuz zu Entities |
+| Search | Markiert gesuchte Bloecke, ohne die Sicht zu veraendern |
+| HoleESP | Zeigt Loecher, die Explosionen standhalten |
+| Trajectories | Zeigt, wo Pfeil, Perle oder Trank landen |
+| AutoWalk | Laeuft von allein geradeaus |
+| Criticals | Treffer zaehlen als kritisch |
+| AutoRespawn | Sofort wieder einsteigen |
+| ClickGUI | Das Fenster |
+
+Die Kategorien folgen der Einteilung von BleachHack: Combat, Movement,
+Render, Player, World, Exploits, Misc. Woher was stammt, steht in
+[HERKUNFT.md](HERKUNFT.md).
 
 ## Zusammenspiel mit SeedCrackerX
 
