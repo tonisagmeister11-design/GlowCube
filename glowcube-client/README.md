@@ -102,10 +102,34 @@ GlowCube haengt sich an zwei Stellen ein:
 
 * **Der Seed geht nicht mehr verloren.** SeedCrackerX bietet anderen Mods die
   Schnittstelle `SeedCrackerAPI` an und ruft sie auf, sobald es fertig ist.
-  GlowCube meldet sich dort an, zeigt den Seed ueber der Hotbar und schreibt
-  ihn mit Zeitstempel nach `.minecraft/config/glowcube-seeds.txt`. Eine
-  Chatzeile kann man verpassen, die Datei nicht.
-* **SeedHunt fliegt die Arbeit ab.** SeedCrackerX sieht nur, was der Client
+  GlowCube meldet sich dort an. Der Seed erscheint ueber der Hotbar **und im
+  Chat** - dort bleibt er stehen und laesst sich markieren - und wandert mit
+  Zeitstempel nach `.minecraft/config/glowcube-seeds.txt`.
+
+## Was X-Ray auf Servern kann und was nicht
+
+Kurz: **Der Weltseed hilft X-Ray nicht.** Das sind zwei verschiedene Dinge.
+
+X-Ray entscheidet nur, ob ein Block *gezeichnet* wird. Es kann ausschliesslich
+das zeigen, was der Client ohnehin schon hat.
+
+* **Server ohne Anti-X-Ray** schicken die Chunks samt Erzen. Dort wirkt X-Ray
+  bereits jetzt - ohne Seed, ohne Zutun.
+* **Server mit Anti-X-Ray** (Paper bringt es mit, fast jeder groessere Server
+  schaltet es ein) schicken gefaelschte Daten: Stein, wo Erz liegt, oder Erz
+  ueberall. Die echten Erzpositionen erreichen den Client nie. Kein
+  Client-Mod kann zeigen, was er nicht bekommen hat - auch nicht mit Seed.
+
+Was der Seed koennte: *ausrechnen*, wo Erze bei der Weltgenerierung entstanden
+waeren. Das ist aber kein X-Ray, sondern eine **Vorhersage**, und sie
+verlangt, die Erzgenerierung von 26.2 nachzubauen. Ein eigenes, grosses
+Vorhaben - kein Schalter an X-Ray.
+
+Fuer **Strukturen** gibt es das bereits fertig: SeedCrackerX bringt eigene
+Finder mit, die aus dem bekannten Seed Festungen, Tempel und anderes
+errechnen. Dafuer braucht es GlowCube nicht.
+* **SeedHunt fliegt die Arbeit ab.** Mit der Einstellung `AutoStart` geht es
+  beim Betreten einer Welt von selbst los. SeedCrackerX sieht nur, was der Client
   ohnehin geladen bekommt - wer stehen bleibt, wartet ewig. `B` startet eine
   quadratische Spirale um den Startpunkt, die nach aussen waechst und dabei
   Chunk um Chunk laedt. Sobald der Seed da ist, schaltet sich SeedHunt selbst

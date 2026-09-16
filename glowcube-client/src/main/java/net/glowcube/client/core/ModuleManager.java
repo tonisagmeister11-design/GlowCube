@@ -30,6 +30,8 @@ public final class ModuleManager {
     private final Map<String, Module> byName = new LinkedHashMap<>();
     /** Module, die an sind, deren onEnable aber noch aussteht. */
     private final Set<Module> pending = new HashSet<>();
+    /** Ob beim letzten Tick schon eine Welt da war - fuer den Beitritt. */
+    private boolean warInWelt;
 
     public ModuleManager() {
         // Render
@@ -100,8 +102,11 @@ public final class ModuleManager {
         Minecraft mc = Minecraft.getInstance();
         boolean inGame = mc.player != null && mc.level != null;
         if (!inGame) {
+            warInWelt = false;
             return;
         }
+        boolean geradeBetreten = !warInWelt;
+        warInWelt = true;
         // Nachgeholtes onEnable: beim Start und nach einem Weltwechsel.
         if (!pending.isEmpty()) {
             for (Module module : new ArrayList<>(pending)) {
@@ -109,6 +114,13 @@ public final class ModuleManager {
             }
             pending.clear();
         }
+        if (geradeBetreten) {
+            SeedHunt seedHunt = get(SeedHunt.class);
+            if (seedHunt.autoStart() && !seedHunt.isEnabled()) {
+                seedHunt.setEnabled(true);
+            }
+        }
+
         for (Module module : modules) {
             if (module.isEnabled()) {
                 module.onTick();

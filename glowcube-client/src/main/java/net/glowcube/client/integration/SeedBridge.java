@@ -39,7 +39,12 @@ public final class SeedBridge implements SeedCrackerAPI {
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
+            // Zweimal mit Absicht: die Zeile ueber der Hotbar faellt sofort auf,
+            // die Chatzeile bleibt stehen und laesst sich markieren.
             mc.player.sendOverlayMessage(Component.literal("[GlowCube] Seed: " + worldSeed));
+            mc.player.sendSystemMessage(Component.literal("[GlowCube] Weltseed: " + worldSeed));
+            mc.player.sendSystemMessage(Component.literal(
+                    "[GlowCube] Auch gespeichert in config/glowcube-seeds.txt"));
         }
         merken(worldSeed);
     }

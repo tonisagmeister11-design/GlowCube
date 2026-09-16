@@ -58,13 +58,20 @@ public final class XRay extends Module {
     }
 
     /**
-     * Ohne Neuaufbau der Chunk-Meshes aendert sich am Bild nichts. In 26.2
-     * heisst der Aufruf nicht mehr allChanged().
+     * Baut die Chunk-Meshes neu auf, sonst aendert sich am Bild nichts.
+     *
+     * Vorher stand hier resetLevelRenderData() - das war geraten und falsch:
+     * es verwirft die Renderdaten, statt sie neu zu erzeugen, und liess das
+     * Spiel beim naechsten Bild abstuerzen. Der richtige Aufruf heisst
+     * invalidateCompiledGeometry und bekommt alles mit, was er zum Neubauen
+     * braucht.
      */
     private void reloadChunks() {
-        if (mc.levelRenderer != null) {
-            mc.levelRenderer.resetLevelRenderData();
+        if (mc.levelRenderer == null || mc.level == null || mc.gameRenderer == null) {
+            return;
         }
+        mc.levelRenderer.invalidateCompiledGeometry(
+                mc.level, mc.options, mc.gameRenderer.mainCamera(), mc.getBlockColors());
     }
 
     public BlockListSetting blocks() {

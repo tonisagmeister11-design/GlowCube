@@ -32,6 +32,13 @@ public final class SeedHunt extends Module {
             "Wie viele Teilstrecken, dann ist Schluss", 64, 4, 512, 4));
     private final BooleanSetting stopOnSeed = register(new BooleanSetting("StopOnSeed",
             "Aufhoeren, sobald der Seed da ist", true));
+    private final BooleanSetting autoStart = register(new BooleanSetting("AutoStart",
+            "Beim Betreten einer Welt von selbst losfliegen", false));
+
+    /** Wird vom ModuleManager beim Betreten einer Welt abgefragt. */
+    public boolean autoStart() {
+        return autoStart.get();
+    }
 
     // Startpunkt und Stand der Spirale.
     private Vec3 anker = Vec3.ZERO;
