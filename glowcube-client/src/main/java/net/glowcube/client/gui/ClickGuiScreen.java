@@ -14,6 +14,9 @@ import net.glowcube.client.util.Render2D;
 import net.glowcube.client.util.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
@@ -391,7 +394,12 @@ public final class ClickGuiScreen extends Screen {
     // ------------------------------------------------------------------ Maus
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doppelklick) {
+        // Maus- und Tastendaten kommen seit 1.21.11 als Objekt statt als
+        // Zahlenreihe. Ausgepackt bleibt der Rest unveraendert.
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         float top = panelY;
 
         // Kategorien.
@@ -417,7 +425,7 @@ public final class ClickGuiScreen extends Screen {
         // Weggescrollte Zeilen liegen rechnerisch weiter aussen, sind aber
         // abgeschnitten - ohne diese Schranke waeren sie trotzdem anklickbar.
         if (!Render2D.hovered(mouseX, mouseY, areaX, areaY, areaW, areaH)) {
-            return super.mouseClicked(mouseX, mouseY, button);
+            return super.mouseClicked(event, doppelklick);
         }
 
         for (Row row : buildRows(areaY)) {
@@ -444,7 +452,7 @@ public final class ClickGuiScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doppelklick);
     }
 
     private void clickSetting(Setting setting, int button, double mouseX, float rowX, float rowW) {
@@ -470,24 +478,24 @@ public final class ClickGuiScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (dragging != null) {
             float areaX = panelX + RAIL_W + 1;
             float areaW = PANEL_W - RAIL_W - 2;
-            applySlider(dragging, mouseX, areaX + PAD + 10, areaW - PAD * 2 - 20);
+            applySlider(dragging, event.x(), areaX + PAD + 10, areaW - PAD * 2 - 20);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
         if (dragging != null) {
             dragging = null;
             GlowCubeClient.config().save();
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     @Override
@@ -499,7 +507,8 @@ public final class ClickGuiScreen extends Screen {
     // ---------------------------------------------------------------- Tastatur
 
     @Override
-    public boolean keyPressed(int key, int scancode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int key = event.key();
         if (binding != null) {
             binding.setKey(key == GLFW.GLFW_KEY_ESCAPE ? GLFW.GLFW_KEY_UNKNOWN : key);
             binding = null;
@@ -514,17 +523,18 @@ public final class ClickGuiScreen extends Screen {
             search = "";
             return true;
         }
-        return super.keyPressed(key, scancode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
-    public boolean charTyped(char character, int modifiers) {
-        if (character >= ' ' && character != 127) {
-            search += character;
+    public boolean charTyped(CharacterEvent event) {
+        int zeichen = event.codepoint();
+        if (zeichen >= ' ' && zeichen != 127) {
+            search += event.codepointAsString();
             scrollTarget = 0.0f;
             return true;
         }
-        return super.charTyped(character, modifiers);
+        return super.charTyped(event);
     }
 
     @Override

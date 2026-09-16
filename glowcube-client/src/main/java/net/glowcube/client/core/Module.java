@@ -1,6 +1,7 @@
 package net.glowcube.client.core;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.input.KeyEvent;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.glowcube.client.core.setting.Setting;
 import net.minecraft.client.Minecraft;
@@ -111,7 +112,9 @@ public abstract class Module {
         if (!hasKey()) {
             return "--";
         }
-        return InputConstants.getKey(key, 0).getDisplayName().getString().toUpperCase(java.util.Locale.ROOT);
+        // getKey nimmt jetzt ein KeyEvent; eines laesst sich dafuer bauen.
+        return InputConstants.getKey(new KeyEvent(key, 0, 0))
+                .getDisplayName().getString().toUpperCase(java.util.Locale.ROOT);
     }
 
     /** Was im HUD hinter dem Namen steht, z.B. "Speed [2.5]". Null heisst: nichts. */

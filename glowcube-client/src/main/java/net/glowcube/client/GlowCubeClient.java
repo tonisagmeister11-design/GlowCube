@@ -1,6 +1,7 @@
 package net.glowcube.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -63,7 +64,8 @@ public final class GlowCubeClient implements ClientModInitializer {
      */
     private void pollKeys() {
         Minecraft mc = Minecraft.getInstance();
-        long window = mc.getWindow().getWindow();
+        // isKeyDown nimmt hier bereits das Window-Objekt selbst.
+        Window window = mc.getWindow();
 
         Set<Integer> bound = new HashSet<>();
         for (Module module : modules.all()) {

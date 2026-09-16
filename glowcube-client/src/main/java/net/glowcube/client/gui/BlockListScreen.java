@@ -7,6 +7,9 @@ import net.glowcube.client.util.Render2D;
 import net.glowcube.client.util.Theme;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -136,7 +139,9 @@ public final class BlockListScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doppelklick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
         float listY = panelY + 56;
         float listH = PANEL_H - 56 - PAD;
         List<String> entries = entries();
@@ -156,7 +161,7 @@ public final class BlockListScreen extends Screen {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doppelklick);
     }
 
     @Override
@@ -166,7 +171,8 @@ public final class BlockListScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int key, int scancode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int key = event.key();
         if (key == GLFW.GLFW_KEY_BACKSPACE) {
             if (!input.isEmpty()) {
                 input = input.substring(0, input.length() - 1);
@@ -185,17 +191,18 @@ public final class BlockListScreen extends Screen {
             onClose();
             return true;
         }
-        return super.keyPressed(key, scancode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override
-    public boolean charTyped(char character, int modifiers) {
-        if (character >= ' ' && character != 127) {
-            input += character;
+    public boolean charTyped(CharacterEvent event) {
+        int zeichen = event.codepoint();
+        if (zeichen >= ' ' && zeichen != 127) {
+            input += event.codepointAsString();
             scrollTarget = 0.0f;
             return true;
         }
-        return super.charTyped(character, modifiers);
+        return super.charTyped(event);
     }
 
     @Override
