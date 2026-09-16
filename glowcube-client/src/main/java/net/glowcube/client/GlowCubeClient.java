@@ -1,6 +1,7 @@
 package net.glowcube.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -56,7 +57,9 @@ public final class GlowCubeClient implements ClientModInitializer {
      */
     private void pollKeys() {
         Minecraft mc = Minecraft.getInstance();
-        long window = mc.getWindow().getWindow();
+        // isKeyDown nimmt in 26.2 das Window-Objekt selbst; das rohe
+        // Fensterhandle gibt Window nicht mehr heraus.
+        Window window = mc.getWindow();
 
         Set<Integer> bound = new HashSet<>();
         for (Module module : modules.all()) {
@@ -75,11 +78,13 @@ public final class GlowCubeClient implements ClientModInitializer {
             if (!held.add(key)) {
                 continue;
             }
-            // Nur ausserhalb von Menues und Chat, sonst tippt man Module an.
-            if (mc.screen == null) {
-                modules.onKey(key);
-                config.save();
-            }
+            // OFFEN: In 26.2 laesst sich nicht mehr abfragen, ob gerade ein
+            // Bildschirm offen ist - Minecraft.screen ist weg und es gibt
+            // keinen Lesezugriff dafuer. Solange schaltet eine belegte Taste
+            // auch dann, wenn man im Chat tippt. Der Ersatz wird gerade
+            // ermittelt; bis dahin lieber bedienbar als gar nicht.
+            modules.onKey(key);
+            config.save();
         }
     }
 
