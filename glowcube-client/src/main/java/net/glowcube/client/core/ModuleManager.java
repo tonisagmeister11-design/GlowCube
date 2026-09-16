@@ -1,6 +1,6 @@
 package net.glowcube.client.core;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.movement.AutoSprint;
 import net.glowcube.client.module.movement.Flight;

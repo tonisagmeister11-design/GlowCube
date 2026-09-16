@@ -1,6 +1,6 @@
 package net.glowcube.client.module.render;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
