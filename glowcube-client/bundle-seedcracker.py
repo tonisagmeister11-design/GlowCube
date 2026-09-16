@@ -14,12 +14,14 @@ Lizenz: SeedCrackerX steht unter MIT, Weitergabe ist also ausdruecklich
 erlaubt. Die Herkunft steht in HERKUNFT.md.
 """
 
+import io
 import json
 import os
 import pathlib
 import re
 import sys
 import urllib.request
+import zipfile
 
 HERE = pathlib.Path(__file__).parent
 PROPS = HERE / "gradle.properties"
@@ -33,6 +35,65 @@ def spielfassung():
         if zeile.startswith("minecraft_version="):
             return zeile.split("=", 1)[1].strip()
     return None
+
+
+def lade(url, kopf):
+    with urllib.request.urlopen(urllib.request.Request(url, headers=kopf), timeout=120) as antwort:
+        return antwort.read()
+
+
+def teile(text):
+    """'1.21.11' -> (1, 21, 11), damit sich Fassungen vergleichen lassen."""
+    return tuple(int(t) for t in re.findall(r"\d+", text)[:4])
+
+
+def passt(bedingung, fassung):
+    """Erfuellt die Spielfassung diese Abhaengigkeitsangabe?
+
+    Deckt ab, was in der Praxis vorkommt: eine Liste, eine feste Fassung,
+    '~1.21.11', '>=1.21.11 <1.21.12' und Kombinationen davon. Alles, was
+    nicht erkannt wird, gilt als nicht passend - lieber nichts einbauen als
+    das Falsche.
+    """
+    if bedingung is None:
+        return False
+    if isinstance(bedingung, list):
+        return any(passt(b, fassung) for b in bedingung)
+
+    hier = teile(fassung)
+    text = bedingung.strip()
+
+    if text in ("*", ""):
+        return True
+    if text == fassung:
+        return True
+
+    for teil in text.split():
+        teil = teil.strip()
+        if teil.startswith(">="):
+            if hier < teile(teil[2:]):
+                return False
+        elif teil.startswith("<="):
+            if hier > teile(teil[2:]):
+                return False
+        elif teil.startswith("<"):
+            if hier >= teile(teil[1:]):
+                return False
+        elif teil.startswith(">"):
+            if hier <= teile(teil[1:]):
+                return False
+        elif teil.startswith("~"):
+            # ~1.21.11 heisst: gleiche Haupt- und Nebenfassung, Rest hoeher.
+            ziel = teile(teil[1:])
+            if hier[:2] != ziel[:2] or hier < ziel:
+                return False
+        elif teil.startswith("="):
+            if hier != teile(teil[1:]):
+                return False
+        else:
+            if teile(teil) != hier:
+                return False
+    return True
 
 
 def melde(text, art="notice"):
@@ -59,33 +120,40 @@ def main():
         melde(f"Releases nicht erreichbar ({fehler}) - nichts eingebaut", "warning")
         return 0
 
-    # Passend ist, was die Spielfassung im Dateinamen oder im Tag traegt.
+    # SeedCrackerX benennt seine Dateien nach der eigenen Fassung
+    # (seedcrackerX-2.16.1.jar), nicht nach der Minecraft-Fassung. Der
+    # Dateiname sagt also nichts - die Antwort steht im Manifest jeder JAR
+    # unter depends.minecraft. Also von neu nach alt hineinschauen, bis eine
+    # passt.
     treffer = None
+    geprueft = []
     for release in releases:
         for anhang in release.get("assets", []):
             name = anhang["name"]
             if not name.endswith(".jar") or "source" in name.lower():
                 continue
-            if fassung in name or fassung in (release.get("tag_name") or ""):
-                treffer = (name, anhang["browser_download_url"], release.get("tag_name"))
+            try:
+                inhalt = lade(anhang["browser_download_url"], kopf)
+                manifest = json.loads(zipfile.ZipFile(io.BytesIO(inhalt)).read("fabric.mod.json"))
+            except Exception:
+                continue
+            bedingung = manifest.get("depends", {}).get("minecraft")
+            geprueft.append(f"{name}={bedingung}")
+            if passt(bedingung, fassung):
+                treffer = (name, inhalt, release.get("tag_name"), bedingung)
                 break
         if treffer:
             break
 
     if not treffer:
-        gesehen = sorted({a["name"] for r in releases[:8] for a in r.get("assets", [])})[:8]
-        melde(f"Keine Fassung fuer Minecraft {fassung} gefunden. Gesehen: {gesehen}", "warning")
+        melde(f"Keine Fassung fuer Minecraft {fassung} gefunden. "
+              f"Geprueft: {geprueft[:10]}", "warning")
         return 0
 
-    name, url, tag = treffer
+    name, inhalt, tag, bedingung = treffer
     ZIEL.mkdir(parents=True, exist_ok=True)
     datei = ZIEL / name
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers=kopf), timeout=120) as antwort:
-            datei.write_bytes(antwort.read())
-    except Exception as fehler:
-        melde(f"Herunterladen von {name} fehlgeschlagen ({fehler})", "warning")
-        return 0
+    datei.write_bytes(inhalt)
 
     # Im Manifest eintragen, sonst laedt Fabric die innere JAR nicht.
     manifest = json.loads(MOD_JSON.read_text(encoding="utf-8"))
@@ -94,8 +162,8 @@ def main():
     manifest.pop("suggests", None)
     MOD_JSON.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    melde(f"{name} ({tag}, {datei.stat().st_size // 1024} KB) eingebaut - "
-          f"eine Datei weniger im mods-Ordner")
+    melde(f"{name} ({tag}, {datei.stat().st_size // 1024} KB, will minecraft {bedingung}) "
+          f"eingebaut - eine Datei weniger im mods-Ordner")
     return 0
 
 
