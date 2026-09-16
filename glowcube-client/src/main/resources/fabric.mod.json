@@ -3,7 +3,7 @@
   "id": "glowcube",
   "version": "${version}",
   "name": "GlowCube",
-  "description": "Ein clientseitiger Werkzeugkasten mit X-Ray, ESP und ClickGUI.",
+  "description": "Ein clientseitiger Werkzeugkasten: X-Ray, Fullbright, Zoom, Flight, Speed, Step, NoFall, AutoSprint, KillAura, AutoTool, AntiAFK.",
   "authors": ["GlowCube"],
   "license": "MIT",
   "environment": "client",
