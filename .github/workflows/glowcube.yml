@@ -65,9 +65,49 @@ jobs:
             "net.minecraft.network.FriendlyByteBuf:readNbt" \
             "net.minecraft.world.entity.Entity:moveTo|absMoveTo|setPos|getRootVehicle" \
             "net.minecraft.world.inventory.AbstractContainerMenu:SLOT_CLICKED_OUTSIDE|getCarried|containerId" \
-            "net.minecraft.network.protocol.BundlerInfo:"
+            "net.minecraft.network.protocol.BundlerInfo:" \
+            "net.minecraft.world.damagesource.DamageSources:explosion|fall" \
+            "net.minecraft.world.damagesource.CombatRules:" \
+            "net.minecraft.world.damagesource.DamageSource:scalesWithDifficulty|is\\(" \
+            "net.minecraft.world.level.Level:getHeight|damageSources|clip|getMinY|isUnobstructed|getBlockCollisions" \
+            "net.minecraft.world.entity.LivingEntity:getAttributeValue|hasEffect|getEffect|getAbsorptionAmount|getItemBySlot" \
+            "net.minecraft.world.level.BlockGetter:traverseBlocks|clip"
           # Wo der Name selbst unsicher ist, hilft nur die Suche.
           python3 probe-search.py build/classpath.txt CompressionDecoder Bundler ClickType
+
+      # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
+      # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
+      # falscher Mixin-Name erst beim Spielstart auf, und zwar beim Nutzer.
+      - name: Namen der Mixin-Ziele festnageln
+        working-directory: glowcube-client
+        run: |
+          python3 verify-api.py build/classpath.txt \
+            "net.minecraft.network.Connection#genericsFtw" \
+            "net.minecraft.network.Connection#channelRead0" \
+            "net.minecraft.network.Connection#send" \
+            "net.minecraft.client.player.LocalPlayer#sendPosition" \
+            "net.minecraft.client.player.LocalPlayer#move" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#ensureHasSentCarriedItem" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleInventoryMouseClick" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#useItemOn" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#startDestroyBlock" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#continueDestroyBlock" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#stopDestroyBlock" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#isDestroying" \
+            "net.minecraft.network.CompressionDecoder#decode" \
+            "net.minecraft.nbt.NbtAccounter#unlimitedHeap" \
+            "net.minecraft.network.FriendlyByteBuf#readNbt" \
+            "net.minecraft.client.DeltaTracker\$Timer#advanceTime" \
+            "net.minecraft.world.damagesource.CombatRules#getDamageAfterAbsorb" \
+            "net.minecraft.world.entity.player.Inventory#setSelectedSlot" \
+            "net.minecraft.world.inventory.ClickType#" \
+            "net.minecraft.world.level.Level#isInSpawnableBounds" \
+            "net.minecraft.world.level.Level#isUnobstructed" \
+            "net.minecraft.world.entity.Entity#getRootVehicle" \
+            "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Pos#" \
+            "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Rot#" \
+            "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$PosRot#" \
+            "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket#"
 
       - name: Bauen
         run: |

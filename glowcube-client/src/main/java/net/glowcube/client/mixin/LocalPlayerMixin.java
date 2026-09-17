@@ -30,6 +30,11 @@ public abstract class LocalPlayerMixin {
         }
     }
 
+    @Inject(method = "sendPosition", at = @At("TAIL"))
+    private void glowcube$lageGemeldet(CallbackInfo info) {
+        Packets.afterMovement();
+    }
+
     @Inject(method = "move", at = @At("HEAD"), cancellable = true)
     private void glowcube$bewegen(MoverType art, Vec3 bewegung, CallbackInfo info) {
         if (Packets.blockClientMove()) {

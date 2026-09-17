@@ -32,6 +32,7 @@ import net.glowcube.client.module.render.Tracers;
 import net.glowcube.client.module.render.Trajectories;
 import net.glowcube.client.module.render.XRay;
 import net.glowcube.client.module.render.Zoom;
+import net.glowcube.client.util.BlockUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -167,11 +168,15 @@ public final class ModuleManager {
             }
         }
 
+        // Der Abbau muss jeden Tick bestaetigt werden, sonst haelt das Spiel
+        // ihn fuer abgebrochen. Nuker und AutoTool melden sich dazwischen.
+        BlockUtils.tickBeginn();
         for (Module module : modules) {
             if (module.isEnabled()) {
                 module.onTick();
             }
         }
+        BlockUtils.tickEnde();
     }
 
     /**

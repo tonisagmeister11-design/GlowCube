@@ -1,6 +1,7 @@
 package net.glowcube.client.core;
 
 import net.glowcube.client.GlowCubeClient;
+import net.glowcube.client.util.Rotations;
 import net.minecraft.network.protocol.Packet;
 
 /**
@@ -39,12 +40,30 @@ public final class Packets {
         }
         drin = true;
         try {
-            return modules.onSendMovement();
+            Rotations.vorPaket();
+            boolean unterbunden = modules.onSendMovement();
+            if (unterbunden) {
+                // Faellt das Paket ganz aus, laeuft der TAIL-Haken nie - dann
+                // bliebe der gestellte Blick stehen und die Kamera haengt
+                // fest. Also hier schon zuruecknehmen.
+                Rotations.nachPaket();
+            }
+            return unterbunden;
         } catch (Throwable fehler) {
             GlowCubeClient.LOGGER.error("Fehler vor dem Bewegungspaket", fehler);
+            Rotations.nachPaket();
             return false;
         } finally {
             drin = false;
+        }
+    }
+
+    /** Nach dem Bewegungspaket: die gestellte Blickrichtung zuruecknehmen. */
+    public static void afterMovement() {
+        try {
+            Rotations.nachPaket();
+        } catch (Throwable fehler) {
+            GlowCubeClient.LOGGER.error("Fehler nach dem Bewegungspaket", fehler);
         }
     }
 
