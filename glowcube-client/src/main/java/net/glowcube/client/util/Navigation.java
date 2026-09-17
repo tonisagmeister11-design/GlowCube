@@ -80,6 +80,14 @@ public final class Navigation {
         BlockPos vorKopf = vorFuss.above();
         BlockPos unterVorFuss = vorFuss.below();
 
+        // Wasser oder Lava voraus - stehenbleiben statt hineinlaufen. Ohne
+        // echten Wegfinder ist Anhalten die einzige sichere Antwort; sonst
+        // laeuft der Spieler in die Lava.
+        if (fluessig(vorFuss) || fluessig(unterVorFuss)) {
+            stopp();
+            return false;
+        }
+
         boolean wandUnten = !frei(vorFuss);
         boolean wandOben = !frei(vorKopf);
         boolean lueckeVoraus = frei(vorFuss) && frei(unterVorFuss) && frei(unterVorFuss.below());
@@ -114,6 +122,11 @@ public final class Navigation {
      */
     private static boolean frei(BlockPos pos) {
         return mc().level.getBlockState(pos).getCollisionShape(mc().level, pos).isEmpty();
+    }
+
+    /** Wasser oder Lava - hat keine feste Kollision, ist aber toedlich/nass. */
+    private static boolean fluessig(BlockPos pos) {
+        return !mc().level.getBlockState(pos).getFluidState().isEmpty();
     }
 
     /**

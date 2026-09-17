@@ -98,6 +98,8 @@ public final class AutoPlay extends Module {
     private int craftPause;
     private BlockPos laufZiel;
     private int suchPause;
+    /** Ob AutoPlay gerade selbst die Bewegungstasten haelt. */
+    private boolean wirLaufen;
 
     public AutoPlay() {
         super("AutoPlay", "Haelt dich am Leben und verteidigt dich von selbst",
@@ -154,14 +156,18 @@ public final class AutoPlay extends Module {
         // Erst schauen, was fehlt - dann nur danach sammeln.
         bedarfErmitteln();
         if (sammeln.get() && (holzSammeln || steinSammeln)) {
-            if (etwasInReichweite()) {
-                Navigation.stopp();
-                sammelSchritt();
+            BlockPos inReich = naechsterInReichweite();
+            if (inReich != null) {
+                laufenBeenden();
+                sammleBei(inReich);
             } else if (laufen.get()) {
                 zumRohstoffLaufen();
+                wirLaufen = true;
+            } else {
+                laufenBeenden();
             }
         } else {
-            Navigation.stopp();
+            laufenBeenden();
         }
         if (craften.get()) {
             craftSchritt();
@@ -216,46 +222,34 @@ public final class AutoPlay extends Module {
 
     // ---------------------------------------------------------------- Sammeln
 
-    private void sammelSchritt() {
-        BlockPos mitte = player().blockPosition();
-        int r = 5;
-        BlockPos bester = null;
-        double naechste = Double.MAX_VALUE;
-        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+    /** Den bereits gefundenen Block anschauen und abbauen. */
+    private void sammleBei(BlockPos ziel) {
+        Rotations.rotate(Rotations.getYaw(ziel), Rotations.getPitch(ziel), 30,
+                () -> BlockUtils.abbauen(ziel, true));
+    }
 
-        for (int dx = -r; dx <= r; dx++) {
-            for (int dy = -r; dy <= r; dy++) {
-                for (int dz = -r; dz <= r; dz++) {
-                    probe.set(mitte.getX() + dx, mitte.getY() + dy, mitte.getZ() + dz);
-                    BlockState zustand = level().getBlockState(probe);
-                    if (zustand.isAir() || !gesucht(zustand)) {
-                        continue;
-                    }
-                    // In Reichweite und nicht durch die Wand.
-                    double abstand = player().getEyePosition().distanceToSqr(
-                            probe.getX() + 0.5, probe.getY() + 0.5, probe.getZ() + 0.5);
-                    if (abstand > 20.25 || abstand >= naechste) {
-                        continue;
-                    }
-                    if (!BlockUtils.kannAbbauen(probe)) {
-                        continue;
-                    }
-                    naechste = abstand;
-                    bester = probe.immutable();
-                }
-            }
-        }
-
-        if (bester != null) {
-            BlockPos ziel = bester;
-            Rotations.rotate(Rotations.getYaw(ziel), Rotations.getPitch(ziel), 30,
-                    () -> BlockUtils.abbauen(ziel, true));
+    /**
+     * Die Bewegung freigeben - aber nur, wenn AutoPlay sie ueberhaupt
+     * uebernommen hatte. Sonst wuerde jeder Tick die W-/Leertaste des Nutzers
+     * loslassen, und man koennte mit eingeschaltetem AutoPlay nicht mehr
+     * selbst laufen.
+     */
+    private void laufenBeenden() {
+        if (wirLaufen) {
+            Navigation.stopp();
+            wirLaufen = false;
         }
     }
 
-    /** Liegt gerade ein gesuchter Block in Abbau-Reichweite? */
-    private boolean etwasInReichweite() {
+    /**
+     * Der naechste gesuchte Block in Abbau-Reichweite, oder null. Ein
+     * einziger Suchlauf fuer beides: die Entscheidung "ist was da?" und das
+     * Ziel zum Abbauen - kein doppeltes Absuchen desselben Wuerfels mehr.
+     */
+    private BlockPos naechsterInReichweite() {
         BlockPos mitte = player().blockPosition();
+        BlockPos bester = null;
+        double naechste = Double.MAX_VALUE;
         BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
         for (int dx = -5; dx <= 5; dx++) {
             for (int dy = -5; dy <= 5; dy++) {
@@ -267,13 +261,14 @@ public final class AutoPlay extends Module {
                     }
                     double abstand = player().getEyePosition().distanceToSqr(
                             probe.getX() + 0.5, probe.getY() + 0.5, probe.getZ() + 0.5);
-                    if (abstand <= 20.25 && BlockUtils.kannAbbauen(probe)) {
-                        return true;
+                    if (abstand <= 20.25 && abstand < naechste && BlockUtils.kannAbbauen(probe)) {
+                        naechste = abstand;
+                        bester = probe.immutable();
                     }
                 }
             }
         }
-        return false;
+        return bester;
     }
 
     /**
@@ -317,6 +312,11 @@ public final class AutoPlay extends Module {
                     probe.set(mitte.getX() + dx, mitte.getY() + dy, mitte.getZ() + dz);
                     BlockState zustand = level().getBlockState(probe);
                     if (zustand.isAir() || !gesucht(zustand)) {
+                        continue;
+                    }
+                    // Nur was auch abbaubar ist - sonst laeuft es ewig auf
+                    // einen Block zu, den es nie erreichen kann.
+                    if (!BlockUtils.kannAbbauen(probe)) {
                         continue;
                     }
                     double abstand = probe.distToCenterSqr(
