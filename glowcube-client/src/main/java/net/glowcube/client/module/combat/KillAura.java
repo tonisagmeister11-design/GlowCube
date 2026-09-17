@@ -36,6 +36,12 @@ import java.util.List;
  * Quelle: meteordevelopment/meteorclient/systems/modules/combat/KillAura.java
  */
 public final class KillAura extends Module {
+    /**
+     * Damit andere Module fragen koennen, worauf gerade geschlagen wird -
+     * Criticals braucht das fuer die Einstellung "Nur mit KillAura".
+     */
+    private static KillAura instanz;
+
 
     // ---------------------------------------------------------- Zielauswahl
 
@@ -80,6 +86,7 @@ public final class KillAura extends Module {
     private int wartet;
 
     public KillAura() {
+        instanz = this;
         super("KillAura", "Greift Ziele in Reichweite an", Category.COMBAT,
                 com.mojang.blaze3d.platform.InputConstants.KEY_R);
     }
@@ -264,4 +271,13 @@ public final class KillAura extends Module {
     public String hudSuffix() {
         return ziele.isEmpty() ? range.display() : ziele.size() + " Ziel(e)";
     }
+
+    /** Das erste Ziel dieses Ticks, oder null. */
+    public static LivingEntity aktuellesZiel() {
+        if (instanz == null || !instanz.isEnabled() || instanz.ziele.isEmpty()) {
+            return null;
+        }
+        return instanz.ziele.get(0);
+    }
+
 }

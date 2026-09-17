@@ -8,6 +8,11 @@ nicht gibt, faellt sonst erst beim Spielstart auf - beim Nutzer, als Absturz.
 Die private Methode, an der der Bewegungshaken haengt, steht in keiner
 oeffentlichen Signaturliste; genau solche Faelle sollen hier hart auffliegen.
 
+Eine Einschraenkung, die man kennen muss: javap zeigt nur, was die Klasse
+selbst erklaert, nicht was sie erbt. Eine Behauptung ueber eine geerbte
+Methode gehoert also an die Klasse, die sie wirklich erklaert - sonst
+scheitert der Lauf, obwohl der Aufruf spaeter uebersetzt.
+
 Aufruf: verify-api.py <classpath-datei> <klasse>#<teilstring> ...
 """
 

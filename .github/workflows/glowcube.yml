@@ -102,7 +102,26 @@ jobs:
             "net.minecraft.world.entity.player.Inventory#setSelectedSlot" \
             "net.minecraft.world.inventory.ClickType#" \
             "net.minecraft.world.level.Level#isInSpawnableBounds" \
-            "net.minecraft.world.level.Level#isUnobstructed" \
+            "net.minecraft.world.level.CollisionGetter#isUnobstructed" \
+            "net.minecraft.client.multiplayer.ClientPacketListener#sendChat" \
+            "net.minecraft.client.multiplayer.ClientPacketListener#sendCommand" \
+            "net.minecraft.client.KeyMapping#setDown" \
+            "net.minecraft.world.entity.LivingEntity#jumpFromGround" \
+            "net.minecraft.world.entity.EntityEvent#PROTECTED_FROM_DEATH" \
+            "net.minecraft.network.protocol.game.ClientboundEntityEventPacket#getEventId" \
+            "net.minecraft.network.protocol.game.ClientboundEntityEventPacket#getEntity" \
+            "net.minecraft.network.protocol.game.ServerboundInteractPacket#entityId" \
+            "net.minecraft.world.item.MaceItem#" \
+            "net.minecraft.world.entity.AgeableMob#isBaby" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
+            "net.minecraft.network.protocol.game.ServerboundPlayerActionPacket$Action#START_DESTROY_BLOCK" \
+            "net.minecraft.world.entity.player.Player#hasCorrectToolForDrops" \
+            "net.minecraft.world.entity.player.Player#getDestroySpeed" \
+            "net.minecraft.world.phys.Vec3#directionFromRotation" \
+            "net.minecraft.world.level.block.Block#isShapeFullBlock" \
+            "net.minecraft.world.level.block.FallingBlock#isFree" \
+            "net.minecraft.world.entity.Entity#getDirection" \
+            "net.minecraft.world.entity.Entity#setOnGround" \
             "net.minecraft.world.entity.Entity#getRootVehicle" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Pos#" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Rot#" \
