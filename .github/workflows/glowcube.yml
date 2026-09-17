@@ -14,8 +14,15 @@ permissions:
 
 jobs:
   bauen:
-    name: Mod uebersetzen und JAR ablegen
+    name: Bauen fuer MC ${{ matrix.mc }}
     runs-on: ubuntu-latest
+    # Jede Spielfassung ist ein eigener Lauf. Faellt einer um, laufen die
+    # anderen trotzdem zu Ende - so kommt wenigstens heraus, welche Fassung
+    # bereits baut und welche noch klemmt.
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ["1.21.11", "26.2", "26.3"]
     defaults:
       run:
         working-directory: glowcube-client
@@ -32,7 +39,15 @@ jobs:
             21
             25
 
-      - name: Aktuelle Fabric-Versionen eintragen
+      # Der ganze Build haengt an genau einer Zeile in gradle.properties.
+      # Die Matrix setzt sie, resolve-versions.py fuellt den Rest passend auf.
+      - name: Zielfassung eintragen
+        run: |
+          sed -i "s/^minecraft_version=.*/minecraft_version=${{ matrix.mc }}/" gradle.properties
+          echo "minecraft_version steht jetzt auf ${{ matrix.mc }}"
+          grep '^minecraft_version=' gradle.properties
+
+      - name: Passende Fabric-Versionen eintragen
         run: python3 resolve-versions.py
 
       # SeedCrackerX mit in die JAR legen, damit nur eine Datei in den
@@ -71,15 +86,14 @@ jobs:
             "net.minecraft.world.damagesource.DamageSource:scalesWithDifficulty|is\\(" \
             "net.minecraft.world.level.Level:getHeight|damageSources|clip|getMinY|isUnobstructed|getBlockCollisions" \
             "net.minecraft.world.entity.LivingEntity:getAttributeValue|hasEffect|getEffect|getAbsorptionAmount|getItemBySlot" \
-            "net.minecraft.world.level.BlockGetter:traverseBlocks|clip"
+            "net.minecraft.world.level.BlockGetter:traverseBlocks|clip" || true
           # Wo der Name selbst unsicher ist, hilft nur die Suche.
-          python3 probe-search.py build/classpath.txt CompressionDecoder Bundler ClickType
+          python3 probe-search.py build/classpath.txt CompressionDecoder Bundler ClickType || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
       # falscher Mixin-Name erst beim Spielstart auf, und zwar beim Nutzer.
       - name: Namen der Mixin-Ziele festnageln
-        working-directory: glowcube-client
         run: |
           python3 verify-api.py build/classpath.txt \
             "net.minecraft.network.Connection#genericsFtw" \
@@ -141,7 +155,7 @@ jobs:
             "net.minecraft.world.entity.player.Player#closeContainer" \
             "net.minecraft.world.level.block.Blocks#CRAFTING_TABLE" \
             "net.minecraft.world.item.Items#CRAFTING_TABLE" \
-                        "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
             "net.minecraft.network.protocol.game.ServerboundPlayerActionPacket\$Action#START_DESTROY_BLOCK" \
             "net.minecraft.world.entity.player.Player#hasCorrectToolForDrops" \
             "net.minecraft.world.entity.player.Player#getDestroySpeed" \
@@ -217,47 +231,81 @@ jobs:
           print("::error title=Build-Fehler::" + "%0A".join(unique[:15]))
           PY
 
-      - name: JAR anzeigen
+      # Die fertige Mod bekommt die Spielfassung in den Dateinamen, damit
+      # spaeter unverwechselbar ist, welche JAR zu welchem Minecraft gehoert.
+      - name: JAR benennen und einsammeln
         run: |
-          echo "### Fertige Dateien" >> "$GITHUB_STEP_SUMMARY"
-          ls -la build/libs/
-          for jar in build/libs/*.jar; do
-            echo "- \`$(basename "$jar")\` ($(du -h "$jar" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
-          done
+          mkdir -p /tmp/ausgabe
+          jar=$(ls build/libs/*.jar | grep -v -- '-sources' | head -1)
+          ziel="glowcube-${{ matrix.mc }}.jar"
+          cp "$jar" "/tmp/ausgabe/${ziel}"
+          echo "### Fertige Datei fuer ${{ matrix.mc }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`${ziel}\` ($(du -h "/tmp/ausgabe/${ziel}" | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: JAR zum Herunterladen bereitstellen
+      - name: JAR zum Weiterreichen ablegen
         uses: actions/upload-artifact@v4
         with:
-          name: GlowCube-Mod
-          path: glowcube-client/build/libs/*.jar
+          name: glowcube-mc-${{ matrix.mc }}
+          path: /tmp/ausgabe/*.jar
           if-no-files-found: error
           retention-days: 90
 
-      # Artifacts kann nur herunterladen, wer bei GitHub angemeldet ist.
-      # Ein Release-Anhang dagegen haengt an einer normalen Adresse, die in
-      # jedem Browser funktioniert - auch ohne Konto.
-      - name: Als Release veroeffentlichen
+  veroeffentlichen:
+    name: Alle Fassungen veroeffentlichen
+    runs-on: ubuntu-latest
+    needs: bauen
+    # Auch wenn eine Fassung noch nicht baut, sollen die fertigen trotzdem
+    # herauskommen. Der Schritt sammelt schlicht ein, was da ist.
+    if: ${{ always() }}
+
+    steps:
+      - name: Quelltext holen
+        uses: actions/checkout@v4
+
+      - name: Gebaute JARs holen
+        uses: actions/download-artifact@v4
+        with:
+          path: eingesammelt
+          pattern: glowcube-mc-*
+          merge-multiple: true
+
+      - name: Veroeffentlichen
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Nur die eigentliche Mod, nicht die Quelltext-JAR daneben.
-          jar=$(ls build/libs/*.jar | grep -v -- '-sources' | head -1)
-          echo "Veroeffentliche $jar"
+          shopt -s nullglob
+          jars=(eingesammelt/*.jar)
+          if [ ${#jars[@]} -eq 0 ]; then
+            echo "::error title=Release::Keine einzige Fassung ist gebaut worden."
+            exit 1
+          fi
+          echo "Gefundene Fassungen:"
+          printf '  %s\n' "${jars[@]}"
 
-          # Die Version steht an genau einer Stelle - in gradle.properties.
-          # Frueher stand sie hier fest im Text und war nach dem Wechsel
-          # auf 1.21.11 falsch.
-          mcv=$(grep -E '^minecraft_version=' gradle.properties | cut -d= -f2)
+          # Aus den Dateinamen (glowcube-<fassung>.jar) die Liste der Fassungen
+          # gewinnen, die es in dieses Release geschafft haben.
+          fassungen=""
+          for j in "${jars[@]}"; do
+            f=$(basename "$j" .jar); f=${f#glowcube-}
+            fassungen="${fassungen} ${f}"
+          done
 
           hinweis=$(printf '%s\n' \
-            "Fertig gebaute Mod fuer Minecraft Java ${mcv} (Fabric)." \
+            "Fertig gebaute GlowCube-Mod (Fabric) fuer Minecraft Java:" \
+            "  ${fassungen}" \
+            "" \
+            "Lade die JAR, die zu deiner Minecraft-Fassung passt:" \
+            "  glowcube-1.21.11.jar  -> Minecraft 1.21.11" \
+            "  glowcube-26.2.jar     -> Minecraft 26.2 (Chaos Cubed)" \
+            "  glowcube-26.3.jar     -> Minecraft 26.3 (Wilderness Bound)" \
+            "" \
             "SeedCrackerX steckt schon drin - keine zweite Datei noetig." \
             "" \
-            "1. glowcube-1.0.0.jar unten anklicken und herunterladen" \
-            "2. Fabric API fuer ${mcv} von modrinth.com holen" \
+            "1. Passende glowcube-<fassung>.jar unten anklicken und herunterladen" \
+            "2. Fabric API fuer dieselbe Fassung von modrinth.com holen" \
             "3. Beide JARs nach %appdata%\\.minecraft\\mods" \
-            "4. Profil fabric-loader-${mcv} starten" \
+            "4. Profil fabric-loader-<fassung> starten" \
             "" \
             "Rechte Umschalttaste oeffnet das Menue - dort laesst sich" \
             "jedes Modul ein- und ausschalten und neu belegen." \
@@ -268,28 +316,30 @@ jobs:
 
           # "neueste" ist der immer gleiche Link auf die aktuelle Fassung.
           if gh release view neueste >/dev/null 2>&1; then
-            gh release upload neueste "$jar" --clobber
+            gh release upload neueste "${jars[@]}" --clobber
             gh release edit neueste --notes "$hinweis"
           else
-            gh release create neueste "$jar" \
+            gh release create neueste "${jars[@]}" \
               --title "GlowCube - neueste Fassung" \
               --notes "$hinweis"
           fi
 
           # Zusaetzlich eine bleibende Fassung, damit alte Staende erhalten
-          # bleiben und man zurueck kann. Benannt nach der Laufnummer, die
-          # nie wieder vorkommt.
+          # bleiben. Benannt nach der Laufnummer, die nie wieder vorkommt.
           nummer="${GITHUB_RUN_NUMBER}"
           bleibend="v${nummer}"
-          benannt="glowcube-client-${nummer}.jar"
-          cp "$jar" "$benannt"
           if ! gh release view "$bleibend" >/dev/null 2>&1; then
-            gh release create "$bleibend" "$benannt" \
+            gh release create "$bleibend" "${jars[@]}" \
               --title "GlowCube Client ${nummer}" \
               --notes "$hinweis"
+          else
+            gh release upload "$bleibend" "${jars[@]}" --clobber
           fi
-          echo "- Bleibende Fassung: **GlowCube Client ${nummer}** (\`$bleibend\`)" >> "$GITHUB_STEP_SUMMARY"
 
-          echo "### Direkter Download" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "<https://github.com/${GITHUB_REPOSITORY}/releases/latest>" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### Veroeffentlichte Fassungen"
+            for j in "${jars[@]}"; do echo "- \`$(basename "$j")\`"; done
+            echo ""
+            echo "### Direkter Download"
+            echo "<https://github.com/${GITHUB_REPOSITORY}/releases/latest>"
+          } >> "$GITHUB_STEP_SUMMARY"
