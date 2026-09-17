@@ -137,6 +137,10 @@ jobs:
             "net.minecraft.world.inventory.CraftingMenu#" \
             "net.minecraft.world.inventory.InventoryMenu#" \
             "net.minecraft.world.inventory.ClickType#QUICK_MOVE" \
+            "net.minecraft.world.entity.player.Player#closeContainer" \
+            "net.minecraft.world.level.block.Blocks#CRAFTING_TABLE" \
+            "net.minecraft.world.item.Items#CRAFTING_TABLE" \
+            "net.minecraft.world.level.block.state.BlockState#canBeReplaced" \
                         "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
             "net.minecraft.network.protocol.game.ServerboundPlayerActionPacket\$Action#START_DESTROY_BLOCK" \
             "net.minecraft.world.entity.player.Player#hasCorrectToolForDrops" \

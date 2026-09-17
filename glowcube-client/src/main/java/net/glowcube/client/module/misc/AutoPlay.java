@@ -66,6 +66,8 @@ public final class AutoPlay extends Module {
             "Nur das in Reichweite abbauen, was laut Bedarf fehlt", false));
     private final BooleanSetting craften = register(new BooleanSetting("Craften",
             "Aus dem Gesammelten Planken, Stiele, Werkbank und Werkzeug herstellen", true));
+    private final BooleanSetting werkbankStellen = register(new BooleanSetting("Werkbank aufstellen",
+            "Werkbank selbst hinsetzen und oeffnen (experimentell, nur auf festem Boden)", true));
     private final ModeSetting zielStufe = register(new ModeSetting("Zielstufe",
             "Bis zu welcher Werkzeugstufe von selbst gesammelt wird",
             "Stein", "Holz", "Stein"));
@@ -278,6 +280,9 @@ public final class AutoPlay extends Module {
             if (ziel != null) {
                 Crafting.craften(ziel);
                 craftPause = 10;
+            } else {
+                // Alles gebaut - Werkbank wieder zumachen.
+                player().closeContainer();
             }
             return;
         }
@@ -290,13 +295,86 @@ public final class AutoPlay extends Module {
         if (bPlanken < 4 && bHolz >= 1) {
             Crafting.craften(Crafting.PLANKEN_AUS_HOLZ);
             craftPause = 10;
-        } else if (bStiele < 2 && bPlanken >= 2) {
+            return;
+        }
+        if (bStiele < 2 && bPlanken >= 2) {
             Crafting.craften(Crafting.STIELE);
             craftPause = 10;
-        } else if (!hatWerkbank && bPlanken >= 4) {
+            return;
+        }
+        if (!hatWerkbank && bPlanken >= 4) {
             Crafting.craften(Crafting.WERKBANK);
             craftPause = 10;
+            return;
         }
+        // Werkzeug faellt an, Stiele und (falls Steinstufe) Stein sind da:
+        // Werkbank selbst hinstellen und oeffnen, damit der Rest von selbst
+        // laeuft.
+        if (werkbankStellen.get() && hatWerkbank && bStiele >= 2) {
+            werkbankBereitstellen();
+        }
+    }
+
+    /**
+     * Stellt eine Werkbank hin und oeffnet sie - der Handgriff, der bisher
+     * dir blieb.
+     *
+     * <p><b>Experimentell und ehrlich begrenzt:</b> es setzt die Werkbank auf
+     * den Boden direkt vor die Fuesse. Steht dort kein fester Halt (Abgrund,
+     * Wasser, schraege Wand), klappt es nicht - dafuer braeuchte es
+     * Wegfindung. Auf normalem Boden geht es.
+     */
+    private void werkbankBereitstellen() {
+        // Steht schon eine Werkbank neben mir? Dann die oeffnen.
+        BlockPos vorhanden = werkbankInDerNaehe();
+        if (vorhanden != null) {
+            oeffneWerkbank(vorhanden);
+            craftPause = 10;
+            return;
+        }
+        // Sonst eine hinsetzen. Platz: ein Feld vor den Fuessen, wenn frei
+        // und mit festem Block darunter.
+        net.minecraft.core.Direction blick = player().getDirection();
+        BlockPos davor = player().blockPosition().relative(blick);
+        if (!level().getBlockState(davor).canBeReplaced()) {
+            return;
+        }
+        if (level().getBlockState(davor.below()).isAir()) {
+            return;
+        }
+        net.glowcube.client.util.FindItemResult fund =
+                net.glowcube.client.util.InvUtils.findeInHotbar(
+                        stack -> stack.is(net.minecraft.world.item.Items.CRAFTING_TABLE));
+        if (!fund.found()) {
+            return;
+        }
+        BlockUtils.setzen(davor, fund, true, 50, true, true);
+        craftPause = 10;
+    }
+
+    private BlockPos werkbankInDerNaehe() {
+        BlockPos mitte = player().blockPosition();
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    BlockPos pos = mitte.offset(dx, dy, dz);
+                    if (level().getBlockState(pos).is(net.minecraft.world.level.block.Blocks.CRAFTING_TABLE)
+                            && player().getEyePosition().distanceToSqr(
+                                    pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 20.25) {
+                        return pos;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private void oeffneWerkbank(BlockPos pos) {
+        net.minecraft.world.phys.Vec3 mitte = net.minecraft.world.phys.Vec3.atCenterOf(pos);
+        net.minecraft.world.phys.BlockHitResult treffer = new net.minecraft.world.phys.BlockHitResult(
+                mitte, net.minecraft.core.Direction.UP, pos, false);
+        Rotations.rotate(Rotations.getYaw(pos), Rotations.getPitch(pos), 30,
+                () -> BlockUtils.benutzen(treffer, net.minecraft.world.InteractionHand.MAIN_HAND, true));
     }
 
     /** Das erste Werkzeug unter der Zielstufe, mit passendem Rezept. */
