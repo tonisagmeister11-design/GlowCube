@@ -3,7 +3,7 @@ package net.glowcube.client.module.movement;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
-import net.glowcube.client.mixin.AmBodenSetzbar;
+import net.glowcube.client.mixininterface.AmBodenSetzbar;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 

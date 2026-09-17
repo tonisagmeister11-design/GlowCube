@@ -133,6 +133,9 @@ jobs:
             "net.minecraft.client.multiplayer.prediction.PredictiveAction#" \
             "net.minecraft.world.level.block.entity.BedBlockEntity#" \
             "net.minecraft.world.level.chunk.LevelChunk#getBlockEntities" \
+            "net.minecraft.world.level.chunk.LevelChunkSection#maybeHas" \
+            "net.minecraft.world.level.chunk.LevelChunkSection#hasOnlyAir" \
+            "net.minecraft.world.level.chunk.ChunkAccess#getSections" \
             "net.minecraft.data.registries.VanillaRegistries#createLookup" \
             "net.minecraft.data.worldgen.placement.OrePlacements#ORE_DIAMOND" \
             "net.minecraft.data.worldgen.placement.OrePlacements#ORE_ANCIENT_DEBRIS_LARGE" \
@@ -153,6 +156,11 @@ jobs:
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Rot#" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$PosRot#" \
             "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket#"
+
+      # Ein Mixin, das nicht eingetragen ist, wird nie geladen - das Modul
+      # dahinter tut dann einfach nichts, ohne dass irgendwo ein Fehler steht.
+      - name: Mixin-Liste gegen die Dateien pruefen
+        run: python3 check-mixins.py
 
       - name: Bauen
         run: |

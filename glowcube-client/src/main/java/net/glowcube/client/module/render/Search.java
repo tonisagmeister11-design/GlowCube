@@ -16,6 +16,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -119,39 +120,54 @@ public final class Search extends Module {
             return;
         }
 
-        // Pro Tick ein paar Chunks abarbeiten. Das haelt auch einen frisch
-        // betretenen Bereich fluessig, statt alles auf einmal zu rechnen.
-        for (int i = 0; i < 4; i++) {
-            ChunkPos naechster;
-            synchronized (WARTESCHLANGE) {
-                naechster = WARTESCHLANGE.poll();
-            }
-            if (naechster == null) {
-                return;
-            }
+        // Ein Chunk je Tick. Mehr braucht es nicht: die Abschnittspruefung
+        // unten wirft das meiste ohnehin sofort weg.
+        ChunkPos naechster;
+        synchronized (WARTESCHLANGE) {
+            naechster = WARTESCHLANGE.poll();
+        }
+        if (naechster != null) {
             durchsuchen(naechster);
         }
     }
 
+    /**
+     * Einen Chunk durchsuchen.
+     *
+     * <p>Ein Chunk hat ueber die volle Hoehe rund 98.000 Bloecke - die alle
+     * einzeln abzufragen waere die teuerste Stelle im ganzen Client. Deshalb
+     * wird zuerst je 16er-Abschnitt gefragt, ob dort ueberhaupt einer der
+     * gesuchten Bloecke <em>vorkommen kann</em>. Diese Auskunft gibt der
+     * Abschnitt aus seiner eigenen Farbtabelle, ohne einen einzigen Block
+     * anzufassen. Uebrig bleiben die zwei, drei Abschnitte, in denen wirklich
+     * etwas liegt.
+     */
     private void durchsuchen(ChunkPos chunkPos) {
         if (!inGame() || !level().getChunkSource().hasChunk(chunkPos.x, chunkPos.z)) {
             return;
         }
         LevelChunk chunk = level().getChunk(chunkPos.x, chunkPos.z);
-        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
-        int unten = level().getMinY();
-        int oben = level().getMaxY();
+        LevelChunkSection[] abschnitte = chunk.getSections();
+        int basis = chunk.getMinY();
 
-        for (int x = 0; x < 16; x++) {
-            for (int z = 0; z < 16; z++) {
-                for (int y = unten; y < oben; y++) {
-                    probe.set(chunkPos.getMinBlockX() + x, y, chunkPos.getMinBlockZ() + z);
-                    BlockState zustand = chunk.getBlockState(probe);
-                    if (zustand.isAir()) {
-                        continue;
-                    }
-                    if (gesucht(zustand)) {
-                        FUNDE.add(probe.immutable());
+        for (int i = 0; i < abschnitte.length; i++) {
+            LevelChunkSection abschnitt = abschnitte[i];
+            if (abschnitt == null || abschnitt.hasOnlyAir()) {
+                continue;
+            }
+            if (!abschnitt.maybeHas(this::gesucht)) {
+                continue;
+            }
+            int unten = basis + i * 16;
+            for (int y = 0; y < 16; y++) {
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        BlockState zustand = abschnitt.getBlockState(x, y, z);
+                        if (zustand.isAir() || !gesucht(zustand)) {
+                            continue;
+                        }
+                        FUNDE.add(new BlockPos(
+                                chunkPos.getMinBlockX() + x, unten + y, chunkPos.getMinBlockZ() + z));
                     }
                 }
             }

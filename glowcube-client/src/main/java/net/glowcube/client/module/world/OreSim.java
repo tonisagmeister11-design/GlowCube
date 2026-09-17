@@ -122,8 +122,13 @@ public final class OreSim extends Module {
         }
         seedInBenutzung = seed;
         proChunk.clear();
+        // Das Verzeichnis kommt aus Minecrafts eigener Weltvorlage, und die
+        // aufzubauen dauert einen Augenblick. Besser ein Wort dazu als ein
+        // Spiel, das scheinbar grundlos haengt.
+        melde("Erztabelle wird aufgebaut - einen Moment.");
         try {
             verzeichnis = Erz.verzeichnis(dimensionsName());
+            melde("Bereit. Seed " + seed + ", " + verzeichnis.size() + " Biome.");
         } catch (Throwable fehler) {
             GlowCubeClient.LOGGER.error("OreSim: Verzeichnis liess sich nicht bauen", fehler);
             melde("Die Erztabelle liess sich nicht lesen - siehe Protokoll.");

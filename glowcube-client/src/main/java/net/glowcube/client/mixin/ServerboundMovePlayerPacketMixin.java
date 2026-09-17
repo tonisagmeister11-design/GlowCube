@@ -1,5 +1,6 @@
 package net.glowcube.client.mixin;
 
+import net.glowcube.client.mixininterface.AmBodenSetzbar;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
