@@ -131,6 +131,21 @@ jobs:
             "net.minecraft.client.multiplayer.prediction.PredictiveAction#" \
             "net.minecraft.world.level.block.entity.BedBlockEntity#" \
             "net.minecraft.world.level.chunk.LevelChunk#getBlockEntities" \
+            "net.minecraft.data.registries.VanillaRegistries#createLookup" \
+            "net.minecraft.data.worldgen.placement.OrePlacements#ORE_DIAMOND" \
+            "net.minecraft.data.worldgen.placement.OrePlacements#ORE_ANCIENT_DEBRIS_LARGE" \
+            "net.minecraft.world.level.biome.FeatureSorter#buildFeaturesPerStep" \
+            "net.minecraft.world.level.levelgen.WorldgenRandom#setDecorationSeed" \
+            "net.minecraft.world.level.levelgen.WorldgenRandom#setFeatureSeed" \
+            "net.minecraft.world.level.levelgen.placement.CountPlacement#count" \
+            "net.minecraft.world.level.levelgen.placement.HeightRangePlacement#height" \
+            "net.minecraft.world.level.levelgen.placement.RarityFilter#chance" \
+            "net.minecraft.world.level.levelgen.presets.WorldPresets#NORMAL" \
+            "net.minecraft.world.level.levelgen.feature.ScatteredOreFeature#" \
+            "net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration#discardChanceOnAirExposure" \
+            "net.minecraft.world.level.LevelHeightAccessor#create" \
+            "net.minecraft.world.level.levelgen.WorldGenerationContext#" \
+            "net.minecraft.world.level.dimension.LevelStem#NETHER" \
             "net.minecraft.world.entity.Entity#getRootVehicle" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Pos#" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Rot#" \

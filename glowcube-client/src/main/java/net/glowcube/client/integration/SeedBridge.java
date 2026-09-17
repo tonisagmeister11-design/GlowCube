@@ -33,6 +33,26 @@ public final class SeedBridge implements SeedCrackerAPI {
         return gefundenerSeed;
     }
 
+    /**
+     * Den Seed von Hand setzen.
+     *
+     * <p>Fuer den Fall, dass man ihn schon kennt - im Einzelspieler sagt
+     * {@code /seed} ihn sofort, und wer SeedCrackerX einmal hat laufen
+     * lassen, will nicht jedes Mal von vorn anfangen. OreSim baut danach
+     * seine Karte neu auf.
+     */
+    public static void setzeSeed(Long seed) {
+        gefundenerSeed = seed;
+        try {
+            if (GlowCubeClient.modules() != null) {
+                GlowCubeClient.modules().get(
+                        net.glowcube.client.module.world.OreSim.class).seedGewechselt();
+            }
+        } catch (RuntimeException fehler) {
+            GlowCubeClient.LOGGER.warn("OreSim liess sich nicht benachrichtigen", fehler);
+        }
+    }
+
     // ---------------------------------------------------------- Fortschritt
 
     /**

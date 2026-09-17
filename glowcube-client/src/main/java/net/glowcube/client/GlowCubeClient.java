@@ -10,6 +10,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.glowcube.client.command.GlowCubeCommands;
 import net.glowcube.client.core.ConfigManager;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.ModuleManager;
@@ -55,6 +56,7 @@ public final class GlowCubeClient implements ClientModInitializer {
         ClientChunkEvents.CHUNK_LOAD.register((welt, chunk) -> Search.chunkGeladen(chunk.getPos()));
         ClientChunkEvents.CHUNK_UNLOAD.register((welt, chunk) -> Search.chunkEntladen(chunk.getPos()));
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> config.save());
+        GlowCubeCommands.registrieren();
 
         LOGGER.info("{} {} geladen - {} Module", NAME, VERSION, modules.all().size());
     }

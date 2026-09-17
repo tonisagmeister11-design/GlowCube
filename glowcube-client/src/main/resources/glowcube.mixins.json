@@ -19,6 +19,9 @@
     "ServerboundInteractPacketAccessor",
     "LivingEntityAccessor",
     "BlockBehaviourAccessor",
-    "LevelChunkMixin"
+    "LevelChunkMixin",
+    "CountPlacementAccessor",
+    "HeightRangePlacementAccessor",
+    "RarityFilterAccessor"
   ]
 }

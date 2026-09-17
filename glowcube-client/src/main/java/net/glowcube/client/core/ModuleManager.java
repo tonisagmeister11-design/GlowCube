@@ -19,6 +19,7 @@ import net.glowcube.client.module.player.NoInteract;
 import net.glowcube.client.module.world.AntiChunkBan;
 import net.glowcube.client.module.world.FakeLag;
 import net.glowcube.client.module.world.Nuker;
+import net.glowcube.client.module.world.OreSim;
 import net.glowcube.client.module.world.Timer;
 import net.glowcube.client.module.player.AntiAfk;
 import net.glowcube.client.module.player.AutoRespawn;
@@ -93,6 +94,7 @@ public final class ModuleManager {
         add(new ClickGuiModule());
         // World
         add(new Nuker());
+        add(new OreSim());
         // Exploits
         add(new Timer());
         add(new FakeLag());
