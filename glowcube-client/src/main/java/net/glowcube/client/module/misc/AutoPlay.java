@@ -3,8 +3,8 @@ package net.glowcube.client.module.misc;
 import net.glowcube.client.GlowCubeClient;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
-import net.glowcube.client.core.setting.BlockListSetting;
 import net.glowcube.client.core.setting.BooleanSetting;
+import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.player.AutoEat;
@@ -17,8 +17,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.Comparator;
-import java.util.List;
 
 /**
  * Ein Ueberlebens-Autopilot.
@@ -64,20 +62,27 @@ public final class AutoPlay extends Module {
     private final BooleanSetting werkzeug = register(new BooleanSetting("Werkzeug",
             "AutoTool mitlaufen lassen", true));
     private final BooleanSetting sammeln = register(new BooleanSetting("Sammeln",
-            "Bloecke der Liste in Reichweite abbauen", false));
-    private final BlockListSetting sammelListe = register(new BlockListSetting("Sammel-Bloecke",
-            "Was gesammelt wird, wenn es in Reichweite liegt",
-            "oak_log", "birch_log", "spruce_log", "jungle_log", "acacia_log",
-            "dark_oak_log", "mangrove_log", "cherry_log",
-            "coal_ore", "deepslate_coal_ore", "iron_ore", "deepslate_iron_ore",
-            "copper_ore", "deepslate_copper_ore", "gold_ore", "deepslate_gold_ore",
-            "diamond_ore", "deepslate_diamond_ore"));
+            "Nur das in Reichweite abbauen, was laut Bedarf fehlt", false));
+    private final ModeSetting zielStufe = register(new ModeSetting("Zielstufe",
+            "Bis zu welcher Werkzeugstufe von selbst gesammelt wird",
+            "Stein", "Holz", "Stein"));
+    private final NumberSetting minEssen = register(new NumberSetting("Essen-Vorrat",
+            "Wie viel Essen dabei sein soll", 8, 0, 64, 1));
+    private final NumberSetting minHolz = register(new NumberSetting("Holz-Vorrat",
+            "Wie viele Holzbloecke dabei sein sollen", 8, 0, 64, 1));
+    private final NumberSetting minStein = register(new NumberSetting("Stein-Vorrat",
+            "Wie viel Pflasterstein dabei sein soll", 16, 0, 64, 1));
 
     /** Ob AutoPlay das jeweilige Modul selbst eingeschaltet hat. */
     private boolean killAuraVonUns;
     private boolean autoEatVonUns;
     private boolean autoToolVonUns;
     private LivingEntity aktiverAngreifer;
+
+    // Was der letzte Bedarfs-Check ergeben hat.
+    private boolean holzSammeln;
+    private boolean steinSammeln;
+    private java.util.List<String> fehltListe = java.util.List.of();
 
     public AutoPlay() {
         super("AutoPlay", "Haelt dich am Leben und verteidigt dich von selbst",
@@ -91,10 +96,12 @@ public final class AutoPlay extends Module {
         autoToolVonUns = false;
         aktiverAngreifer = null;
         if (inGame()) {
+            bedarfErmitteln();
+            String was = fehltListe.isEmpty()
+                    ? "Nichts fehlt - alles beisammen."
+                    : "Es fehlt: " + String.join(", ", fehltListe) + ".";
             player().displayClientMessage(net.minecraft.network.chat.Component.literal(
-                    "[AutoPlay] Erkannter Stand: " + werkzeugStufe()
-                            + "-Werkzeug. Verteidigt jetzt bei Angriff, isst und waehlt Werkzeug."),
-                    false);
+                    "[AutoPlay] Stand: " + werkzeugStufe() + "-Werkzeug. " + was), false);
         }
     }
 
@@ -126,7 +133,9 @@ public final class AutoPlay extends Module {
             killAuraVonUns = false;
         }
 
-        if (sammeln.get()) {
+        // Erst schauen, was fehlt - dann nur danach sammeln.
+        bedarfErmitteln();
+        if (sammeln.get() && (holzSammeln || steinSammeln)) {
             sammelSchritt();
         }
     }
@@ -217,7 +226,118 @@ public final class AutoPlay extends Module {
     }
 
     private boolean gesucht(BlockState zustand) {
-        return sammelListe.contains(BuiltInRegistries.BLOCK.getKey(zustand.getBlock()).toString());
+        String id = BuiltInRegistries.BLOCK.getKey(zustand.getBlock()).getPath();
+        if (holzSammeln && id.endsWith("_log")) {
+            return true;
+        }
+        return steinSammeln && STEIN.contains(id);
+    }
+
+    /** Bloecke, aus denen Pflasterstein und Erze kommen. */
+    private static final java.util.Set<String> STEIN = java.util.Set.of(
+            "stone", "cobblestone", "deepslate", "cobbled_deepslate", "tuff",
+            "andesite", "diorite", "granite",
+            "coal_ore", "deepslate_coal_ore", "iron_ore", "deepslate_iron_ore",
+            "copper_ore", "deepslate_copper_ore", "gold_ore", "deepslate_gold_ore",
+            "redstone_ore", "deepslate_redstone_ore", "lapis_ore", "deepslate_lapis_ore",
+            "diamond_ore", "deepslate_diamond_ore");
+
+    // ------------------------------------------------------- Bedarfs-Check
+
+    /**
+     * Schaut in den Rucksack und entscheidet, was fehlt. Das ist der Kern des
+     * Wunsches "farmt nur, was ihm fehlt": hat man schon Steinwerkzeug und
+     * die Vorraete, wird gar nichts gesammelt - erst wenn etwas fehlt, geht
+     * die passende Kategorie an.
+     *
+     * <p>Ehrlich bleibt: erkennen und das Fehlende in Reichweite abbauen
+     * geht. Hinlaufen und daraus Werkzeug craften nicht - dafuer fehlt die
+     * Wegfindung. Fehlt also die Steinhacke, sammelt AutoPlay den Stein dazu;
+     * die Hacke daraus musst du (noch) selbst craften.
+     */
+    private void bedarfErmitteln() {
+        int ziel = zielStufe.is("Holz") ? 1 : 3;
+
+        int hacke = 0;
+        int schwert = 0;
+        int axt = 0;
+        int holz = 0;
+        int planken = 0;
+        int stiele = 0;
+        int stein = 0;
+        int essenZahl = 0;
+
+        for (int i = 0; i < player().getInventory().getContainerSize(); i++) {
+            ItemStack stack = player().getInventory().getItem(i);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+            int menge = stack.getCount();
+            int rang = stufeAus(id);
+            if (id.endsWith("_pickaxe")) {
+                hacke = Math.max(hacke, rang);
+            } else if (id.endsWith("_sword")) {
+                schwert = Math.max(schwert, rang);
+            } else if (id.endsWith("_axe")) {
+                axt = Math.max(axt, rang);
+            } else if (id.endsWith("_log")) {
+                holz += menge;
+            } else if (id.endsWith("_planks")) {
+                planken += menge;
+            } else if (id.equals("stick")) {
+                stiele += menge;
+            } else if (id.equals("cobblestone") || id.equals("cobbled_deepslate")) {
+                stein += menge;
+            }
+            if (stack.get(net.minecraft.core.component.DataComponents.FOOD) != null) {
+                essenZahl += menge;
+            }
+        }
+
+        java.util.List<String> fehlt = new java.util.ArrayList<>();
+        holzSammeln = false;
+        steinSammeln = false;
+
+        // Werkzeuge unter der Zielstufe.
+        pruefeWerkzeug("Spitzhacke", hacke, ziel, fehlt);
+        pruefeWerkzeug("Schwert", schwert, ziel, fehlt);
+        pruefeWerkzeug("Axt", axt, ziel, fehlt);
+
+        // Fuer jedes Werkzeug braucht es Stiele, fuer Stiele Holz.
+        boolean werkzeugFehlt = hacke < ziel || schwert < ziel || axt < ziel;
+        if (werkzeugFehlt && holz == 0 && planken == 0 && stiele == 0) {
+            holzSammeln = true;
+        }
+
+        // Vorraete.
+        if (holz < minHolz.getInt()) {
+            fehlt.add("Holz (" + (minHolz.getInt() - holz) + " fehlen)");
+            holzSammeln = true;
+        }
+        if (ziel >= 3 && stein < minStein.getInt()) {
+            fehlt.add("Stein (" + (minStein.getInt() - stein) + " fehlen)");
+            steinSammeln = true;
+        }
+        if (essenZahl < minEssen.getInt()) {
+            // Essen laesst sich nicht aus Bloecken abbauen - nur melden.
+            fehlt.add("Essen (" + (minEssen.getInt() - essenZahl) + " fehlen)");
+        }
+
+        fehltListe = fehlt;
+    }
+
+    private void pruefeWerkzeug(String name, int stufe, int ziel, java.util.List<String> fehlt) {
+        if (stufe >= ziel) {
+            return;
+        }
+        if (stufe == 0) {
+            fehlt.add("Holz-" + name);
+            holzSammeln = true;
+        } else if (ziel >= 3) {
+            fehlt.add("Stein-" + name);
+            steinSammeln = true;
+        }
     }
 
     // --------------------------------------------------------------- Helfer
@@ -302,6 +422,9 @@ public final class AutoPlay extends Module {
         if (aktiverAngreifer != null) {
             return "Notwehr";
         }
-        return werkzeugStufe();
+        if (fehltListe.isEmpty()) {
+            return werkzeugStufe() + ", fertig";
+        }
+        return "braucht " + fehltListe.size();
     }
 }
