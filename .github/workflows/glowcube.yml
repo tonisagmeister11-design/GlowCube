@@ -115,6 +115,16 @@ jobs:
             "net.minecraft.network.protocol.game.ServerboundInteractPacket#entityId" \
             "net.minecraft.world.item.MaceItem#" \
             "net.minecraft.world.entity.AgeableMob#isBaby" \
+            "net.minecraft.client.player.LocalPlayer#modifyInput" \
+            "net.minecraft.client.player.LocalPlayer#isUsingItem" \
+            "net.minecraft.world.food.FoodData#getFoodLevel" \
+            "net.minecraft.world.food.FoodData#needsFood" \
+            "net.minecraft.world.food.FoodProperties#nutrition" \
+            "net.minecraft.world.food.FoodProperties#saturation" \
+            "net.minecraft.world.food.FoodProperties#canAlwaysEat" \
+            "net.minecraft.core.component.DataComponents#FOOD" \
+            "net.minecraft.world.entity.player.Player#getFoodData" \
+            "net.minecraft.core.BlockPos#offset" \
             "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
             "net.minecraft.network.protocol.game.ServerboundPlayerActionPacket\$Action#START_DESTROY_BLOCK" \
             "net.minecraft.world.entity.player.Player#hasCorrectToolForDrops" \

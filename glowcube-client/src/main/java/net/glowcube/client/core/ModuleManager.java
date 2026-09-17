@@ -9,6 +9,7 @@ import net.glowcube.client.module.movement.AutoWalk;
 import net.glowcube.client.module.movement.Scaffold;
 import net.glowcube.client.module.movement.Flight;
 import net.glowcube.client.module.movement.NoFall;
+import net.glowcube.client.module.movement.NoSlow;
 import net.glowcube.client.module.movement.Speed;
 import net.glowcube.client.module.movement.Step;
 import net.glowcube.client.module.misc.ClickGuiModule;
@@ -19,9 +20,11 @@ import net.glowcube.client.module.player.NoInteract;
 import net.glowcube.client.module.world.AntiChunkBan;
 import net.glowcube.client.module.world.FakeLag;
 import net.glowcube.client.module.world.Nuker;
+import net.glowcube.client.module.world.VeinMiner;
 import net.glowcube.client.module.world.OreSim;
 import net.glowcube.client.module.world.Timer;
 import net.glowcube.client.module.player.AntiAfk;
+import net.glowcube.client.module.player.AutoEat;
 import net.glowcube.client.module.player.AutoRespawn;
 import net.glowcube.client.module.player.AutoTool;
 import net.glowcube.client.module.render.EntityEsp;
@@ -76,6 +79,7 @@ public final class ModuleManager {
         add(new Speed());
         add(new Step());
         add(new NoFall());
+        add(new NoSlow());
         add(new AutoSprint());
         add(new AutoWalk());
         add(new Scaffold());
@@ -85,6 +89,7 @@ public final class ModuleManager {
         add(new AutoTotem());
         // Player
         add(new AutoTool());
+        add(new AutoEat());
         add(new AutoRespawn());
         add(new AntiAfk());
         add(new NoInteract());
@@ -94,6 +99,7 @@ public final class ModuleManager {
         add(new ClickGuiModule());
         // World
         add(new Nuker());
+        add(new VeinMiner());
         add(new OreSim());
         // Exploits
         add(new Timer());

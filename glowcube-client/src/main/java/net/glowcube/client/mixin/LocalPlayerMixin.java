@@ -1,12 +1,14 @@
 package net.glowcube.client.mixin;
 
 import net.glowcube.client.core.Packets;
+import net.glowcube.client.module.movement.NoSlow;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -40,5 +42,23 @@ public abstract class LocalPlayerMixin {
         if (Packets.blockClientMove()) {
             info.cancel();
         }
+    }
+
+    /**
+     * NoSlow. An der einen Stelle, an der das Spiel die Bewegungseingabe wegen
+     * des Benutzens eines Gegenstands herunterrechnet, faengt dieser Redirect
+     * die Abfrage {@code isUsingItem()} ab und liefert false - dann greift die
+     * Bremse nicht. Dieselbe Stelle, die Meteor benutzt.
+     */
+    @Redirect(
+            method = "modifyInput",
+            at = @At(value = "INVOKE",
+                    target = "Lnet/minecraft/client/player/LocalPlayer;isUsingItem()Z"),
+            require = 0)
+    private boolean glowcube$keinTempoverlust(LocalPlayer spieler) {
+        if (NoSlow.beimBenutzen()) {
+            return false;
+        }
+        return spieler.isUsingItem();
     }
 }
