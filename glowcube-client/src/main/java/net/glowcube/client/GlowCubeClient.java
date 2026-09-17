@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -13,6 +14,7 @@ import net.glowcube.client.core.ConfigManager;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.ModuleManager;
 import net.glowcube.client.hud.HudRenderer;
+import net.glowcube.client.module.render.Search;
 import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +50,10 @@ public final class GlowCubeClient implements ClientModInitializer {
         WorldRenderEvents.AFTER_ENTITIES.register(context -> modules.onWorldRender(context));
         HudRenderCallback.EVENT.register((gfx, tickCounter) -> hud.render(gfx));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> modules.onWorldLeave());
+        // Search durchsucht jeden Chunk einmal beim Laden statt jeden Tick
+        // von neuem - dafuer muss es wissen, wann einer kommt und geht.
+        ClientChunkEvents.CHUNK_LOAD.register((welt, chunk) -> Search.chunkGeladen(chunk.getPos()));
+        ClientChunkEvents.CHUNK_UNLOAD.register((welt, chunk) -> Search.chunkEntladen(chunk.getPos()));
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> config.save());
 
         LOGGER.info("{} {} geladen - {} Module", NAME, VERSION, modules.all().size());

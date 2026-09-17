@@ -5,101 +5,200 @@ import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.NumberSetting;
+import net.glowcube.client.mixin.BlockBehaviourAccessor;
 import net.glowcube.client.util.Render3D;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Zeigt Loecher, in die man sich stellen kann, um Explosionen zu ueberstehen.
+ * Uebertragen aus Meteor Client (GPL-3.0), Modul {@code HoleESP}.
  *
- * Gesucht wird ein Feld, in dem der Spieler steht (zwei Bloecke Luft), dessen
- * Boden und vier Seiten geschlossen sind. Bedrock haelt alles aus, Obsidian
- * fast alles - deshalb die zwei Farben. Nachempfunden HoleESP aus BleachHack
- * (GPL-3.0).
+ * <p>Ein "Loch" ist eine Stelle, in der man eine Kristall-Explosion
+ * ueberlebt. Die Pruefung des Originals ist genauer als die naheliegende:
+ *
+ * <ul>
+ *   <li>Es zaehlt die Kollisionsflagge des Blocks, nicht seine Form. Eine
+ *       Druckplatte hat eine Form, ist aber kein Hindernis.</li>
+ *   <li>Es wird zwischen <b>Bedrock</b> (unzerstoerbar), <b>Obsidian</b>
+ *       (sprengfest, aber abbaubar) und <b>gemischt</b> unterschieden - das
+ *       ist im Kampf ein echter Unterschied und bekommt eigene Farben.</li>
+ *   <li>Doppelloecher: eine der vier Seiten darf offen sein, wenn dahinter
+ *       ein zweites, ebenso geschuetztes Feld liegt. Dann sind es acht
+ *       feste Nachbarn statt fuenf.</li>
+ * </ul>
+ *
+ * <p>Die gesuchte Hoehe ist einstellbar - ein Loch fuer einen geduckten
+ * Spieler braucht nur ein Feld, eines zum Stehen zwei.
+ *
+ * <p>Gerechnet wird wie bisher im Tick, nicht im Bild: die Suche ueber
+ * mehrere tausend Felder gehoert nicht in jeden Frame.
  */
 public final class HoleEsp extends Module {
-    private static final int BEDROCK = 0xFF4DE3FF;
-    private static final int OBSIDIAN = 0xFFC46BFF;
+    private final NumberSetting waagrecht = register(new NumberSetting("Umkreis",
+            "Wie weit zur Seite gesucht wird", 10, 2, 24, 1));
+    private final NumberSetting senkrecht = register(new NumberSetting("Hoehe der Suche",
+            "Wie weit nach oben und unten gesucht wird", 4, 1, 12, 1));
+    private final NumberSetting lochHoehe = register(new NumberSetting("Lochhoehe",
+            "Wie viele Felder ueber dem Loch frei sein muessen", 2, 1, 3, 1));
+    private final BooleanSetting doppelte = register(new BooleanSetting("Doppelloecher",
+            "Auch Loecher aus zwei Feldern zeigen", true));
+    private final BooleanSetting spinnweben = register(new BooleanSetting("Spinnweben zulassen",
+            "Spinnweben nicht als Hindernis zaehlen", false));
+    private final BooleanSetting eigenesAus = register(new BooleanSetting("Eigenes auslassen",
+            "Das Feld, in dem man selbst steht, nicht zeigen", true));
+    private final NumberSetting kastenHoehe = register(new NumberSetting("Kastenhoehe",
+            "Wie hoch der gezeichnete Kasten ist", 1.0, 0.1, 2.0, 0.1));
 
-    private final NumberSetting range = register(new NumberSetting("Range",
-            "Umkreis in Bloecken", 12, 4, 32, 2));
-    private final BooleanSetting nurBedrock = register(new BooleanSetting("OnlyBedrock",
-            "Nur die wirklich sicheren zeigen", false));
+    private static final int FARBE_BEDROCK = 0xFF3BF0D4;
+    private static final int FARBE_OBSIDIAN = 0xFF9B6BFF;
+    private static final int FARBE_GEMISCHT = 0xFFFFC53D;
 
-    /** Gefundene Loecher mit ihrer Farbe - einmal je Tick gefuellt. */
-    private final java.util.Map<BlockPos, Integer> gefunden = new java.util.LinkedHashMap<>();
+    private record Loch(BlockPos pos, int farbe) {
+    }
+
+    private volatile List<Loch> loecher = List.of();
 
     public HoleEsp() {
-        super("HoleESP", "Zeigt sichere Loecher", Category.RENDER);
+        super("HoleESP", "Zeigt Loecher, die Explosionen standhalten", Category.RENDER);
     }
 
-    @Override
-    public void onDisable() {
-        gefunden.clear();
-    }
-
-    /**
-     * Gesucht wird im Tick, nicht im Bild.
-     *
-     * Vorher lief die Suche bei jedem Frame - bei Reichweite 12 waren das
-     * 15.625 Bloecke mal sechzig Bilder je Sekunde. Einmal je Tick reicht
-     * voellig, denn Loecher entstehen nicht zwischen zwei Bildern. Senkrecht
-     * wird ausserdem nur ein schmales Band geprueft: ein Loch drei Stockwerke
-     * ueber einem nuetzt nichts.
-     */
     @Override
     public void onTick() {
-        gefunden.clear();
-        int radius = range.getInt();
+        List<Loch> gefunden = new ArrayList<>();
         BlockPos mitte = player().blockPosition();
+        int w = waagrecht.getInt();
+        int h = senkrecht.getInt();
+        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
 
-        for (int x = -radius; x <= radius; x++) {
-            for (int z = -radius; z <= radius; z++) {
-                for (int y = -3; y <= 3; y++) {
-                    BlockPos stelle = mitte.offset(x, y, z);
-                    int farbe = pruefen(stelle);
-                    if (farbe != 0) {
-                        gefunden.put(stelle, farbe);
+        for (int dx = -w; dx <= w; dx++) {
+            for (int dy = -h; dy <= h; dy++) {
+                for (int dz = -w; dz <= w; dz++) {
+                    probe.set(mitte.getX() + dx, mitte.getY() + dy, mitte.getZ() + dz);
+                    Loch loch = pruefen(probe.immutable());
+                    if (loch != null) {
+                        gefunden.add(loch);
                     }
                 }
             }
         }
+        // In einem Zug austauschen, damit das Zeichnen nie eine halb
+        // gefuellte Liste sieht.
+        loecher = gefunden;
+    }
+
+    private Loch pruefen(BlockPos pos) {
+        if (!brauchbar(pos)) {
+            return null;
+        }
+
+        int bedrock = 0;
+        int obsidian = 0;
+        Direction offen = null;
+
+        for (Direction seite : Direction.values()) {
+            if (seite == Direction.UP) {
+                continue;
+            }
+            BlockPos nachbar = pos.relative(seite);
+            Block block = level().getBlockState(nachbar).getBlock();
+            boolean abbaubar = block.defaultDestroyTime() >= 0.0f;
+
+            if (hatKollision(block) && !abbaubar) {
+                bedrock++;
+            } else if (block.getExplosionResistance() >= 600.0f && abbaubar) {
+                obsidian++;
+            } else if (seite == Direction.DOWN) {
+                // Unten muss immer zu sein - sonst faellt man heraus.
+                return null;
+            } else if (doppelte.get() && offen == null && brauchbar(nachbar)) {
+                // Eine offene Seite darf sein, wenn dahinter ein zweites,
+                // ebenso geschuetztes Feld liegt.
+                for (Direction weiter : Direction.values()) {
+                    if (weiter == seite.getOpposite() || weiter == Direction.UP) {
+                        continue;
+                    }
+                    Block dahinter = level().getBlockState(nachbar.relative(weiter)).getBlock();
+                    boolean weich = dahinter.defaultDestroyTime() >= 0.0f;
+                    if (hatKollision(dahinter) && !weich) {
+                        bedrock++;
+                    } else if (dahinter.getExplosionResistance() >= 600.0f && weich) {
+                        obsidian++;
+                    } else {
+                        return null;
+                    }
+                }
+                offen = seite;
+            } else {
+                return null;
+            }
+        }
+
+        if (obsidian + bedrock == 5 && offen == null) {
+            return new Loch(pos, farbe(obsidian, bedrock, 5));
+        }
+        if (obsidian + bedrock == 8 && doppelte.get() && offen != null) {
+            return new Loch(pos, farbe(obsidian, bedrock, 8));
+        }
+        return null;
+    }
+
+    private static int farbe(int obsidian, int bedrock, int voll) {
+        if (obsidian == voll) {
+            return FARBE_OBSIDIAN;
+        }
+        if (bedrock == voll) {
+            return FARBE_BEDROCK;
+        }
+        return FARBE_GEMISCHT;
+    }
+
+    private boolean brauchbar(BlockPos pos) {
+        if (eigenesAus.get() && player().blockPosition().equals(pos)) {
+            return false;
+        }
+        Block block = level().getBlockState(pos).getBlock();
+        if (!spinnweben.get() && block == Blocks.COBWEB) {
+            return false;
+        }
+        if (hatKollision(block)) {
+            return false;
+        }
+        for (int i = 0; i < lochHoehe.getInt(); i++) {
+            if (hatKollision(level().getBlockState(pos.above(i)).getBlock())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean hatKollision(Block block) {
+        return ((BlockBehaviourAccessor) block).glowcube$hatKollision();
     }
 
     @Override
     public void onWorldRender(WorldRenderContext context) {
-        for (var eintrag : gefunden.entrySet()) {
-            Render3D.box(context, new AABB(eintrag.getKey()).deflate(0.05),
-                    eintrag.getValue(), true);
+        for (Loch loch : loecher) {
+            BlockPos p = loch.pos();
+            Render3D.box(context, new AABB(
+                    p.getX(), p.getY(), p.getZ(),
+                    p.getX() + 1.0, p.getY() + kastenHoehe.get(), p.getZ() + 1.0),
+                    loch.farbe(), true);
         }
     }
 
-    /** 0 heisst: kein Loch. Sonst die Farbe nach Widerstandsfaehigkeit. */
-    private int pruefen(BlockPos stelle) {
-        // Zwei Bloecke Platz zum Stehen.
-        if (!level().getBlockState(stelle).isAir()
-                || !level().getBlockState(stelle.above()).isAir()) {
-            return 0;
-        }
-        BlockPos[] waende = {
-                stelle.below(), stelle.north(), stelle.south(), stelle.east(), stelle.west()
-        };
-        boolean allesBedrock = true;
-        for (BlockPos wand : waende) {
-            var block = level().getBlockState(wand).getBlock();
-            if (block == Blocks.BEDROCK) {
-                continue;
-            }
-            allesBedrock = false;
-            if (block != Blocks.OBSIDIAN && block != Blocks.CRYING_OBSIDIAN
-                    && block != Blocks.RESPAWN_ANCHOR && block != Blocks.ANCIENT_DEBRIS) {
-                return 0;
-            }
-        }
-        if (nurBedrock.get() && !allesBedrock) {
-            return 0;
-        }
-        return allesBedrock ? BEDROCK : OBSIDIAN;
+    @Override
+    public void onDisable() {
+        loecher = List.of();
+    }
+
+    @Override
+    public String hudSuffix() {
+        return loecher.isEmpty() ? null : String.valueOf(loecher.size());
     }
 }
