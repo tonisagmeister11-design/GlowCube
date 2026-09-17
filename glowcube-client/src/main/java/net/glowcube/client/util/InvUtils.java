@@ -3,7 +3,6 @@ package net.glowcube.client.util;
 import net.glowcube.client.mixin.MultiPlayerGameModeAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
@@ -162,13 +161,13 @@ public final class InvUtils {
     // ------------------------------------------------------------- Verschieben
 
     public static Aktion verschieben() {
-        AKTION.art = ClickType.PICKUP;
+        AKTION.art = SlotKlick.Art.AUFNEHMEN;
         AKTION.zweiKlicks = true;
         return AKTION;
     }
 
     public static Aktion klicken() {
-        AKTION.art = ClickType.PICKUP;
+        AKTION.art = SlotKlick.Art.AUFNEHMEN;
         return AKTION;
     }
 
@@ -178,7 +177,7 @@ public final class InvUtils {
      * irgendwo liegenbleiben.
      */
     public static final class Aktion {
-        private ClickType art;
+        private SlotKlick.Art art;
         private boolean zweiKlicks;
         private int von = -1;
         private int nach = -1;
@@ -210,7 +209,7 @@ public final class InvUtils {
             }
             boolean zeigerWarLeer = mc().player.containerMenu.getCarried().isEmpty();
 
-            ClickType vorherigeArt = art;
+            SlotKlick.Art vorherigeArt = art;
             boolean vorherigeZweiKlicks = zweiKlicks;
             int vorherVon = von;
             int vorherNach = nach;
@@ -226,7 +225,7 @@ public final class InvUtils {
             // Aufraeumen: war der Zeiger vorher leer und haelt nach dem
             // Tausch etwas, dann lag am Zielplatz schon etwas. Das gehoert
             // zurueck, sonst faellt es beim Schliessen auf den Boden.
-            if (!inSichSelbst && zeigerWarLeer && vorherigeArt == ClickType.PICKUP && vorherigeZweiKlicks
+            if (!inSichSelbst && zeigerWarLeer && vorherigeArt == SlotKlick.Art.AUFNEHMEN && vorherigeZweiKlicks
                     && vorherVon != -1 && vorherNach != -1
                     && !mc().player.containerMenu.getCarried().isEmpty()) {
                 inSichSelbst = true;
@@ -254,16 +253,15 @@ public final class InvUtils {
         }
 
         private void klick(int id) {
-            mc().gameMode.handleInventoryMouseClick(
-                    mc().player.containerMenu.containerId, id, daten, art, mc().player);
+            SlotKlick.klick(mc().player.containerMenu.containerId, id, daten, art);
         }
     }
 
     /** Was der Mauszeiger haelt, zurueck ins Fenster werfen. */
     public static void handLeeren() {
         if (mc().player != null && !mc().player.containerMenu.getCarried().isEmpty()) {
-            mc().gameMode.handleInventoryMouseClick(mc().player.containerMenu.containerId,
-                    AbstractContainerMenu.SLOT_CLICKED_OUTSIDE, 0, ClickType.PICKUP, mc().player);
+            SlotKlick.klick(mc().player.containerMenu.containerId,
+                    AbstractContainerMenu.SLOT_CLICKED_OUTSIDE, 0, SlotKlick.Art.AUFNEHMEN);
         }
     }
 }

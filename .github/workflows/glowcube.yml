@@ -90,23 +90,6 @@ jobs:
           # Wo der Name selbst unsicher ist, hilft nur die Suche.
           python3 probe-search.py build/classpath.txt CompressionDecoder Bundler ClickType || true
 
-      # Ab 26.x sind mehrere APIs umbenannt worden. Dieser Schritt leuchtet
-      # die Nachfolger aus, damit die versionsabhaengigen Dateien die richtigen
-      # neuen Namen bekommen. Reines Erzaehlen, bricht nie ab.
-      - name: Nachfolger-Namen fuer 26.x ausleuchten
-        continue-on-error: true
-        run: |
-          echo "== ContainerInput (Slot-Klick ab 26.x) =="
-          python3 probe-api.py build/classpath.txt \
-            "net.minecraft.world.inventory.ContainerInput:" \
-            "net.minecraft.client.multiplayer.MultiPlayerGameMode:handleContainerInput" \
-            "net.minecraft.world.level.levelgen.feature.BlockReplacement:" \
-            "net.minecraft.world.level.levelgen.feature.configurations.ScatteredOreConfiguration:" || true
-          echo "== Erz-Konfiguration ab 26.3 =="
-          python3 probe-search.py build/classpath.txt \
-            ContainerInput BlockReplacement Replacement \
-            "configurations.Ore" OreConfiguration || true
-
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
       # falscher Mixin-Name erst beim Spielstart auf, und zwar beim Nutzer.
@@ -119,7 +102,6 @@ jobs:
             "net.minecraft.client.player.LocalPlayer#sendPosition" \
             "net.minecraft.client.player.LocalPlayer#move" \
             "net.minecraft.client.multiplayer.MultiPlayerGameMode#ensureHasSentCarriedItem" \
-            "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleInventoryMouseClick" \
             "net.minecraft.client.multiplayer.MultiPlayerGameMode#useItemOn" \
             "net.minecraft.client.multiplayer.MultiPlayerGameMode#startDestroyBlock" \
             "net.minecraft.client.multiplayer.MultiPlayerGameMode#continueDestroyBlock" \
@@ -129,10 +111,8 @@ jobs:
             "net.minecraft.network.CompressionDecoder#validateDecompressed" \
             "net.minecraft.nbt.NbtAccounter#unlimitedHeap" \
             "net.minecraft.network.FriendlyByteBuf#readNbt" \
-            "net.minecraft.client.DeltaTracker\$Timer#advanceTime" \
             "net.minecraft.world.damagesource.CombatRules#getDamageAfterAbsorb" \
             "net.minecraft.world.entity.player.Inventory#setSelectedSlot" \
-            "net.minecraft.world.inventory.ClickType#" \
             "net.minecraft.world.level.Level#isInSpawnableBounds" \
             "net.minecraft.world.level.CollisionGetter#isUnobstructed" \
             "net.minecraft.world.level.Level#isClientSide()" \
@@ -168,7 +148,6 @@ jobs:
             "net.minecraft.world.inventory.Slot#getItem" \
             "net.minecraft.world.inventory.CraftingMenu#" \
             "net.minecraft.world.inventory.InventoryMenu#" \
-            "net.minecraft.world.inventory.ClickType#QUICK_MOVE" \
             "net.minecraft.world.entity.player.Player#closeContainer" \
             "net.minecraft.world.level.block.Blocks#CRAFTING_TABLE" \
             "net.minecraft.world.item.Items#CRAFTING_TABLE" \
@@ -188,12 +167,10 @@ jobs:
             "net.minecraft.world.entity.LivingEntity#getTicksUsingItem" \
             "net.minecraft.client.Options#getEffectiveRenderDistance" \
             "net.minecraft.client.multiplayer.prediction.PredictiveAction#" \
-            "net.minecraft.world.level.block.entity.BedBlockEntity#" \
             "net.minecraft.world.level.chunk.LevelChunk#getBlockEntities" \
             "net.minecraft.world.level.chunk.LevelChunkSection#maybeHas" \
             "net.minecraft.world.level.chunk.LevelChunkSection#hasOnlyAir" \
             "net.minecraft.world.level.chunk.ChunkAccess#getSections" \
-            "net.minecraft.data.registries.VanillaRegistries#createLookup" \
             "net.minecraft.data.worldgen.placement.OrePlacements#ORE_DIAMOND" \
             "net.minecraft.data.worldgen.placement.OrePlacements#ORE_ANCIENT_DEBRIS_LARGE" \
             "net.minecraft.world.level.biome.FeatureSorter#buildFeaturesPerStep" \
@@ -204,7 +181,6 @@ jobs:
             "net.minecraft.world.level.levelgen.placement.RarityFilter#chance" \
             "net.minecraft.world.level.levelgen.presets.WorldPresets#NORMAL" \
             "net.minecraft.world.level.levelgen.feature.ScatteredOreFeature#" \
-            "net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration#discardChanceOnAirExposure" \
             "net.minecraft.world.level.LevelHeightAccessor#create" \
             "net.minecraft.world.level.levelgen.WorldGenerationContext#" \
             "net.minecraft.world.level.dimension.LevelStem#NETHER" \
@@ -213,6 +189,33 @@ jobs:
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Rot#" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$PosRot#" \
             "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket#"
+
+          # Ein paar Namen unterscheiden sich zwischen den Fassungen. Sie
+          # werden von versionsabhaengigen Quellen (SlotKlick, Erz) oder von
+          # der Timer-Doppelinjektion bedient - hier je Fassung der passende
+          # Name festgenagelt, damit ein Tippfehler nicht erst beim Nutzer
+          # auffliegt.
+          mcv='${{ matrix.mc }}'
+          if [[ "$mcv" == 1.* ]]; then
+            python3 verify-api.py build/classpath.txt \
+              "net.minecraft.client.DeltaTracker\$Timer#advanceTime" \
+              "net.minecraft.world.inventory.ClickType#QUICK_MOVE" \
+              "net.minecraft.world.inventory.ClickType#PICKUP" \
+              "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleInventoryMouseClick"
+          else
+            python3 verify-api.py build/classpath.txt \
+              "net.minecraft.client.DeltaTracker\$Timer#advanceGameTime" \
+              "net.minecraft.world.inventory.ContainerInput#QUICK_MOVE" \
+              "net.minecraft.world.inventory.ContainerInput#PICKUP" \
+              "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleContainerInput"
+          fi
+          # Die volle OreSim-Weltgenerierung laeuft nur dort, wo die alte
+          # Erz-Konfiguration noch existiert (1.21.x und 26.2).
+          if [[ "$mcv" == 1.* || "$mcv" == "26.2" ]]; then
+            python3 verify-api.py build/classpath.txt \
+              "net.minecraft.data.registries.VanillaRegistries#createLookup" \
+              "net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration#discardChanceOnAirExposure"
+          fi
 
       # Ein Mixin, das nicht eingetragen ist, wird nie geladen - das Modul
       # dahinter tut dann einfach nichts, ohne dass irgendwo ein Fehler steht.

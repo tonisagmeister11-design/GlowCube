@@ -72,6 +72,29 @@ if (project.extensions.findByName('loom') != null) {
     }
 }
 
+// --- Versionsabhaengige Quellen -------------------------------------------
+// Ein paar wenige Klassen rufen APIs auf, die sich zwischen 1.21.x und 26.x
+// unterscheiden. Sie liegen NICHT in src/main/java, sondern je Fassung in
+// einem eigenen Ordner unter src/versionen. Von jeder solchen Klasse wird
+// genau eine Fassung hinzugefuegt - so kann nie eine doppelt auftauchen, und
+// es braucht keine heiklen exclude-Regeln (die wuerden auch das Ersatzstueck
+// treffen).
+def mcv = project.minecraft_version
+def alteFassung = mcv.startsWith("1.")           // 1.21.x
+def erzUmbau = !alteFassung && mcv != "26.2"     // 26.3 und neuer
+
+// SlotKlick: bis 1.21.x heisst der Typ ClickType und die Methode
+// handleInventoryMouseClick; ab 26.x ContainerInput / handleContainerInput.
+def slotOrdner = alteFassung ? 'slotklick_1_21' : 'slotklick_26'
+sourceSets.main.java.srcDir "src/versionen/${slotOrdner}/java"
+
+// Erz/OreSim: die volle Weltgenerierung geht auf 1.21.x und 26.2; ab 26.3
+// ist die Erz-Konfiguration umgebaut, dort steht eine ruhende Fassung.
+def erzOrdner = erzUmbau ? 'erz_26_3' : 'erz_1_21_26_2'
+sourceSets.main.java.srcDir "src/versionen/${erzOrdner}/java"
+
+logger.lifecycle("GlowCube: Fassung ${mcv} - SlotKlick=${slotOrdner}, Erz=${erzOrdner}")
+
 // Die nachgebaute SeedCrackerX-Schnittstelle dient nur dem Uebersetzen.
 // Zur Laufzeit gilt die echte aus SeedCrackerX - waere unsere Fassung mit in
 // der JAR, koennten zwei Klassen desselben Namens aufeinandertreffen.

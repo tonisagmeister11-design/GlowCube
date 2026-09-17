@@ -3,7 +3,6 @@ package net.glowcube.client.util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
@@ -151,7 +150,7 @@ public final class Crafting {
         // Raster vorher leerraeumen, damit keine Reste stoeren.
         for (int i = 0; i < felderImMenu; i++) {
             if (!menu.getSlot(rasterAnfang + i).getItem().isEmpty()) {
-                klick(menu, rasterAnfang + i, ClickType.QUICK_MOVE, 0);
+                klick(menu, rasterAnfang + i, SlotKlick.Art.SCHNELL_UMLEGEN, 0);
             }
         }
 
@@ -171,13 +170,13 @@ public final class Crafting {
                 return Ergebnis.ZU_WENIG_ZUTATEN;
             }
             // Aufnehmen, ein Stueck ablegen, Rest zuruecklegen.
-            klick(menu, quelle, ClickType.PICKUP, 0);
-            klick(menu, zielSlot, ClickType.PICKUP, 1);
-            klick(menu, quelle, ClickType.PICKUP, 0);
+            klick(menu, quelle, SlotKlick.Art.AUFNEHMEN, 0);
+            klick(menu, zielSlot, SlotKlick.Art.AUFNEHMEN, 1);
+            klick(menu, quelle, SlotKlick.Art.AUFNEHMEN, 0);
         }
 
         // Ergebnis herausnehmen.
-        klick(menu, 0, ClickType.QUICK_MOVE, 0);
+        klick(menu, 0, SlotKlick.Art.SCHNELL_UMLEGEN, 0);
         return Ergebnis.FERTIG;
     }
 
@@ -232,14 +231,14 @@ public final class Crafting {
             // Was noch am Zeiger haengt, irgendwo ablegen.
             for (int i = 10; i < menu.slots.size(); i++) {
                 if (menu.getSlot(i).getItem().isEmpty()) {
-                    klick(menu, i, ClickType.PICKUP, 0);
+                    klick(menu, i, SlotKlick.Art.AUFNEHMEN, 0);
                     return;
                 }
             }
         }
     }
 
-    private static void klick(AbstractContainerMenu menu, int slot, ClickType art, int knopf) {
-        mc().gameMode.handleInventoryMouseClick(menu.containerId, slot, knopf, art, mc().player);
+    private static void klick(AbstractContainerMenu menu, int slot, SlotKlick.Art art, int knopf) {
+        SlotKlick.klick(menu.containerId, slot, knopf, art);
     }
 }
