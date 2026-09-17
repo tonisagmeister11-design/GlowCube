@@ -14,6 +14,12 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
  * Ergebnis werden darf. Ist ein Buch absichtlich zu gross, schlaegt er zu und
  * der Client fliegt raus. Wir tauschen den Waechter gegen einen ohne Grenze -
  * das Paket wird dann gelesen statt die Verbindung getrennt.
+ *
+ * <p>{@code require = 0} mit Absicht: findet Mixin den Aufruf nicht, bleibt
+ * die Grenze eben stehen. Ein nicht wirkender Bookban-Schutz ist immer noch
+ * besser als ein Spiel, das gar nicht mehr startet - und um genau diese
+ * Wahl geht es hier, denn ein fehlgeschlagener Eingriff mit
+ * {@code require = 1} bricht den Start ab.
  */
 @Mixin(FriendlyByteBuf.class)
 public abstract class FriendlyByteBufMixin {

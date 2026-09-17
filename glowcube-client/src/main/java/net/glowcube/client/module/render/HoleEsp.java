@@ -41,9 +41,9 @@ import java.util.List;
  */
 public final class HoleEsp extends Module {
     private final NumberSetting waagrecht = register(new NumberSetting("Umkreis",
-            "Wie weit zur Seite gesucht wird", 10, 2, 24, 1));
+            "Wie weit zur Seite gesucht wird", 8, 2, 24, 1));
     private final NumberSetting senkrecht = register(new NumberSetting("Hoehe der Suche",
-            "Wie weit nach oben und unten gesucht wird", 4, 1, 12, 1));
+            "Wie weit nach oben und unten gesucht wird", 3, 1, 12, 1));
     private final NumberSetting lochHoehe = register(new NumberSetting("Lochhoehe",
             "Wie viele Felder ueber dem Loch frei sein muessen", 2, 1, 3, 1));
     private final BooleanSetting doppelte = register(new BooleanSetting("Doppelloecher",

@@ -2,9 +2,12 @@ package net.glowcube.client.mixin;
 
 import net.glowcube.client.module.render.Search;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -20,9 +23,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LevelChunk.class)
 public abstract class LevelChunkMixin {
 
-    @Inject(method = "setBlockState", at = @At("RETURN"))
+    @Shadow
+    @Final
+    Level level;
+
+    @Inject(method = "setBlockState(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;I)Lnet/minecraft/world/level/block/state/BlockState;", at = @At("RETURN"))
     private void glowcube$blockGeaendert(BlockPos pos, BlockState zustand, int flaggen,
                                          CallbackInfoReturnable<BlockState> info) {
-        Search.blockGeaendert(pos, zustand);
+        // Im Einzelspieler laeuft derselbe Code auch im eingebauten Server.
+        // Dessen Chunks gehen Search nichts an - sonst landen Fundstellen
+        // aus einer anderen Dimension in derselben Liste.
+        if (level != null && level.isClientSide) {
+            Search.blockGeaendert(pos, zustand);
+        }
     }
 }

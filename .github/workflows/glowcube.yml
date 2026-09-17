@@ -95,6 +95,7 @@ jobs:
             "net.minecraft.client.multiplayer.MultiPlayerGameMode#stopDestroyBlock" \
             "net.minecraft.client.multiplayer.MultiPlayerGameMode#isDestroying" \
             "net.minecraft.network.CompressionDecoder#decode" \
+            "net.minecraft.network.CompressionDecoder#validateDecompressed" \
             "net.minecraft.nbt.NbtAccounter#unlimitedHeap" \
             "net.minecraft.network.FriendlyByteBuf#readNbt" \
             "net.minecraft.client.DeltaTracker\$Timer#advanceTime" \
@@ -124,7 +125,7 @@ jobs:
             "net.minecraft.world.entity.Entity#setOnGround" \
             "net.minecraft.world.level.block.state.BlockBehaviour#hasCollision" \
             "net.minecraft.world.level.block.state.BlockBehaviour#defaultDestroyTime" \
-            "net.minecraft.world.level.chunk.LevelChunk#setBlockState" \
+            "net.minecraft.world.level.chunk.LevelChunk#setBlockState(net.minecraft.core.BlockPos, net.minecraft.world.level.block.state.BlockState, int)" \
             "net.minecraft.world.item.BowItem#getPowerForTime" \
             "net.minecraft.world.entity.LivingEntity#getTicksUsingItem" \
             "net.minecraft.client.Options#getEffectiveRenderDistance" \

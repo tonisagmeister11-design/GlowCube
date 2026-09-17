@@ -198,11 +198,9 @@ public final class ClickGuiScreen extends Screen {
             cursor = modulZeichnen(gfx, fenster, module1, x, cursor, mouseX, mouseY);
         }
 
-        float koerperHoehe = cursor - koerperStart + 3;
-        // Hintergrund nachtraeglich unter die Zeilen legen: erst jetzt steht
-        // die Hoehe fest, und ein zweiter Durchgang waere teurer als die
-        // Zeilen einmal daruebermalen zu lassen.
-        fenster.hoehe = TITEL_H + koerperHoehe;
+        // Jede Zeile bringt ihren eigenen Hintergrund mit - so braucht es
+        // keinen zweiten Durchgang, nur um die Gesamthoehe vorher zu kennen.
+        fenster.hoehe = TITEL_H + (cursor - koerperStart) + 3;
     }
 
     private float modulZeichnen(GuiGraphics gfx, Fenster fenster, Module module,
@@ -373,12 +371,12 @@ public final class ClickGuiScreen extends Screen {
             if (!Render2D.hovered(mx, my, t.x(), t.y(), t.w(), t.h())) {
                 continue;
             }
-            return behandeln(t, knopf, mx);
+            return behandeln(t, knopf, mx, my);
         }
         return super.mouseClicked(event, doppelklick);
     }
 
-    private boolean behandeln(Treffer t, int knopf, double mx) {
+    private boolean behandeln(Treffer t, int knopf, double mx, double my) {
         switch (t.art()) {
             case TITEL -> {
                 if (knopf == 1) {
@@ -387,7 +385,7 @@ public final class ClickGuiScreen extends Screen {
                 } else {
                     gezogen = t.fenster();
                     griffX = (float) mx - t.fenster().x;
-                    griffY = 0;
+                    griffY = (float) my - t.fenster().y;
                 }
                 return true;
             }
@@ -439,7 +437,7 @@ public final class ClickGuiScreen extends Screen {
             gezogen.x = (float) event.x() - griffX;
             // Nie ganz aus dem Bild schieben - sonst bekommt man das Fenster
             // nur ueber die Konfigurationsdatei zurueck.
-            gezogen.y = (float) Math.max(32.0, Math.min(height - 24.0, event.y() - griffY - 8.0));
+            gezogen.y = (float) Math.max(32.0, Math.min(height - 24.0, event.y() - griffY));
             gezogen.x = Math.max(-FENSTER_B + 30, Math.min(width - 30, gezogen.x));
             return true;
         }

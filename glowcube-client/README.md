@@ -1,8 +1,13 @@
 # GlowCube
 
 Ein clientseitiger Werkzeugkasten fuer Minecraft Java 1.21.11 auf Fabric:
-X-Ray, Fullbright, Flight, Speed, KillAura und mehr - 27 Module, ClickGUI,
-HUD und SeedCrackerX fest eingebaut.
+X-Ray, OreSim, KillAura, Scaffold, Nuker und mehr - 32 Module, ein ClickGUI
+aus verschiebbaren Fenstern, HUD und SeedCrackerX fest eingebaut.
+
+Die meisten Module sind **nicht nachgebaut, sondern uebertragen**: aus dem
+echten Quelltext von Meteor Client, BleachHack und Meteor Rejects, mit
+deren Reihenfolgen, Grenzfaellen und krummen Zahlen. Wer was von wo hat,
+steht in [HERKUNFT.md](HERKUNFT.md).
 
 **Eine Datei.** SeedCrackerX steckt als eingebettete JAR mit drin. In den
 `mods`-Ordner kommen nur GlowCube und die Fabric API, sonst nichts.
@@ -48,68 +53,114 @@ fuer 1.21.11. Eine Fassung daneben und das Spiel startet nicht.
 
 ## Bedienen
 
-Jedes Modul hat eine Taste. Was geschaltet wurde, steht kurz ueber der Hotbar.
+**Rechte Umschalttaste** oeffnet das Menue. Es besteht aus sieben Fenstern,
+eines je Kategorie:
+
+* **Linksklick** auf eine Zeile schaltet das Modul.
+* **Rechtsklick** klappt seine Einstellungen auf und zu.
+* **Mittelklick** belegt die Taste neu.
+* Die **Titelleiste** zieht das Fenster; ein Rechtsklick darauf klappt es ein.
+* **Tippen** sucht ueber alle Kategorien hinweg.
+* **Pos1** raeumt die Fenster wieder ins Raster, falls eines verlegt wurde.
+
+Die Anordnung bleibt ueber den Neustart hinweg erhalten - sie steht in
+`.minecraft/config/glowcube.json`.
+
+### Vorbelegte Tasten
 
 | Taste | Modul | | Taste | Modul |
 | --- | --- | --- | --- | --- |
 | `Rechte Umschalt` | ClickGUI | | `R` | KillAura |
 | `X` | X-Ray | | `K` | AutoTool |
-| `H` | Fullbright | | `M` | AntiAFK |
-| `C` | Zoom | | `B` | SeedHunt |
-| `F` | Flight | | `N` | NoFall |
-| `G` | Speed | | `J` | AutoSprint |
-| `V` | Step | | `L` | Search |
+| `O` | OreSim | | `M` | AntiAFK |
+| `H` | Fullbright | | `B` | SeedHunt |
+| `C` | Zoom | | `N` | NoFall |
+| `F` | Flight | | `J` | AutoSprint |
+| `G` | Speed | | `L` | Search |
+| `V` | Step | | | |
 
-Ohne Taste, ueber das ClickGUI erreichbar: StorageESP, EntityESP, Tracers,
-HoleESP, Trajectories, AutoWalk, Criticals, AutoRespawn, Nuker, Scaffold,
-AutoTotem, Spammer, Timer.
-
-Die Belegungen meiden alles, was Minecraft selbst benutzt - mit einer
-Ausnahme: `F` tauscht in Vanilla die Zweithand. Wem das dazwischenkommt, der
-aendert `key` fuer Flight in `.minecraft/config/glowcube.json` (GLFW-Nummern,
-`-1` heisst keine Taste).
+Alles Uebrige ist ohne Taste und ueber das Menue erreichbar. Die Belegungen
+meiden, was Minecraft selbst benutzt - mit einer Ausnahme: `F` tauscht in
+Vanilla die Zweithand. Wem das dazwischenkommt, der belegt Flight im Menue
+per Mittelklick neu.
 
 Im Chat und in Menues schalten die Tasten nicht - das wird am Mauszeiger
 erkannt.
 
-Dieselbe Datei enthaelt unter X-Ray die Liste der sichtbaren Bloecke. Voreingestellt
-sind alle Erze, Kisten, Spawner und Portale.
+### Chatbefehle
+
+| Befehl | Was er tut |
+| --- | --- |
+| `/glowcube seed <zahl>` | Setzt den Weltseed von Hand - das braucht OreSim |
+| `/glowcube seed` | Zeigt, welcher Seed gerade bekannt ist |
+| `/glowcube <modul>` | Schaltet ein Modul, ohne eine Taste zu belegen |
+| `/glowcube fenster` | Raeumt die Menuefenster ins Raster |
+
+Alle vier sind rein clientseitig - der Server sieht davon nichts.
 
 ## Die Module
 
+### Combat
+| Modul | Was es tut |
+| --- | --- |
+| KillAura | Greift Ziele in Reichweite an - 16 Einstellungen, getrennte Reichweite durch Waende, Waffenwechsel mit Ruecktausch |
+| Criticals | Erzwingt kritische Treffer - fuenf Betriebsarten, plus Schmetterschlag mit der Keule |
+| AutoTotem | Haelt ein Totem in der Zweithand, sobald es rechnerisch eng wird |
+
+### Movement
+| Modul | Was es tut |
+| --- | --- |
+| Flight | Fliegen ohne Kreativmodus |
+| Speed | Schneller laufen |
+| Step | Bloecke hochlaufen ohne Sprung |
+| NoFall | Kein Sturzschaden |
+| AutoSprint | Immer sprinten |
+| AutoWalk | Laeuft von allein weiter, in vier Richtungen |
+| Scaffold | Baut den Boden unter dir mit, samt Schnellturm |
+| PacketFly | Fliegt ueber Pakete statt ueber die Physik |
+
+### Render
 | Modul | Was es tut |
 | --- | --- |
 | X-Ray | Blendet alles aus, was nicht auf der Liste steht |
 | Fullbright | Keine Dunkelheit mehr |
 | Zoom | Fernglas |
-| Flight | Fliegen ohne Kreativmodus (Motion oder Abilities) |
-| Speed | Schneller laufen |
-| Step | Bloecke hochlaufen ohne Sprung |
-| NoFall | Kein Sturzschaden |
-| AutoSprint | Immer sprinten |
-| KillAura | Greift Ziele in Reichweite an |
-| AutoTool | Bestes Werkzeug beim Abbauen |
-| AntiAFK | Haelt dich auf dem Server |
-| SeedHunt | Fliegt selbsttaetig eine Spirale ab, damit SeedCrackerX schnell genug Daten bekommt |
 | StorageESP | Kisten, Faesser, Shulker durch Waende |
 | EntityESP | Kaesten um Spieler, Monster, Tiere, Items |
 | Tracers | Linien vom Fadenkreuz zu Entities |
 | Search | Markiert gesuchte Bloecke, ohne die Sicht zu veraendern |
-| HoleESP | Zeigt Loecher, die Explosionen standhalten |
+| HoleESP | Zeigt Loecher, die Explosionen standhalten - getrennt nach Bedrock, Obsidian und gemischt |
 | Trajectories | Zeigt, wo Pfeil, Perle oder Trank landen |
-| AutoWalk | Laeuft von allein geradeaus |
-| Criticals | Treffer zaehlen als kritisch |
-| AutoRespawn | Sofort wieder einsteigen |
-| ClickGUI | Das Fenster |
-| Nuker | Baut alles im Umkreis ab - drei Betriebsarten |
-| Spammer | Schickt regelmaessig eine Chatnachricht |
-| AutoTotem | Haelt ein Totem in der Zweithand |
-| Scaffold | Baut den Boden unter dir mit |
-| Timer | Beschleunigt die Weltuhr (Exploit) |
 
-Die Kategorien folgen der Einteilung von BleachHack: Combat, Movement,
-Render, Player, World, Exploits, Misc. Woher was stammt, steht in
-[HERKUNFT.md](HERKUNFT.md).
+### Player
+| Modul | Was es tut |
+| --- | --- |
+| AutoTool | Bestes Werkzeug beim Abbauen |
+| AutoRespawn | Sofort wieder einsteigen |
+| AntiAFK | Haelt dich auf dem Server |
+| NoInteract | Sperrt einzelne Arten von Klicks und Schlaegen - gegen Betten im Nether |
+
+### World
+| Modul | Was es tut |
+| --- | --- |
+| Nuker | Baut alles im Umkreis ab - drei Formen, drei Betriebsarten, vier Reihenfolgen |
+| OreSim | Rechnet aus dem Weltseed, wo die Erze liegen |
+
+### Exploits
+| Modul | Was es tut |
+| --- | --- |
+| Timer | Beschleunigt die Weltuhr |
+| FakeLag | Haelt Bewegungspakete zurueck und laesst sie gebuendelt los |
+| AntiChunkBan | Nimmt auch uebergrosse Chunk- und Buchpakete an |
+
+### Misc
+| Modul | Was es tut |
+| --- | --- |
+| SeedHunt | Faehrt selbsttaetig Flaeche ab, damit SeedCrackerX Daten bekommt |
+| Spammer | Schickt regelmaessig Chatnachrichten |
+| ClickGUI | Das Menue |
+
+Die Kategorien folgen der Einteilung von BleachHack.
 
 ## Zusammenspiel mit SeedCrackerX
 
@@ -144,14 +195,32 @@ das zeigen, was der Client ohnehin schon hat.
   ueberall. Die echten Erzpositionen erreichen den Client nie. Kein
   Client-Mod kann zeigen, was er nicht bekommen hat - auch nicht mit Seed.
 
-Was der Seed koennte: *ausrechnen*, wo Erze bei der Weltgenerierung entstanden
-waeren. Das ist aber kein X-Ray, sondern eine **Vorhersage**, und sie
-verlangt, die Erzgenerierung von 1.21.11 nachzubauen. Ein eigenes, grosses
-Vorhaben - kein Schalter an X-Ray.
+**Dafuer gibt es OreSim** - und das ist ein anderes Verfahren. Es zeigt nicht,
+was der Client bekommen hat, sondern rechnet aus, wo die Erze bei der
+Weltgenerierung entstanden *waeren*. Ein Server kann daran nichts faelschen;
+die Rechnung braucht nur den Weltseed und laeuft vollstaendig im eigenen
+Client. Auf einem Server mit Anti-X-Ray ist OreSim also das, was X-Ray dort
+nicht sein kann.
 
-Fuer **Strukturen** gibt es das bereits fertig: SeedCrackerX bringt eigene
+Was OreSim braucht:
+
+1. Den Weltseed. Entweder findet ihn SeedCrackerX (SeedHunt faehrt die
+   Arbeit ab), oder man kennt ihn und gibt ihn mit
+   `/glowcube seed <zahl>` ein.
+2. Taste `O`. Alle zehn Erzarten sind voreingestellt an und einzeln
+   abschaltbar.
+
+Die Einstellung **Luftpruefung** entscheidet, ob gegen die wirklich geladene
+Welt geprueft wird. Steht sie auf *Beim Laden*, verschwindet Erz, das jemand
+laengst abgebaut hat; auf *Aus* zeigt OreSim die Welt so, wie sie einmal
+erzeugt wurde - auch dort, wo der Server luegt.
+
+Fuer **Strukturen** braucht es GlowCube gar nicht: SeedCrackerX bringt eigene
 Finder mit, die aus dem bekannten Seed Festungen, Tempel und anderes
-errechnen. Dafuer braucht es GlowCube nicht.
+errechnen.
+
+## Zusammenspiel mit SeedHunt
+
 * **SeedHunt fliegt die Arbeit ab.** Mit der Einstellung `AutoStart` geht es
   beim Betreten einer Welt von selbst los. SeedCrackerX sieht nur, was der Client
   ohnehin geladen bekommt - wer stehen bleibt, wartet ewig. `B` startet eine
@@ -194,10 +263,10 @@ gradle runClient              # Testinstanz mit dem Mod
 | Pfad | Inhalt |
 | --- | --- |
 | `src/main/java/.../core/` | Modul-Grundgeruest, Einstellungen, Konfiguration |
-| `src/main/java/.../util/` | Farben, Animation, 2D- und 3D-Zeichnen |
+| `src/main/java/.../util/` | Farben, Zeichnen, und der aus Meteor uebertragene Werkzeugkasten (Rotations, InvUtils, BlockUtils, DamageUtils) |
 | `src/main/java/.../gui/` | ClickGUI und Block-Auswahl |
 | `src/main/java/.../hud/` | Wasserzeichen und Modulliste |
-| `src/main/java/.../module/` | Die 27 Module |
-| `src/main/java/.../mixin/` | Die vier Eingriffe ins Spiel |
+| `src/main/java/.../module/` | Die 32 Module |
+| `src/main/java/.../mixin/` | Die Eingriffe ins Spiel |
 | `einzeldatei/` | Derselbe Code in einer einzigen Datei - nicht Teil des Builds |
 | `resolve-versions.py` | Holt die aktuellen Fabric-Versionen |
