@@ -14,6 +14,10 @@ import net.glowcube.client.module.movement.Step;
 import net.glowcube.client.module.misc.ClickGuiModule;
 import net.glowcube.client.module.misc.SeedHunt;
 import net.glowcube.client.module.misc.Spammer;
+import net.glowcube.client.module.movement.PacketFly;
+import net.glowcube.client.module.player.NoInteract;
+import net.glowcube.client.module.world.AntiChunkBan;
+import net.glowcube.client.module.world.FakeLag;
 import net.glowcube.client.module.world.Nuker;
 import net.glowcube.client.module.world.Timer;
 import net.glowcube.client.module.player.AntiAfk;
@@ -31,6 +35,11 @@ import net.glowcube.client.module.render.Zoom;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.BlockHitResult;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -76,6 +85,7 @@ public final class ModuleManager {
         add(new AutoTool());
         add(new AutoRespawn());
         add(new AntiAfk());
+        add(new NoInteract());
         // Misc
         add(new SeedHunt());
         add(new Spammer());
@@ -84,6 +94,9 @@ public final class ModuleManager {
         add(new Nuker());
         // Exploits
         add(new Timer());
+        add(new FakeLag());
+        add(new AntiChunkBan());
+        add(new PacketFly());
     }
 
     private void add(Module module) {
@@ -180,6 +193,95 @@ public final class ModuleManager {
                 module.onWorldRender(context);
             }
         }
+    }
+
+    /**
+     * Ein Paket geht hinaus. Liefert true, wenn ein Modul es abfaengt.
+     *
+     * <p>Die Schleife laeuft ueber eine Kopie nicht - die Modulliste steht
+     * fest - aber sie darf nicht abbrechen, sobald eines abbricht: auch die
+     * uebrigen wollen das Paket gesehen haben (FakeLag legt es zur Seite,
+     * waehrend Criticals es zaehlt).
+     */
+    public boolean onPacketSend(Packet<?> packet) {
+        boolean abbrechen = false;
+        for (Module module : modules) {
+            if (module.isEnabled() && module.onPacketSend(packet)) {
+                abbrechen = true;
+            }
+        }
+        return abbrechen;
+    }
+
+    /** Ein Paket kommt an. Liefert true, wenn ein Modul es verwirft. */
+    public boolean onPacketReceive(Packet<?> packet) {
+        boolean abbrechen = false;
+        for (Module module : modules) {
+            if (module.isEnabled() && module.onPacketReceive(packet)) {
+                abbrechen = true;
+            }
+        }
+        return abbrechen;
+    }
+
+    /** Kurz vor dem Bewegungspaket. Liefert true, wenn eines es ganz unterbindet. */
+    public boolean onSendMovement() {
+        boolean abbrechen = false;
+        for (Module module : modules) {
+            if (module.isEnabled()) {
+                module.onSendMovement();
+                if (module.blockMovementPackets()) {
+                    abbrechen = true;
+                }
+            }
+        }
+        return abbrechen;
+    }
+
+    /** Ob ein Modul die clientseitige Bewegung gerade unterbindet. */
+    public boolean blockClientMove() {
+        for (Module module : modules) {
+            if (module.isEnabled() && module.blockClientMove()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean onBlockBreak(BlockPos pos) {
+        for (Module module : modules) {
+            if (module.isEnabled() && module.onBlockBreak(pos)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean onBlockUse(BlockHitResult treffer, InteractionHand hand) {
+        for (Module module : modules) {
+            if (module.isEnabled() && module.onBlockUse(treffer, hand)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean onEntityAttack(Entity ziel) {
+        for (Module module : modules) {
+            if (module.isEnabled() && module.onEntityAttack(ziel)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean onEntityUse(Entity ziel, InteractionHand hand) {
+        for (Module module : modules) {
+            if (module.isEnabled() && module.onEntityUse(ziel, hand)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Ein Tastendruck ausserhalb von Textfeldern. */

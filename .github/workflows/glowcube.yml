@@ -56,11 +56,18 @@ jobs:
           # Wo der Name nicht weiterhilft, fragt man dort nach, wo die Klasse
           # benutzt wird: was nimmt Screen.render() heute entgegen?
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.client.DeltaTracker\$Timer:" \
-            "net.minecraft.client.DeltaTracker:"
-          # Die alte Zeichen-API ist komplett ersetzt. Weder Name noch Paket
-          # helfen da weiter - also nach Begriffen suchen.
-          python3 probe-search.py build/classpath.txt DeltaTracker
+            "net.minecraft.network.Connection:send|channelRead0|genericsFtw" \
+            "net.minecraft.client.player.LocalPlayer:sendPosition|move\\(" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode:startDestroyBlock|useItemOn|attack|interact|handleInventoryMouseClick|syncSelected|continueDestroyBlock|stopDestroyBlock|destroyBlock" \
+            "net.minecraft.world.entity.player.Inventory:SelectedSlot|getItem|getContainerSize" \
+            "net.minecraft.network.CompressionDecoder:" \
+            "net.minecraft.nbt.NbtAccounter:unlimited" \
+            "net.minecraft.network.FriendlyByteBuf:readNbt" \
+            "net.minecraft.world.entity.Entity:moveTo|absMoveTo|setPos|getRootVehicle" \
+            "net.minecraft.world.inventory.AbstractContainerMenu:SLOT_CLICKED_OUTSIDE|getCarried|containerId" \
+            "net.minecraft.network.protocol.BundlerInfo:"
+          # Wo der Name selbst unsicher ist, hilft nur die Suche.
+          python3 probe-search.py build/classpath.txt CompressionDecoder Bundler ClickType
 
       - name: Bauen
         run: |

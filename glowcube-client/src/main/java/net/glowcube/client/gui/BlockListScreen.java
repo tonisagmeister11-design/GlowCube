@@ -65,7 +65,7 @@ public final class BlockListScreen extends Screen {
         Render2D.roundedRect(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.PANEL, alpha));
         Render2D.roundedOutline(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.OUTLINE, alpha));
 
-        Render2D.textGradient(gfx, "X-RAY BLOCKS", panelX + PAD, y + 13,
+        Render2D.textGradient(gfx, list.name().toUpperCase(java.util.Locale.ROOT), panelX + PAD, y + 13,
                 ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
         String count = list.size() + " Eintraege";
         Render2D.text(gfx, count, panelX + PANEL_W - PAD - Render2D.width(count), y + 13,
@@ -126,7 +126,9 @@ public final class BlockListScreen extends Screen {
         }
         String needle = input.toLowerCase(Locale.ROOT);
         List<String> found = new ArrayList<>();
-        for (Identifier id : BuiltInRegistries.BLOCK.keySet()) {
+        for (Identifier id : (list.istWesen()
+                ? BuiltInRegistries.ENTITY_TYPE.keySet()
+                : BuiltInRegistries.BLOCK.keySet())) {
             String text = id.toString();
             if (text.contains(needle)) {
                 found.add(text);

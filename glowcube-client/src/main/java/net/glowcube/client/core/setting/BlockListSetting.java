@@ -6,15 +6,37 @@ import com.google.gson.JsonElement;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-/** Eine Liste von Block-IDs ("minecraft:diamond_ore") - das Herz von X-Ray. */
+/**
+ * Eine Liste von Registry-IDs ("minecraft:diamond_ore") - das Herz von X-Ray.
+ *
+ * <p>Welche Registry gemeint ist, steht in {@link #registry()}. Voreingestellt
+ * sind Bloecke; NoInteract fuehrt damit auch seine Wesenliste, denn eine
+ * Liste von IDs bleibt eine Liste von IDs - nur die Vorschlaege im Fenster
+ * kommen aus einem anderen Verzeichnis.
+ */
 public final class BlockListSetting extends Setting {
+    /** "block" oder "entity_type". */
+    private final String registry;
     private final Set<String> ids = new LinkedHashSet<>();
 
     public BlockListSetting(String name, String description, String... defaults) {
+        this(name, description, "block", defaults);
+    }
+
+    public BlockListSetting(String name, String description, String registry, String... defaults) {
         super(name, description);
+        this.registry = registry;
         for (String id : defaults) {
             ids.add(normalise(id));
         }
+    }
+
+    public String registry() {
+        return registry;
+    }
+
+    public boolean istWesen() {
+        return "entity_type".equals(registry);
     }
 
     private static String normalise(String id) {

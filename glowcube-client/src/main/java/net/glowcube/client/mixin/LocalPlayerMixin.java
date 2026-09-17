@@ -1,0 +1,39 @@
+package net.glowcube.client.mixin;
+
+import net.glowcube.client.core.Packets;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.phys.Vec3;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/**
+ * Die beiden Stellen, an denen der Spieler dem Server seine Lage meldet und an
+ * denen er sich selbst bewegt.
+ *
+ * <p>{@code sendPosition} ist dieselbe Stelle, an der Meteor sein
+ * SendMovementPacketsEvent ausloest und BleachHack sein
+ * EventSendMovementPackets - nur unter dem Mojang-Namen. {@code move} ist
+ * BleachHacks EventClientMove. PacketFly haengt an beiden: es faehrt den
+ * Spieler ueber Pakete statt ueber die Spielphysik, und dafuer muss die
+ * Physik still sein.
+ */
+@Mixin(LocalPlayer.class)
+public abstract class LocalPlayerMixin {
+
+    @Inject(method = "sendPosition", at = @At("HEAD"), cancellable = true)
+    private void glowcube$lageMelden(CallbackInfo info) {
+        if (Packets.sendMovement()) {
+            info.cancel();
+        }
+    }
+
+    @Inject(method = "move", at = @At("HEAD"), cancellable = true)
+    private void glowcube$bewegen(MoverType art, Vec3 bewegung, CallbackInfo info) {
+        if (Packets.blockClientMove()) {
+            info.cancel();
+        }
+    }
+}

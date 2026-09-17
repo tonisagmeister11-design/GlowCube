@@ -9,6 +9,11 @@
     "BlockMixin",
     "OptionInstanceAccessor",
     "ServerboundMovePlayerPacketMixin",
-    "DeltaTrackerTimerMixin"
+    "DeltaTrackerTimerMixin",
+    "ConnectionMixin",
+    "LocalPlayerMixin",
+    "MultiPlayerGameModeMixin",
+    "FriendlyByteBufMixin",
+    "CompressionDecoderMixin"
   ]
 }

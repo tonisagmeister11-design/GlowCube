@@ -6,6 +6,11 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.glowcube.client.core.setting.Setting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.client.player.LocalPlayer;
 
 import java.util.ArrayList;
@@ -55,6 +60,66 @@ public abstract class Module {
 
     /** Jeden Frame in der Welt, nach den Entities. */
     public void onWorldRender(WorldRenderContext context) {
+    }
+
+    /**
+     * Ein Paket geht zum Server. Gibt das Modul {@code true} zurueck, wird es
+     * nicht gesendet. So arbeiten FakeLag, PacketFly und Criticals.
+     */
+    public boolean onPacketSend(Packet<?> packet) {
+        return false;
+    }
+
+    /**
+     * Ein Paket kommt vom Server. {@code true} verwirft es, bevor das Spiel es
+     * sieht - PacketFly schluckt damit die Rubberband-Korrekturen.
+     */
+    public boolean onPacketReceive(Packet<?> packet) {
+        return false;
+    }
+
+    /**
+     * Kurz bevor der Spieler seine Lage meldet. Hier sitzt alles, was die
+     * Blickrichtung fuer genau ein Paket verstellen will.
+     */
+    public void onSendMovement() {
+    }
+
+    /**
+     * True haelt das ganze Bewegungspaket zurueck - der Server erfaehrt dann
+     * gar nichts mehr ueber die eigene Lage, bis das Modul es wieder freigibt.
+     */
+    public boolean blockMovementPackets() {
+        return false;
+    }
+
+    /** True laesst den Spieler clientseitig stehen, obwohl er sich bewegt. */
+    public boolean blockClientMove() {
+        return false;
+    }
+
+    // ---------------------------------------------------- Umgang mit der Welt
+    // Vier Haken auf den Wegen, ueber die der Client jede Absicht des Spielers
+    // an den Server meldet. True heisst jeweils: die Absicht faellt aus.
+
+    /** Der Spieler faengt an, einen Block zu schlagen. */
+    public boolean onBlockBreak(BlockPos pos) {
+        return false;
+    }
+
+    /** Der Spieler klickt einen Block an. */
+    public boolean onBlockUse(BlockHitResult treffer, InteractionHand hand) {
+        return false;
+    }
+
+    /** Der Spieler schlaegt ein Wesen. */
+    public boolean onEntityAttack(Entity ziel) {
+        return false;
+    }
+
+    /** Der Spieler klickt ein Wesen an. */
+    public boolean onEntityUse(Entity ziel, InteractionHand hand) {
+        return false;
     }
 
     // ----------------------------------------------------------------- Zustand
