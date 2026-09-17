@@ -117,10 +117,6 @@ jobs:
             "net.minecraft.world.entity.AgeableMob#isBaby" \
             "net.minecraft.client.player.LocalPlayer#modifyInput" \
             "net.minecraft.world.phys.Vec2#scale" \
-            "net.minecraft.world.level.ClipContext$Block#COLLIDER" \
-            "net.minecraft.world.level.ClipContext$Fluid#NONE" \
-            "net.minecraft.world.phys.HitResult$Type#MISS" \
-            "net.minecraft.world.entity.LivingEntity#getEyePosition" \
             "net.minecraft.client.player.LocalPlayer#isUsingItem" \
             "net.minecraft.world.food.FoodData#getFoodLevel" \
             "net.minecraft.world.food.FoodData#needsFood" \
