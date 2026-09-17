@@ -56,9 +56,9 @@ jobs:
           # Wo der Name nicht weiterhilft, fragt man dort nach, wo die Klasse
           # benutzt wird: was nimmt Screen.render() heute entgegen?
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.network.Connection:send|channelRead0|genericsFtw" \
-            "net.minecraft.client.player.LocalPlayer:sendPosition|move\\(" \
-            "net.minecraft.client.multiplayer.MultiPlayerGameMode:startDestroyBlock|useItemOn|attack|interact|handleInventoryMouseClick|syncSelected|continueDestroyBlock|stopDestroyBlock|destroyBlock" \
+            "net.minecraft.network.Connection:send\\(|channelRead0|genericsFtw" \
+            "net.minecraft.client.player.LocalPlayer:sendPosition|sendIsSprinting|move\\(" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode:startDestroyBlock|useItemOn|attack|interact|handleInventoryMouseClick|ensureHasSentCarriedItem|continueDestroyBlock|stopDestroyBlock|destroyBlock" \
             "net.minecraft.world.entity.player.Inventory:SelectedSlot|getItem|getContainerSize" \
             "net.minecraft.network.CompressionDecoder:" \
             "net.minecraft.nbt.NbtAccounter:unlimited" \

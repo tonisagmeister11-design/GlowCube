@@ -15,28 +15,29 @@ import java.util.Set;
  * kommen aus einem anderen Verzeichnis.
  */
 public final class BlockListSetting extends Setting {
-    /** "block" oder "entity_type". */
-    private final String registry;
+    /** False = Bloecke, true = Wesen. Entscheidet nur, was das Fenster vorschlaegt. */
+    private boolean wesen;
     private final Set<String> ids = new LinkedHashSet<>();
 
     public BlockListSetting(String name, String description, String... defaults) {
-        this(name, description, "block", defaults);
-    }
-
-    public BlockListSetting(String name, String description, String registry, String... defaults) {
         super(name, description);
-        this.registry = registry;
         for (String id : defaults) {
             ids.add(normalise(id));
         }
     }
 
-    public String registry() {
-        return registry;
+    /**
+     * Stellt die Liste auf Wesen um. Bewusst kein zweiter Konstruktor: mit
+     * varargs waeren beide fuer denselben Aufruf gleich gut und der
+     * Uebersetzer weigert sich.
+     */
+    public BlockListSetting fuerWesen() {
+        this.wesen = true;
+        return this;
     }
 
     public boolean istWesen() {
-        return "entity_type".equals(registry);
+        return wesen;
     }
 
     private static String normalise(String id) {

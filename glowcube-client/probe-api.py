@@ -31,7 +31,10 @@ def main():
         klasse, _, muster = auftrag.partition(":")
         try:
             ausgabe = subprocess.run(
-                ["javap", "-classpath", classpath, klasse],
+                # -p zeigt auch private Methoden. Genau die sind oft die
+                # gesuchten: sendPosition und genericsFtw stehen nicht im
+                # oeffentlichen Teil, ein Mixin erreicht sie trotzdem.
+                ["javap", "-p", "-classpath", classpath, klasse],
                 capture_output=True, text=True, timeout=120).stdout
         except Exception as fehler:
             bericht.append(f"{klasse}: javap scheitert ({fehler})")

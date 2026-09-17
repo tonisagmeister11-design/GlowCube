@@ -52,13 +52,13 @@ public final class NoInteract extends Module {
 
     // ---------------------------------------------------------------- Wesen
     private final BlockListSetting schlagListe = register(new BlockListSetting("Nicht schlagen",
-            "Diese Wesen nicht angreifen", "entity_type"));
+            "Diese Wesen nicht angreifen").fuerWesen());
     private final ModeSetting schlagArt = register(new ModeSetting("Schlag-Liste",
             "Schwarz sperrt die Liste, Weiss erlaubt nur sie",
             "Schwarzliste", "Schwarzliste", "Weissliste", "Aus"));
 
     private final BlockListSetting wesenKlickListe = register(new BlockListSetting("Wesen nicht anklicken",
-            "Diese Wesen nicht benutzen", "entity_type"));
+            "Diese Wesen nicht benutzen").fuerWesen());
     private final ModeSetting wesenKlickArt = register(new ModeSetting("Wesen-Klick-Liste",
             "Schwarz sperrt die Liste, Weiss erlaubt nur sie",
             "Schwarzliste", "Schwarzliste", "Weissliste", "Aus"));
