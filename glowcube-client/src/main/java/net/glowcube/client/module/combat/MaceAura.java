@@ -13,6 +13,7 @@ import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.MaceItem;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.Comparator;
 import java.util.List;
@@ -154,7 +155,24 @@ public final class MaceAura extends Module {
         if (!erlaubt) {
             return false;
         }
-        return wesen.distanceTo(player()) <= range.get() && player().hasLineOfSight(wesen);
+        if (wesen.distanceTo(player()) > range.get()) {
+            return false;
+        }
+        // Nur feste Bloecke zaehlen als Sichtblocker - zu mehreren Punkten
+        // des Ziels gestrahlt, damit Gras oder der eigene Koerper nicht stoert.
+        AABB box = wesen.getBoundingBox();
+        Vec3 auge = player().getEyePosition();
+        Vec3[] punkte = {wesen.getEyePosition(), box.getCenter(),
+                new Vec3(box.getCenter().x, box.minY + 0.1, box.getCenter().z)};
+        for (Vec3 punkt : punkte) {
+            if (level().clip(new net.minecraft.world.level.ClipContext(auge, punkt,
+                    net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                    net.minecraft.world.level.ClipContext.Fluid.NONE, player()))
+                    .getType() == net.minecraft.world.phys.HitResult.Type.MISS) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void zuruecktauschen() {

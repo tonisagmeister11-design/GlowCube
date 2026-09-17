@@ -238,8 +238,38 @@ public final class KillAura extends Module {
         }
 
         double abstand = wesen.distanceTo(player());
-        boolean frei = player().hasLineOfSight(wesen);
+        boolean frei = sichtFrei(wesen);
         return frei ? abstand <= range.get() : abstand <= wallsRange.get();
+    }
+
+    /**
+     * Ob zwischen Auge und Ziel ein fester Block steht.
+     *
+     * <p>Bewusst nicht {@code hasLineOfSight}: das strahlt Auge zu Auge und
+     * schlaegt schon fehl, wenn das Mob im Gras steht oder sein eigener
+     * Koerper im Weg ist - dann wuerde KillAura mit WallsRange 0 gar nichts
+     * treffen, obwohl das Ziel direkt davor steht. Stattdessen wird nur auf
+     * feste Bloecke geprueft, und zu mehreren Punkten des Ziels (Augen,
+     * Mitte, Fuesse): ist auch nur einer frei, gilt das Ziel als sichtbar.
+     */
+    private boolean sichtFrei(LivingEntity wesen) {
+        Vec3 auge = player().getEyePosition();
+        AABB box = wesen.getBoundingBox();
+        Vec3[] punkte = {
+                wesen.getEyePosition(),
+                box.getCenter(),
+                new Vec3(box.getCenter().x, box.minY + 0.1, box.getCenter().z)
+        };
+        for (Vec3 punkt : punkte) {
+            var treffer = level().clip(new net.minecraft.world.level.ClipContext(
+                    auge, punkt,
+                    net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                    net.minecraft.world.level.ClipContext.Fluid.NONE, player()));
+            if (treffer.getType() == net.minecraft.world.phys.HitResult.Type.MISS) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
