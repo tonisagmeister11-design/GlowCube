@@ -13,6 +13,7 @@ import net.glowcube.client.module.movement.NoSlow;
 import net.glowcube.client.module.movement.Speed;
 import net.glowcube.client.module.movement.Step;
 import net.glowcube.client.module.misc.ClickGuiModule;
+import net.glowcube.client.module.misc.AutoPlay;
 import net.glowcube.client.module.misc.SeedHunt;
 import net.glowcube.client.module.misc.Spammer;
 import net.glowcube.client.module.movement.PacketFly;
@@ -94,6 +95,7 @@ public final class ModuleManager {
         add(new AntiAfk());
         add(new NoInteract());
         // Misc
+        add(new AutoPlay());
         add(new SeedHunt());
         add(new Spammer());
         add(new ClickGuiModule());

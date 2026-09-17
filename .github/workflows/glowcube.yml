@@ -125,7 +125,9 @@ jobs:
             "net.minecraft.core.component.DataComponents#FOOD" \
             "net.minecraft.world.entity.player.Player#getFoodData" \
             "net.minecraft.core.BlockPos#offset" \
-            "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
+            "net.minecraft.world.entity.monster.Enemy#" \
+            "net.minecraft.world.entity.Entity#distanceTo" \
+                        "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
             "net.minecraft.network.protocol.game.ServerboundPlayerActionPacket\$Action#START_DESTROY_BLOCK" \
             "net.minecraft.world.entity.player.Player#hasCorrectToolForDrops" \
             "net.minecraft.world.entity.player.Player#getDestroySpeed" \
