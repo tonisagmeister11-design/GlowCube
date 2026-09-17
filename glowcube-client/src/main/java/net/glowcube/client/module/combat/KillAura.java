@@ -41,6 +41,12 @@ public final class KillAura extends Module {
      * Criticals braucht das fuer die Einstellung "Nur mit KillAura".
      */
     private static KillAura instanz;
+    /**
+     * Von aussen vorgegebenes Einzelziel (AutoPlay setzt hier den Angreifer).
+     * Ist es gesetzt, greift KillAura nur dieses eine Wesen an - alles andere
+     * faellt durch die Zielpruefung. Null heisst: normale Zielauswahl.
+     */
+    private static LivingEntity erzwungenesZiel;
 
 
     // ---------------------------------------------------------- Zielauswahl
@@ -205,6 +211,11 @@ public final class KillAura extends Module {
         if (wesen == player() || !wesen.isAlive() || wesen.isInvulnerable()) {
             return false;
         }
+        // Ein vorgegebenes Ziel schliesst alles andere aus - so schlaegt
+        // AutoPlay nur den zurueck, der wirklich angegriffen hat.
+        if (erzwungenesZiel != null && wesen != erzwungenesZiel) {
+            return false;
+        }
         if (ignoreNamed.get() && wesen.hasCustomName()) {
             return false;
         }
@@ -278,6 +289,15 @@ public final class KillAura extends Module {
             return null;
         }
         return instanz.ziele.get(0);
+    }
+
+
+    /**
+     * Ein einzelnes Ziel erzwingen, oder mit {@code null} zur normalen
+     * Zielauswahl zurueck. AutoPlay nutzt das fuer reine Notwehr.
+     */
+    public static void nurZiel(LivingEntity ziel) {
+        erzwungenesZiel = ziel;
     }
 
 }

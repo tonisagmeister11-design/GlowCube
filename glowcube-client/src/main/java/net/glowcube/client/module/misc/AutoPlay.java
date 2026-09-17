@@ -13,9 +13,8 @@ import net.glowcube.client.util.BlockUtils;
 import net.glowcube.client.util.Rotations;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.monster.Enemy;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Comparator;
@@ -56,12 +55,10 @@ import java.util.List;
 public final class AutoPlay extends Module {
     private final BooleanSetting verteidigen = register(new BooleanSetting("Verteidigen",
             "Bei Angriff KillAura einschalten und aufs Schwert wechseln", true));
-    private final NumberSetting radius = register(new NumberSetting("Wach-Radius",
-            "In welcher Naehe eine Bedrohung zaehlt", 8, 3, 16, 1));
+    private final NumberSetting reichweite = register(new NumberSetting("Reichweite",
+            "Wie nah der Angreifer noch sein muss, um zurueckgeschlagen zu werden", 6, 3, 16, 1));
     private final NumberSetting nachlauf = register(new NumberSetting("Nachlauf",
-            "Ticks, die KillAura nach der letzten Bedrohung noch anbleibt", 40, 0, 200, 5));
-    private final BooleanSetting spielerAlsBedrohung = register(new BooleanSetting("Spieler zaehlen",
-            "Auch fremde Spieler in Nahkampfnaehe als Bedrohung werten", true));
+            "Ticks, die nach dem letzten Treffer noch zurueckgeschlagen wird", 60, 0, 200, 5));
     private final BooleanSetting essen = register(new BooleanSetting("Essen",
             "AutoEat mitlaufen lassen", true));
     private final BooleanSetting werkzeug = register(new BooleanSetting("Werkzeug",
@@ -80,7 +77,7 @@ public final class AutoPlay extends Module {
     private boolean killAuraVonUns;
     private boolean autoEatVonUns;
     private boolean autoToolVonUns;
-    private int bedrohungGesehen;
+    private LivingEntity aktiverAngreifer;
 
     public AutoPlay() {
         super("AutoPlay", "Haelt dich am Leben und verteidigt dich von selbst",
@@ -92,12 +89,19 @@ public final class AutoPlay extends Module {
         killAuraVonUns = false;
         autoEatVonUns = false;
         autoToolVonUns = false;
-        bedrohungGesehen = 0;
+        aktiverAngreifer = null;
+        if (inGame()) {
+            player().displayClientMessage(net.minecraft.network.chat.Component.literal(
+                    "[AutoPlay] Erkannter Stand: " + werkzeugStufe()
+                            + "-Werkzeug. Verteidigt jetzt bei Angriff, isst und waehlt Werkzeug."),
+                    false);
+        }
     }
 
     @Override
     public void onDisable() {
         // Alles zuruecknehmen, was wir eingeschaltet haben.
+        KillAura.nurZiel(null);
         setzeModul(KillAura.class, false, killAuraVonUns);
         setzeModul(AutoEat.class, false, autoEatVonUns);
         setzeModul(AutoTool.class, false, autoToolVonUns);
@@ -117,6 +121,7 @@ public final class AutoPlay extends Module {
         if (verteidigen.get()) {
             verteidigung();
         } else if (killAuraVonUns) {
+            KillAura.nurZiel(null);
             setzeModul(KillAura.class, false, true);
             killAuraVonUns = false;
         }
@@ -129,42 +134,47 @@ public final class AutoPlay extends Module {
     // ------------------------------------------------------------ Verteidigung
 
     private void verteidigung() {
-        if (bedrohungInDerNaehe()) {
-            bedrohungGesehen = nachlauf.getInt();
-        } else if (bedrohungGesehen > 0) {
-            bedrohungGesehen--;
-        }
+        LivingEntity angreifer = angreiferErmitteln();
 
-        boolean sollAn = bedrohungGesehen > 0;
         KillAura killAura = GlowCubeClient.modules().get(KillAura.class);
-        if (sollAn && !killAura.isEnabled()) {
-            killAura.setEnabled(true);
-            killAuraVonUns = true;
-        } else if (!sollAn && killAuraVonUns && killAura.isEnabled()) {
-            killAura.setEnabled(false);
-            killAuraVonUns = false;
+        if (angreifer != null) {
+            // Genau diesen einen zurueckschlagen - KillAura bekommt ihn als
+            // festes Ziel und laesst alles andere in Ruhe.
+            KillAura.nurZiel(angreifer);
+            if (!killAura.isEnabled()) {
+                killAura.setEnabled(true);
+                killAuraVonUns = true;
+            }
+            aktiverAngreifer = angreifer;
+        } else {
+            KillAura.nurZiel(null);
+            if (killAuraVonUns && killAura.isEnabled()) {
+                killAura.setEnabled(false);
+                killAuraVonUns = false;
+            }
+            aktiverAngreifer = null;
         }
     }
 
-    private boolean bedrohungInDerNaehe() {
-        double wach = radius.get();
-        double nahkampf = 4.5;
-        for (Entity wesen : level().entitiesForRendering()) {
-            if (wesen == player() || !wesen.isAlive()) {
-                continue;
-            }
-            // Monster gelten immer als Bedrohung.
-            if (wesen instanceof Enemy && wesen.distanceTo(player()) <= wach) {
-                return true;
-            }
-            // Fremde Spieler nur in Nahkampfnaehe - wer nah genug ist, um zu
-            // schlagen, ist selbst schuld.
-            if (spielerAlsBedrohung.get() && wesen instanceof Player
-                    && wesen.distanceTo(player()) <= nahkampf) {
-                return true;
-            }
+    /**
+     * Wer den Spieler zuletzt getroffen hat - Minecraft merkt sich das selbst.
+     * Gilt nur, wenn der Treffer nicht zu lange her ist, der Angreifer noch
+     * lebt und in Reichweite steht. Das ist reine Notwehr: kein Vorbeilaufen
+     * loest etwas aus, nur ein echter Schlag.
+     */
+    private LivingEntity angreiferErmitteln() {
+        LivingEntity letzter = player().getLastHurtByMob();
+        if (letzter == null || !letzter.isAlive() || letzter == player()) {
+            return null;
         }
-        return false;
+        int her = player().tickCount - player().getLastHurtByMobTimestamp();
+        if (her < 0 || her > nachlauf.getInt()) {
+            return null;
+        }
+        if (letzter.distanceTo(player()) > reichweite.get()) {
+            return null;
+        }
+        return letzter;
     }
 
     // ---------------------------------------------------------------- Sammeln
@@ -242,15 +252,56 @@ public final class AutoPlay extends Module {
         }
     }
 
+    // ------------------------------------------------- Ausruestung erkennen
+
+    /**
+     * Die hoechste Werkzeugstufe, die der Spieler schon dabei hat. Gelesen
+     * ueber die Item-IDs statt ueber ein Material - das bleibt ueber die
+     * Fassungen hinweg stabil, waehrend Minecraft die Werkzeug-Materialien
+     * mehrfach umgebaut hat.
+     */
+    private String werkzeugStufe() {
+        int besteSchaufel = 0;
+        int besteWaffe = 0;
+        for (int i = 0; i < player().getInventory().getContainerSize(); i++) {
+            ItemStack stack = player().getInventory().getItem(i);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+            int rang = stufeAus(id);
+            if (rang == 0) {
+                continue;
+            }
+            if (id.endsWith("_pickaxe")) {
+                besteSchaufel = Math.max(besteSchaufel, rang);
+            }
+            if (id.endsWith("_sword") || id.endsWith("_axe")) {
+                besteWaffe = Math.max(besteWaffe, rang);
+            }
+        }
+        int hoechste = Math.max(besteSchaufel, besteWaffe);
+        return NAME[hoechste];
+    }
+
+    private static final String[] NAME =
+            {"nichts", "Holz", "Gold", "Stein", "Eisen", "Diamant", "Netherit"};
+
+    private static int stufeAus(String id) {
+        if (id.startsWith("wooden_")) return 1;
+        if (id.startsWith("golden_")) return 2;
+        if (id.startsWith("stone_")) return 3;
+        if (id.startsWith("iron_")) return 4;
+        if (id.startsWith("diamond_")) return 5;
+        if (id.startsWith("netherite_")) return 6;
+        return 0;
+    }
+
     @Override
     public String hudSuffix() {
-        List<String> teile = new java.util.ArrayList<>();
-        if (bedrohungGesehen > 0) {
-            teile.add("Kampf");
+        if (aktiverAngreifer != null) {
+            return "Notwehr";
         }
-        if (essen.get()) {
-            teile.add("Essen");
-        }
-        return teile.isEmpty() ? "wacht" : String.join(",", teile);
+        return werkzeugStufe();
     }
 }
