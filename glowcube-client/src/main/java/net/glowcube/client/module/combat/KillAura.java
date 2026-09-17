@@ -86,9 +86,9 @@ public final class KillAura extends Module {
     private int wartet;
 
     public KillAura() {
-        instanz = this;
         super("KillAura", "Greift Ziele in Reichweite an", Category.COMBAT,
                 com.mojang.blaze3d.platform.InputConstants.KEY_R);
+        instanz = this;
     }
 
     @Override

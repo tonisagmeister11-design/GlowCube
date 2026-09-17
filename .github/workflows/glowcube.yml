@@ -128,6 +128,9 @@ jobs:
             "net.minecraft.world.item.BowItem#getPowerForTime" \
             "net.minecraft.world.entity.LivingEntity#getTicksUsingItem" \
             "net.minecraft.client.Options#getEffectiveRenderDistance" \
+            "net.minecraft.client.multiplayer.prediction.PredictiveAction#" \
+            "net.minecraft.world.level.block.entity.BedBlockEntity#" \
+            "net.minecraft.world.level.chunk.LevelChunk#getBlockEntities" \
             "net.minecraft.world.entity.Entity#getRootVehicle" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Pos#" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Rot#" \

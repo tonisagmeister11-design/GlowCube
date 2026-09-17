@@ -6,6 +6,7 @@ import net.glowcube.client.core.setting.BlockListSetting;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
+import net.glowcube.client.mixin.MultiPlayerGameModeAccessor;
 import net.glowcube.client.util.BlockUtils;
 import net.glowcube.client.util.Rotations;
 import net.minecraft.core.BlockPos;
@@ -360,14 +361,14 @@ public final class Nuker extends Module {
                 seite = Direction.UP;
             }
             final Direction gewaehlt = seite;
-            mc.gameMode.startPrediction(mc.level, folge -> new ServerboundPlayerActionPacket(
+            ((MultiPlayerGameModeAccessor) mc.gameMode).glowcube$vorhersagen(mc.level, folge -> new ServerboundPlayerActionPacket(
                     ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, pos, gewaehlt, folge));
             if (schwingen.get()) {
                 player().swing(InteractionHand.MAIN_HAND);
             } else {
                 player().connection.send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
             }
-            mc.gameMode.startPrediction(mc.level, folge -> new ServerboundPlayerActionPacket(
+            ((MultiPlayerGameModeAccessor) mc.gameMode).glowcube$vorhersagen(mc.level, folge -> new ServerboundPlayerActionPacket(
                     ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, pos, gewaehlt, folge));
         } else {
             BlockUtils.abbauen(pos, schwingen.get());

@@ -8,7 +8,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
-import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BedBlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -91,18 +93,34 @@ public final class PlayerUtils {
                 }
             }
 
-            // Betten im Nether und im End sind Bomben. Sechs Bloecke im
-            // Umkreis sind die Reichweite, die auch das Original absucht.
-            if (!mc().level.dimensionType().bedWorks()) {
-                BlockPos mitte = mc().player.blockPosition();
-                int weite = 6;
-                for (BlockPos pos : BlockPos.betweenClosed(
-                        mitte.offset(-weite, -weite, -weite), mitte.offset(weite, weite, weite))) {
-                    if (mc().level.getBlockState(pos).getBlock() instanceof BedBlock) {
-                        float schaden = DamageUtils.bettSchaden(mc().player,
-                                new Vec3(pos.getX(), pos.getY(), pos.getZ()));
-                        if (schaden > schlimmstes) {
-                            schlimmstes = schaden;
+            // Betten sind ausserhalb der Oberwelt Bomben. Das Original
+            // fragt dafuer eine Welteigenschaft ab, deren Name sich zwischen
+            // den Fassungen bewegt; die Dimension sagt in Vanilla dasselbe.
+            //
+            // Gesucht wird ueber die Blockentities der umliegenden Chunks
+            // statt ueber einen Wuerfel aus Bloecken - ein Bett hat eine,
+            // und davon gibt es im Umkreis eine Handvoll statt zweitausend
+            // Abfragen je Tick.
+            if (!mc().level.dimension().equals(Level.OVERWORLD)) {
+                int chunkX = mc().player.blockPosition().getX() >> 4;
+                int chunkZ = mc().player.blockPosition().getZ() >> 4;
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (!mc().level.getChunkSource().hasChunk(chunkX + dx, chunkZ + dz)) {
+                            continue;
+                        }
+                        for (BlockEntity blockEntity
+                                : mc().level.getChunk(chunkX + dx, chunkZ + dz)
+                                        .getBlockEntities().values()) {
+                            if (!(blockEntity instanceof BedBlockEntity)) {
+                                continue;
+                            }
+                            BlockPos pos = blockEntity.getBlockPos();
+                            float schaden = DamageUtils.bettSchaden(mc().player,
+                                    new Vec3(pos.getX(), pos.getY(), pos.getZ()));
+                            if (schaden > schlimmstes) {
+                                schlimmstes = schaden;
+                            }
                         }
                     }
                 }
