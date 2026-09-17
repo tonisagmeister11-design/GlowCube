@@ -10,6 +10,7 @@ import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.player.AutoEat;
 import net.glowcube.client.module.player.AutoTool;
 import net.glowcube.client.util.BlockUtils;
+import net.glowcube.client.util.Crafting;
 import net.glowcube.client.util.Rotations;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
