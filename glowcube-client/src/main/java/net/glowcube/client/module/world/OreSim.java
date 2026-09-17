@@ -73,6 +73,7 @@ public final class OreSim extends Module {
     private final Map<Long, Map<Erz.Art, Set<BlockPos>>> proChunk = new ConcurrentHashMap<>();
     private Map<ResourceKey<Biome>, List<Erz>> verzeichnis;
     private Long seedInBenutzung;
+    private boolean erzGemeldet;
 
     public OreSim() {
         super("OreSim", "Rechnet aus dem Weltseed, wo die Erze liegen", Category.WORLD,
@@ -122,6 +123,7 @@ public final class OreSim extends Module {
         }
         seedInBenutzung = seed;
         proChunk.clear();
+        erzGemeldet = false;
         // Das Verzeichnis kommt aus Minecrafts eigener Weltvorlage, und die
         // aufzubauen dauert einen Augenblick. Besser ein Wort dazu als ein
         // Spiel, das scheinbar grundlos haengt.
@@ -192,6 +194,21 @@ public final class OreSim extends Module {
             int cz = ChunkPos.getZ(schluessel);
             return Math.abs(cx - mitte.x) > grenze || Math.abs(cz - mitte.z) > grenze;
         });
+
+        // Einmal Rueckmeldung geben, sobald wirklich Erze berechnet wurden -
+        // sonst weiss man nicht, ob es laeuft.
+        if (!erzGemeldet) {
+            int summe = 0;
+            for (var chunk : proChunk.values()) {
+                for (var stellen : chunk.values()) {
+                    summe += stellen.size();
+                }
+            }
+            if (summe > 0) {
+                erzGemeldet = true;
+                melde(summe + " Erzbloecke berechnet und markiert (Seed " + seed + ").");
+            }
+        }
     }
 
     // -------------------------------------------------------------- Rechnung

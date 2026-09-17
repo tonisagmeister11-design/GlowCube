@@ -116,6 +116,7 @@ jobs:
             "net.minecraft.world.item.MaceItem#" \
             "net.minecraft.world.entity.AgeableMob#isBaby" \
             "net.minecraft.client.player.LocalPlayer#modifyInput" \
+            "net.minecraft.world.phys.Vec2#scale" \
             "net.minecraft.client.player.LocalPlayer#isUsingItem" \
             "net.minecraft.world.food.FoodData#getFoodLevel" \
             "net.minecraft.world.food.FoodData#needsFood" \

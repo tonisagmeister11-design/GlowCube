@@ -64,7 +64,7 @@ public final class AutoPlay extends Module {
     private final BooleanSetting werkzeug = register(new BooleanSetting("Werkzeug",
             "AutoTool mitlaufen lassen", true));
     private final BooleanSetting sammeln = register(new BooleanSetting("Sammeln",
-            "Nur das in Reichweite abbauen, was laut Bedarf fehlt", false));
+            "Nur das in Reichweite abbauen, was laut Bedarf fehlt", true));
     private final BooleanSetting laufen = register(new BooleanSetting("Laufen",
             "Zum fehlenden Rohstoff hinlaufen (experimentell, offenes Gelaende)", false));
     private final NumberSetting suchweite = register(new NumberSetting("Suchweite",
