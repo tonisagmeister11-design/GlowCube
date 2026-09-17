@@ -11,6 +11,7 @@ import net.glowcube.client.module.player.AutoEat;
 import net.glowcube.client.module.player.AutoTool;
 import net.glowcube.client.util.BlockUtils;
 import net.glowcube.client.util.Crafting;
+import net.glowcube.client.util.Navigation;
 import net.glowcube.client.util.Rotations;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -64,6 +65,10 @@ public final class AutoPlay extends Module {
             "AutoTool mitlaufen lassen", true));
     private final BooleanSetting sammeln = register(new BooleanSetting("Sammeln",
             "Nur das in Reichweite abbauen, was laut Bedarf fehlt", false));
+    private final BooleanSetting laufen = register(new BooleanSetting("Laufen",
+            "Zum fehlenden Rohstoff hinlaufen (experimentell, offenes Gelaende)", false));
+    private final NumberSetting suchweite = register(new NumberSetting("Suchweite",
+            "Wie weit nach dem Rohstoff gesucht wird, um hinzulaufen", 20, 8, 48, 1));
     private final BooleanSetting craften = register(new BooleanSetting("Craften",
             "Aus dem Gesammelten Planken, Stiele, Werkbank und Werkzeug herstellen", true));
     private final BooleanSetting werkbankStellen = register(new BooleanSetting("Werkbank aufstellen",
@@ -91,6 +96,8 @@ public final class AutoPlay extends Module {
     private int bHacke, bSchwert, bAxt, bHolz, bPlanken, bStiele, bStein, bZiel = 3;
     private boolean hatWerkbank;
     private int craftPause;
+    private BlockPos laufZiel;
+    private int suchPause;
 
     public AutoPlay() {
         super("AutoPlay", "Haelt dich am Leben und verteidigt dich von selbst",
@@ -118,6 +125,7 @@ public final class AutoPlay extends Module {
     @Override
     public void onDisable() {
         // Alles zuruecknehmen, was wir eingeschaltet haben.
+        Navigation.stopp();
         KillAura.nurZiel(null);
         setzeModul(KillAura.class, false, killAuraVonUns);
         setzeModul(AutoEat.class, false, autoEatVonUns);
@@ -146,7 +154,14 @@ public final class AutoPlay extends Module {
         // Erst schauen, was fehlt - dann nur danach sammeln.
         bedarfErmitteln();
         if (sammeln.get() && (holzSammeln || steinSammeln)) {
-            sammelSchritt();
+            if (etwasInReichweite()) {
+                Navigation.stopp();
+                sammelSchritt();
+            } else if (laufen.get()) {
+                zumRohstoffLaufen();
+            }
+        } else {
+            Navigation.stopp();
         }
         if (craften.get()) {
             craftSchritt();
@@ -236,6 +251,84 @@ public final class AutoPlay extends Module {
             Rotations.rotate(Rotations.getYaw(ziel), Rotations.getPitch(ziel), 30,
                     () -> BlockUtils.abbauen(ziel, true));
         }
+    }
+
+    /** Liegt gerade ein gesuchter Block in Abbau-Reichweite? */
+    private boolean etwasInReichweite() {
+        BlockPos mitte = player().blockPosition();
+        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+        for (int dx = -5; dx <= 5; dx++) {
+            for (int dy = -5; dy <= 5; dy++) {
+                for (int dz = -5; dz <= 5; dz++) {
+                    probe.set(mitte.getX() + dx, mitte.getY() + dy, mitte.getZ() + dz);
+                    BlockState zustand = level().getBlockState(probe);
+                    if (zustand.isAir() || !gesucht(zustand)) {
+                        continue;
+                    }
+                    double abstand = player().getEyePosition().distanceToSqr(
+                            probe.getX() + 0.5, probe.getY() + 0.5, probe.getZ() + 0.5);
+                    if (abstand <= 20.25 && BlockUtils.kannAbbauen(probe)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Zum naechsten gesuchten Block laufen. Das Ziel wird nur ab und zu neu
+     * gesucht (die Suche ueber ein grosses Feld ist teuer) und dann
+     * angelaufen, bis es erreicht oder verschwunden ist.
+     */
+    private void zumRohstoffLaufen() {
+        // Ziel noch gueltig?
+        if (laufZiel != null) {
+            BlockState z = level().getBlockState(laufZiel);
+            if (z.isAir() || !gesucht(z)) {
+                laufZiel = null;
+            }
+        }
+        if (laufZiel == null && suchPause <= 0) {
+            laufZiel = naechsterRohstoff();
+            suchPause = 20;
+        }
+        if (suchPause > 0) {
+            suchPause--;
+        }
+        if (laufZiel == null) {
+            Navigation.stopp();
+            return;
+        }
+        Navigation.laufe(net.minecraft.world.phys.Vec3.atCenterOf(laufZiel));
+    }
+
+    /** Der naechste gesuchte Block im weiteren Umkreis - oder null. */
+    private BlockPos naechsterRohstoff() {
+        BlockPos mitte = player().blockPosition();
+        int w = suchweite.getInt();
+        int h = Math.min(w, 12);
+        BlockPos bester = null;
+        double naechste = Double.MAX_VALUE;
+        BlockPos.MutableBlockPos probe = new BlockPos.MutableBlockPos();
+        for (int dx = -w; dx <= w; dx++) {
+            for (int dz = -w; dz <= w; dz++) {
+                for (int dy = -h; dy <= h; dy++) {
+                    probe.set(mitte.getX() + dx, mitte.getY() + dy, mitte.getZ() + dz);
+                    BlockState zustand = level().getBlockState(probe);
+                    if (zustand.isAir() || !gesucht(zustand)) {
+                        continue;
+                    }
+                    double abstand = probe.distToCenterSqr(
+                            player().getX(), player().getY(), player().getZ());
+                    if (abstand < naechste) {
+                        naechste = abstand;
+                        bester = probe.immutable();
+                    }
+                }
+            }
+        }
+        return bester;
     }
 
     private boolean gesucht(BlockState zustand) {
