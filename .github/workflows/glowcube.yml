@@ -104,6 +104,7 @@ jobs:
             "net.minecraft.world.inventory.ClickType#" \
             "net.minecraft.world.level.Level#isInSpawnableBounds" \
             "net.minecraft.world.level.CollisionGetter#isUnobstructed" \
+            "net.minecraft.world.level.Level#isClientSide()" \
             "net.minecraft.client.multiplayer.ClientPacketListener#sendChat" \
             "net.minecraft.client.multiplayer.ClientPacketListener#sendCommand" \
             "net.minecraft.client.KeyMapping#setDown" \

@@ -33,7 +33,7 @@ public abstract class LevelChunkMixin {
         // Im Einzelspieler laeuft derselbe Code auch im eingebauten Server.
         // Dessen Chunks gehen Search nichts an - sonst landen Fundstellen
         // aus einer anderen Dimension in derselben Liste.
-        if (level != null && level.isClientSide) {
+        if (level != null && level.isClientSide()) {
             Search.blockGeaendert(pos, zustand);
         }
     }
