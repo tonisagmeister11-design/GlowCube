@@ -8,21 +8,37 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Timer. Der Taktgeber rechnet je Frame aus, wie viele Spiel-Ticks faellig
- * sind, und gibt die Zahl aus advanceTime zurueck. Wird diese Zahl mit dem
- * Faktor vervielfacht, laeuft die Welt entsprechend schneller oder langsamer.
+ * sind, und gibt die Zahl zurueck. Wird sie mit dem Faktor vervielfacht,
+ * laeuft die Welt entsprechend schneller oder langsamer.
  *
  * Nachbau des Timer aus BleachHack (GPL-3.0), dort MixinRenderTickCounter.
- * Fuer 1.21.11 sitzt derselbe Eingriff an DeltaTracker.Timer.advanceTime.
  *
- * Der Uebertrag merkt sich den Nachkommarest, damit auch krumme Faktoren wie
- * 1,5 auf Dauer stimmen und nicht dauernd abgerundet werden.
+ * <p>Der Name der Zielmethode hat sich mit den Fassungen bewegt: bis 1.21.x
+ * hiess sie {@code advanceTime(long, boolean)}, ab 26.x
+ * {@code advanceGameTime(long)}. Beide Eingriffe stehen deshalb hier, jeder
+ * mit {@code require = 0} - so greift genau der, dessen Methode es in der
+ * gebauten Fassung wirklich gibt, und der andere faellt still weg.
+ *
+ * <p>Der Uebertrag merkt sich den Nachkommarest, damit auch krumme Faktoren
+ * wie 1,5 auf Dauer stimmen und nicht dauernd abgerundet werden.
  */
 @Mixin(targets = "net.minecraft.client.DeltaTracker$Timer")
 public final class DeltaTrackerTimerMixin {
     private static float glowcube$uebertrag;
 
-    @Inject(method = "advanceTime(JZ)I", at = @At("RETURN"), cancellable = true)
-    private void glowcube$beschleunigen(long millis, boolean run, CallbackInfoReturnable<Integer> info) {
+    // Bis 1.21.x
+    @Inject(method = "advanceTime(JZ)I", at = @At("RETURN"), cancellable = true, require = 0)
+    private void glowcube$beschleunigenAlt(long millis, boolean run, CallbackInfoReturnable<Integer> info) {
+        glowcube$anpassen(info);
+    }
+
+    // Ab 26.x
+    @Inject(method = "advanceGameTime(J)I", at = @At("RETURN"), cancellable = true, require = 0)
+    private void glowcube$beschleunigenNeu(long millis, CallbackInfoReturnable<Integer> info) {
+        glowcube$anpassen(info);
+    }
+
+    private static void glowcube$anpassen(CallbackInfoReturnable<Integer> info) {
         float faktor = Timer.factor();
         if (faktor == 1.0f) {
             return;

@@ -9,7 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BedBlockEntity;
+import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -112,7 +112,11 @@ public final class PlayerUtils {
                         for (BlockEntity blockEntity
                                 : mc().level.getChunk(chunkX + dx, chunkZ + dz)
                                         .getBlockEntities().values()) {
-                            if (!(blockEntity instanceof BedBlockEntity)) {
+                            // Frueher wurde auf BedBlockEntity geprueft. Ab 26.x
+                            // heisst die Klasse nicht mehr so; der Blockzustand
+                            // sagt in jeder Fassung dasselbe und uebersetzt
+                            // ueberall - ein Bett ist ein BedBlock.
+                            if (!(blockEntity.getBlockState().getBlock() instanceof BedBlock)) {
                                 continue;
                             }
                             BlockPos pos = blockEntity.getBlockPos();

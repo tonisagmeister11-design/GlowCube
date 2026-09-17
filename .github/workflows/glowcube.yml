@@ -96,18 +96,16 @@ jobs:
       - name: Nachfolger-Namen fuer 26.x ausleuchten
         continue-on-error: true
         run: |
-          echo "== Slot-Klick und Erz-Konfiguration =="
+          echo "== ContainerInput (Slot-Klick ab 26.x) =="
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.client.multiplayer.MultiPlayerGameMode:Click|Slot|Menu|Button|Creative|Container|Inventory|Recipe|arried" \
-            "net.minecraft.world.inventory.ClickAction:" \
-            "net.minecraft.network.protocol.game.ServerboundContainerClickPacket:" \
-            "net.minecraft.world.level.levelgen.feature.ScatteredOreFeature:" \
-            "net.minecraft.world.level.levelgen.feature.OreFeature:" \
-            "net.minecraft.world.level.levelgen.feature.Feature:ORE|SCATTERED" || true
-          echo "== Namenssuche nach der Erz-Konfiguration =="
+            "net.minecraft.world.inventory.ContainerInput:" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode:handleContainerInput" \
+            "net.minecraft.world.level.levelgen.feature.BlockReplacement:" \
+            "net.minecraft.world.level.levelgen.feature.configurations.ScatteredOreConfiguration:" || true
+          echo "== Erz-Konfiguration ab 26.3 =="
           python3 probe-search.py build/classpath.txt \
-            OreFeatureConfig OreFeatureConfiguration OreConfig FeatureConfig \
-            OreBand OreVein ClickType MenuClick || true
+            ContainerInput BlockReplacement Replacement \
+            "configurations.Ore" OreConfiguration || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
