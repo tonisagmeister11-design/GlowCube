@@ -209,7 +209,7 @@ public final class Erz {
             // Ein Erz, das es in dieser Fassung nicht gibt, faellt weg -
             // besser als ein Modul, das gar nicht mehr startet.
             net.glowcube.client.GlowCubeClient.LOGGER.warn(
-                    "OreSim: {} nicht im Verzeichnis ({})", schluessel.location(), fehler.toString());
+                    "OreSim: {} nicht im Verzeichnis ({})", schluessel, fehler.toString());
         }
     }
 }
