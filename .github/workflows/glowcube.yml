@@ -96,18 +96,18 @@ jobs:
       - name: Nachfolger-Namen fuer 26.x ausleuchten
         continue-on-error: true
         run: |
-          echo "== volle Signaturlisten =="
+          echo "== Slot-Klick und Erz-Konfiguration =="
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.client.multiplayer.MultiPlayerGameMode:" \
-            "net.minecraft.client.DeltaTracker\$Timer:" \
-            "net.minecraft.data.registries.VanillaRegistries:" \
+            "net.minecraft.client.multiplayer.MultiPlayerGameMode:Click|Slot|Menu|Button|Creative|Container|Inventory|Recipe|arried" \
+            "net.minecraft.world.inventory.ClickAction:" \
+            "net.minecraft.network.protocol.game.ServerboundContainerClickPacket:" \
+            "net.minecraft.world.level.levelgen.feature.ScatteredOreFeature:" \
+            "net.minecraft.world.level.levelgen.feature.OreFeature:" \
             "net.minecraft.world.level.levelgen.feature.Feature:ORE|SCATTERED" || true
-          echo "== Namenssuche nach ausgetauschten Klassen =="
+          echo "== Namenssuche nach der Erz-Konfiguration =="
           python3 probe-search.py build/classpath.txt \
-            Click ClickType ClickAction SlotClick \
-            Bed BedBlock \
-            OreConfig OreConfiguration ScatteredOre \
-            Timer DeltaTracker || true
+            OreFeatureConfig OreFeatureConfiguration OreConfig FeatureConfig \
+            OreBand OreVein ClickType MenuClick || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
