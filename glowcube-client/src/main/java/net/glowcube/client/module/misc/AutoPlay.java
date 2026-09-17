@@ -63,6 +63,8 @@ public final class AutoPlay extends Module {
             "AutoTool mitlaufen lassen", true));
     private final BooleanSetting sammeln = register(new BooleanSetting("Sammeln",
             "Nur das in Reichweite abbauen, was laut Bedarf fehlt", false));
+    private final BooleanSetting craften = register(new BooleanSetting("Craften",
+            "Aus dem Gesammelten Planken, Stiele, Werkbank und Werkzeug herstellen", true));
     private final ModeSetting zielStufe = register(new ModeSetting("Zielstufe",
             "Bis zu welcher Werkzeugstufe von selbst gesammelt wird",
             "Stein", "Holz", "Stein"));
@@ -83,6 +85,9 @@ public final class AutoPlay extends Module {
     private boolean holzSammeln;
     private boolean steinSammeln;
     private java.util.List<String> fehltListe = java.util.List.of();
+    private int bHacke, bSchwert, bAxt, bHolz, bPlanken, bStiele, bStein, bZiel = 3;
+    private boolean hatWerkbank;
+    private int craftPause;
 
     public AutoPlay() {
         super("AutoPlay", "Haelt dich am Leben und verteidigt dich von selbst",
@@ -101,7 +106,9 @@ public final class AutoPlay extends Module {
                     ? "Nichts fehlt - alles beisammen."
                     : "Es fehlt: " + String.join(", ", fehltListe) + ".";
             player().displayClientMessage(net.minecraft.network.chat.Component.literal(
-                    "[AutoPlay] Stand: " + werkzeugStufe() + "-Werkzeug. " + was), false);
+                    "[AutoPlay] Stand: " + werkzeugStufe() + "-Werkzeug. " + was
+                            + " Planken/Stiele/Werkbank craftet es selbst; fuer Werkzeug"
+                            + " eine Werkbank aufstellen und anklicken."), false);
         }
     }
 
@@ -137,6 +144,9 @@ public final class AutoPlay extends Module {
         bedarfErmitteln();
         if (sammeln.get() && (holzSammeln || steinSammeln)) {
             sammelSchritt();
+        }
+        if (craften.get()) {
+            craftSchritt();
         }
     }
 
@@ -242,6 +252,67 @@ public final class AutoPlay extends Module {
             "redstone_ore", "deepslate_redstone_ore", "lapis_ore", "deepslate_lapis_ore",
             "diamond_ore", "deepslate_diamond_ore");
 
+    // ---------------------------------------------------------------- Craften
+
+    /**
+     * Ein Craft-Schritt je Aufruf, gedrosselt. Reihenfolge: erst die
+     * Zwei-mal-zwei-Sachen im Rucksack (Planken, Stiele, Werkbank), die
+     * jederzeit gehen; die Werkzeuge nur, wenn eine Werkbank offen ist.
+     *
+     * <p>Das ehrliche Bild: das Craften selbst ist echt und laeuft von
+     * selbst. Die Werkbank aufstellen und anklicken macht AutoPlay noch
+     * nicht - das ist der eine Handgriff, der bleibt: Werkbank setzen,
+     * rechtsklick, und AutoPlay fuellt sie und nimmt das Werkzeug heraus.
+     */
+    private void craftSchritt() {
+        if (craftPause > 0) {
+            craftPause--;
+            return;
+        }
+        boolean werkzeugFehlt = bHacke < bZiel || bSchwert < bZiel || bAxt < bZiel;
+
+        // Werkbank offen -> das naechste fehlende Werkzeug bauen.
+        if (player().containerMenu instanceof net.minecraft.world.inventory.CraftingMenu) {
+            Crafting.Rezept ziel = naechstesWerkzeug();
+            if (ziel != null) {
+                Crafting.craften(ziel);
+                craftPause = 10;
+            }
+            return;
+        }
+
+        if (!werkzeugFehlt) {
+            return;
+        }
+
+        // Zwei-mal-zwei im Rucksack - in sinnvoller Reihenfolge, eins je Schritt.
+        if (bPlanken < 4 && bHolz >= 1) {
+            Crafting.craften(Crafting.PLANKEN_AUS_HOLZ);
+            craftPause = 10;
+        } else if (bStiele < 2 && bPlanken >= 2) {
+            Crafting.craften(Crafting.STIELE);
+            craftPause = 10;
+        } else if (!hatWerkbank && bPlanken >= 4) {
+            Crafting.craften(Crafting.WERKBANK);
+            craftPause = 10;
+        }
+    }
+
+    /** Das erste Werkzeug unter der Zielstufe, mit passendem Rezept. */
+    private Crafting.Rezept naechstesWerkzeug() {
+        boolean stein = bZiel >= 3;
+        if (bHacke < bZiel) {
+            return stein && bHacke >= 1 ? Crafting.steinHacke : Crafting.holzHacke;
+        }
+        if (bSchwert < bZiel) {
+            return stein && bSchwert >= 1 ? Crafting.steinSchwert : Crafting.holzSchwert;
+        }
+        if (bAxt < bZiel) {
+            return stein && bAxt >= 1 ? Crafting.steinAxt : Crafting.holzAxt;
+        }
+        return null;
+    }
+
     // ------------------------------------------------------- Bedarfs-Check
 
     /**
@@ -266,6 +337,7 @@ public final class AutoPlay extends Module {
         int stiele = 0;
         int stein = 0;
         int essenZahl = 0;
+        hatWerkbank = false;
 
         for (int i = 0; i < player().getInventory().getContainerSize(); i++) {
             ItemStack stack = player().getInventory().getItem(i);
@@ -289,11 +361,18 @@ public final class AutoPlay extends Module {
                 stiele += menge;
             } else if (id.equals("cobblestone") || id.equals("cobbled_deepslate")) {
                 stein += menge;
+            } else if (id.equals("crafting_table")) {
+                hatWerkbank = true;
             }
             if (stack.get(net.minecraft.core.component.DataComponents.FOOD) != null) {
                 essenZahl += menge;
             }
         }
+
+        // Fuer den Craft-Schritt merken.
+        bHacke = hacke; bSchwert = schwert; bAxt = axt;
+        bHolz = holz; bPlanken = planken; bStiele = stiele; bStein = stein;
+        bZiel = ziel;
 
         java.util.List<String> fehlt = new java.util.ArrayList<>();
         holzSammeln = false;

@@ -131,6 +131,12 @@ jobs:
             "net.minecraft.world.entity.LivingEntity#getLastHurtByMobTimestamp" \
             "net.minecraft.core.registries.BuiltInRegistries#ITEM" \
             "net.minecraft.world.item.ItemStack#getCount" \
+            "net.minecraft.world.inventory.AbstractContainerMenu#getSlot" \
+            "net.minecraft.world.inventory.AbstractContainerMenu#slots" \
+            "net.minecraft.world.inventory.Slot#getItem" \
+            "net.minecraft.world.inventory.CraftingMenu#" \
+            "net.minecraft.world.inventory.InventoryMenu#" \
+            "net.minecraft.world.inventory.ClickType#QUICK_MOVE" \
                         "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
             "net.minecraft.network.protocol.game.ServerboundPlayerActionPacket\$Action#START_DESTROY_BLOCK" \
             "net.minecraft.world.entity.player.Player#hasCorrectToolForDrops" \
