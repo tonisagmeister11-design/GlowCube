@@ -4,6 +4,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.glowcube.client.module.combat.AutoTotem;
 import net.glowcube.client.module.combat.Criticals;
 import net.glowcube.client.module.combat.KillAura;
+import net.glowcube.client.module.combat.MaceAura;
 import net.glowcube.client.module.movement.AutoSprint;
 import net.glowcube.client.module.movement.AutoWalk;
 import net.glowcube.client.module.movement.Scaffold;
@@ -86,6 +87,7 @@ public final class ModuleManager {
         add(new Scaffold());
         // Combat
         add(new KillAura());
+        add(new MaceAura());
         add(new Criticals());
         add(new AutoTotem());
         // Player
