@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import net.glowcube.client.GlowCubeClient;
 import net.glowcube.client.core.setting.Setting;
+import net.glowcube.client.gui.Layout;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -43,6 +44,9 @@ public final class ConfigManager {
             moduleTree.add(module.name(), entry);
         }
         root.add("modules", moduleTree);
+        // Die Anordnung der ClickGUI-Fenster gehoert mit in die Datei -
+        // sonst liegen sie nach jedem Neustart wieder im Raster.
+        root.add("gui", Layout.speichern());
 
         try {
             Files.createDirectories(file.getParent());
@@ -59,6 +63,9 @@ public final class ConfigManager {
         try {
             String text = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
             JsonObject root = JsonParser.parseString(text).getAsJsonObject();
+            if (root.has("gui")) {
+                Layout.laden(root.getAsJsonObject("gui"));
+            }
             if (!root.has("modules")) {
                 return;
             }

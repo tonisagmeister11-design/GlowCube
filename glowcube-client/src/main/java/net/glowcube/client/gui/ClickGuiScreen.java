@@ -8,8 +8,8 @@ import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.core.setting.Setting;
+import net.glowcube.client.core.setting.TextListSetting;
 import net.glowcube.client.integration.SeedBridge;
-import net.glowcube.client.util.Anim;
 import net.glowcube.client.util.ColorUtil;
 import net.glowcube.client.util.Render2D;
 import net.glowcube.client.util.Theme;
@@ -22,52 +22,67 @@ import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 
-/** Das Fenster von GlowCube. */
+/**
+ * Das ClickGUI - nach dem Vorbild von Meteor Client aufgebaut.
+ *
+ * <p>Der Unterschied zur frueheren Fassung ist nicht die Farbe, sondern die
+ * Form: statt eines festen Panels mit einer Kategorieleiste gibt es jetzt
+ * <b>mehrere Fenster</b>, eines je Kategorie, frei verschiebbar und einzeln
+ * einklappbar. Wer nur Combat und Render braucht, raeumt den Rest zur Seite
+ * und findet ihn beim naechsten Start genauso wieder - die Anordnung steht
+ * in der Konfigurationsdatei.
+ *
+ * <p>Bedienung, ebenfalls wie dort:
+ * <ul>
+ *   <li>Linksklick auf eine Zeile schaltet das Modul.</li>
+ *   <li>Rechtsklick klappt seine Einstellungen auf und zu.</li>
+ *   <li>Mittelklick belegt die Taste neu.</li>
+ *   <li>Die Titelleiste zieht das Fenster, ein Klick darauf klappt es ein.</li>
+ *   <li>Tippen sucht - dann zeigt ein einzelnes Fenster alle Treffer.</li>
+ * </ul>
+ */
 public final class ClickGuiScreen extends Screen {
-    private static final int PANEL_W = 478;
-    private static final int PANEL_H = 338;
-    private static final int HEADER_H = 46;
-    private static final int RAIL_W = 122;
-    private static final int CARD_H = 34;
-    private static final int ROW_H = 16;
-    private static final int GAP = 5;
-    private static final int PAD = 12;
-    private static final int FOOTER_H = 20;
+    private static final float FENSTER_B = 150.0f;
+    private static final float TITEL_H = 20.0f;
+    private static final float ZEILE_H = 16.0f;
+    private static final float REGLER_H = 24.0f;
+    private static final float RAND = 6.0f;
 
-    // Bleibt zwischen zwei Oeffnungen stehen - man findet sich schneller zurecht.
-    private static Category category = Category.RENDER;
-    private static final Set<String> expanded = new HashSet<>();
-    private static String search = "";
+    /** Was gerade gezogen wird - Fenster oder Regler, nie beides. */
+    private Fenster gezogen;
+    private float griffX;
+    private float griffY;
+    private NumberSetting regler;
+    private float reglerX;
+    private float reglerBreite;
 
-    private final Anim opening = new Anim(0.0f, 14.0f);
-    private final Map<String, Anim> toggles = new HashMap<>();
-    private final Map<Category, Anim> tabs = new HashMap<>();
+    /** Modul, das gerade auf eine neue Taste wartet. */
+    private Module belegt;
 
-    private float scroll;
-    private float scrollTarget;
-    private Module binding;
-    private NumberSetting dragging;
+    private String suche = "";
+    private boolean sucheAktiv;
 
-    private int panelX;
-    private int panelY;
+    /** Anklickbare Flaechen dieses Bildes - Zeichnen und Klicken aus einer Quelle. */
+    private final List<Treffer> treffer = new ArrayList<>();
 
-    public ClickGuiScreen() {
-        super(Component.literal(GlowCubeClient.NAME));
+    private record Treffer(float x, float y, float w, float h, Module module, Setting setting,
+                           Fenster fenster, Art art) {
     }
 
-    @Override
-    protected void init() {
-        opening.snap(0.0f);
-        opening.target(1.0f);
-        panelX = (width - PANEL_W) / 2;
-        panelY = (height - PANEL_H) / 2;
+    private enum Art {
+        TITEL,
+        MODUL,
+        SCHALTER,
+        REGLER,
+        AUSWAHL,
+        LISTE
+    }
+
+    public ClickGuiScreen() {
+        super(Component.literal("GlowCube"));
     }
 
     @Override
@@ -79,464 +94,375 @@ public final class ClickGuiScreen extends Screen {
 
     @Override
     public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        float progress = Anim.easeOut(opening.value());
-        panelX = (width - PANEL_W) / 2;
-        panelY = (height - PANEL_H) / 2;
-        // Faehrt beim Oeffnen ein paar Pixel hoch und blendet dabei ein.
-        float lift = (1.0f - progress) * 14.0f;
-        float y = panelY + lift;
+        treffer.clear();
+        Render2D.rect(gfx, 0, 0, width, height, Theme.BACKDROP);
 
-        Render2D.rect(gfx, 0, 0, width, height, ColorUtil.fade(Theme.BACKDROP, progress));
+        kopfzeile(gfx);
 
-        Render2D.glow(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.accentStart(), progress), 5);
-        Render2D.roundedRect(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.PANEL, progress));
-        Render2D.roundedOutline(gfx, panelX, y, PANEL_W, PANEL_H, 10, ColorUtil.fade(Theme.OUTLINE, progress));
-
-        drawHeader(gfx, y, mouseX, mouseY, progress);
-        drawRail(gfx, y, mouseX, mouseY, progress);
-        drawContent(gfx, y, mouseX, mouseY, progress);
-        drawFooter(gfx, y, progress);
-    }
-
-    private void drawHeader(GuiGraphics gfx, float top, int mouseX, int mouseY, float alpha) {
-        float x = panelX + PAD;
-        float textY = top + 13;
-
-        Render2D.textGradient(gfx, "GLOWCUBE", x, textY,
-                ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
-        Render2D.text(gfx, "v" + GlowCubeClient.VERSION + "  ·  " + GlowCubeClient.target(),
-                x, textY + 12, ColorUtil.fade(Theme.TEXT_FAINT, alpha));
-
-        // Suchfeld rechts im Kopf.
-        float boxW = 150;
-        float boxX = panelX + PANEL_W - PAD - boxW;
-        float boxY = top + 14;
-        boolean hover = Render2D.hovered(mouseX, mouseY, boxX, boxY, boxW, 18);
-        Render2D.roundedRect(gfx, boxX, boxY, boxW, 18, 9, ColorUtil.fade(Theme.RAIL, alpha));
-        Render2D.roundedOutline(gfx, boxX, boxY, boxW, 18, 9,
-                ColorUtil.fade(hover || !search.isEmpty() ? Theme.accentStart() : Theme.OUTLINE_SOFT, alpha));
-
-        String label = search.isEmpty() ? "Suchen …" : search;
-        int labelColor = search.isEmpty() ? Theme.TEXT_FAINT : Theme.TEXT;
-        Render2D.text(gfx, "⌕", boxX + 8, boxY + 5, ColorUtil.fade(Theme.TEXT_DIM, alpha));
-        Render2D.text(gfx, Render2D.clip(label, (int) boxW - 30), boxX + 20, boxY + 5,
-                ColorUtil.fade(labelColor, alpha));
-        if (!search.isEmpty() && (System.currentTimeMillis() / 500) % 2 == 0) {
-            float caret = boxX + 20 + Render2D.width(Render2D.clip(label, (int) boxW - 30));
-            Render2D.rect(gfx, caret + 1, boxY + 4, 1, 10, ColorUtil.fade(Theme.accentStart(), alpha));
-        }
-
-        Render2D.rect(gfx, panelX + 1, top + HEADER_H - 1, PANEL_W - 2, 1,
-                ColorUtil.fade(Theme.OUTLINE_SOFT, alpha));
-    }
-
-    private void drawRail(GuiGraphics gfx, float top, int mouseX, int mouseY, float alpha) {
-        float x = panelX + 1;
-        float y = top + HEADER_H;
-        float h = PANEL_H - HEADER_H - 1;
-
-        Render2D.rect(gfx, x, y, RAIL_W, h, ColorUtil.fade(Theme.RAIL, alpha));
-        Render2D.rect(gfx, x + RAIL_W, y, 1, h, ColorUtil.fade(Theme.OUTLINE_SOFT, alpha));
-
-        float cursor = y + 10;
-        for (Category value : Category.values()) {
-            boolean active = value == category;
-            boolean hover = Render2D.hovered(mouseX, mouseY, x + 8, cursor, RAIL_W - 16, 28);
-
-            Anim anim = tabs.computeIfAbsent(value, key -> new Anim(0.0f, 16.0f));
-            anim.target(active ? 1.0f : hover ? 0.4f : 0.0f);
-            float lit = anim.value();
-
-            if (lit > 0.01f) {
-                Render2D.roundedRect(gfx, x + 8, cursor, RAIL_W - 16, 28, 7,
-                        ColorUtil.fade(Theme.PANEL_LIGHT, lit * 0.9f * alpha));
-            }
-            if (active) {
-                // Der leuchtende Streifen links markiert die offene Kategorie -
-                // in ihrer eigenen Farbe, damit man sie am Rand wiedererkennt.
-                Render2D.roundedRect(gfx, x + 8, cursor + 6, 3, 16, 1,
-                        ColorUtil.fade(value.color(), alpha));
-            }
-
-            int textColor = active ? Theme.TEXT : hover ? Theme.TEXT_DIM : Theme.TEXT_FAINT;
-            Render2D.text(gfx, value.icon(), x + 20, cursor + 10,
-                    ColorUtil.fade(active || hover ? value.color() : textColor, alpha));
-            Render2D.text(gfx, value.label(), x + 34, cursor + 10, ColorUtil.fade(textColor, alpha));
-
-            int count = countEnabled(value);
-            if (count > 0) {
-                String badge = String.valueOf(count);
-                float badgeX = x + RAIL_W - 16 - Render2D.width(badge) - 6;
-                Render2D.roundedRect(gfx, badgeX, cursor + 8, Render2D.width(badge) + 10, 12, 6,
-                        ColorUtil.fade(value.color(), 0.22f * alpha));
-                Render2D.text(gfx, badge, badgeX + 5, cursor + 10, ColorUtil.fade(value.color(), alpha));
-            }
-            cursor += 32;
-        }
-
-        String hint = binding != null ? "Taste druecken …" : "Rechtsklick = Optionen";
-        Render2D.text(gfx, Render2D.clip(hint, RAIL_W - 16), x + 10, top + PANEL_H - 18,
-                ColorUtil.fade(binding != null ? Theme.accentStart() : Theme.TEXT_FAINT, alpha));
-    }
-
-    /**
-     * Fussleiste: wie viele Module laufen, und wie weit SeedCrackerX ist.
-     * Die Bit-Zahl steht hier, weil sie beim Seedsuchen das Einzige ist,
-     * worauf man wirklich wartet.
-     */
-    private void drawFooter(GuiGraphics gfx, float top, float alpha) {
-        float y = top + PANEL_H - 16;
-        float x = panelX + RAIL_W + PAD + 1;
-
-        Render2D.rect(gfx, panelX + RAIL_W + 1, y - 4, PANEL_W - RAIL_W - 2, 1,
-                ColorUtil.fade(Theme.OUTLINE_SOFT, alpha));
-
-        int aktiv = 0;
-        for (Module module : GlowCubeClient.modules().all()) {
-            if (module.isEnabled()) {
-                aktiv++;
+        if (!suche.isEmpty()) {
+            sucheZeichnen(gfx, mouseX, mouseY);
+        } else {
+            for (Fenster fenster : Layout.alle()) {
+                fensterZeichnen(gfx, fenster, mouseX, mouseY);
             }
         }
-        String links = aktiv + " von " + GlowCubeClient.modules().all().size() + " aktiv";
-        Render2D.text(gfx, links, x, y, ColorUtil.fade(Theme.TEXT_FAINT, alpha));
 
-        Double bits = SeedBridge.bits();
-        Long seed = SeedBridge.seed();
+        fusszeile(gfx);
+
+        if (belegt != null) {
+            hinweis(gfx, "Taste fuer " + belegt.name() + " druecken - Esc loescht die Belegung");
+        }
+    }
+
+    private void kopfzeile(GuiGraphics gfx) {
+        Render2D.rect(gfx, 0, 0, width, 30, Theme.PANEL);
+        Render2D.rect(gfx, 0, 29, width, 1, Theme.OUTLINE);
+        Render2D.textGradient(gfx, "GLOWCUBE", 14, 11, Theme.accentStart(), Theme.accentEnd());
+
+        float suchX = width / 2.0f - 90;
+        Render2D.roundedRect(gfx, suchX, 7, 180, 16, 4,
+                sucheAktiv ? Theme.CARD_HOVER : Theme.CARD);
+        Render2D.roundedOutline(gfx, suchX, 7, 180, 16, 4,
+                sucheAktiv ? Theme.accentStart() : Theme.OUTLINE_SOFT);
+        String text = suche.isEmpty() ? "Suchen ..." : suche;
+        Render2D.text(gfx, Render2D.clip(text, 168), suchX + 6, 11,
+                suche.isEmpty() ? Theme.TEXT_FAINT : Theme.TEXT);
+
+        int an = GlowCubeClient.modules().enabled().size();
+        int alle = GlowCubeClient.modules().all().size();
+        String zaehler = an + " von " + alle + " aktiv";
+        Render2D.text(gfx, zaehler, width - 14 - Render2D.width(zaehler), 11, Theme.TEXT_DIM);
+    }
+
+    private void fusszeile(GuiGraphics gfx) {
+        Render2D.rect(gfx, 0, height - 22, width, 22, Theme.PANEL);
+        Render2D.rect(gfx, 0, height - 22, width, 1, Theme.OUTLINE);
+
+        String links = "Links schaltet - Rechts oeffnet Einstellungen - Mitte belegt die Taste";
+        Render2D.text(gfx, links, 14, height - 15, Theme.TEXT_FAINT);
+
+        // Der SeedCracker-Stand gehoert dorthin, wo man ihn immer sieht:
+        // waehrend SeedHunt fliegt, hat man das Fenster ohnehin offen.
         String rechts;
-        int farbe;
+        Long seed = SeedBridge.seed();
         if (seed != null) {
             rechts = "Seed " + seed;
-            farbe = Theme.ACCENT_A;
-        } else if (bits != null) {
-            rechts = String.format(java.util.Locale.ROOT, "SeedCracker %.1f / 48 Bit", bits);
-            farbe = Theme.accentStart();
         } else {
-            rechts = "GLOWCUBE";
-            farbe = Theme.TEXT_FAINT;
+            Double bits = SeedBridge.bits();
+            rechts = bits == null
+                    ? "SeedCracker wartet"
+                    : String.format(Locale.ROOT, "SeedCracker %.1f / 48 Bit", bits);
         }
-        Render2D.text(gfx, rechts, panelX + PANEL_W - PAD - Render2D.width(rechts), y,
-                ColorUtil.fade(farbe, alpha));
+        Render2D.text(gfx, rechts, width - 14 - Render2D.width(rechts), height - 15,
+                seed != null ? Theme.accentStart() : Theme.TEXT_DIM);
     }
 
-    private void drawContent(GuiGraphics gfx, float top, int mouseX, int mouseY, float alpha) {
-        float areaX = panelX + RAIL_W + 1;
-        float areaY = top + HEADER_H;
-        float areaW = PANEL_W - RAIL_W - 2;
-        float areaH = PANEL_H - HEADER_H - 1 - FOOTER_H;
-
-        List<Row> rows = buildRows(areaY);
-        float contentHeight = rows.isEmpty() ? 0 : rows.get(rows.size() - 1).y + rows.get(rows.size() - 1).height - areaY;
-        float maxScroll = Math.max(0.0f, contentHeight + PAD * 2 - areaH);
-        scrollTarget = Math.max(0.0f, Math.min(maxScroll, scrollTarget));
-        scroll += (scrollTarget - scroll) * 0.35f;
-
-        Render2D.pushScissor(gfx, areaX, areaY, areaW, areaH);
-
-        if (rows.isEmpty()) {
-            Render2D.textCentered(gfx, "Nichts gefunden", areaX + areaW / 2, areaY + areaH / 2 - 4,
-                    ColorUtil.fade(Theme.TEXT_FAINT, alpha));
-        }
-
-        float cardX = areaX + PAD;
-        float cardW = areaW - PAD * 2;
-
-        for (Row row : rows) {
-            float y = row.y - scroll;
-            if (y + row.height < areaY - 4 || y > areaY + areaH + 4) {
-                continue;
-            }
-            if (row.isCard()) {
-                drawCard(gfx, row.module, cardX, y, cardW, mouseX, mouseY, alpha);
-            } else {
-                drawSetting(gfx, row.module, row.setting, cardX + 10, y, cardW - 20, mouseX, mouseY, alpha);
-            }
-        }
-
-        Render2D.popScissor(gfx);
-
-        if (maxScroll > 0) {
-            float trackH = areaH - PAD * 2;
-            float thumbH = Math.max(20.0f, trackH * (areaH / (contentHeight + PAD * 2)));
-            float thumbY = areaY + PAD + (trackH - thumbH) * (scroll / maxScroll);
-            Render2D.roundedRect(gfx, areaX + areaW - 5, areaY + PAD, 2, trackH, 1,
-                    ColorUtil.fade(Theme.OUTLINE_SOFT, alpha));
-            Render2D.roundedGradientH(gfx, areaX + areaW - 5, thumbY, 2, thumbH, 1,
-                    ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
-        }
+    private void hinweis(GuiGraphics gfx, String text) {
+        float breite = Render2D.width(text) + 20;
+        float x = width / 2.0f - breite / 2.0f;
+        float y = height / 2.0f - 14;
+        Render2D.glow(gfx, x, y, breite, 28, 6, Theme.accentStart(), 4);
+        Render2D.roundedRect(gfx, x, y, breite, 28, 6, Theme.PANEL_LIGHT);
+        Render2D.roundedOutline(gfx, x, y, breite, 28, 6, Theme.accentStart());
+        Render2D.textCentered(gfx, text, width / 2.0f, y + 10, Theme.TEXT);
     }
 
-    private void drawCard(GuiGraphics gfx, Module module, float x, float y, float w,
-                          int mouseX, int mouseY, float alpha) {
-        boolean hover = Render2D.hovered(mouseX, mouseY, x, y, w, CARD_H);
-        boolean on = module.isEnabled();
+    // ------------------------------------------------------------- Ein Fenster
 
-        Anim anim = toggles.computeIfAbsent(module.name(), key -> new Anim(on ? 1.0f : 0.0f, 16.0f));
-        anim.target(on ? 1.0f : 0.0f);
-        float lit = anim.value();
+    private void fensterZeichnen(GuiGraphics gfx, Fenster fenster, int mouseX, int mouseY) {
+        List<Module> module = GlowCubeClient.modules().inCategory(fenster.kategorie);
+        float x = fenster.x;
+        float y = fenster.y;
+        int farbe = fenster.kategorie.color();
 
-        Render2D.roundedRect(gfx, x, y, w, CARD_H, 7,
-                ColorUtil.fade(hover ? Theme.CARD_HOVER : Theme.CARD, alpha));
-        if (lit > 0.01f) {
-            Render2D.roundedRect(gfx, x, y, w, CARD_H, 7,
-                    ColorUtil.fade(Theme.accentStart(), 0.07f * lit * alpha));
-            Render2D.roundedGradientH(gfx, x + 1, y + 7, 3, CARD_H - 14, 1,
-                    ColorUtil.fade(Theme.accentStart(), lit * alpha), ColorUtil.fade(Theme.accentEnd(), lit * alpha));
-        }
-        if (hover) {
-            Render2D.roundedOutline(gfx, x, y, w, CARD_H, 7, ColorUtil.fade(Theme.OUTLINE, alpha));
+        // Titelleiste
+        boolean titelUeber = Render2D.hovered(mouseX, mouseY, x, y, FENSTER_B, TITEL_H);
+        Render2D.roundedRect(gfx, x, y, FENSTER_B, TITEL_H, 5, Theme.PANEL_LIGHT);
+        Render2D.rect(gfx, x + 1, y + TITEL_H - 2, FENSTER_B - 2, 2, ColorUtil.fade(farbe, 0.9f));
+        Render2D.text(gfx, fenster.kategorie.icon(), x + 7, y + 6, farbe);
+        Render2D.text(gfx, fenster.kategorie.label().toUpperCase(Locale.ROOT), x + 20, y + 6,
+                titelUeber ? Theme.TEXT : Theme.TEXT_DIM);
+        String pfeil = fenster.eingeklappt ? "+" : "-";
+        Render2D.text(gfx, pfeil, x + FENSTER_B - 12, y + 6, Theme.TEXT_DIM);
+        treffer.add(new Treffer(x, y, FENSTER_B, TITEL_H, null, null, fenster, Art.TITEL));
+
+        if (fenster.eingeklappt) {
+            fenster.hoehe = TITEL_H;
+            return;
         }
 
-        float textX = x + 12;
-        String name = module.name();
-        String suffix = module.hudSuffix();
-        Render2D.text(gfx, name, textX, y + 8,
-                ColorUtil.fade(on ? Theme.TEXT : Theme.TEXT_DIM, alpha));
-        if (suffix != null) {
-            Render2D.text(gfx, suffix, textX + Render2D.width(name) + 6, y + 8,
-                    ColorUtil.fade(Theme.accentStart(), (on ? 1.0f : 0.45f) * alpha));
-        }
-        Render2D.text(gfx, Render2D.clip(module.description(), (int) w - 120), textX, y + 19,
-                ColorUtil.fade(Theme.TEXT_FAINT, alpha));
+        float cursor = y + TITEL_H + 3;
+        float koerperStart = cursor;
 
-        // Schalter rechts.
-        float pillW = 26;
-        float pillH = 13;
-        float pillX = x + w - 14 - pillW;
-        float pillY = y + (CARD_H - pillH) / 2.0f;
-        if (lit > 0.01f) {
-            Render2D.roundedGradientH(gfx, pillX, pillY, pillW, pillH, pillH / 2,
-                    ColorUtil.fade(Theme.accentStart(), lit * alpha), ColorUtil.fade(Theme.accentEnd(), lit * alpha));
+        for (Module module1 : module) {
+            cursor = modulZeichnen(gfx, fenster, module1, x, cursor, mouseX, mouseY);
         }
-        if (lit < 0.99f) {
-            Render2D.roundedRect(gfx, pillX, pillY, pillW, pillH, pillH / 2,
-                    ColorUtil.fade(Theme.PANEL_LIGHT, (1.0f - lit) * alpha));
-        }
-        float knobX = pillX + 2 + (pillW - pillH) * lit;
-        Render2D.roundedRect(gfx, knobX, pillY + 2, pillH - 4, pillH - 4, (pillH - 4) / 2.0f,
-                ColorUtil.fade(0xFFFFFFFF, alpha));
 
-        // Taste und Aufklapp-Zeichen.
-        boolean waiting = binding == module;
-        String key = waiting ? "…" : module.keyName();
-        Render2D.text(gfx, key, pillX - 8 - Render2D.width(key), y + 13,
-                ColorUtil.fade(waiting ? Theme.accentStart() : Theme.TEXT_FAINT, alpha));
-
-        if (!module.settings().isEmpty()) {
-            String chevron = expanded.contains(module.name()) ? "▾" : "▸";
-            Render2D.text(gfx, chevron, x + w - 8, y + 13, ColorUtil.fade(Theme.TEXT_FAINT, alpha));
-        }
+        float koerperHoehe = cursor - koerperStart + 3;
+        // Hintergrund nachtraeglich unter die Zeilen legen: erst jetzt steht
+        // die Hoehe fest, und ein zweiter Durchgang waere teurer als die
+        // Zeilen einmal daruebermalen zu lassen.
+        fenster.hoehe = TITEL_H + koerperHoehe;
     }
 
-    private void drawSetting(GuiGraphics gfx, Module module, Setting setting, float x, float y, float w,
-                             int mouseX, int mouseY, float alpha) {
-        boolean hover = Render2D.hovered(mouseX, mouseY, x, y, w, ROW_H);
-        if (hover) {
-            Render2D.roundedRect(gfx, x, y, w, ROW_H, 4, ColorUtil.fade(Theme.PANEL_LIGHT, 0.6f * alpha));
+    private float modulZeichnen(GuiGraphics gfx, Fenster fenster, Module module,
+                                float x, float y, int mouseX, int mouseY) {
+        boolean ueber = Render2D.hovered(mouseX, mouseY, x, y, FENSTER_B, ZEILE_H);
+        boolean an = module.isEnabled();
+        int farbe = fenster.kategorie.color();
+
+        Render2D.rect(gfx, x, y, FENSTER_B, ZEILE_H,
+                an ? ColorUtil.fade(farbe, 0.18f) : (ueber ? Theme.CARD_HOVER : Theme.CARD));
+        if (an) {
+            Render2D.rect(gfx, x, y, 2, ZEILE_H, farbe);
         }
-        Render2D.text(gfx, setting.name(), x + 10, y + 4, ColorUtil.fade(Theme.TEXT_DIM, alpha));
+        Render2D.text(gfx, Render2D.clip(module.name(), 96), x + 8, y + 4,
+                an ? Theme.TEXT : Theme.TEXT_DIM);
 
-        float right = x + w - 10;
-
-        if (setting instanceof BooleanSetting flag) {
-            float boxW = 18;
-            float boxH = 9;
-            float boxX = right - boxW;
-            float boxY = y + (ROW_H - boxH) / 2.0f;
-            if (flag.get()) {
-                Render2D.roundedGradientH(gfx, boxX, boxY, boxW, boxH, boxH / 2,
-                        ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
-            } else {
-                Render2D.roundedRect(gfx, boxX, boxY, boxW, boxH, boxH / 2,
-                        ColorUtil.fade(Theme.CARD_HOVER, alpha));
-            }
-            float knob = boxX + 1.5f + (boxW - boxH) * (flag.get() ? 1.0f : 0.0f);
-            Render2D.roundedRect(gfx, knob, boxY + 1.5f, boxH - 3, boxH - 3, (boxH - 3) / 2.0f,
-                    ColorUtil.fade(0xFFFFFFFF, alpha));
-
-        } else if (setting instanceof NumberSetting number) {
-            String value = number.display();
-            Render2D.text(gfx, value, right - Render2D.width(value), y + 4,
-                    ColorUtil.fade(Theme.TEXT, alpha));
-            float trackW = 86;
-            float trackX = right - Render2D.width(value) - 8 - trackW;
-            float trackY = y + ROW_H / 2.0f - 1;
-            Render2D.roundedRect(gfx, trackX, trackY, trackW, 3, 1.5f,
-                    ColorUtil.fade(Theme.CARD_HOVER, alpha));
-            float filled = trackW * (float) number.ratio();
-            if (filled > 1) {
-                Render2D.roundedGradientH(gfx, trackX, trackY, filled, 3, 1.5f,
-                        ColorUtil.fade(Theme.accentStart(), alpha), ColorUtil.fade(Theme.accentEnd(), alpha));
-            }
-            Render2D.roundedRect(gfx, trackX + filled - 2.5f, trackY - 2.5f, 6, 8, 3,
-                    ColorUtil.fade(0xFFFFFFFF, alpha));
-
-        } else if (setting instanceof ModeSetting mode) {
-            String value = mode.get();
-            float pillW = Render2D.width(value) + 14;
-            Render2D.roundedRect(gfx, right - pillW, y + 2, pillW, ROW_H - 4, (ROW_H - 4) / 2.0f,
-                    ColorUtil.fade(Theme.accentStart(), 0.16f * alpha));
-            Render2D.text(gfx, value, right - pillW + 7, y + 4, ColorUtil.fade(Theme.accentStart(), alpha));
-
-        } else if (setting instanceof BlockListSetting list) {
-            String value = list.size() + " Bloecke  ›";
-            Render2D.text(gfx, value, right - Render2D.width(value), y + 4,
-                    ColorUtil.fade(Theme.accentStart(), alpha));
+        String rechts = module.hasKey() ? module.keyName() : "";
+        if (belegt == module) {
+            rechts = "...";
         }
+        if (!rechts.isEmpty()) {
+            Render2D.text(gfx, rechts, x + FENSTER_B - 8 - Render2D.width(rechts), y + 4,
+                    Theme.TEXT_FAINT);
+        }
+        treffer.add(new Treffer(x, y, FENSTER_B, ZEILE_H, module, null, fenster, Art.MODUL));
+
+        float cursor = y + ZEILE_H + 1;
+        if (!fenster.istOffen(module)) {
+            return cursor;
+        }
+
+        for (Setting setting : module.settings()) {
+            cursor = einstellungZeichnen(gfx, fenster, module, setting, x, cursor, mouseX, mouseY);
+        }
+        // Eine Trennlinie unter dem aufgeklappten Block, sonst laeuft er
+        // optisch in das naechste Modul hinein.
+        Render2D.rect(gfx, x + RAND, cursor, FENSTER_B - RAND * 2, 1, Theme.OUTLINE_SOFT);
+        return cursor + 3;
     }
 
-    // ------------------------------------------------------------------ Aufbau
+    private float einstellungZeichnen(GuiGraphics gfx, Fenster fenster, Module module,
+                                      Setting setting, float x, float y,
+                                      int mouseX, int mouseY) {
+        float innenX = x + RAND;
+        float innenB = FENSTER_B - RAND * 2;
+        Render2D.rect(gfx, x, y, FENSTER_B, zeilenHoehe(setting), Theme.RAIL);
 
-    /** Die sichtbaren Zeilen in Reihenfolge - Grundlage fuer Zeichnen und Klicken. */
-    private List<Row> buildRows(float areaY) {
-        List<Row> rows = new ArrayList<>();
-        float cursor = areaY + PAD;
-
-        for (Module module : visibleModules()) {
-            rows.add(new Row(module, null, cursor, CARD_H));
-            cursor += CARD_H;
-            if (expanded.contains(module.name()) && !module.settings().isEmpty()) {
-                cursor += 2;
-                for (Setting setting : module.settings()) {
-                    rows.add(new Row(module, setting, cursor, ROW_H));
-                    cursor += ROW_H;
-                }
-                cursor += 4;
-            }
-            cursor += GAP;
+        if (setting instanceof BooleanSetting schalter) {
+            boolean ueber = Render2D.hovered(mouseX, mouseY, x, y, FENSTER_B, ZEILE_H);
+            Render2D.text(gfx, Render2D.clip(setting.name(), 108), innenX, y + 4,
+                    ueber ? Theme.TEXT : Theme.TEXT_DIM);
+            float kx = x + FENSTER_B - RAND - 16;
+            Render2D.roundedRect(gfx, kx, y + 3, 16, 9, 4,
+                    schalter.get() ? Theme.accentStart() : Theme.OUTLINE);
+            Render2D.roundedRect(gfx, schalter.get() ? kx + 8 : kx + 1, y + 4, 7, 7, 3,
+                    Theme.TEXT);
+            treffer.add(new Treffer(x, y, FENSTER_B, ZEILE_H, module, setting, fenster,
+                    Art.SCHALTER));
+            return y + ZEILE_H;
         }
-        return rows;
+
+        if (setting instanceof ModeSetting auswahl) {
+            boolean ueber = Render2D.hovered(mouseX, mouseY, x, y, FENSTER_B, ZEILE_H);
+            Render2D.text(gfx, Render2D.clip(setting.name(), 76), innenX, y + 4,
+                    ueber ? Theme.TEXT : Theme.TEXT_DIM);
+            String wert = auswahl.get();
+            Render2D.text(gfx, Render2D.clip(wert, 60),
+                    x + FENSTER_B - RAND - Render2D.width(Render2D.clip(wert, 60)), y + 4,
+                    Theme.accentStart());
+            treffer.add(new Treffer(x, y, FENSTER_B, ZEILE_H, module, setting, fenster,
+                    Art.AUSWAHL));
+            return y + ZEILE_H;
+        }
+
+        if (setting instanceof NumberSetting zahl) {
+            Render2D.text(gfx, Render2D.clip(setting.name(), 90), innenX, y + 3, Theme.TEXT_DIM);
+            String wert = zahl.display();
+            Render2D.text(gfx, wert, x + FENSTER_B - RAND - Render2D.width(wert), y + 3,
+                    Theme.TEXT);
+            float bahnY = y + 15;
+            Render2D.roundedRect(gfx, innenX, bahnY, innenB, 3, 1.5f, Theme.OUTLINE);
+            float gefuellt = (float) (innenB * zahl.ratio());
+            Render2D.roundedGradientH(gfx, innenX, bahnY, Math.max(gefuellt, 2.0f), 3, 1.5f,
+                    Theme.accentStart(), Theme.accentEnd());
+            Render2D.roundedRect(gfx, innenX + gefuellt - 2, bahnY - 2, 4, 7, 2, Theme.TEXT);
+            treffer.add(new Treffer(innenX, y, innenB, REGLER_H, module, setting, fenster,
+                    Art.REGLER));
+            return y + REGLER_H;
+        }
+
+        // Listen bekommen ein eigenes Fenster - in einer Zeile von 150 Pixeln
+        // laesst sich keine Blockliste bearbeiten.
+        String beschriftung;
+        if (setting instanceof BlockListSetting liste) {
+            beschriftung = setting.name() + " (" + liste.size() + ")";
+        } else if (setting instanceof TextListSetting liste) {
+            beschriftung = setting.name() + " (" + liste.size() + ")";
+        } else {
+            beschriftung = setting.name();
+        }
+        boolean ueber = Render2D.hovered(mouseX, mouseY, x, y, FENSTER_B, ZEILE_H);
+        Render2D.roundedRect(gfx, innenX, y + 2, innenB, ZEILE_H - 4, 3,
+                ueber ? Theme.CARD_HOVER : Theme.CARD);
+        Render2D.textCentered(gfx, Render2D.clip(beschriftung, (int) innenB - 8),
+                x + FENSTER_B / 2.0f, y + 4, ueber ? Theme.TEXT : Theme.TEXT_DIM);
+        treffer.add(new Treffer(x, y, FENSTER_B, ZEILE_H, module, setting, fenster, Art.LISTE));
+        return y + ZEILE_H;
     }
 
-    private List<Module> visibleModules() {
-        List<Module> modules = new ArrayList<>();
-        String needle = search.toLowerCase(Locale.ROOT);
+    private static float zeilenHoehe(Setting setting) {
+        return setting instanceof NumberSetting ? REGLER_H : ZEILE_H;
+    }
+
+    // ----------------------------------------------------------------- Suche
+
+    private void sucheZeichnen(GuiGraphics gfx, int mouseX, int mouseY) {
+        List<Module> gefunden = new ArrayList<>();
+        String muster = suche.toLowerCase(Locale.ROOT);
         for (Module module : GlowCubeClient.modules().all()) {
-            if (!needle.isEmpty()) {
-                // Bei aktiver Suche zaehlt die Kategorie nicht mehr.
-                if (module.name().toLowerCase(Locale.ROOT).contains(needle)
-                        || module.description().toLowerCase(Locale.ROOT).contains(needle)) {
-                    modules.add(module);
-                }
-            } else if (module.category() == category) {
-                modules.add(module);
+            if (module.name().toLowerCase(Locale.ROOT).contains(muster)
+                    || module.description().toLowerCase(Locale.ROOT).contains(muster)) {
+                gefunden.add(module);
             }
         }
-        modules.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
-        return modules;
-    }
 
-    private int countEnabled(Category value) {
-        int count = 0;
-        for (Module module : GlowCubeClient.modules().inCategory(value)) {
-            if (module.isEnabled()) {
-                count++;
+        float x = width / 2.0f - FENSTER_B / 2.0f;
+        float y = 44;
+        Render2D.roundedRect(gfx, x, y, FENSTER_B, TITEL_H, 5, Theme.PANEL_LIGHT);
+        Render2D.text(gfx, gefunden.size() + " Treffer", x + 8, y + 6, Theme.TEXT_DIM);
+
+        float cursor = y + TITEL_H + 3;
+        // Die Suche laesst sich genauso bedienen wie ein Fenster - dafuer
+        // bekommt sie das Fenster der jeweiligen Kategorie mit, damit
+        // Aufklappen dort landet, wo es hingehoert.
+        for (Module module : gefunden) {
+            if (cursor > height - 40) {
+                Render2D.text(gfx, "...", x + 8, cursor, Theme.TEXT_FAINT);
+                break;
             }
+            cursor = modulZeichnen(gfx, Layout.fuer(module.category()), module, x, cursor,
+                    mouseX, mouseY);
         }
-        return count;
     }
 
     // ------------------------------------------------------------------ Maus
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doppelklick) {
-        // Maus- und Tastendaten kommen seit 1.21.11 als Objekt statt als
-        // Zahlenreihe. Ausgepackt bleibt der Rest unveraendert.
-        double mouseX = event.x();
-        double mouseY = event.y();
-        int button = event.button();
-        float top = panelY;
+        double mx = event.x();
+        double my = event.y();
+        int knopf = event.button();
 
-        // Kategorien.
-        float railX = panelX + 1;
-        float cursor = top + HEADER_H + 10;
-        for (Category value : Category.values()) {
-            if (Render2D.hovered(mouseX, mouseY, railX + 8, cursor, RAIL_W - 16, 28)) {
-                category = value;
-                scrollTarget = 0.0f;
-                search = "";
-                return true;
-            }
-            cursor += 32;
+        if (belegt != null) {
+            return true;
         }
 
-        float areaX = panelX + RAIL_W + 1;
-        float areaY = top + HEADER_H;
-        float areaW = PANEL_W - RAIL_W - 2;
-        float areaH = PANEL_H - HEADER_H - 1;
-        float cardX = areaX + PAD;
-        float cardW = areaW - PAD * 2;
-
-        // Weggescrollte Zeilen liegen rechnerisch weiter aussen, sind aber
-        // abgeschnitten - ohne diese Schranke waeren sie trotzdem anklickbar.
-        if (!Render2D.hovered(mouseX, mouseY, areaX, areaY, areaW, areaH)) {
-            return super.mouseClicked(event, doppelklick);
+        // Suchfeld
+        float suchX = width / 2.0f - 90;
+        if (Render2D.hovered(mx, my, suchX, 7, 180, 16)) {
+            sucheAktiv = true;
+            return true;
         }
+        sucheAktiv = false;
 
-        for (Row row : buildRows(areaY)) {
-            float y = row.y - scroll;
-
-            if (row.isCard() && Render2D.hovered(mouseX, mouseY, cardX, y, cardW, CARD_H)) {
-                if (button == 1) {
-                    if (!row.module.settings().isEmpty()) {
-                        if (!expanded.remove(row.module.name())) {
-                            expanded.add(row.module.name());
-                        }
-                    }
-                } else if (button == 2) {
-                    binding = row.module;
-                } else {
-                    row.module.toggle();
-                    GlowCubeClient.config().save();
-                }
-                return true;
+        // Rueckwaerts durchgehen: was zuletzt gezeichnet wurde, liegt oben.
+        for (int i = treffer.size() - 1; i >= 0; i--) {
+            Treffer t = treffer.get(i);
+            if (!Render2D.hovered(mx, my, t.x(), t.y(), t.w(), t.h())) {
+                continue;
             }
-
-            if (!row.isCard() && Render2D.hovered(mouseX, mouseY, cardX + 10, y, cardW - 20, ROW_H)) {
-                clickSetting(row.setting, button, mouseX, cardX + 10, cardW - 20);
-                return true;
-            }
+            return behandeln(t, knopf, mx);
         }
         return super.mouseClicked(event, doppelklick);
     }
 
-    private void clickSetting(Setting setting, int button, double mouseX, float rowX, float rowW) {
-        if (setting instanceof BooleanSetting flag) {
-            flag.toggle();
-        } else if (setting instanceof ModeSetting mode) {
-            mode.cycle(button == 1 ? -1 : 1);
-        } else if (setting instanceof NumberSetting number) {
-            dragging = number;
-            applySlider(number, mouseX, rowX, rowW);
-        } else if (setting instanceof BlockListSetting list) {
-            minecraft.setScreen(new BlockListScreen(this, list));
-            return;
+    private boolean behandeln(Treffer t, int knopf, double mx) {
+        switch (t.art()) {
+            case TITEL -> {
+                if (knopf == 1) {
+                    t.fenster().eingeklappt = !t.fenster().eingeklappt;
+                    speichern();
+                } else {
+                    gezogen = t.fenster();
+                    griffX = (float) mx - t.fenster().x;
+                    griffY = 0;
+                }
+                return true;
+            }
+            case MODUL -> {
+                if (knopf == 0) {
+                    t.module().toggle();
+                } else if (knopf == 1) {
+                    t.fenster().umschalten(t.module());
+                } else if (knopf == 2) {
+                    belegt = t.module();
+                }
+                speichern();
+                return true;
+            }
+            case SCHALTER -> {
+                ((BooleanSetting) t.setting()).toggle();
+                speichern();
+                return true;
+            }
+            case AUSWAHL -> {
+                ((ModeSetting) t.setting()).cycle(knopf == 1 ? -1 : 1);
+                speichern();
+                return true;
+            }
+            case REGLER -> {
+                regler = (NumberSetting) t.setting();
+                reglerX = t.x();
+                reglerBreite = t.w();
+                reglerSetzen(mx);
+                return true;
+            }
+            case LISTE -> {
+                if (t.setting() instanceof BlockListSetting liste) {
+                    minecraft.setScreen(new BlockListScreen(this, liste));
+                } else if (t.setting() instanceof TextListSetting liste) {
+                    minecraft.setScreen(new TextListScreen(this, liste));
+                }
+                return true;
+            }
+            default -> {
+                return false;
+            }
         }
-        GlowCubeClient.config().save();
-    }
-
-    private void applySlider(NumberSetting number, double mouseX, float rowX, float rowW) {
-        float right = rowX + rowW - 10;
-        float trackW = 86;
-        float trackX = right - Render2D.width(number.display()) - 8 - trackW;
-        number.setRatio((mouseX - trackX) / trackW);
     }
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
-        if (dragging != null) {
-            float areaX = panelX + RAIL_W + 1;
-            float areaW = PANEL_W - RAIL_W - 2;
-            applySlider(dragging, event.x(), areaX + PAD + 10, areaW - PAD * 2 - 20);
+        if (gezogen != null) {
+            gezogen.x = (float) event.x() - griffX;
+            // Nie ganz aus dem Bild schieben - sonst bekommt man das Fenster
+            // nur ueber die Konfigurationsdatei zurueck.
+            gezogen.y = (float) Math.max(32.0, Math.min(height - 24.0, event.y() - griffY - 8.0));
+            gezogen.x = Math.max(-FENSTER_B + 30, Math.min(width - 30, gezogen.x));
+            return true;
+        }
+        if (regler != null) {
+            reglerSetzen(event.x());
             return true;
         }
         return super.mouseDragged(event, dragX, dragY);
     }
 
+    private void reglerSetzen(double mx) {
+        if (regler == null || reglerBreite <= 0) {
+            return;
+        }
+        regler.setRatio((mx - reglerX) / reglerBreite);
+    }
+
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (dragging != null) {
-            dragging = null;
-            GlowCubeClient.config().save();
+        if (gezogen != null || regler != null) {
+            gezogen = null;
+            regler = null;
+            speichern();
             return true;
         }
         return super.mouseReleased(event);
@@ -544,27 +470,45 @@ public final class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        scrollTarget -= (float) scrollY * 26.0f;
+        // Alle Fenster gemeinsam verschieben - so kommt man an Fenster heran,
+        // die unter dem unteren Rand liegen, ohne jedes einzeln zu ziehen.
+        for (Fenster fenster : Layout.alle()) {
+            fenster.y += (float) scrollY * 18.0f;
+        }
         return true;
     }
 
-    // ---------------------------------------------------------------- Tastatur
+    // -------------------------------------------------------------- Tastatur
 
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
-        if (binding != null) {
-            binding.setKey(key == GLFW.GLFW_KEY_ESCAPE ? GLFW.GLFW_KEY_UNKNOWN : key);
-            binding = null;
-            GlowCubeClient.config().save();
+
+        if (belegt != null) {
+            belegt.setKey(key == GLFW.GLFW_KEY_ESCAPE ? GLFW.GLFW_KEY_UNKNOWN : key);
+            belegt = null;
+            speichern();
             return true;
         }
-        if (key == GLFW.GLFW_KEY_BACKSPACE && !search.isEmpty()) {
-            search = search.substring(0, search.length() - 1);
-            return true;
+
+        if (sucheAktiv || !suche.isEmpty()) {
+            if (key == GLFW.GLFW_KEY_BACKSPACE) {
+                if (!suche.isEmpty()) {
+                    suche = suche.substring(0, suche.length() - 1);
+                }
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                suche = "";
+                sucheAktiv = false;
+                return true;
+            }
         }
-        if (key == GLFW.GLFW_KEY_ESCAPE && !search.isEmpty()) {
-            search = "";
+
+        // Fenster wieder einsammeln, wenn man sie verlegt hat.
+        if (key == GLFW.GLFW_KEY_HOME) {
+            Layout.zuruecksetzen();
+            speichern();
             return true;
         }
         return super.keyPressed(event);
@@ -572,18 +516,25 @@ public final class ClickGuiScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
-        int zeichen = event.codepoint();
-        if (zeichen >= ' ' && zeichen != 127) {
-            search += event.codepointAsString();
-            scrollTarget = 0.0f;
+        if (belegt != null) {
+            return true;
+        }
+        String zeichen = event.codepointAsString();
+        if (!zeichen.isEmpty() && suche.length() < 32) {
+            suche += zeichen;
+            sucheAktiv = true;
             return true;
         }
         return super.charTyped(event);
     }
 
+    private void speichern() {
+        GlowCubeClient.config().save();
+    }
+
     @Override
     public void onClose() {
-        GlowCubeClient.config().save();
+        speichern();
         super.onClose();
     }
 }
