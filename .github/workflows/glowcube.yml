@@ -119,15 +119,23 @@ jobs:
           jar=$(ls build/libs/*.jar | grep -v -- '-sources' | head -1)
           echo "Veroeffentliche $jar"
 
+          # Die Version steht an genau einer Stelle - in gradle.properties.
+          # Frueher stand sie hier fest im Text und war nach dem Wechsel
+          # auf 1.21.11 falsch.
+          mcv=$(grep -E '^minecraft_version=' gradle.properties | cut -d= -f2)
+
           hinweis=$(printf '%s\n' \
-            "Fertig gebaute Mod fuer Minecraft Java 26.2 (Fabric)." \
+            "Fertig gebaute Mod fuer Minecraft Java ${mcv} (Fabric)." \
+            "SeedCrackerX steckt schon drin - keine zweite Datei noetig." \
             "" \
             "1. glowcube-1.0.0.jar unten anklicken und herunterladen" \
-            "2. Fabric API fuer 26.2 von modrinth.com holen" \
+            "2. Fabric API fuer ${mcv} von modrinth.com holen" \
             "3. Beide JARs nach %appdata%\\.minecraft\\mods" \
-            "4. Profil fabric-loader-26.2 starten" \
+            "4. Profil fabric-loader-${mcv} starten" \
             "" \
-            "Tasten: X = X-Ray, F = Flight, C = Zoom." \
+            "Rechte Umschalttaste oeffnet das Menue - dort laesst sich" \
+            "jedes Modul ein- und ausschalten und neu belegen." \
+            "Vorbelegt: X = X-Ray, B = SeedHunt." \
             "Alles weitere in glowcube-client/README.md." \
             "" \
             "Automatisch gebaut aus Commit ${GITHUB_SHA}.")

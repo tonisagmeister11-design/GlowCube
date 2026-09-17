@@ -18,7 +18,7 @@
     }
   ],
   "suggests": {
-    "seedcrackerx": ">=2.16.0"
+    "seedcrackerx": ">=2.15.6"
   },
   "depends": {
     "fabricloader": ">=0.17.0",

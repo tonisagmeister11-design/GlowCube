@@ -1,14 +1,11 @@
 # GlowCube
 
-Ein clientseitiger Werkzeugkasten fuer Minecraft Java 26.2 auf Fabric:
-X-Ray, Fullbright, Flight, Speed, KillAura und mehr.
+Ein clientseitiger Werkzeugkasten fuer Minecraft Java 1.21.11 auf Fabric:
+X-Ray, Fullbright, Flight, Speed, KillAura und mehr - 27 Module, ClickGUI,
+HUD und SeedCrackerX fest eingebaut.
 
-**Stand:** Minecraft 26.2 hat die Zeichen-API ausgetauscht (kein `GuiGraphics`
-und kein `MultiBufferSource` mehr, stattdessen ein Einreiche-Modell). Deshalb
-kommen die zwoelf Module, die nichts zeichnen, zuerst - bedient ueber Tasten.
-ClickGUI, HUD und die ESP-Module liegen unter `spaeter/` und folgen, sobald
-sie auf das neue Modell umgeschrieben sind; dort steht auch die vollstaendige
-Gegenueberstellung der alten und neuen Namen.
+**Eine Datei.** SeedCrackerX steckt als eingebettete JAR mit drin. In den
+`mods`-Ordner kommen nur GlowCube und die Fabric API, sonst nichts.
 
 > Auf oeffentlichen Servern faellt das sofort auf und ist dort Bannmaterial.
 > Gedacht ist es fuer Einzelspieler und den eigenen Testserver.
@@ -33,10 +30,10 @@ oben der bequemere Weg.
 ## Einbauen
 
 1. **Fabric installieren** - den Installer von `fabricmc.net/use/installer`
-   holen, starten, als Spielfassung **26.2** waehlen, *Install* druecken.
-2. Minecraft-Launcher oeffnen. Es gibt jetzt ein Profil **fabric-loader-26.2**.
+   holen, starten, als Spielfassung **1.21.11** waehlen, *Install* druecken.
+2. Minecraft-Launcher oeffnen. Es gibt jetzt ein Profil **fabric-loader-1.21.11**.
 3. **Fabric API** herunterladen - such auf `modrinth.com` nach "Fabric API"
-   und nimm die Fassung fuer 26.2. Das ist eine `.jar`.
+   und nimm die Fassung fuer 1.21.11. Das ist eine `.jar`.
 4. Den `mods`-Ordner oeffnen:
    * Windows: `Windows-Taste + R`, `%appdata%\.minecraft\mods` eingeben, Enter.
    * macOS: `~/Library/Application Support/minecraft/mods`
@@ -44,10 +41,10 @@ oben der bequemere Weg.
 
    Gibt es den Ordner nicht, legst du ihn mit genau diesem Namen an.
 5. **Beide** JARs dort hineinlegen: die Fabric API und `glowcube-1.0.0.jar`.
-6. Im Launcher das Profil **fabric-loader-26.2** starten.
+6. Im Launcher das Profil **fabric-loader-1.21.11** starten.
 
-Beides muss zusammenpassen: Fabric API fuer 26.2, Loader fuer 26.2, GlowCube
-fuer 26.2. Eine Fassung daneben und das Spiel startet nicht.
+Beides muss zusammenpassen: Fabric API fuer 1.21.11, Loader fuer 1.21.11, GlowCube
+fuer 1.21.11. Eine Fassung daneben und das Spiel startet nicht.
 
 ## Bedienen
 
@@ -64,7 +61,8 @@ Jedes Modul hat eine Taste. Was geschaltet wurde, steht kurz ueber der Hotbar.
 | `V` | Step | | `L` | Search |
 
 Ohne Taste, ueber das ClickGUI erreichbar: StorageESP, EntityESP, Tracers,
-HoleESP, Trajectories, AutoWalk, Criticals, AutoRespawn.
+HoleESP, Trajectories, AutoWalk, Criticals, AutoRespawn, Nuker, Scaffold,
+AutoTotem, Spammer, Timer.
 
 Die Belegungen meiden alles, was Minecraft selbst benutzt - mit einer
 Ausnahme: `F` tauscht in Vanilla die Zweithand. Wem das dazwischenkommt, der
@@ -107,6 +105,7 @@ sind alle Erze, Kisten, Spawner und Portale.
 | Spammer | Schickt regelmaessig eine Chatnachricht |
 | AutoTotem | Haelt ein Totem in der Zweithand |
 | Scaffold | Baut den Boden unter dir mit |
+| Timer | Beschleunigt die Weltuhr (Exploit) |
 
 Die Kategorien folgen der Einteilung von BleachHack: Combat, Movement,
 Render, Player, World, Exploits, Misc. Woher was stammt, steht in
@@ -116,9 +115,12 @@ Render, Player, World, Exploits, Misc. Woher was stammt, steht in
 
 [SeedCrackerX](https://github.com/19MisterX98/SeedcrackerX) rechnet aus
 Merkmalen der Welt - Erzadern, Dungeons, Strukturen - den Weltseed zurueck.
-Die Fassung 2.16.1 ist fuer genau Minecraft 26.2 gebaut und laeuft ohne
-Zutun: einfach mit in den `mods`-Ordner legen. Sie bringt ihre eigenen
-Abhaengigkeiten (cloth-config und die noetigen Fabric-Module) selbst mit.
+Die passende Fassung (derzeit 2.15.6) steckt **schon in der GlowCube-JAR**
+unter `META-INF/jars` - Fabric laedt eingebettete Mods beim Start von selbst
+mit. Es ist also nichts danebenzulegen. Welche Fassung genau eingebaut wird,
+entscheidet `bundle-seedcracker.py` bei jedem Build neu: es liest aus jeder
+Kandidaten-JAR das eigene Manifest und nimmt die neueste, deren
+`depends.minecraft` auf die gebaute Spielfassung passt.
 
 GlowCube haengt sich an zwei Stellen ein:
 
@@ -144,7 +146,7 @@ das zeigen, was der Client ohnehin schon hat.
 
 Was der Seed koennte: *ausrechnen*, wo Erze bei der Weltgenerierung entstanden
 waeren. Das ist aber kein X-Ray, sondern eine **Vorhersage**, und sie
-verlangt, die Erzgenerierung von 26.2 nachzubauen. Ein eigenes, grosses
+verlangt, die Erzgenerierung von 1.21.11 nachzubauen. Ein eigenes, grosses
 Vorhaben - kein Schalter an X-Ray.
 
 Fuer **Strukturen** gibt es das bereits fertig: SeedCrackerX bringt eigene
@@ -171,14 +173,14 @@ verboten - dort kostet es den Zugang.
 
 | Was passiert | Woran es liegt |
 | --- | --- |
-| Spiel startet, nichts passiert | Falsches Profil gestartet - es muss `fabric-loader-26.2` sein |
+| Spiel startet, nichts passiert | Falsches Profil gestartet - es muss `fabric-loader-1.21.11` sein |
 | Absturz beim Start, `fabric-api` im Text | Fabric API fehlt im `mods`-Ordner |
-| Absturz, `mixin` im Text | Fassungen passen nicht zusammen - alle drei auf 26.2 bringen |
+| Absturz, `mixin` im Text | Fassungen passen nicht zusammen - alle drei auf 1.21.11 bringen |
 | Der Build bei GitHub ist rot | Im Lauf auf **Bauen** klicken, die rote Zeile ist die Ursache |
 
 ## Fuer den Fall, dass du doch selbst bauen willst
 
-JDK 25 und Gradle vorausgesetzt:
+JDK 21 und Gradle vorausgesetzt:
 
 ```bash
 cd glowcube-client
@@ -195,7 +197,7 @@ gradle runClient              # Testinstanz mit dem Mod
 | `src/main/java/.../util/` | Farben, Animation, 2D- und 3D-Zeichnen |
 | `src/main/java/.../gui/` | ClickGUI und Block-Auswahl |
 | `src/main/java/.../hud/` | Wasserzeichen und Modulliste |
-| `src/main/java/.../module/` | Die 16 Module |
-| `src/main/java/.../mixin/` | Die drei Eingriffe ins Spiel |
+| `src/main/java/.../module/` | Die 27 Module |
+| `src/main/java/.../mixin/` | Die vier Eingriffe ins Spiel |
 | `einzeldatei/` | Derselbe Code in einer einzigen Datei - nicht Teil des Builds |
 | `resolve-versions.py` | Holt die aktuellen Fabric-Versionen |
