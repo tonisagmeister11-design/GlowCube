@@ -150,6 +150,12 @@ public final class KillAura extends Module {
         for (LivingEntity ziel : ziele) {
             mc.gameMode.attack(player(), ziel);
             player().swing(InteractionHand.MAIN_HAND);
+            // Wie beim echten Linksklick: den Angriffszaehler zuruecksetzen.
+            // Sonst bleibt die Aufladung dauerhaft voll, KillAura schlaegt
+            // jeden Tick (20x/s), und Server werfen diese unmoegliche
+            // Schlagrate als Betrug weg - das Ziel nimmt dann gar keinen
+            // Schaden. Mit Ruecksetzen trifft es im richtigen Waffentakt.
+            player().resetAttackStrengthTicker();
         }
         wartet = hitDelay.getInt();
     }

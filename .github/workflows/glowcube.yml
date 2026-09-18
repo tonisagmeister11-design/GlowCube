@@ -336,8 +336,24 @@ jobs:
             "" \
             "Automatisch gebaut aus Commit ${GITHUB_SHA}.")
 
+          # Die Namen, die in dieses Release gehoeren.
+          aktuelle=""
+          for j in "${jars[@]}"; do aktuelle="${aktuelle} $(basename "$j")"; done
+
           # "neueste" ist der immer gleiche Link auf die aktuelle Fassung.
           if gh release view neueste >/dev/null 2>&1; then
+            # Veraltete, andersnamige JARs (z. B. aus einem frueheren
+            # Namensschema wie glowcube-1.0.0.jar) entfernen, damit niemand
+            # aus Versehen eine alte Datei zieht.
+            for vorhanden in $(gh release view neueste --json assets -q '.assets[].name'); do
+              case "$vorhanden" in
+                *.jar)
+                  if ! printf '%s\n' $aktuelle | grep -qx "$vorhanden"; then
+                    echo "Entferne veraltete Datei $vorhanden aus 'neueste'"
+                    gh release delete-asset neueste "$vorhanden" -y || true
+                  fi ;;
+              esac
+            done
             gh release upload neueste "${jars[@]}" --clobber
             gh release edit neueste --notes "$hinweis"
           else
