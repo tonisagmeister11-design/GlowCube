@@ -22,7 +22,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mc: ["1.21.11", "26.2", "26.3"]
+        # 26.2/26.3 sind vorbereitet (src/versionen, SlotKlick/Erz-Ports), aber
+        # die 26.x-Render-Pipeline ist noch nicht portiert - deshalb baut die
+        # Matrix vorerst nur 1.21.11. Zum Fortsetzen einfach "26.2" (und "26.3")
+        # wieder in die Liste aufnehmen.
+        mc: ["1.21.11"]
     defaults:
       run:
         working-directory: glowcube-client
@@ -315,10 +319,8 @@ jobs:
             "Fertig gebaute GlowCube-Mod (Fabric) fuer Minecraft Java:" \
             "  ${fassungen}" \
             "" \
-            "Lade die JAR, die zu deiner Minecraft-Fassung passt:" \
-            "  glowcube-1.21.11.jar  -> Minecraft 1.21.11" \
-            "  glowcube-26.2.jar     -> Minecraft 26.2 (Chaos Cubed)" \
-            "  glowcube-26.3.jar     -> Minecraft 26.3 (Wilderness Bound)" \
+            "Lade die JAR, die zu deiner Minecraft-Fassung passt" \
+            "(der Dateiname nennt die Fassung, z. B. glowcube-1.21.11.jar)." \
             "" \
             "SeedCrackerX steckt schon drin - keine zweite Datei noetig." \
             "" \
