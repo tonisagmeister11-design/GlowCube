@@ -295,7 +295,7 @@ public final class AutoPlay extends Module {
             Navigation.stopp();
             return;
         }
-        Navigation.laufe(net.minecraft.world.phys.Vec3.atCenterOf(laufZiel));
+        Navigation.laufeZu(laufZiel);
     }
 
     /** Der naechste gesuchte Block im weiteren Umkreis - oder null. */

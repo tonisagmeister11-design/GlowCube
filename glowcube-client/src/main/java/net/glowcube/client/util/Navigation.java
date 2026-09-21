@@ -36,6 +36,14 @@ public final class Navigation {
     /** Wie nah ans Ziel, bevor es als erreicht gilt (in Bloecken, quadriert). */
     private static final double ANKUNFT = 2.25;
 
+    // --- Zustand des A*-Weges (nur laufeZu nutzt das) --------------------
+    private static java.util.List<BlockPos> pfad;
+    private static int pfadIndex;
+    private static BlockPos pfadZiel;
+    private static int neuRechnen;       // Sperre, damit nicht jeden Tick neu geplant wird
+    private static BlockPos letztePos;   // fuer die Steckenerkennung
+    private static int stehtFest;
+
     private Navigation() {
     }
 
@@ -47,6 +55,75 @@ public final class Navigation {
     public static void stopp() {
         mc().options.keyUp.setDown(false);
         mc().options.keyJump.setDown(false);
+    }
+
+    /**
+     * Wie {@link #laufe(Vec3)}, aber mit echtem Wegfinder: erst plant
+     * {@link PfadFinder} einen Weg zum Ziel, dann werden dessen Wegpunkte der
+     * Reihe nach angesteuert. Findet der Wegfinder nichts (zu verwinkelt, Ziel
+     * eingemauert), faellt es auf das gerade-drauf-zu von {@link #laufe(Vec3)}
+     * zurueck. Liefert true, wenn das Ziel erreicht ist.
+     */
+    public static boolean laufeZu(BlockPos ziel) {
+        var spieler = mc().player;
+        if (spieler == null || mc().level == null) {
+            return false;
+        }
+
+        // Angekommen? (waagrecht nah genug und hoechstens gut einen Block Hoehe daneben)
+        double dx = ziel.getX() + 0.5 - spieler.getX();
+        double dz = ziel.getZ() + 0.5 - spieler.getZ();
+        if (dx * dx + dz * dz <= ANKUNFT && Math.abs(ziel.getY() - spieler.getY()) <= 1.5) {
+            stopp();
+            pfad = null;
+            return true;
+        }
+
+        if (neuRechnen > 0) {
+            neuRechnen--;
+        }
+        steckenPruefen(spieler.blockPosition());
+
+        boolean zielNeu = pfadZiel == null || !pfadZiel.equals(ziel);
+        boolean fertig = pfad != null && pfadIndex >= pfad.size();
+        if (pfad == null || zielNeu || fertig) {
+            if (zielNeu || neuRechnen <= 0) {
+                pfad = PfadFinder.finde(spieler.blockPosition(), ziel);
+                pfadIndex = 0;
+                pfadZiel = ziel;
+                neuRechnen = 40;   // hoechstens etwa alle zwei Sekunden neu planen
+            }
+        }
+
+        // Kein Weg gefunden: gerade drauf zu (baut Stufen/Bruecken selbst).
+        if (pfad == null || pfad.isEmpty()) {
+            return laufe(Vec3.atCenterOf(ziel));
+        }
+
+        if (pfadIndex >= pfad.size()) {
+            pfadIndex = pfad.size() - 1;
+        }
+        BlockPos wegpunkt = pfad.get(pfadIndex);
+        boolean erreicht = laufe(Vec3.atCenterOf(wegpunkt));
+        if (erreicht && pfadIndex < pfad.size() - 1) {
+            pfadIndex++;
+        }
+        return false;
+    }
+
+    /** Bewegt sich der Spieler nicht mehr, wird beim naechsten Mal neu geplant. */
+    private static void steckenPruefen(BlockPos jetzt) {
+        if (letztePos != null && letztePos.equals(jetzt)) {
+            stehtFest++;
+            if (stehtFest > 25) {           // gut eine Sekunde ohne Fortschritt
+                neuRechnen = 0;             // Neuplanung freigeben
+                mc().options.keyJump.setDown(true);   // einmal huepfen, oft loest das
+                stehtFest = 0;
+            }
+        } else {
+            stehtFest = 0;
+        }
+        letztePos = jetzt;
     }
 
     /**
