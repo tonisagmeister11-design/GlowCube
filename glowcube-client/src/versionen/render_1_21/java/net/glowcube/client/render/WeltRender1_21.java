@@ -109,23 +109,15 @@ public final class WeltRender1_21 implements WeltRender {
 
     private static void linie(VertexConsumer buffer, PoseStack.Pose pose,
                               float x1, float y1, float z1, float x2, float y2, float z2, int farbe) {
-        float dx = x2 - x1;
-        float dy = y2 - y1;
-        float dz = z2 - z1;
-        float length = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (length == 0.0f) {
-            return;
-        }
-        float nx = dx / length;
-        float ny = dy / length;
-        float nz = dz / length;
-
         int a = ColorUtil.alpha(farbe);
         int r = ColorUtil.red(farbe);
         int g = ColorUtil.green(farbe);
         int b = ColorUtil.blue(farbe);
 
-        buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a).setNormal(pose, nx, ny, nz);
-        buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a).setNormal(pose, nx, ny, nz);
+        // Ohne setNormal: der Linientyp in 1.21.11 fuehrt kein Normalen-Element,
+        // ein setNormal darauf laesst den BufferBuilder abstuerzen. Position und
+        // Farbe genuegen fuer duenne Linien.
+        buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a);
+        buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a);
     }
 }
