@@ -225,8 +225,8 @@ public final class OreSim extends Module {
             moegliche.addAll(liste);
         }
 
-        int chunkX = pos.x << 4;
-        int chunkZ = pos.z << 4;
+        int chunkX = net.glowcube.client.render.Netz.chunkX(pos) << 4;
+        int chunkZ = net.glowcube.client.render.Netz.chunkZ(pos) << 4;
         WorldgenRandom zufall =
                 new WorldgenRandom(WorldgenRandom.Algorithm.XOROSHIRO.newInstance(0L));
         long chunkStart = zufall.setDecorationSeed(seedInBenutzung, chunkX, chunkZ);

@@ -100,11 +100,9 @@ jobs:
         continue-on-error: true
         run: |
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.client.gui.Gui:getChat|Chat|Overlay|Message" \
-            "net.minecraft.client.gui.components.ChatComponent:addMessage" \
-            "net.minecraft.client.player.LocalPlayer:isplayClient|endSystem|Message" \
-            "net.minecraft.client.renderer.GameRenderer:Camera|amera" \
-            "net.minecraft.client.gui.GuiGraphicsExtractor:drawString|renderString|String" || true
+            "net.minecraft.client.Minecraft:creen" \
+            "com.mojang.blaze3d.platform.InputConstants:isKeyDown|KeyDown" \
+            "com.mojang.blaze3d.platform.Window:getWindow|indow|andle" || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein

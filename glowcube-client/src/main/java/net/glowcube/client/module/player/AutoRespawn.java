@@ -11,9 +11,9 @@ public final class AutoRespawn extends Module {
 
     @Override
     public void onTick() {
-        if (mc.screen instanceof DeathScreen) {
+        if (net.glowcube.client.render.Netz.bildschirm() instanceof DeathScreen) {
             player().respawn();
-            mc.setScreen(null);
+            net.glowcube.client.render.Netz.bildschirmSetzen(null);
         }
     }
 }

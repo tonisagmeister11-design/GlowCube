@@ -1,7 +1,9 @@
 package net.glowcube.client.render;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.glowcube.client.mixin.ServerboundInteractPacketAccessor;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
@@ -74,5 +76,17 @@ public final class Netz {
         if (mc.player != null) {
             mc.player.displayClientMessage(text, ueberlage);
         }
+    }
+
+    public static Screen bildschirm() {
+        return Minecraft.getInstance().screen;
+    }
+
+    public static void bildschirmSetzen(Screen bildschirm) {
+        Minecraft.getInstance().setScreen(bildschirm);
+    }
+
+    public static boolean tasteUnten(int taste) {
+        return InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), taste);
     }
 }

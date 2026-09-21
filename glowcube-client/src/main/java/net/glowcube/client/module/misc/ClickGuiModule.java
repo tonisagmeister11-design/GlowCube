@@ -16,7 +16,7 @@ public final class ClickGuiModule extends Module {
 
     @Override
     public void onEnable() {
-        mc.setScreen(new ClickGuiScreen());
+        net.glowcube.client.render.Netz.bildschirmSetzen(new ClickGuiScreen());
         setEnabledSilently(false);
     }
 }

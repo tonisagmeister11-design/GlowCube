@@ -337,7 +337,7 @@ public final class ModuleManager {
             return;
         }
         String zustand = module.isEnabled() ? "an" : "aus";
-        player.displayClientMessage(
+        net.glowcube.client.render.Netz.nachricht(
                 Component.literal("[GlowCube] " + module.name() + ": " + zustand), true);
     }
 

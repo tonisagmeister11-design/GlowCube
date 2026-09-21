@@ -1,6 +1,8 @@
 package net.glowcube.client.render;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
@@ -10,9 +12,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Fassung fuer <b>26.3 und neuer</b>: dieselben Kleinigkeiten mit den neuen
- * 26.x-Namen bzw. neutralen Ersatzloesungen. Arm-Animation ({@code swing})
- * und Chunk-Neuzeichnen folgen mit der uebrigen Render-Anbindung; der Angriff
- * laeuft ohnehin ueber {@code gameMode.attack}.
+ * 26.x-Namen. Arm-Animation und Chunk-Neuzeichnen folgen mit der uebrigen
+ * Render-Anbindung; der Angriff laeuft ohnehin ueber {@code gameMode.attack}.
  */
 public final class Netz {
     private Netz() {
@@ -55,15 +56,31 @@ public final class Netz {
     }
 
     public static Vec3 kameraPosition() {
-        // Naeherung: in der Ich-Perspektive liegt die Kamera an den Augen.
         Minecraft mc = Minecraft.getInstance();
         return mc.player != null ? mc.player.getEyePosition() : Vec3.ZERO;
     }
 
     public static void nachricht(Component text, boolean ueberlage) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.gui != null) {
-            mc.gui.getChat().addMessage(text);
+        if (mc.player == null) {
+            return;
         }
+        if (ueberlage) {
+            mc.player.sendOverlayMessage(text);
+        } else {
+            mc.player.sendSystemMessage(text);
+        }
+    }
+
+    public static Screen bildschirm() {
+        return Minecraft.getInstance().getScreen();
+    }
+
+    public static void bildschirmSetzen(Screen bildschirm) {
+        Minecraft.getInstance().setScreen(bildschirm);
+    }
+
+    public static boolean tasteUnten(int taste) {
+        return InputConstants.isKeyDown(Minecraft.getInstance().getWindow().getWindow(), taste);
     }
 }

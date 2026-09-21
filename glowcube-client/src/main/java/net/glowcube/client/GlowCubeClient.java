@@ -1,7 +1,5 @@
 package net.glowcube.client;
 
-import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.Window;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
@@ -71,10 +69,6 @@ public final class GlowCubeClient implements ClientModInitializer {
      * jede Taste im GUI neu belegen, ohne sie vorher registriert zu haben.
      */
     private void pollKeys() {
-        Minecraft mc = Minecraft.getInstance();
-        // isKeyDown nimmt hier bereits das Window-Objekt selbst.
-        Window window = mc.getWindow();
-
         Set<Integer> bound = new HashSet<>();
         for (Module module : modules.all()) {
             if (module.hasKey()) {
@@ -83,7 +77,7 @@ public final class GlowCubeClient implements ClientModInitializer {
         }
 
         for (int key : bound) {
-            boolean down = InputConstants.isKeyDown(window, key);
+            boolean down = net.glowcube.client.render.Netz.tasteUnten(key);
             if (!down) {
                 held.remove(key);
                 continue;
@@ -93,7 +87,7 @@ public final class GlowCubeClient implements ClientModInitializer {
                 continue;
             }
             // Nur ausserhalb von Menues und Chat, sonst tippt man Module an.
-            if (mc.screen == null) {
+            if (net.glowcube.client.render.Netz.bildschirm() == null) {
                 modules.onKey(key);
                 config.save();
             }
