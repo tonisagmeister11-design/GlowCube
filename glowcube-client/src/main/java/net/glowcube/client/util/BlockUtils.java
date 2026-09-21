@@ -131,7 +131,7 @@ public final class BlockUtils {
 
         if (ergebnis.consumesAction()) {
             if (schwingen) {
-                mc().player.swing(hand);
+                mc().player.swing(hand, false);
             } else {
                 net.glowcube.client.render.Netz.schwungSenden(hand);
             }
@@ -257,7 +257,7 @@ public final class BlockUtils {
         }
 
         if (schwingen) {
-            mc().player.swing(InteractionHand.MAIN_HAND);
+            mc().player.swing(InteractionHand.MAIN_HAND, false);
         } else {
             net.glowcube.client.render.Netz.schwungSenden(InteractionHand.MAIN_HAND);
         }

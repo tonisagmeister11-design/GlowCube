@@ -17,7 +17,7 @@ public final class Netz {
     public static void schwungSenden(InteractionHand hand) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            mc.player.swing(hand);
+            mc.player.swing(hand, false);
         }
     }
 

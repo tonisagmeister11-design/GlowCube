@@ -149,7 +149,7 @@ public final class KillAura extends Module {
 
         for (LivingEntity ziel : ziele) {
             mc.gameMode.attack(player(), ziel);
-            player().swing(InteractionHand.MAIN_HAND);
+            player().swing(InteractionHand.MAIN_HAND, false);
             // Wie beim echten Linksklick: den Angriffszaehler zuruecksetzen.
             // Sonst bleibt die Aufladung dauerhaft voll, KillAura schlaegt
             // jeden Tick (20x/s), und Server werfen diese unmoegliche

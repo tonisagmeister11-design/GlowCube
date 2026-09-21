@@ -167,7 +167,7 @@ public final class VeinMiner extends Module {
 
         BlockPos pos = ader.get(0);
         if (!angeschlagen) {
-            player().swing(InteractionHand.MAIN_HAND);
+            player().swing(InteractionHand.MAIN_HAND, false);
             angeschlagen = true;
         }
         if (drehen.get()) {
