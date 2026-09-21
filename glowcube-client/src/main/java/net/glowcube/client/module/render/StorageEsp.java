@@ -1,11 +1,10 @@
 package net.glowcube.client.module.render;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.render.WeltRender;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.NumberSetting;
-import net.glowcube.client.util.Render3D;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BarrelBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -36,7 +35,7 @@ public final class StorageEsp extends Module {
     }
 
     @Override
-    public void onWorldRender(WorldRenderContext context) {
+    public void onWorldRender(WeltRender render) {
         if (!inGame()) {
             return;
         }
@@ -53,7 +52,7 @@ public final class StorageEsp extends Module {
                 for (BlockEntity entity : chunk.getBlockEntities().values()) {
                     int color = colorFor(entity);
                     if (color != 0) {
-                        Render3D.box(context, boxFor(entity.getBlockPos()), color, true);
+                        render.box(boxFor(entity.getBlockPos()), color, true);
                     }
                 }
             }

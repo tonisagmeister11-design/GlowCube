@@ -1,12 +1,11 @@
 package net.glowcube.client.module.render;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.render.WeltRender;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.util.ColorUtil;
-import net.glowcube.client.util.Render3D;
 import net.glowcube.client.util.Theme;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -90,7 +89,7 @@ public final class Trajectories extends Module {
     }
 
     @Override
-    public void onWorldRender(WorldRenderContext context) {
+    public void onWorldRender(WeltRender render) {
         if (!inGame()) {
             return;
         }
@@ -103,7 +102,7 @@ public final class Trajectories extends Module {
         }
         if (daten != null) {
             rechnen(daten, inHand);
-            zeichnen(context, Theme.accentStart());
+            zeichnen(render, Theme.accentStart());
         }
 
         if (abgeschossene.get()) {
@@ -116,7 +115,7 @@ public final class Trajectories extends Module {
                     continue;
                 }
                 rechnenAbFlug(geschoss, art);
-                zeichnen(context, ColorUtil.fade(Theme.accentEnd(), 0.55f));
+                zeichnen(render, ColorUtil.fade(Theme.accentEnd(), 0.55f));
             }
         }
     }
@@ -271,13 +270,13 @@ public final class Trajectories extends Module {
         }
     }
 
-    private void zeichnen(WorldRenderContext context, int farbe) {
+    private void zeichnen(WeltRender render, int farbe) {
         for (int i = 1; i < bahn.size(); i++) {
-            Render3D.line(context, bahn.get(i - 1), bahn.get(i), farbe);
+            render.linie(bahn.get(i - 1), bahn.get(i), farbe);
         }
         if (bahn.size() > 1) {
             Vec3 ende = bahn.get(bahn.size() - 1);
-            Render3D.box(context, new AABB(ende.subtract(0.15, 0.15, 0.15),
+            render.box(new AABB(ende.subtract(0.15, 0.15, 0.15),
                     ende.add(0.15, 0.15, 0.15)), farbe, true);
         }
     }

@@ -1,11 +1,10 @@
 package net.glowcube.client.module.render;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.render.WeltRender;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.NumberSetting;
-import net.glowcube.client.util.Render3D;
 import net.minecraft.world.entity.Entity;
 
 /** Linien vom Fadenkreuz zu allem, was zaehlt. */
@@ -22,7 +21,7 @@ public final class Tracers extends Module {
     }
 
     @Override
-    public void onWorldRender(WorldRenderContext context) {
+    public void onWorldRender(WeltRender render) {
         if (!inGame()) {
             return;
         }
@@ -33,7 +32,7 @@ public final class Tracers extends Module {
             }
             int color = EntityGroups.colorFor(entity, players.get(), hostile.get(), passive.get(), items.get());
             if (color != 0) {
-                Render3D.tracer(context, entity.getBoundingBox().getCenter(), color);
+                render.tracer(entity.getBoundingBox().getCenter(), color);
             }
         }
     }

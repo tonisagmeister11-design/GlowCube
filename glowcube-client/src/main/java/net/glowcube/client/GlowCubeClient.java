@@ -7,8 +7,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.glowcube.client.command.GlowCubeCommands;
 import net.glowcube.client.core.ConfigManager;
@@ -48,8 +46,10 @@ public final class GlowCubeClient implements ClientModInitializer {
         modules.armLoaded();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> onTick());
-        WorldRenderEvents.AFTER_ENTITIES.register(context -> modules.onWorldRender(context));
-        HudRenderCallback.EVENT.register((gfx, tickCounter) -> hud.render(gfx));
+        // Welt- und HUD-Rendern haengt fassungsabhaengig ab: bis 1.21.x an
+        // Fabrics WorldRenderEvents/HudRenderCallback, ab 26.x am neuen
+        // Rendersystem. Deshalb ueber die versionsgetrennte Bruecke.
+        net.glowcube.client.render.RenderBruecke.registriere(modules, hud);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> modules.onWorldLeave());
         // Search durchsucht jeden Chunk einmal beim Laden statt jeden Tick
         // von neuem - dafuer muss es wissen, wann einer kommt und geht.

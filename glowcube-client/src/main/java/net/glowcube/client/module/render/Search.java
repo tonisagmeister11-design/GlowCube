@@ -1,6 +1,6 @@
 package net.glowcube.client.module.render;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.render.WeltRender;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BlockListSetting;
@@ -8,7 +8,6 @@ import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.util.ColorUtil;
-import net.glowcube.client.util.Render3D;
 import net.glowcube.client.util.Theme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -213,7 +212,7 @@ public final class Search extends Module {
     // ------------------------------------------------------------- Zeichnen
 
     @Override
-    public void onWorldRender(WorldRenderContext context) {
+    public void onWorldRender(WeltRender render) {
         if (FUNDE.isEmpty()) {
             return;
         }
@@ -234,10 +233,10 @@ public final class Search extends Module {
                 continue;
             }
             if (!darstellung.is("Linie")) {
-                Render3D.box(context, new AABB(pos), farbe, schimmer.get());
+                render.box(new AABB(pos), farbe, schimmer.get());
             }
             if (!darstellung.is("Kasten")) {
-                Render3D.tracer(context, mitte, linienFarbe);
+                render.tracer(mitte, linienFarbe);
             }
             gezeichnet++;
         }

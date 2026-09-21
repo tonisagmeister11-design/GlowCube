@@ -1,6 +1,6 @@
 package net.glowcube.client.module.world;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.render.WeltRender;
 import net.glowcube.client.GlowCubeClient;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
@@ -9,7 +9,6 @@ import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.integration.SeedBridge;
 import net.glowcube.client.util.Erz;
-import net.glowcube.client.util.Render3D;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
@@ -439,7 +438,7 @@ public final class OreSim extends Module {
     // -------------------------------------------------------------- Zeichnen
 
     @Override
-    public void onWorldRender(WorldRenderContext context) {
+    public void onWorldRender(WeltRender render) {
         if (proChunk.isEmpty()) {
             return;
         }
@@ -457,7 +456,7 @@ public final class OreSim extends Module {
                     if (gezeichnet >= grenze) {
                         return;
                     }
-                    Render3D.box(context, new AABB(pos), farbe, false);
+                    render.box(new AABB(pos), farbe, false);
                     gezeichnet++;
                 }
             }

@@ -1,6 +1,5 @@
 package net.glowcube.client.core;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.glowcube.client.module.combat.AntiKnockback;
 import net.glowcube.client.module.combat.AutoTotem;
 import net.glowcube.client.module.combat.Criticals;
@@ -220,10 +219,10 @@ public final class ModuleManager {
         }
     }
 
-    public void onWorldRender(WorldRenderContext context) {
+    public void onWorldRender(net.glowcube.client.render.WeltRender render) {
         for (Module module : modules) {
             if (module.isEnabled()) {
-                module.onWorldRender(context);
+                module.onWorldRender(render);
             }
         }
     }

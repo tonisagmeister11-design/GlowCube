@@ -2,7 +2,7 @@ package net.glowcube.client.core;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.input.KeyEvent;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.render.WeltRender;
 import net.glowcube.client.core.setting.Setting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -59,7 +59,7 @@ public abstract class Module {
     }
 
     /** Jeden Frame in der Welt, nach den Entities. */
-    public void onWorldRender(WorldRenderContext context) {
+    public void onWorldRender(WeltRender render) {
     }
 
     /**

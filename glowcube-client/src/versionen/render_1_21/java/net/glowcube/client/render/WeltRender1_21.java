@@ -1,74 +1,30 @@
-package net.glowcube.client.util;
+package net.glowcube.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.glowcube.client.util.ColorUtil;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Linien in der Welt. Die Kanten werden von Hand geschrieben statt ueber einen
- * Vanilla-Helfer - der ist zwischen den Fassungen schon mehrfach umgezogen,
- * VertexConsumer nicht.
+ * Fassung fuer <b>1.21.x</b> von {@link WeltRender}. Zeichnet ueber Fabrics
+ * {@code WorldRenderContext} mit {@code MultiBufferSource}/{@code PoseStack} -
+ * genau der Code, der frueher in {@code util/Render3D} stand.
  */
-public final class Render3D {
-    private Render3D() {
+public final class WeltRender1_21 implements WeltRender {
+    private final WorldRenderContext context;
+
+    public WeltRender1_21(WorldRenderContext context) {
+        this.context = context;
     }
 
-    /** Kasten um eine Box. Zeichnet zusaetzlich eine blasse, groessere Box als Schimmer. */
-    public static void box(WorldRenderContext context, AABB box, int color, boolean glow) {
-        MultiBufferSource consumers = context.consumers();
-        PoseStack matrices = context.matrices();
-        if (consumers == null || matrices == null) {
-            return;
-        }
-        Camera kamera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        Vec3 camera = kamera.position();
-        VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
-
-        matrices.pushPose();
-        matrices.translate(-camera.x, -camera.y, -camera.z);
-        PoseStack.Pose pose = matrices.last();
-
-        if (glow) {
-            AABB wide = box.inflate(0.03);
-            edges(lines, pose, wide, ColorUtil.fade(color, 0.35f));
-        }
-        edges(lines, pose, box, color);
-
-        matrices.popPose();
-    }
-
-    /** Eine Linie von der Blickmitte zu einem Punkt in der Welt. */
-    public static void tracer(WorldRenderContext context, Vec3 target, int color) {
-        MultiBufferSource consumers = context.consumers();
-        PoseStack matrices = context.matrices();
-        if (consumers == null || matrices == null) {
-            return;
-        }
-        Camera kamera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        Vec3 camera = kamera.position();
-        // Die Kamera gibt keinen Blickvektor mehr heraus; der Spieler schon,
-        // und in der Ich-Perspektive zeigt der in dieselbe Richtung.
-        Vec3 look = Minecraft.getInstance().player.getViewVector(1.0f);
-        // Startpunkt knapp vor der Kamera, sonst verschwindet die Linie in der Near-Plane.
-        Vec3 start = camera.add(look.x * 0.6, look.y * 0.6, look.z * 0.6);
-
-        VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
-        matrices.pushPose();
-        matrices.translate(-camera.x, -camera.y, -camera.z);
-        line(lines, matrices.last(),
-                (float) start.x, (float) start.y, (float) start.z,
-                (float) target.x, (float) target.y, (float) target.z, color);
-        matrices.popPose();
-    }
-
-    /** Eine einzelne Linie zwischen zwei Punkten der Welt. */
-    public static void line(WorldRenderContext context, Vec3 von, Vec3 bis, int color) {
+    @Override
+    public void box(AABB box, int farbe, boolean schimmer) {
         MultiBufferSource consumers = context.consumers();
         PoseStack matrices = context.matrices();
         if (consumers == null || matrices == null) {
@@ -79,13 +35,57 @@ public final class Render3D {
 
         matrices.pushPose();
         matrices.translate(-camera.x, -camera.y, -camera.z);
-        line(lines, matrices.last(),
-                (float) von.x, (float) von.y, (float) von.z,
-                (float) bis.x, (float) bis.y, (float) bis.z, color);
+        PoseStack.Pose pose = matrices.last();
+
+        if (schimmer) {
+            AABB wide = box.inflate(0.03);
+            kanten(lines, pose, wide, ColorUtil.fade(farbe, 0.35f));
+        }
+        kanten(lines, pose, box, farbe);
+
         matrices.popPose();
     }
 
-    private static void edges(VertexConsumer buffer, PoseStack.Pose pose, AABB box, int color) {
+    @Override
+    public void tracer(Vec3 ziel, int farbe) {
+        MultiBufferSource consumers = context.consumers();
+        PoseStack matrices = context.matrices();
+        if (consumers == null || matrices == null) {
+            return;
+        }
+        Camera kamera = Minecraft.getInstance().gameRenderer.getMainCamera();
+        Vec3 camera = kamera.position();
+        Vec3 look = Minecraft.getInstance().player.getViewVector(1.0f);
+        Vec3 start = camera.add(look.x * 0.6, look.y * 0.6, look.z * 0.6);
+
+        VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
+        matrices.pushPose();
+        matrices.translate(-camera.x, -camera.y, -camera.z);
+        linie(lines, matrices.last(),
+                (float) start.x, (float) start.y, (float) start.z,
+                (float) ziel.x, (float) ziel.y, (float) ziel.z, farbe);
+        matrices.popPose();
+    }
+
+    @Override
+    public void linie(Vec3 von, Vec3 bis, int farbe) {
+        MultiBufferSource consumers = context.consumers();
+        PoseStack matrices = context.matrices();
+        if (consumers == null || matrices == null) {
+            return;
+        }
+        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+        VertexConsumer lines = consumers.getBuffer(RenderTypes.lines());
+
+        matrices.pushPose();
+        matrices.translate(-camera.x, -camera.y, -camera.z);
+        linie(lines, matrices.last(),
+                (float) von.x, (float) von.y, (float) von.z,
+                (float) bis.x, (float) bis.y, (float) bis.z, farbe);
+        matrices.popPose();
+    }
+
+    private static void kanten(VertexConsumer buffer, PoseStack.Pose pose, AABB box, int farbe) {
         float x1 = (float) box.minX;
         float y1 = (float) box.minY;
         float z1 = (float) box.minZ;
@@ -93,25 +93,22 @@ public final class Render3D {
         float y2 = (float) box.maxY;
         float z2 = (float) box.maxZ;
 
-        // Boden
-        line(buffer, pose, x1, y1, z1, x2, y1, z1, color);
-        line(buffer, pose, x2, y1, z1, x2, y1, z2, color);
-        line(buffer, pose, x2, y1, z2, x1, y1, z2, color);
-        line(buffer, pose, x1, y1, z2, x1, y1, z1, color);
-        // Decke
-        line(buffer, pose, x1, y2, z1, x2, y2, z1, color);
-        line(buffer, pose, x2, y2, z1, x2, y2, z2, color);
-        line(buffer, pose, x2, y2, z2, x1, y2, z2, color);
-        line(buffer, pose, x1, y2, z2, x1, y2, z1, color);
-        // Pfosten
-        line(buffer, pose, x1, y1, z1, x1, y2, z1, color);
-        line(buffer, pose, x2, y1, z1, x2, y2, z1, color);
-        line(buffer, pose, x2, y1, z2, x2, y2, z2, color);
-        line(buffer, pose, x1, y1, z2, x1, y2, z2, color);
+        linie(buffer, pose, x1, y1, z1, x2, y1, z1, farbe);
+        linie(buffer, pose, x2, y1, z1, x2, y1, z2, farbe);
+        linie(buffer, pose, x2, y1, z2, x1, y1, z2, farbe);
+        linie(buffer, pose, x1, y1, z2, x1, y1, z1, farbe);
+        linie(buffer, pose, x1, y2, z1, x2, y2, z1, farbe);
+        linie(buffer, pose, x2, y2, z1, x2, y2, z2, farbe);
+        linie(buffer, pose, x2, y2, z2, x1, y2, z2, farbe);
+        linie(buffer, pose, x1, y2, z2, x1, y2, z1, farbe);
+        linie(buffer, pose, x1, y1, z1, x1, y2, z1, farbe);
+        linie(buffer, pose, x2, y1, z1, x2, y2, z1, farbe);
+        linie(buffer, pose, x2, y1, z2, x2, y2, z2, farbe);
+        linie(buffer, pose, x1, y1, z2, x1, y2, z2, farbe);
     }
 
-    private static void line(VertexConsumer buffer, PoseStack.Pose pose,
-                             float x1, float y1, float z1, float x2, float y2, float z2, int color) {
+    private static void linie(VertexConsumer buffer, PoseStack.Pose pose,
+                              float x1, float y1, float z1, float x2, float y2, float z2, int farbe) {
         float dx = x2 - x1;
         float dy = y2 - y1;
         float dz = z2 - z1;
@@ -123,10 +120,10 @@ public final class Render3D {
         float ny = dy / length;
         float nz = dz / length;
 
-        int a = ColorUtil.alpha(color);
-        int r = ColorUtil.red(color);
-        int g = ColorUtil.green(color);
-        int b = ColorUtil.blue(color);
+        int a = ColorUtil.alpha(farbe);
+        int r = ColorUtil.red(farbe);
+        int g = ColorUtil.green(farbe);
+        int b = ColorUtil.blue(farbe);
 
         buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a).setNormal(pose, nx, ny, nz);
         buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a).setNormal(pose, nx, ny, nz);

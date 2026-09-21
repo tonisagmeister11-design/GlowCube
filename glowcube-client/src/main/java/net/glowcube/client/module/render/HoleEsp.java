@@ -1,12 +1,11 @@
 package net.glowcube.client.module.render;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.render.WeltRender;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.mixin.BlockBehaviourAccessor;
-import net.glowcube.client.util.Render3D;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
@@ -182,10 +181,10 @@ public final class HoleEsp extends Module {
     }
 
     @Override
-    public void onWorldRender(WorldRenderContext context) {
+    public void onWorldRender(WeltRender render) {
         for (Loch loch : loecher) {
             BlockPos p = loch.pos();
-            Render3D.box(context, new AABB(
+            render.box(new AABB(
                     p.getX(), p.getY(), p.getZ(),
                     p.getX() + 1.0, p.getY() + kastenHoehe.get(), p.getZ() + 1.0),
                     loch.farbe(), true);

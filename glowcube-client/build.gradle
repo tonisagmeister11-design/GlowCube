@@ -93,7 +93,12 @@ sourceSets.main.java.srcDir "src/versionen/${slotOrdner}/java"
 def erzOrdner = erzUmbau ? 'erz_26_3' : 'erz_1_21_26_2'
 sourceSets.main.java.srcDir "src/versionen/${erzOrdner}/java"
 
-logger.lifecycle("GlowCube: Fassung ${mcv} - SlotKlick=${slotOrdner}, Erz=${erzOrdner}")
+// Render/GUI/HUD: bis 1.21.x ueber Fabrics WorldRenderEvents/HudRenderCallback
+// und Mojangs GuiGraphics; ab 26.x ueber das neue Submit-Node-System.
+def renderOrdner = alteFassung ? 'render_1_21' : 'render_26'
+sourceSets.main.java.srcDir "src/versionen/${renderOrdner}/java"
+
+logger.lifecycle("GlowCube: Fassung ${mcv} - SlotKlick=${slotOrdner}, Erz=${erzOrdner}, Render=${renderOrdner}")
 
 // Die nachgebaute SeedCrackerX-Schnittstelle dient nur dem Uebersetzen.
 // Zur Laufzeit gilt die echte aus SeedCrackerX - waere unsere Fassung mit in
