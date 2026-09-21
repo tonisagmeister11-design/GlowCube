@@ -26,7 +26,7 @@ jobs:
         # die 26.x-Render-Pipeline ist noch nicht portiert - deshalb baut die
         # Matrix vorerst nur 1.21.11. Zum Fortsetzen einfach "26.2" (und "26.3")
         # wieder in die Liste aufnehmen.
-        mc: ["1.21.11"]
+        mc: ["1.21.11", "26.3"]
     defaults:
       run:
         working-directory: glowcube-client
