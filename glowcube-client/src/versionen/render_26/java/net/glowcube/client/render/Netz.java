@@ -72,15 +72,28 @@ public final class Netz {
         }
     }
 
+    // Das Feld screen ist ab 26.x privat und hat keinen Getter; ueber
+    // Spiegelung kommt man neutral heran.
+    private static java.lang.reflect.Field screenFeld;
+
     public static Screen bildschirm() {
-        return Minecraft.getInstance().getScreen();
+        try {
+            if (screenFeld == null) {
+                screenFeld = Minecraft.class.getDeclaredField("screen");
+                screenFeld.setAccessible(true);
+            }
+            return (Screen) screenFeld.get(Minecraft.getInstance());
+        } catch (ReflectiveOperationException fehler) {
+            return null;
+        }
     }
 
     public static void bildschirmSetzen(Screen bildschirm) {
-        Minecraft.getInstance().setScreen(bildschirm);
+        Minecraft.getInstance().setScreenAndShow(bildschirm);
     }
 
     public static boolean tasteUnten(int taste) {
-        return InputConstants.isKeyDown(Minecraft.getInstance().getWindow().getWindow(), taste);
+        // Ab 26.x nimmt isKeyDown nur noch den Tastencode (kein Fenster).
+        return InputConstants.isKeyDown(taste);
     }
 }

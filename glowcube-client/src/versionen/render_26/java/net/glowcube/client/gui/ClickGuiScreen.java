@@ -17,8 +17,8 @@ public final class ClickGuiScreen extends Screen {
     @Override
     protected void init() {
         if (minecraft != null && minecraft.player != null) {
-            minecraft.player.displayClientMessage(Component.literal(
-                    "[GlowCube] ClickGUI auf 26.3 folgt - Module bis dahin per Tastenkuerzel."), false);
+            minecraft.player.sendSystemMessage(Component.literal(
+                    "[GlowCube] ClickGUI auf 26.3 folgt - Module bis dahin per Tastenkuerzel."));
         }
         onClose();
     }
