@@ -192,7 +192,14 @@ jobs:
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Pos#" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$Rot#" \
             "net.minecraft.network.protocol.game.ServerboundMovePlayerPacket\$PosRot#" \
-            "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket#"
+            "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket#" \
+            "net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket#getId" \
+            "net.minecraft.network.protocol.game.ServerboundContainerClosePacket#getContainerId" \
+            "net.minecraft.world.entity.player.Player#resetAttackStrengthTicker" \
+            "net.minecraft.world.entity.player.Player#getAttackStrengthScale" \
+            "net.minecraft.world.entity.LivingEntity#onClimbable" \
+            "net.minecraft.world.level.BlockGetter#getFluidState" \
+            "net.minecraft.world.level.material.FluidState#isEmpty"
 
           # Ein paar Namen unterscheiden sich zwischen den Fassungen. Sie
           # werden von versionsabhaengigen Quellen (SlotKlick, Erz) oder von

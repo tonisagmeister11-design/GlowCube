@@ -1,13 +1,20 @@
 package net.glowcube.client.core;
 
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.glowcube.client.module.combat.AntiKnockback;
 import net.glowcube.client.module.combat.AutoTotem;
 import net.glowcube.client.module.combat.Criticals;
 import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.combat.MaceAura;
+import net.glowcube.client.module.combat.TriggerBot;
 import net.glowcube.client.module.movement.AutoSprint;
 import net.glowcube.client.module.movement.AutoWalk;
+import net.glowcube.client.module.movement.FastLadder;
+import net.glowcube.client.module.movement.Glide;
+import net.glowcube.client.module.movement.HighJump;
+import net.glowcube.client.module.movement.Jesus;
 import net.glowcube.client.module.movement.Scaffold;
+import net.glowcube.client.module.movement.Spider;
 import net.glowcube.client.module.movement.Flight;
 import net.glowcube.client.module.movement.NoFall;
 import net.glowcube.client.module.movement.NoSlow;
@@ -29,6 +36,7 @@ import net.glowcube.client.module.player.AntiAfk;
 import net.glowcube.client.module.player.AutoEat;
 import net.glowcube.client.module.player.AutoRespawn;
 import net.glowcube.client.module.player.AutoTool;
+import net.glowcube.client.module.player.XCarry;
 import net.glowcube.client.module.render.EntityEsp;
 import net.glowcube.client.module.render.HoleEsp;
 import net.glowcube.client.module.render.FullBright;
@@ -85,9 +93,16 @@ public final class ModuleManager {
         add(new AutoSprint());
         add(new AutoWalk());
         add(new Scaffold());
+        add(new Spider());
+        add(new Glide());
+        add(new HighJump());
+        add(new FastLadder());
+        add(new Jesus());
         // Combat
         add(new KillAura());
         add(new MaceAura());
+        add(new TriggerBot());
+        add(new AntiKnockback());
         add(new Criticals());
         add(new AutoTotem());
         // Player
@@ -96,6 +111,7 @@ public final class ModuleManager {
         add(new AutoRespawn());
         add(new AntiAfk());
         add(new NoInteract());
+        add(new XCarry());
         // Misc
         add(new AutoPlay());
         add(new SeedHunt());
