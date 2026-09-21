@@ -222,7 +222,16 @@ public final class ModuleManager {
     public void onWorldRender(net.glowcube.client.render.WeltRender render) {
         for (Module module : modules) {
             if (module.isEnabled()) {
-                module.onWorldRender(render);
+                try {
+                    module.onWorldRender(render);
+                } catch (Throwable fehler) {
+                    // Ein Zeichenfehler darf niemals das ganze Spiel abschiessen.
+                    // Das Modul wird abgeschaltet und der Grund einmal ins
+                    // Protokoll geschrieben - so kommt der Spieler weiter rein.
+                    net.glowcube.client.GlowCubeClient.LOGGER.error(
+                            "Renderfehler in {} - Modul wird abgeschaltet", module.name(), fehler);
+                    module.setEnabled(false);
+                }
             }
         }
     }
