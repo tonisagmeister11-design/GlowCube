@@ -103,7 +103,7 @@ public final class Search extends Module {
             ChunkPos mitte = player().chunkPosition();
             for (int dx = -sicht; dx <= sicht; dx++) {
                 for (int dz = -sicht; dz <= sicht; dz++) {
-                    WARTESCHLANGE.add(new ChunkPos(mitte.x + dx, mitte.z + dz));
+                    WARTESCHLANGE.add(new ChunkPos(net.glowcube.client.render.Netz.chunkX(mitte) + dx, net.glowcube.client.render.Netz.chunkZ(mitte) + dz));
                 }
             }
         }
@@ -142,10 +142,10 @@ public final class Search extends Module {
      * etwas liegt.
      */
     private void durchsuchen(ChunkPos chunkPos) {
-        if (!inGame() || !level().getChunkSource().hasChunk(chunkPos.x, chunkPos.z)) {
+        if (!inGame() || !level().getChunkSource().hasChunk(net.glowcube.client.render.Netz.chunkX(chunkPos), net.glowcube.client.render.Netz.chunkZ(chunkPos))) {
             return;
         }
-        LevelChunk chunk = level().getChunk(chunkPos.x, chunkPos.z);
+        LevelChunk chunk = level().getChunk(net.glowcube.client.render.Netz.chunkX(chunkPos), net.glowcube.client.render.Netz.chunkZ(chunkPos));
         LevelChunkSection[] abschnitte = chunk.getSections();
         int basis = chunk.getMinY();
 

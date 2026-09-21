@@ -111,7 +111,7 @@ public final class MaceAura extends Module {
         }
 
         mc.gameMode.attack(player(), ziel);
-        player().swing(InteractionHand.MAIN_HAND, false);
+        net.glowcube.client.render.Netz.schwingen(InteractionHand.MAIN_HAND);
         // Angriffszaehler zuruecksetzen wie beim echten Linksklick - sonst
         // schlaegt die Aura jeden Tick und der Server verwirft die Schlaege.
         player().resetAttackStrengthTicker();

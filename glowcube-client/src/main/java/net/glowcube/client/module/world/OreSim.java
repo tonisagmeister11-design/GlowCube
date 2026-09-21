@@ -173,14 +173,14 @@ public final class OreSim extends Module {
         int gerechnet = 0;
         for (int dx = -weite; dx <= weite && gerechnet < 2; dx++) {
             for (int dz = -weite; dz <= weite && gerechnet < 2; dz++) {
-                long schluessel = ChunkPos.asLong(mitte.x + dx, mitte.z + dz);
+                long schluessel = ChunkPos.asLong(net.glowcube.client.render.Netz.chunkX(mitte) + dx, net.glowcube.client.render.Netz.chunkZ(mitte) + dz);
                 if (proChunk.containsKey(schluessel)) {
                     continue;
                 }
-                if (!level().getChunkSource().hasChunk(mitte.x + dx, mitte.z + dz)) {
+                if (!level().getChunkSource().hasChunk(net.glowcube.client.render.Netz.chunkX(mitte) + dx, net.glowcube.client.render.Netz.chunkZ(mitte) + dz)) {
                     continue;
                 }
-                rechnen(level().getChunk(mitte.x + dx, mitte.z + dz));
+                rechnen(level().getChunk(net.glowcube.client.render.Netz.chunkX(mitte) + dx, net.glowcube.client.render.Netz.chunkZ(mitte) + dz));
                 gerechnet++;
             }
         }
@@ -191,7 +191,7 @@ public final class OreSim extends Module {
         proChunk.keySet().removeIf(schluessel -> {
             int cx = ChunkPos.getX(schluessel);
             int cz = ChunkPos.getZ(schluessel);
-            return Math.abs(cx - mitte.x) > grenze || Math.abs(cz - mitte.z) > grenze;
+            return Math.abs(cx - net.glowcube.client.render.Netz.chunkX(mitte)) > grenze || Math.abs(cz - net.glowcube.client.render.Netz.chunkZ(mitte)) > grenze;
         });
 
         // Einmal Rueckmeldung geben, sobald wirklich Erze berechnet wurden -

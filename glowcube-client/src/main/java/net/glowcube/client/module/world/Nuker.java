@@ -363,7 +363,7 @@ public final class Nuker extends Module {
             ((MultiPlayerGameModeAccessor) mc.gameMode).glowcube$vorhersagen(mc.level, folge -> new ServerboundPlayerActionPacket(
                     ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, pos, gewaehlt, folge));
             if (schwingen.get()) {
-                player().swing(InteractionHand.MAIN_HAND, false);
+                net.glowcube.client.render.Netz.schwingen(InteractionHand.MAIN_HAND);
             } else {
                 net.glowcube.client.render.Netz.schwungSenden(InteractionHand.MAIN_HAND);
             }

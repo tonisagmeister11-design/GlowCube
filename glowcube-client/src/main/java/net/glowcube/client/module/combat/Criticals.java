@@ -7,7 +7,6 @@ import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.mixin.LivingEntityAccessor;
 import net.minecraft.network.protocol.Packet;
-import net.glowcube.client.mixin.ServerboundInteractPacketAccessor;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.world.entity.Entity;
@@ -94,7 +93,7 @@ public final class Criticals extends Module {
                 return false;
             }
             Entity ziel = level().getEntity(
-                    ((ServerboundInteractPacketAccessor) schlag).glowcube$zielNummer());
+                    net.glowcube.client.render.Netz.interaktZielId(schlag));
             if (!(ziel instanceof LivingEntity)) {
                 return false;
             }

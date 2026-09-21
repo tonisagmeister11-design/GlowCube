@@ -67,8 +67,8 @@ public final class XRay extends Module {
      * braucht.
      */
     private void reloadChunks() {
-        if (mc.levelRenderer != null) {
-            mc.levelRenderer.allChanged();
+        {
+            net.glowcube.client.render.Netz.chunksNeuZeichnen();
         }
     }
 

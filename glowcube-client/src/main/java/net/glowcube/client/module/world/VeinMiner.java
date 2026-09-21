@@ -167,7 +167,7 @@ public final class VeinMiner extends Module {
 
         BlockPos pos = ader.get(0);
         if (!angeschlagen) {
-            player().swing(InteractionHand.MAIN_HAND, false);
+            net.glowcube.client.render.Netz.schwingen(InteractionHand.MAIN_HAND);
             angeschlagen = true;
         }
         if (drehen.get()) {

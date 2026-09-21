@@ -43,7 +43,7 @@ public final class TriggerBot extends Module {
             return;
         }
         mc.gameMode.attack(player(), ziel);
-        player().swing(InteractionHand.MAIN_HAND, false);
+        net.glowcube.client.render.Netz.schwingen(InteractionHand.MAIN_HAND);
         // Wie beim echten Linksklick - sonst schlaegt es jeden Tick und der
         // Server verwirft die Schlaege als unmoegliche Rate.
         player().resetAttackStrengthTicker();

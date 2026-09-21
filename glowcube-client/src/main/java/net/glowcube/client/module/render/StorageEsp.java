@@ -40,8 +40,8 @@ public final class StorageEsp extends Module {
             return;
         }
         int radius = range.getInt();
-        int centerX = player().chunkPosition().x;
-        int centerZ = player().chunkPosition().z;
+        int centerX = net.glowcube.client.render.Netz.chunkX(player().chunkPosition());
+        int centerZ = net.glowcube.client.render.Netz.chunkZ(player().chunkPosition());
 
         for (int x = centerX - radius; x <= centerX + radius; x++) {
             for (int z = centerZ - radius; z <= centerZ + radius; z++) {
