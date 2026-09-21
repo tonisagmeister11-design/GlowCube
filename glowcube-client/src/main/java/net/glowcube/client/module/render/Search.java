@@ -206,7 +206,7 @@ public final class Search extends Module {
         if (instanz == null) {
             return;
         }
-        FUNDE.removeIf(p -> (p.getX() >> 4) == pos.x && (p.getZ() >> 4) == pos.z);
+        FUNDE.removeIf(p -> (p.getX() >> 4) == net.glowcube.client.render.Netz.chunkX(pos) && (p.getZ() >> 4) == net.glowcube.client.render.Netz.chunkZ(pos));
     }
 
     // ------------------------------------------------------------- Zeichnen
@@ -216,7 +216,7 @@ public final class Search extends Module {
         if (FUNDE.isEmpty()) {
             return;
         }
-        Vec3 auge = Minecraft.getInstance().gameRenderer.getMainCamera().position();
+        Vec3 auge = net.glowcube.client.render.Netz.kameraPosition();
         int farbe = Theme.accentStart();
         int linienFarbe = ColorUtil.fade(farbe, 0.5f);
         int gezeichnet = 0;

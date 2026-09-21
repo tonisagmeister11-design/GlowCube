@@ -110,7 +110,7 @@ public final class OreSim extends Module {
 
     private void melde(String text) {
         if (inGame()) {
-            player().displayClientMessage(
+            net.glowcube.client.render.Netz.nachricht(
                     net.minecraft.network.chat.Component.literal("[GlowCube] " + text), false);
         }
     }
@@ -173,7 +173,7 @@ public final class OreSim extends Module {
         int gerechnet = 0;
         for (int dx = -weite; dx <= weite && gerechnet < 2; dx++) {
             for (int dz = -weite; dz <= weite && gerechnet < 2; dz++) {
-                long schluessel = ChunkPos.asLong(net.glowcube.client.render.Netz.chunkX(mitte) + dx, net.glowcube.client.render.Netz.chunkZ(mitte) + dz);
+                long schluessel = net.glowcube.client.render.Netz.chunkAlsLong(net.glowcube.client.render.Netz.chunkX(mitte) + dx, net.glowcube.client.render.Netz.chunkZ(mitte) + dz);
                 if (proChunk.containsKey(schluessel)) {
                     continue;
                 }
@@ -214,7 +214,7 @@ public final class OreSim extends Module {
 
     private void rechnen(ChunkAccess chunk) {
         ChunkPos pos = chunk.getPos();
-        long schluessel = pos.toLong();
+        long schluessel = net.glowcube.client.render.Netz.chunkAlsLong(pos);
         if (proChunk.containsKey(schluessel)) {
             return;
         }

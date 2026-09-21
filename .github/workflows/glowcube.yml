@@ -100,13 +100,11 @@ jobs:
         continue-on-error: true
         run: |
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.world.level.ChunkPos:getX|getZ|x|z" \
-            "net.minecraft.client.renderer.LevelRenderer:allChanged|reload|needsUpdate|Chunks" \
-            "net.minecraft.world.entity.LivingEntity:swing" \
-            "net.minecraft.network.protocol.game.ServerboundInteractPacket:" \
-            "net.minecraft.client.gui.GuiGraphicsExtractor:drawString|fillGradient|blit" || true
-          python3 probe-search.py build/classpath.txt \
-            HudElement HudElementRegistry ClientCommands || true
+            "net.minecraft.client.gui.Gui:getChat|Chat|Overlay|Message" \
+            "net.minecraft.client.gui.components.ChatComponent:addMessage" \
+            "net.minecraft.client.player.LocalPlayer:isplayClient|endSystem|Message" \
+            "net.minecraft.client.renderer.GameRenderer:Camera|amera" \
+            "net.minecraft.client.gui.GuiGraphicsExtractor:drawString|renderString|String" || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein

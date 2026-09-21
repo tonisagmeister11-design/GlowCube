@@ -2,22 +2,23 @@ package net.glowcube.client.render;
 
 import net.glowcube.client.mixin.ServerboundInteractPacketAccessor;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Fassung fuer <b>1.21.x</b>: gebuendelte versionsabhaengige Kleinigkeiten aus
- * Netzwerk, ChunkPos und Rendern, die sich ab 26.x geaendert haben. So bleiben
- * die Module (BlockUtils, KillAura, Criticals, Search ...) fassungsneutral.
+ * Netzwerk, ChunkPos, Kamera und Chat, die sich ab 26.x geaendert haben. So
+ * bleiben die Module fassungsneutral - sie rufen nur {@code Netz.*}.
  */
 public final class Netz {
     private Netz() {
     }
 
-    /** Schwung nur an den Server melden, ohne Arm-Animation im Bild. */
     public static void schwungSenden(InteractionHand hand) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
@@ -25,12 +26,10 @@ public final class Netz {
         }
     }
 
-    /** Ist das ein Schwung-Paket auf dem Weg zum Server? */
     public static boolean istSchwungPaket(Packet<?> paket) {
         return paket instanceof ServerboundSwingPacket;
     }
 
-    /** Den Arm schwingen (mit Animation). */
     public static void schwingen(InteractionHand hand) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
@@ -46,7 +45,15 @@ public final class Netz {
         return pos.z;
     }
 
-    /** Alle Chunks neu zeichnen lassen (fuer X-Ray beim Umschalten). */
+    /** ChunkPos -> long, mit Minecrafts eigener Bitformel (fassungsstabil). */
+    public static long chunkAlsLong(int x, int z) {
+        return ((long) x & 0xFFFFFFFFL) | (((long) z & 0xFFFFFFFFL) << 32);
+    }
+
+    public static long chunkAlsLong(ChunkPos pos) {
+        return chunkAlsLong(chunkX(pos), chunkZ(pos));
+    }
+
     public static void chunksNeuZeichnen() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.levelRenderer != null) {
@@ -54,8 +61,18 @@ public final class Netz {
         }
     }
 
-    /** Die Wesen-Nummer aus einem Interaktionspaket. */
     public static int interaktZielId(ServerboundInteractPacket paket) {
         return ((ServerboundInteractPacketAccessor) paket).glowcube$zielNummer();
+    }
+
+    public static Vec3 kameraPosition() {
+        return Minecraft.getInstance().gameRenderer.getMainCamera().position();
+    }
+
+    public static void nachricht(Component text, boolean ueberlage) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            mc.player.displayClientMessage(text, ueberlage);
+        }
     }
 }

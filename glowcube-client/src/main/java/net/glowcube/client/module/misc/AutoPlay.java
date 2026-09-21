@@ -117,7 +117,7 @@ public final class AutoPlay extends Module {
             String was = fehltListe.isEmpty()
                     ? "Nichts fehlt - alles beisammen."
                     : "Es fehlt: " + String.join(", ", fehltListe) + ".";
-            player().displayClientMessage(net.minecraft.network.chat.Component.literal(
+            net.glowcube.client.render.Netz.nachricht(net.minecraft.network.chat.Component.literal(
                     "[AutoPlay] Stand: " + werkzeugStufe() + "-Werkzeug. " + was
                             + " Planken/Stiele/Werkbank craftet es selbst; fuer Werkzeug"
                             + " eine Werkbank aufstellen und anklicken."), false);
