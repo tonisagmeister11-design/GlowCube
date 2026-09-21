@@ -19,14 +19,42 @@ public final class AntiKnockback extends Module {
         super("AntiKnockback", "Kein Rueckstoss beim Getroffenwerden", Category.COMBAT);
     }
 
+    // Der Name des Zugriffs auf die Wesen-Nummer hat sich mit 26.x geaendert:
+    // bis 1.21.x getId(), ab 26.x id() (das Paket ist jetzt ein Record). Ueber
+    // Spiegelung greift dieselbe eine Klasse in beiden Fassungen.
+    private static java.lang.reflect.Method idZugriff;
+    private static boolean idGesucht;
+
     @Override
     public boolean onPacketReceive(Packet<?> packet) {
         if (!inGame()) {
             return false;
         }
-        if (packet instanceof ClientboundSetEntityMotionPacket p && p.getId() == player().getId()) {
+        if (packet instanceof ClientboundSetEntityMotionPacket p && wesenNummer(p) == player().getId()) {
             return true;   // Rueckstoss-Paket schlucken.
         }
         return false;
+    }
+
+    private static int wesenNummer(ClientboundSetEntityMotionPacket p) {
+        if (!idGesucht) {
+            idGesucht = true;
+            for (String name : new String[]{"id", "getId"}) {
+                try {
+                    idZugriff = ClientboundSetEntityMotionPacket.class.getMethod(name);
+                    break;
+                } catch (NoSuchMethodException ignoriert) {
+                    // die andere Fassung probieren
+                }
+            }
+        }
+        if (idZugriff == null) {
+            return -1;
+        }
+        try {
+            return (int) idZugriff.invoke(p);
+        } catch (ReflectiveOperationException fehler) {
+            return -1;
+        }
     }
 }

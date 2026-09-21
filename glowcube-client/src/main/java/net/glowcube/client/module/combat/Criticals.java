@@ -10,7 +10,6 @@ import net.minecraft.network.protocol.Packet;
 import net.glowcube.client.mixin.ServerboundInteractPacketAccessor;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.MaceItem;
@@ -141,7 +140,7 @@ public final class Criticals extends Module {
             return false;
         }
 
-        if (packet instanceof ServerboundSwingPacket && !modus.is("Paket")) {
+        if (net.glowcube.client.render.Netz.istSchwungPaket(packet) && !modus.is("Paket")) {
             if (kritUnmoeglich()) {
                 return false;
             }

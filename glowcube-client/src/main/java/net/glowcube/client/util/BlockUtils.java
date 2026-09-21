@@ -3,7 +3,6 @@ package net.glowcube.client.util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
@@ -134,7 +133,7 @@ public final class BlockUtils {
             if (schwingen) {
                 mc().player.swing(hand);
             } else {
-                mc().player.connection.send(new ServerboundSwingPacket(hand));
+                net.glowcube.client.render.Netz.schwungSenden(hand);
             }
         }
 
@@ -260,7 +259,7 @@ public final class BlockUtils {
         if (schwingen) {
             mc().player.swing(InteractionHand.MAIN_HAND);
         } else {
-            mc().player.connection.send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
+            net.glowcube.client.render.Netz.schwungSenden(InteractionHand.MAIN_HAND);
         }
 
         baeutAb = true;

@@ -13,7 +13,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.state.BlockState;
@@ -366,7 +365,7 @@ public final class Nuker extends Module {
             if (schwingen.get()) {
                 player().swing(InteractionHand.MAIN_HAND);
             } else {
-                player().connection.send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
+                net.glowcube.client.render.Netz.schwungSenden(InteractionHand.MAIN_HAND);
             }
             ((MultiPlayerGameModeAccessor) mc.gameMode).glowcube$vorhersagen(mc.level, folge -> new ServerboundPlayerActionPacket(
                     ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, pos, gewaehlt, folge));
