@@ -211,7 +211,7 @@ public final class ClickGuiScreen extends Screen {
         kachel(gfx, mouseX, mouseY, x0, y0, breite, hoehe,
                 Category.Bereich.HACKS, "Combat, Movement, Render & mehr", Art.WAHL_HACKS);
         kachel(gfx, mouseX, mouseY, x0 + breite + luecke, y0, breite, hoehe,
-                Category.Bereich.KEIN_HACK, "Performance & Werkzeuge", Art.WAHL_KEIN);
+                Category.Bereich.KEIN_HACK, "Performance, HUD & Werkzeuge", Art.WAHL_KEIN);
     }
 
     private void kachel(GuiGraphics gfx, int mouseX, int mouseY, float x, float y,

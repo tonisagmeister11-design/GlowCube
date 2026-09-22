@@ -4,10 +4,14 @@ import net.glowcube.client.GlowCubeClient;
 import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.gui.ClickGuiScreen;
+import net.glowcube.client.hud.HudAnzeigen;
+import net.glowcube.client.hud.HudZeichner;
+import net.glowcube.client.hud.KlickZaehler;
 import net.glowcube.client.util.ColorUtil;
 import net.glowcube.client.util.Render2D;
 import net.glowcube.client.util.Theme;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.ArrayList;
@@ -20,6 +24,8 @@ public final class HudRenderer {
 
     public void render(GuiGraphics gfx) {
         Minecraft mc = Minecraft.getInstance();
+        // Klicks auch zaehlen, solange das HUD nichts zeichnet.
+        KlickZaehler.aktualisieren();
         if (mc.options.hideGui || mc.player == null) {
             return;
         }
@@ -28,7 +34,9 @@ public final class HudRenderer {
             return;
         }
         drawWatermark(gfx);
-        drawModuleList(gfx, gfx.guiWidth());
+        int breite = gfx.guiWidth();
+        float listeEnde = drawModuleList(gfx, breite);
+        HudAnzeigen.zeichnen(zeichner(gfx), breite, MARGIN + 20, listeEnde + 3);
     }
 
     private void drawWatermark(GuiGraphics gfx) {
@@ -43,10 +51,12 @@ public final class HudRenderer {
         Render2D.text(gfx, tag, MARGIN + 11 + Render2D.width(name) + 6, MARGIN + 4, Theme.TEXT_FAINT);
     }
 
-    private void drawModuleList(GuiGraphics gfx, int screenWidth) {
+    /** Zeichnet die Modulliste und gibt zurueck, wo sie unten endet. */
+    private float drawModuleList(GuiGraphics gfx, int screenWidth) {
         List<Module> active = new ArrayList<>();
         for (Module module : GlowCubeClient.modules().all()) {
-            if (module.isEnabled() && module.category() != Category.MISC) {
+            // HUD-Anzeigen stehen fuer sich selbst, nicht noch einmal in der Liste.
+            if (module.isEnabled() && module.category() != Category.MISC && module.category() != Category.HUD) {
                 active.add(module);
             }
         }
@@ -73,6 +83,42 @@ public final class HudRenderer {
             y += 13;
             index++;
         }
+        return y;
+    }
+
+    /** Reicht die Zeichenbefehle an die fassungsfreien HUD-Anzeigen weiter. */
+    private static HudZeichner zeichner(GuiGraphics gfx) {
+        return new HudZeichner() {
+            @Override
+            public void rect(float x, float y, float w, float h, int farbe) {
+                Render2D.rect(gfx, x, y, w, h, farbe);
+            }
+
+            @Override
+            public void rundRect(float x, float y, float w, float h, float radius, int farbe) {
+                Render2D.roundedRect(gfx, x, y, w, h, radius, farbe);
+            }
+
+            @Override
+            public void text(String text, float x, float y, int farbe, boolean schatten) {
+                if (schatten) {
+                    Render2D.textShadow(gfx, text, x, y, farbe);
+                } else {
+                    Render2D.text(gfx, text, x, y, farbe);
+                }
+            }
+
+            @Override
+            public int breite(String text) {
+                return Render2D.width(text);
+            }
+
+            @Override
+            public void gegenstand(ItemStack stack, int x, int y) {
+                gfx.renderItem(stack, x, y);
+                gfx.renderItemDecorations(Minecraft.getInstance().font, stack, x, y);
+            }
+        };
     }
 
     private String label(Module module) {

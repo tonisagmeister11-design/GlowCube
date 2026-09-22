@@ -198,6 +198,11 @@ jobs:
             "net.minecraft.client.multiplayer.MultiPlayerGameMode#startPrediction" \
             "net.minecraft.network.protocol.game.ServerboundPlayerActionPacket\$Action#START_DESTROY_BLOCK" \
             "net.minecraft.world.entity.player.Player#hasCorrectToolForDrops" \
+            "net.minecraft.client.Minecraft#fps" \
+            "net.minecraft.world.entity.LivingEntity#activeEffects" \
+            "net.minecraft.world.entity.LivingEntity#hurtTime" \
+            "net.minecraft.world.effect.MobEffectUtil#formatDuration" \
+            "net.minecraft.client.multiplayer.PlayerInfo#getLatency" \
             "net.minecraft.world.entity.player.Player#getDestroySpeed" \
             "net.minecraft.world.phys.Vec3#directionFromRotation" \
             "net.minecraft.world.level.block.Block#isShapeFullBlock" \
@@ -261,7 +266,8 @@ jobs:
               "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleContainerInput" \
               "net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket#id" \
               "net.minecraft.client.Minecraft#levelExtractor" \
-              "net.minecraft.client.renderer.extract.LevelExtractor#allChanged"
+              "net.minecraft.client.renderer.extract.LevelExtractor#allChanged" \
+              "net.minecraft.client.gui.GuiGraphicsExtractor#itemDecorations"
           fi
           # Die volle OreSim-Weltgenerierung laeuft nur dort, wo die alte
           # Erz-Konfiguration noch existiert (1.21.x und 26.2).

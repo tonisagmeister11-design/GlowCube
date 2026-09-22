@@ -15,9 +15,10 @@ public enum Category {
     WORLD("World", "\u26F0", 0xFFFFC53D, Bereich.HACKS),
     EXPLOIT("Exploits", "\u26A1", 0xFFFF7AF5, Bereich.HACKS),
     MISC("Misc", "\u2699", 0xFF7FC4FF, Bereich.HACKS),
-    // Kein Hack: legitime Werkzeuge. Bis hier nur die Leistung; der eigene
-    // Nicht-Hack-Client fuellt diesen Bereich spaeter weiter auf.
-    PERFORMANCE("Performance", "\u2726", 0xFFB6FF3B, Bereich.KEIN_HACK);
+    // Kein Hack: legitime Werkzeuge - die Leistung und die HUD-Anzeigen
+    // (CPS, Keystrokes, FPS ...), wie sie PvP-Clients mitbringen.
+    PERFORMANCE("Performance", "\u2726", 0xFFB6FF3B, Bereich.KEIN_HACK),
+    HUD("HUD", "\u25A3", 0xFF7FC4FF, Bereich.KEIN_HACK);
 
     /**
      * Die zwei Bereiche, in die das Menue oben aufteilt: was ein Hack ist und

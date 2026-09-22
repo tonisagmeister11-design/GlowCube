@@ -26,6 +26,17 @@ import net.glowcube.client.module.misc.SeedHunt;
 import net.glowcube.client.module.misc.Spammer;
 import net.glowcube.client.module.movement.PacketFly;
 import net.glowcube.client.module.performance.UltraPerformance;
+import net.glowcube.client.module.hud.ComboHud;
+import net.glowcube.client.module.hud.CpsHud;
+import net.glowcube.client.module.hud.FpsHud;
+import net.glowcube.client.module.hud.KeystrokesHud;
+import net.glowcube.client.module.hud.KoordinatenHud;
+import net.glowcube.client.module.hud.PingHud;
+import net.glowcube.client.module.hud.ReichweiteHud;
+import net.glowcube.client.module.hud.RuestungHud;
+import net.glowcube.client.module.hud.TempoHud;
+import net.glowcube.client.module.hud.TraenkeHud;
+import net.glowcube.client.module.hud.UhrzeitHud;
 import net.glowcube.client.module.player.NoInteract;
 import net.glowcube.client.module.world.AntiChunkBan;
 import net.glowcube.client.module.world.FakeLag;
@@ -135,6 +146,20 @@ public final class ModuleManager {
         add(new PacketFly());
         // Kein Hack
         add(new UltraPerformance());
+
+        // HUD-Anzeigen nach AxolotlClient. Die Reihenfolge hier ist die
+        // Reihenfolge, in der sie am Bildschirmrand gestapelt werden.
+        add(new FpsHud());
+        add(new CpsHud());
+        add(new PingHud());
+        add(new TempoHud());
+        add(new ReichweiteHud());
+        add(new ComboHud());
+        add(new UhrzeitHud());
+        add(new KoordinatenHud());
+        add(new KeystrokesHud());
+        add(new RuestungHud());
+        add(new TraenkeHud());
     }
 
     private void add(Module module) {

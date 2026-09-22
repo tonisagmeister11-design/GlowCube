@@ -22,6 +22,7 @@
     "LevelChunkMixin",
     "CountPlacementAccessor",
     "HeightRangePlacementAccessor",
-    "RarityFilterAccessor"
+    "RarityFilterAccessor",
+    "MinecraftAccessor"
   ]
 }

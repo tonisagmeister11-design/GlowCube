@@ -162,6 +162,26 @@ Alle vier sind rein clientseitig - der Server sieht davon nichts.
 
 Die Kategorien folgen der Einteilung von BleachHack.
 
+### HUD (Bereich "Kein Hack")
+
+Anzeigen wie in PvP-Clients, uebertragen aus AxolotlClient. Sie laufen auf
+1.21.11 und 26.3. Jede hat die Einstellung **Seite**: Links stapelt sie unter
+das Wasserzeichen, Rechts unter die Modulliste.
+
+| Modul | Was es zeigt |
+| --- | --- |
+| CPS | Klicks pro Sekunde, auf Wunsch links und rechts |
+| FPS | Bildrate |
+| Ping | Latenz zum Server (Einzelspieler: 0 ms) |
+| Tempo | Geschwindigkeit in Bloecken pro Sekunde |
+| Reichweite | Wie weit dein letzter Schlag reichte |
+| Combo | Treffer in Folge |
+| Uhrzeit | Echte Uhrzeit |
+| Koordinaten | X/Y/Z mit Himmelsrichtung, oder kompakt in einer Zeile |
+| Keystrokes | WASD, Maustasten und Leertaste, gedrueckt hell |
+| Ruestung | Ruestung und Hand mit Haltbarkeit |
+| Traenke | Laufende Trankwirkungen mit Restzeit |
+
 ## Zusammenspiel mit SeedCrackerX
 
 [SeedCrackerX](https://github.com/19MisterX98/SeedcrackerX) rechnet aus

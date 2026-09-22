@@ -34,6 +34,23 @@ diesem Widerspruch wurde die strengere Angabe zugrunde gelegt.
 
 Vorlage fuer `OreSim`.
 
+### AxolotlClient (LGPL-3.0-or-later) und KronHUD (GPL-3.0)
+
+* <https://codeberg.org/AxolotlClient/AxolotlClient-mod> (frueher GitHub)
+* <https://github.com/DarkKronicle/KronHUD>
+* Herangezogene Fassungen: AxolotlClient 3.2.1 fuer 1.21.11 und fuer 26.2
+  (die JARs), dazu der Quelltext des Zweigs `multiversion`
+
+Vorlage fuer die HUD-Anzeigen im Bereich "Kein Hack". Die meisten davon hat
+AxolotlClient selbst aus KronHUD (GPL-3.0). Die LGPL laesst die Weitergabe
+unter der GPL zu, das passt also zusammen.
+
+Die 26.2-JAR war zugleich das Nachschlagewerk fuer die 26.x-Namen: Dort
+steht, wie die Bildrate (`Minecraft.fps`), die Trankwirkungen
+(`LivingEntity.activeEffects`) oder das Zeichnen von Gegenstaenden
+(`GuiGraphicsExtractor.item`/`itemDecorations`) ab 26.x heissen. Genau diese
+Namen nutzt GlowCube auch auf 26.3.
+
 ### SeedCrackerX (MIT)
 
 * <https://github.com/19MisterX98/SeedcrackerX>
@@ -86,6 +103,8 @@ fest, an dem ein Mixin haengt - stimmt einer nicht, faellt der Lauf um.
 | `AntiChunkBan` | BleachHack | originalgetreu uebertragen |
 | `PacketFly` | BleachHack | originalgetreu uebertragen |
 | `OreSim` | Meteor Rejects | originalgetreu uebertragen |
+| `CPS`, `FPS`, `Ping`, `Tempo`, `Reichweite`, `Combo`, `Uhrzeit`, `Koordinaten` | AxolotlClient / KronHUD | uebertragen, Anzeige in GlowCube-Optik |
+| `Keystrokes`, `Ruestung`, `Traenke` | AxolotlClient | uebertragen, ohne AxolotlClients Editor-Bildschirme |
 | `XRay`, `FullBright`, `Zoom`, `Flight`, `Speed`, `Step`, `NoFall`, `AutoSprint`, `AutoTool`, `AutoRespawn`, `AntiAfk`, `StorageESP`, `EntityESP`, `Tracers` | - | eigener Code |
 | `SeedHunt`, `ClickGUI` | - | eigener Code |
 
