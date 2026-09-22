@@ -15,6 +15,10 @@
     {
       "config": "glowcube.mixins.json",
       "environment": "client"
+    },
+    {
+      "config": "glowcube.optik.mixins.json",
+      "environment": "client"
     }
   ],
   "suggests": {

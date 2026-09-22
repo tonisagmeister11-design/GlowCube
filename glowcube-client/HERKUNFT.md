@@ -105,6 +105,9 @@ fest, an dem ein Mixin haengt - stimmt einer nicht, faellt der Lauf um.
 | `OreSim` | Meteor Rejects | originalgetreu uebertragen |
 | `CPS`, `FPS`, `Ping`, `Tempo`, `Reichweite`, `Combo`, `Uhrzeit`, `Koordinaten` | AxolotlClient / KronHUD | uebertragen, Anzeige in GlowCube-Optik |
 | `Keystrokes`, `Ruestung`, `Traenke` | AxolotlClient | uebertragen, ohne AxolotlClients Editor-Bildschirme |
+| `Kompass`, `TPS`, `Arbeitsspeicher`, `Server-IP`, `Spielerzahl`, `Bewegung`, `Eigener Text`, `Pfeile`, `Inventar`, `Aufgesammelt`, `Mausbewegung`, `Ressourcenpakete` | AxolotlClient / KronHUD | uebertragen, Anzeige in GlowCube-Optik |
+| `Freelook`, `Kein Wackeln`, `Niedriges Feuer`, `Keine Vignette`, `Kein Regen`, `Eigener Name`, `Kein Beacon-Strahl` | AxolotlClient | Mixins an denselben Stellen wie AxolotlClient, je Fassung |
+| `TNT-Timer` | AxolotlClient (`TntTime`) | gleiche Anzeige, aber ueber ein clientseitiges Namensschild statt eines Render-Mixins |
 | `XRay`, `FullBright`, `Zoom`, `Flight`, `Speed`, `Step`, `NoFall`, `AutoSprint`, `AutoTool`, `AutoRespawn`, `AntiAfk`, `StorageESP`, `EntityESP`, `Tracers` | - | eigener Code |
 | `SeedHunt`, `ClickGUI` | - | eigener Code |
 
@@ -113,6 +116,13 @@ Das Geruest darunter stammt ebenfalls aus Meteor: `Rotations`, `InvUtils`,
 Erztabelle fuer OreSim) aus Meteor Rejects.
 
 ## Was bewusst nicht uebernommen wurde
+
+**Aus AxolotlClient** fehlen die Teile, die an fremden Diensten haengen oder
+fuer die Einzelspielerwelt nichts bringen: Konten-Verwaltung, Discord-Status,
+Hypixel- und MCC-Island-Module, Bilder-Hochladen, Freundesliste. Ebenso fehlen
+Zoom und Fullbright (hat GlowCube schon), Bewegungsunschaerfe, Zeitwechsler
+(die Weltuhr ist auf 26.x umgebaut) und der Bildschirm zum Verschieben der
+Anzeigen mit der Maus.
 
 **Die Crash-Module aus BleachHack** - BookCrash, PlayerCrash, OffhandCrash,
 BowBot. Sie schicken absichtlich fehlerhafte Daten, um andere Spieler oder

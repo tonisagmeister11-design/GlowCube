@@ -32,6 +32,21 @@ def main():
               + " - liegt im Ordner, steht aber nicht in glowcube.mixins.json"
               + " und wird deshalb nie geladen.")
 
+    # Die Optik-Mixins: einige liegen fassungsfrei in src/main, einige je
+    # Fassung unter src/versionen/<render>/ - jede Fassung muss alle haben.
+    optik = json.loads((WURZEL / "src/main/resources/glowcube.optik.mixins.json").read_text(encoding="utf-8"))
+    optik_namen = set(optik.get("client", []))
+    gemeinsam = {p.stem for p in (ORDNER / "optik").glob("*.java")}
+    for fassung in ("render_1_21", "render_26"):
+        eigen = {p.stem for p in (WURZEL / "src/versionen" / fassung / "java/net/glowcube/client/mixin/optik").glob("*.java")}
+        vorhanden_optik = gemeinsam | eigen
+        for name in sorted(optik_namen - vorhanden_optik):
+            print(f"::error title=Optik-Mixin ohne Datei::{name} fehlt fuer {fassung}")
+            fehlt_datei.append(name)
+        for name in sorted(vorhanden_optik - optik_namen):
+            print(f"::error title=Optik-Mixin nicht eingetragen::{name} ({fassung})")
+            fehlt_eintrag.append(name)
+
     if fehlt_datei or fehlt_eintrag:
         return 1
 

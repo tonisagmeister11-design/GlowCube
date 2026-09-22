@@ -26,6 +26,26 @@ import net.glowcube.client.module.misc.SeedHunt;
 import net.glowcube.client.module.misc.Spammer;
 import net.glowcube.client.module.movement.PacketFly;
 import net.glowcube.client.module.performance.UltraPerformance;
+import net.glowcube.client.module.hud.AufgesammeltHud;
+import net.glowcube.client.module.hud.BewegungHud;
+import net.glowcube.client.module.hud.EigenerTextHud;
+import net.glowcube.client.module.hud.InventarHud;
+import net.glowcube.client.module.hud.KompassHud;
+import net.glowcube.client.module.hud.MausHud;
+import net.glowcube.client.module.hud.PfeileHud;
+import net.glowcube.client.module.hud.RessourcenpaketeHud;
+import net.glowcube.client.module.hud.ServerIpHud;
+import net.glowcube.client.module.hud.SpeicherHud;
+import net.glowcube.client.module.hud.SpielerzahlHud;
+import net.glowcube.client.module.hud.TpsHud;
+import net.glowcube.client.module.optik.EigenerName;
+import net.glowcube.client.module.optik.Freelook;
+import net.glowcube.client.module.optik.KeinBeaconStrahl;
+import net.glowcube.client.module.optik.KeinRegen;
+import net.glowcube.client.module.optik.KeinWackeln;
+import net.glowcube.client.module.optik.KeineVignette;
+import net.glowcube.client.module.optik.NiedrigesFeuer;
+import net.glowcube.client.module.optik.TntTimer;
 import net.glowcube.client.module.hud.ComboHud;
 import net.glowcube.client.module.hud.CpsHud;
 import net.glowcube.client.module.hud.FpsHud;
@@ -160,6 +180,28 @@ public final class ModuleManager {
         add(new KeystrokesHud());
         add(new RuestungHud());
         add(new TraenkeHud());
+        add(new KompassHud());
+        add(new TpsHud());
+        add(new SpeicherHud());
+        add(new ServerIpHud());
+        add(new SpielerzahlHud());
+        add(new BewegungHud());
+        add(new EigenerTextHud());
+        add(new PfeileHud());
+        add(new InventarHud());
+        add(new AufgesammeltHud());
+        add(new MausHud());
+        add(new RessourcenpaketeHud());
+
+        // Optik-Einstellungen nach AxolotlClient.
+        add(new Freelook());
+        add(new KeinWackeln());
+        add(new NiedrigesFeuer());
+        add(new KeineVignette());
+        add(new KeinRegen());
+        add(new EigenerName());
+        add(new KeinBeaconStrahl());
+        add(new TntTimer());
     }
 
     private void add(Module module) {

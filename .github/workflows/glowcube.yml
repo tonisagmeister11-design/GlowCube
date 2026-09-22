@@ -218,6 +218,15 @@ jobs:
             "net.minecraft.world.entity.LivingEntity#hurtTime" \
             "net.minecraft.world.effect.MobEffectUtil#formatDuration" \
             "net.minecraft.client.multiplayer.PlayerInfo#getLatency" \
+            "net.minecraft.world.entity.Entity#void turn(double, double)" \
+            "net.minecraft.world.level.Level#float getRainLevel(float)" \
+            "net.minecraft.world.level.Level#float getThunderLevel(float)" \
+            "net.minecraft.client.renderer.entity.LivingEntityRenderer#shouldShowName(T, double)" \
+            "net.minecraft.client.renderer.blockentity.BeaconRenderer#static void submitBeaconBeam(com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.SubmitNodeCollector, net.minecraft.resources.Identifier, float, float, int, int, int, float, float)" \
+            "net.minecraft.client.renderer.GameRenderer#void bobHurt(" \
+            "net.minecraft.client.Camera#void setRotation(float, float)" \
+            "net.minecraft.world.entity.item.PrimedTnt#getFuse" \
+            "net.minecraft.server.packs.repository.PackRepository#getSelectedPacks" \
             "net.minecraft.world.entity.player.Player#getDestroySpeed" \
             "net.minecraft.world.phys.Vec3#directionFromRotation" \
             "net.minecraft.world.level.block.Block#isShapeFullBlock" \
@@ -272,7 +281,10 @@ jobs:
               "net.minecraft.world.inventory.ClickType#QUICK_MOVE" \
               "net.minecraft.world.inventory.ClickType#PICKUP" \
               "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleInventoryMouseClick" \
-              "net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket#getId"
+              "net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket#getId" \
+              "net.minecraft.client.Camera#void setup(" \
+              "net.minecraft.client.gui.Gui#void renderVignette(" \
+              "net.minecraft.client.renderer.ScreenEffectRenderer#static void renderFire(com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.MultiBufferSource, net.minecraft.client.renderer.texture.TextureAtlasSprite)"
           else
             python3 verify-api.py build/classpath.txt \
               "net.minecraft.client.DeltaTracker\$Timer#advanceGameTime" \
@@ -282,7 +294,10 @@ jobs:
               "net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket#id" \
               "net.minecraft.client.Minecraft#levelExtractor" \
               "net.minecraft.client.renderer.extract.LevelExtractor#allChanged" \
-              "net.minecraft.client.gui.GuiGraphicsExtractor#itemDecorations"
+              "net.minecraft.client.gui.GuiGraphicsExtractor#itemDecorations" \
+              "net.minecraft.client.Camera#void alignWithEntity(float)" \
+              "net.minecraft.client.gui.Hud#void extractVignette(" \
+              "net.minecraft.client.renderer.ScreenEffectRenderer#static void lambda\$submitFire\$0("
           fi
           # Die volle OreSim-Weltgenerierung laeuft nur dort, wo die alte
           # Erz-Konfiguration noch existiert (1.21.x und 26.2).

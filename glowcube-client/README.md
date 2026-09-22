@@ -75,6 +75,7 @@ Die Anordnung bleibt ueber den Neustart hinweg erhalten - sie steht in
 | `O` | OreSim | | `M` | AntiAFK |
 | `H` | Fullbright | | `B` | SeedHunt |
 | `C` | Zoom | | `N` | NoFall |
+| `Linke Alt` | Freelook (halten) | | | |
 | `F` | Flight | | `J` | AutoSprint |
 | `G` | Speed | | `L` | Search |
 | `V` | Step | | | |
@@ -181,6 +182,33 @@ das Wasserzeichen, Rechts unter die Modulliste.
 | Keystrokes | WASD, Maustasten und Leertaste, gedrueckt hell |
 | Ruestung | Ruestung und Hand mit Haltbarkeit |
 | Traenke | Laufende Trankwirkungen mit Restzeit |
+| Kompass | Kompassband mit Himmelsrichtungen und Gradzahl |
+| TPS | Tickrate des Servers |
+| Arbeitsspeicher | Belegter Arbeitsspeicher |
+| Server-IP | Adresse des Servers (Einzelspieler: "Einzelspieler") |
+| Spielerzahl | Wie viele Spieler online sind |
+| Bewegung | Ob du schleichst oder sprintest |
+| Eigener Text | Ein Text, den du selbst festlegst |
+| Pfeile | Wie viele Pfeile du dabeihast |
+| Inventar | Dein Inventar dauerhaft am Bildschirmrand |
+| Aufgesammelt | Was gerade ins Inventar kam oder es verliess |
+| Mausbewegung | Wie du die Maus gerade bewegst |
+| Ressourcenpakete | Die aktiven Ressourcenpakete |
+
+### Optik (Bereich "Kein Hack")
+
+Einstellungen fuer die Darstellung, ebenfalls aus AxolotlClient.
+
+| Modul | Was es tut |
+| --- | --- |
+| Freelook | Linke Alt-Taste halten: umsehen, ohne dass sich die Figur mitdreht |
+| Kein Wackeln | Die Kamera wackelt nicht, wenn du getroffen wirst |
+| Niedriges Feuer | Das Feuer am Bildschirmrand verdeckt weniger Sicht |
+| Keine Vignette | Kein dunkler Rand am Bildschirm |
+| Kein Regen | Kein Regen und kein Gewitter auf deinem Bildschirm |
+| Eigener Name | Dein Namensschild in der dritten Person |
+| Kein Beacon-Strahl | Blendet die Strahlen von Leuchtfeuern aus |
+| TNT-Timer | Restzeit ueber gezuendetem TNT |
 
 ## Zusammenspiel mit SeedCrackerX
 

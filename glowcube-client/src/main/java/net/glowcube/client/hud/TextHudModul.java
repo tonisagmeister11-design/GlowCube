@@ -41,9 +41,10 @@ public abstract class TextHudModul extends HudModul {
         return Math.max(MIN_BREITE, z.breite(text) + 8);
     }
 
+    /** Leerer Text heisst: die Anzeige hat gerade nichts zu sagen und nimmt keinen Platz ein. */
     @Override
     public float hoehe() {
-        return HOEHE;
+        return text.isEmpty() ? 0 : HOEHE;
     }
 
     @Override
