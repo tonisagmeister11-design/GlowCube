@@ -125,17 +125,14 @@ jobs:
           # Der render-Override greift auf 26.3 nicht - die Renderable-Methode
           # hat eine andere Signatur als (GuiGraphicsExtractor,int,int,float).
           # Hier steht sie wortgenau; dazu der neue Name fuer options.hideGui.
+          # Renderable heisst die Zeichenmethode ab 26.x extractRenderState
+          # (nicht mehr render); Options fuehrt kein hideGui mehr. Beides ist
+          # hier festgehalten - bei Fehlern gibt der Fehler-Schritt die
+          # Signaturen zusaetzlich am (tailbaren) Log-Ende aus.
           python3 probe-api.py build/classpath.txt \
             "net.minecraft.client.gui.components.Renderable:" \
-            "net.minecraft.client.gui.screens.Screen:render" \
-            "net.minecraft.client.Options:hideGui|Gui|hide" || true
-          # Als ::error, damit die Signatur auch im (getailten) Log-Ende
-          # sichtbar ist - ein ::notice weiter oben geht sonst unter.
-          cp=$(paste -sd: build/classpath.txt)
-          javap -p -classpath "$cp" net.minecraft.client.gui.components.Renderable 2>/dev/null \
-            | grep -E "render" | sed 's/^/::error title=RENDER::/' || true
-          javap -p -classpath "$cp" net.minecraft.client.Options 2>/dev/null \
-            | grep -iE "hidegui|hide" | sed 's/^/::error title=HIDEGUI::/' || true
+            "net.minecraft.client.gui.screens.Screen:extractRenderState|render" \
+            "net.minecraft.client.Options:hideGui|hide" || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein

@@ -82,8 +82,10 @@ public final class ClickGuiScreen extends Screen {
 
     // ---------------------------------------------------------------- Zeichnen
 
+    // Ab 26.x heisst die Zeichenmethode aus Renderable nicht mehr render,
+    // sondern extractRenderState - sie schreibt in den GuiGraphicsExtractor.
     @Override
-    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, net.minecraft.client.DeltaTracker delta) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
         treffer.clear();
         Render2D.rect(gfx, 0, 0, width, height, Theme.BACKDROP);
 

@@ -58,7 +58,7 @@ public final class BlockListScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, net.minecraft.client.DeltaTracker delta) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
         float alpha = Anim.easeOut(opening.value());
         panelX = (width - PANEL_W) / 2;
         panelY = (height - PANEL_H) / 2;
