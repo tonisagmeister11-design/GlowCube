@@ -32,19 +32,39 @@ public final class Layout {
         if (!FENSTER.isEmpty()) {
             return;
         }
-        int i = 0;
-        for (Category kategorie : Category.values()) {
-            int spalte = i % 4;
-            int zeile = i / 4;
-            FENSTER.put(kategorie, new Fenster(kategorie,
-                    16 + spalte * 162, 44 + zeile * 240));
-            i++;
+        // Je Bereich eine eigene Anordnung, jeweils von links oben. Weil im
+        // ClickGUI immer nur ein Bereich gleichzeitig sichtbar ist, duerfen
+        // sich die Fenster verschiedener Bereiche ruhig ueberlappen.
+        for (Category.Bereich bereich : Category.Bereich.values()) {
+            int i = 0;
+            for (Category kategorie : Category.values()) {
+                if (kategorie.bereich() != bereich) {
+                    continue;
+                }
+                int spalte = i % 4;
+                int zeile = i / 4;
+                FENSTER.put(kategorie, new Fenster(kategorie,
+                        16 + spalte * 162, 44 + zeile * 240));
+                i++;
+            }
         }
     }
 
     public static List<Fenster> alle() {
         anlegen();
         return new ArrayList<>(FENSTER.values());
+    }
+
+    /** Nur die Fenster des gewaehlten Bereichs - Hacks oder Kein Hack. */
+    public static List<Fenster> imBereich(Category.Bereich bereich) {
+        anlegen();
+        List<Fenster> result = new ArrayList<>();
+        for (Fenster fenster : FENSTER.values()) {
+            if (fenster.kategorie.bereich() == bereich) {
+                result.add(fenster);
+            }
+        }
+        return result;
     }
 
     public static Fenster fuer(Category kategorie) {

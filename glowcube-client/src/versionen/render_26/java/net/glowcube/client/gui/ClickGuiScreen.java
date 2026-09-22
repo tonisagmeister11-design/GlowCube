@@ -1,6 +1,7 @@
 package net.glowcube.client.gui;
 
 import net.glowcube.client.GlowCubeClient;
+import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.core.setting.BlockListSetting;
 import net.glowcube.client.core.setting.BooleanSetting;
@@ -55,6 +56,9 @@ public final class ClickGuiScreen extends Screen {
     private String suche = "";
     private boolean sucheAktiv;
 
+    /** Gewaehlter Bereich; null heisst: die Bereichswahl steht noch an. */
+    private Category.Bereich bereich;
+
     /** Anklickbare Flaechen dieses Bildes - Zeichnen und Klicken aus einer Quelle. */
     private final List<Treffer> treffer = new ArrayList<>();
 
@@ -68,7 +72,10 @@ public final class ClickGuiScreen extends Screen {
         SCHALTER,
         REGLER,
         AUSWAHL,
-        LISTE
+        LISTE,
+        WAHL_HACKS,
+        WAHL_KEIN,
+        ZURUECK
     }
 
     public ClickGuiScreen() {
@@ -89,12 +96,14 @@ public final class ClickGuiScreen extends Screen {
         treffer.clear();
         Render2D.rect(gfx, 0, 0, width, height, Theme.BACKDROP);
 
-        kopfzeile(gfx);
+        kopfzeile(gfx, mouseX, mouseY);
 
-        if (!suche.isEmpty()) {
+        if (bereich == null) {
+            bereichWahlZeichnen(gfx, mouseX, mouseY);
+        } else if (!suche.isEmpty()) {
             sucheZeichnen(gfx, mouseX, mouseY);
         } else {
-            for (Fenster fenster : Layout.alle()) {
+            for (Fenster fenster : Layout.imBereich(bereich)) {
                 fensterZeichnen(gfx, fenster, mouseX, mouseY);
             }
         }
@@ -106,10 +115,26 @@ public final class ClickGuiScreen extends Screen {
         }
     }
 
-    private void kopfzeile(GuiGraphicsExtractor gfx) {
+    private void kopfzeile(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         Render2D.rect(gfx, 0, 0, width, 30, Theme.PANEL);
         Render2D.rect(gfx, 0, 29, width, 1, Theme.OUTLINE);
         Render2D.textGradient(gfx, "GLOWCUBE", 14, 11, Theme.accentStart(), Theme.accentEnd());
+
+        // In der Bereichswahl gibt es weder Zurueck noch Suche noch Zaehler.
+        if (bereich == null) {
+            return;
+        }
+
+        // Zurueck zur Bereichswahl - links neben dem Suchfeld.
+        String zurText = "‹ " + bereich.label();
+        float zurB = Render2D.width(zurText) + 16;
+        float zurX = 20 + Render2D.width("GLOWCUBE") + 12;
+        boolean zurUeber = Render2D.hovered(mouseX, mouseY, zurX, 7, zurB, 16);
+        Render2D.roundedRect(gfx, zurX, 7, zurB, 16, 4, zurUeber ? Theme.CARD_HOVER : Theme.CARD);
+        Render2D.roundedOutline(gfx, zurX, 7, zurB, 16, 4,
+                zurUeber ? Theme.accentStart() : Theme.OUTLINE_SOFT);
+        Render2D.text(gfx, zurText, zurX + 8, 11, zurUeber ? Theme.TEXT : Theme.TEXT_DIM);
+        treffer.add(new Treffer(zurX, 7, zurB, 16, null, null, null, Art.ZURUECK));
 
         float suchX = width / 2.0f - 90;
         Render2D.roundedRect(gfx, suchX, 7, 180, 16, 4,
@@ -157,6 +182,56 @@ public final class ClickGuiScreen extends Screen {
         Render2D.roundedRect(gfx, x, y, breite, 28, 6, Theme.PANEL_LIGHT);
         Render2D.roundedOutline(gfx, x, y, breite, 28, 6, Theme.accentStart());
         Render2D.textCentered(gfx, text, width / 2.0f, y + 10, Theme.TEXT);
+    }
+
+    // ---------------------------------------------------------- Bereichswahl
+
+    /**
+     * Die erste Ebene: zwei grosse Kacheln, "Hacks" und "Kein Hack". Erst nach
+     * der Wahl erscheint das gewohnte Fenster-Menue - und nur mit den Fenstern
+     * des gewaehlten Bereichs.
+     */
+    private void bereichWahlZeichnen(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
+        Render2D.textCentered(gfx, "Waehle einen Bereich", width / 2.0f, 70, Theme.TEXT_DIM);
+
+        float breite = 220;
+        float hoehe = 150;
+        float luecke = 30;
+        float gesamt = breite * 2 + luecke;
+        float x0 = width / 2.0f - gesamt / 2.0f;
+        float y0 = height / 2.0f - hoehe / 2.0f;
+
+        kachel(gfx, mouseX, mouseY, x0, y0, breite, hoehe,
+                Category.Bereich.HACKS, "Combat, Movement, Render & mehr", Art.WAHL_HACKS);
+        kachel(gfx, mouseX, mouseY, x0 + breite + luecke, y0, breite, hoehe,
+                Category.Bereich.KEIN_HACK, "Performance & Werkzeuge", Art.WAHL_KEIN);
+    }
+
+    private void kachel(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float x, float y,
+                        float w, float h, Category.Bereich bereich, String untertitel, Art art) {
+        boolean ueber = Render2D.hovered(mouseX, mouseY, x, y, w, h);
+        int akzent = bereich.color();
+        if (ueber) {
+            Render2D.glow(gfx, x, y, w, h, 10, akzent, 5);
+        }
+        Render2D.roundedRect(gfx, x, y, w, h, 10, ueber ? Theme.PANEL_LIGHT : Theme.PANEL);
+        Render2D.roundedOutline(gfx, x, y, w, h, 10, ueber ? akzent : Theme.OUTLINE_SOFT);
+        Render2D.rect(gfx, x + 18, y + 46, w - 36, 2, ColorUtil.fade(akzent, 0.9f));
+        Render2D.textCentered(gfx, bereich.label().toUpperCase(Locale.ROOT),
+                x + w / 2.0f, y + 28, Theme.TEXT);
+        Render2D.textCentered(gfx, Render2D.clip(untertitel, (int) w - 24),
+                x + w / 2.0f, y + 64, Theme.TEXT_DIM);
+
+        int anzahl = 0;
+        for (Module modul : GlowCubeClient.modules().all()) {
+            if (modul.category().bereich() == bereich) {
+                anzahl++;
+            }
+        }
+        Render2D.textCentered(gfx, anzahl + (anzahl == 1 ? " Funktion" : " Funktionen"),
+                x + w / 2.0f, y + h - 26, akzent);
+
+        treffer.add(new Treffer(x, y, w, h, null, null, null, art));
     }
 
     // ------------------------------------------------------------- Ein Fenster
@@ -312,6 +387,9 @@ public final class ClickGuiScreen extends Screen {
         List<Module> gefunden = new ArrayList<>();
         String muster = suche.toLowerCase(Locale.ROOT);
         for (Module module : GlowCubeClient.modules().all()) {
+            if (module.category().bereich() != bereich) {
+                continue;
+            }
             if (module.name().toLowerCase(Locale.ROOT).contains(muster)
                     || module.description().toLowerCase(Locale.ROOT).contains(muster)) {
                 gefunden.add(module);
@@ -349,13 +427,15 @@ public final class ClickGuiScreen extends Screen {
             return true;
         }
 
-        // Suchfeld
-        float suchX = width / 2.0f - 90;
-        if (Render2D.hovered(mx, my, suchX, 7, 180, 16)) {
-            sucheAktiv = true;
-            return true;
+        // Suchfeld - nur wenn ein Bereich offen ist.
+        if (bereich != null) {
+            float suchX = width / 2.0f - 90;
+            if (Render2D.hovered(mx, my, suchX, 7, 180, 16)) {
+                sucheAktiv = true;
+                return true;
+            }
+            sucheAktiv = false;
         }
-        sucheAktiv = false;
 
         // Rueckwaerts durchgehen: was zuletzt gezeichnet wurde, liegt oben.
         for (int i = treffer.size() - 1; i >= 0; i--) {
@@ -417,6 +497,20 @@ public final class ClickGuiScreen extends Screen {
                 }
                 return true;
             }
+            case WAHL_HACKS -> {
+                bereich = Category.Bereich.HACKS;
+                return true;
+            }
+            case WAHL_KEIN -> {
+                bereich = Category.Bereich.KEIN_HACK;
+                return true;
+            }
+            case ZURUECK -> {
+                bereich = null;
+                suche = "";
+                sucheAktiv = false;
+                return true;
+            }
             default -> {
                 return false;
             }
@@ -460,9 +554,12 @@ public final class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (bereich == null) {
+            return true;
+        }
         // Alle Fenster gemeinsam verschieben - so kommt man an Fenster heran,
         // die unter dem unteren Rand liegen, ohne jedes einzeln zu ziehen.
-        for (Fenster fenster : Layout.alle()) {
+        for (Fenster fenster : Layout.imBereich(bereich)) {
             fenster.y += (float) scrollY * 18.0f;
         }
         return true;
@@ -495,8 +592,15 @@ public final class ClickGuiScreen extends Screen {
             }
         }
 
+        // Esc geht erst einen Schritt zurueck zur Bereichswahl; erst der
+        // naechste Esc schliesst das Fenster ganz.
+        if (bereich != null && key == Netz.TASTE_ESC) {
+            bereich = null;
+            return true;
+        }
+
         // Fenster wieder einsammeln, wenn man sie verlegt hat.
-        if (key == Netz.TASTE_POS1) {
+        if (bereich != null && key == Netz.TASTE_POS1) {
             Layout.zuruecksetzen();
             speichern();
             return true;
@@ -508,6 +612,9 @@ public final class ClickGuiScreen extends Screen {
     public boolean charTyped(CharacterEvent event) {
         if (belegt != null) {
             return true;
+        }
+        if (bereich == null) {
+            return super.charTyped(event);
         }
         String zeichen = event.codepointAsString();
         if (!zeichen.isEmpty() && suche.length() < 32) {

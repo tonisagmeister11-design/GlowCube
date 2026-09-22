@@ -25,6 +25,7 @@ import net.glowcube.client.module.misc.AutoPlay;
 import net.glowcube.client.module.misc.SeedHunt;
 import net.glowcube.client.module.misc.Spammer;
 import net.glowcube.client.module.movement.PacketFly;
+import net.glowcube.client.module.performance.UltraPerformance;
 import net.glowcube.client.module.player.NoInteract;
 import net.glowcube.client.module.world.AntiChunkBan;
 import net.glowcube.client.module.world.FakeLag;
@@ -127,6 +128,8 @@ public final class ModuleManager {
         add(new FakeLag());
         add(new AntiChunkBan());
         add(new PacketFly());
+        // Kein Hack
+        add(new UltraPerformance());
     }
 
     private void add(Module module) {

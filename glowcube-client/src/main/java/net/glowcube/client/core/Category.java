@@ -8,22 +8,52 @@ package net.glowcube.client.core;
  * Exploits, Misc.
  */
 public enum Category {
-    COMBAT("Combat", "\u2694", 0xFFFF5F6D),
-    MOVEMENT("Movement", "\u27A4", 0xFF3BF0D4),
-    RENDER("Render", "\u25C6", 0xFF9B6BFF),
-    PLAYER("Player", "\u2617", 0xFF5FE3A1),
-    WORLD("World", "\u26F0", 0xFFFFC53D),
-    EXPLOIT("Exploits", "\u26A1", 0xFFFF7AF5),
-    MISC("Misc", "\u2699", 0xFF7FC4FF);
+    COMBAT("Combat", "\u2694", 0xFFFF5F6D, Bereich.HACKS),
+    MOVEMENT("Movement", "\u27A4", 0xFF3BF0D4, Bereich.HACKS),
+    RENDER("Render", "\u25C6", 0xFF9B6BFF, Bereich.HACKS),
+    PLAYER("Player", "\u2617", 0xFF5FE3A1, Bereich.HACKS),
+    WORLD("World", "\u26F0", 0xFFFFC53D, Bereich.HACKS),
+    EXPLOIT("Exploits", "\u26A1", 0xFFFF7AF5, Bereich.HACKS),
+    MISC("Misc", "\u2699", 0xFF7FC4FF, Bereich.HACKS),
+    // Kein Hack: legitime Werkzeuge. Bis hier nur die Leistung; der eigene
+    // Nicht-Hack-Client fuellt diesen Bereich spaeter weiter auf.
+    PERFORMANCE("Performance", "\u2726", 0xFFB6FF3B, Bereich.KEIN_HACK);
+
+    /**
+     * Die zwei Bereiche, in die das Menue oben aufteilt: was ein Hack ist und
+     * was keiner ist. Jede Kategorie gehoert genau zu einem davon.
+     */
+    public enum Bereich {
+        HACKS("Hacks", 0xFFFF5F6D),
+        KEIN_HACK("Kein Hack", 0xFF5FE3A1);
+
+        private final String label;
+        private final int color;
+
+        Bereich(String label, int color) {
+            this.label = label;
+            this.color = color;
+        }
+
+        public String label() {
+            return label;
+        }
+
+        public int color() {
+            return color;
+        }
+    }
 
     private final String label;
     private final String icon;
     private final int color;
+    private final Bereich bereich;
 
-    Category(String label, String icon, int color) {
+    Category(String label, String icon, int color, Bereich bereich) {
         this.label = label;
         this.icon = icon;
         this.color = color;
+        this.bereich = bereich;
     }
 
     /** Die Hausfarbe dieser Kategorie. */
@@ -37,5 +67,10 @@ public enum Category {
 
     public String icon() {
         return icon;
+    }
+
+    /** In welchen der zwei Menuebereiche diese Kategorie faellt. */
+    public Bereich bereich() {
+        return bereich;
     }
 }
