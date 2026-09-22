@@ -302,14 +302,6 @@ jobs:
                   unique.append(line)
           print("::error title=Build-Fehler::" + "%0A".join(unique[:15]))
           PY
-          # Am Log-Ende (hier gut tailbar) die echten Signaturen ausgeben, an
-          # denen der render-Override und options.hideGui gerade haengen.
-          if [ -f build/classpath.txt ]; then
-            cp=$(paste -sd: build/classpath.txt)
-            echo "::error title=RENDER-SIG::$(javap -p -classpath "$cp" net.minecraft.client.gui.components.Renderable 2>/dev/null | grep -E 'render|abstract' | tr '\n' '~')"
-            echo "::error title=SCREEN-SIG::$(javap -p -classpath "$cp" net.minecraft.client.gui.screens.Screen 2>/dev/null | grep -E 'void render|public void render|render\(' | tr '\n' '~')"
-            echo "::error title=HIDEGUI-SIG::$(javap -p -classpath "$cp" net.minecraft.client.Options 2>/dev/null | grep -iE 'hidegui|hud|hide' | tr '\n' '~')"
-          fi
 
       # Die fertige Mod bekommt die Spielfassung in den Dateinamen, damit
       # spaeter unverwechselbar ist, welche JAR zu welchem Minecraft gehoert.
@@ -329,26 +321,6 @@ jobs:
           path: /tmp/ausgabe/*.jar
           if-no-files-found: error
           retention-days: 90
-
-      # Auch auf gruenen Laeufen lesbar (am Log-Ende): die Welt-Render-Pipeline
-      # auf 26.3 fuer das 3D-ESP. WorldRenderEvents/WorldRenderContext gibt es
-      # ab 26.x nicht mehr; hier kommt heraus, was an ihre Stelle tritt.
-      - name: 26.3-Welt-Render ausleuchten (spaet, tailbar)
-        if: always()
-        run: |
-          if [ ! -f build/classpath.txt ]; then exit 0; fi
-          cp=$(paste -sd: build/classpath.txt)
-          dump() { echo "::group::$1"; javap -p -classpath "$cp" "$1" 2>/dev/null | grep -iE "$2" | head -40; echo "::endgroup::"; }
-          # Gibt es die alten Fabric-Hooks noch?
-          for k in \
-            net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents \
-            net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext \
-            net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext.BlockOutlineContext; do
-            echo "=== $k ==="; javap -p -classpath "$cp" "$k" >/dev/null 2>&1 && echo "vorhanden" || echo "GIBT ES NICHT"
-          done
-          # Die Klassen der neuen Pipeline finden.
-          python3 probe-search.py build/classpath.txt WorldRenderContext WorldRenderEvents SubmitNodeCollector OrderedRenderCommandQueue LineRenderState FeatureRenderDispatcher || true
-          dump net.minecraft.client.renderer.LevelRenderer "render|submit|line|shape|blockoutline"
 
   veroeffentlichen:
     name: Alle Fassungen veroeffentlichen
