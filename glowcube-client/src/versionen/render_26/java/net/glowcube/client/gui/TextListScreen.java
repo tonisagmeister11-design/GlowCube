@@ -52,7 +52,7 @@ public final class TextListScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, net.minecraft.client.DeltaTracker delta) {
         Render2D.rect(gfx, 0, 0, width, height, Theme.BACKDROP);
 
         float x = panelX();

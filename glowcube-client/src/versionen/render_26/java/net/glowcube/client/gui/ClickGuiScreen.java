@@ -83,7 +83,7 @@ public final class ClickGuiScreen extends Screen {
     // ---------------------------------------------------------------- Zeichnen
 
     @Override
-    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphicsExtractor gfx, int mouseX, int mouseY, net.minecraft.client.DeltaTracker delta) {
         treffer.clear();
         Render2D.rect(gfx, 0, 0, width, height, Theme.BACKDROP);
 
