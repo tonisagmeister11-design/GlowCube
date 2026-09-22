@@ -18,7 +18,8 @@ public enum Category {
     // Kein Hack: legitime Werkzeuge - die Leistung und die HUD-Anzeigen
     // (CPS, Keystrokes, FPS ...), wie sie PvP-Clients mitbringen.
     PERFORMANCE("Performance", "\u2726", 0xFFB6FF3B, Bereich.KEIN_HACK),
-    HUD("HUD", "\u25A3", 0xFF7FC4FF, Bereich.KEIN_HACK),
+    PVP_HUD("PvP-HUD", "\u2694", 0xFFFF7A7A, Bereich.KEIN_HACK),
+    HUD("Info-HUD", "\u25A3", 0xFF7FC4FF, Bereich.KEIN_HACK),
     OPTIK("Optik", "\u25C9", 0xFFFF9F5F, Bereich.KEIN_HACK);
 
     /**

@@ -1,5 +1,6 @@
 package net.glowcube.client.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.util.Theme;
 
@@ -25,6 +26,10 @@ public abstract class TextHudModul extends HudModul {
 
     protected TextHudModul(String name, String beschreibung, boolean rechts) {
         super(name, beschreibung, rechts);
+    }
+
+    protected TextHudModul(String name, String beschreibung, Category kategorie) {
+        super(name, beschreibung, false, kategorie);
     }
 
     /** Was gerade angezeigt wird. Wird einmal je Frame gefragt. */

@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.hud.HudModul;
 import net.glowcube.client.hud.HudZeichner;
@@ -22,7 +23,7 @@ public final class PfeileHud extends HudModul {
     private boolean sichtbar;
 
     public PfeileHud() {
-        super("Pfeile", "Zeigt, wie viele Pfeile du dabeihast", true);
+        super("Pfeile", "Zeigt, wie viele Pfeile du dabeihast", true, Category.PVP_HUD);
     }
 
     @Override

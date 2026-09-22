@@ -207,6 +207,12 @@ public final class ModuleManager {
     private void add(Module module) {
         modules.add(module);
         byName.put(module.name().toLowerCase(java.util.Locale.ROOT), module);
+        // Chatbefehle nehmen nur ein Wort: "Kein Wackeln" ist dort "keinwackeln".
+        byName.putIfAbsent(kurzname(module.name()), module);
+    }
+
+    private static String kurzname(String name) {
+        return name.toLowerCase(java.util.Locale.ROOT).replace(" ", "").replace("-", "");
     }
 
     public List<Module> all() {
@@ -214,7 +220,8 @@ public final class ModuleManager {
     }
 
     public Module get(String name) {
-        return byName.get(name.toLowerCase(java.util.Locale.ROOT));
+        Module module = byName.get(name.toLowerCase(java.util.Locale.ROOT));
+        return module != null ? module : byName.get(kurzname(name));
     }
 
     public <T extends Module> T get(Class<T> type) {

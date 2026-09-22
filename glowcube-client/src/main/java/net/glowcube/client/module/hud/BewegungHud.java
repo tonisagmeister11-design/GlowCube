@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.hud.TextHudModul;
 
 /**
@@ -8,7 +9,7 @@ import net.glowcube.client.hud.TextHudModul;
  */
 public final class BewegungHud extends TextHudModul {
     public BewegungHud() {
-        super("Bewegung", "Zeigt, ob du schleichst oder sprintest");
+        super("Bewegung", "Zeigt, ob du schleichst oder sprintest", Category.PVP_HUD);
     }
 
     @Override

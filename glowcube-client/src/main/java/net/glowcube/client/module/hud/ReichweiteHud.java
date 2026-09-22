@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.hud.TextHudModul;
 import net.minecraft.world.entity.Entity;
@@ -26,7 +27,7 @@ public final class ReichweiteHud extends TextHudModul {
     private long zeit;
 
     public ReichweiteHud() {
-        super("Reichweite", "Zeigt die Reichweite deines letzten Schlags");
+        super("Reichweite", "Zeigt die Reichweite deines letzten Schlags", Category.PVP_HUD);
     }
 
     @Override

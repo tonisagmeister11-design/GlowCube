@@ -5,6 +5,7 @@ import net.glowcube.client.core.Category;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.gui.ClickGuiScreen;
 import net.glowcube.client.hud.HudAnzeigen;
+import net.glowcube.client.hud.HudModul;
 import net.glowcube.client.hud.HudZeichner;
 import net.glowcube.client.hud.KlickZaehler;
 import net.glowcube.client.util.ColorUtil;
@@ -66,7 +67,7 @@ public final class HudRenderer {
         List<Module> active = new ArrayList<>();
         for (Module module : GlowCubeClient.modules().all()) {
             // HUD-Anzeigen stehen fuer sich selbst, nicht noch einmal in der Liste.
-            if (module.isEnabled() && module.category() != Category.MISC && module.category() != Category.HUD) {
+            if (module.isEnabled() && module.category() != Category.MISC && !(module instanceof HudModul)) {
                 active.add(module);
             }
         }

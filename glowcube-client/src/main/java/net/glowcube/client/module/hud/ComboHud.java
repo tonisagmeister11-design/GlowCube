@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.hud.TextHudModul;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -21,7 +22,7 @@ public final class ComboHud extends TextHudModul {
     private int eigenHurtVorher;
 
     public ComboHud() {
-        super("Combo", "Zaehlt deine Treffer in Folge");
+        super("Combo", "Zaehlt deine Treffer in Folge", Category.PVP_HUD);
     }
 
     @Override

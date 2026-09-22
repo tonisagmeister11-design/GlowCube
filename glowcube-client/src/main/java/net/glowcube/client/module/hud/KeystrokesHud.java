@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.hud.HudModul;
 import net.glowcube.client.hud.HudZeichner;
@@ -42,7 +43,7 @@ public final class KeystrokesHud extends HudModul {
     private long letzterFrame;
 
     public KeystrokesHud() {
-        super("Keystrokes", "Zeigt WASD, Maustasten und Leertaste", false);
+        super("Keystrokes", "Zeigt WASD, Maustasten und Leertaste", false, Category.PVP_HUD);
     }
 
     private KeyMapping taste(int i) {

@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.hud.HudModul;
 import net.glowcube.client.hud.HudZeichner;
@@ -28,7 +29,7 @@ public final class TraenkeHud extends HudModul {
     private final List<String[]> zeilen = new ArrayList<>();
 
     public TraenkeHud() {
-        super("Traenke", "Zeigt laufende Trankwirkungen mit Restzeit", true);
+        super("Traenke", "Zeigt laufende Trankwirkungen mit Restzeit", true, Category.PVP_HUD);
     }
 
     @Override

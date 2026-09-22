@@ -25,6 +25,8 @@ public final class Freelook extends Module {
             new BooleanSetting("Invertieren", "Maus hoch und runter umkehren", false));
 
     private boolean laeuft;
+    /** Per Taste gestartet? Nur dann endet "Halten" beim Loslassen - ein Klick im Menue schaltet dauerhaft. */
+    private boolean perTaste;
     private float gier;
     private float neigung;
     private CameraType vorher;
@@ -43,6 +45,7 @@ public final class Freelook extends Module {
         neigung = mc.player.getXRot();
         vorher = mc.options.getCameraType();
         mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+        perTaste = hasKey() && Netz.tasteUnten(key());
         laeuft = true;
     }
 
@@ -56,7 +59,7 @@ public final class Freelook extends Module {
 
     @Override
     public void onTick() {
-        if (modus.is("Halten") && hasKey() && !Netz.tasteUnten(key())) {
+        if (modus.is("Halten") && perTaste && !Netz.tasteUnten(key())) {
             setEnabled(false);
         }
     }

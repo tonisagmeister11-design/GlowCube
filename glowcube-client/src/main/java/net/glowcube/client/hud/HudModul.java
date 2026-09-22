@@ -14,7 +14,12 @@ public abstract class HudModul extends Module {
     private final ModeSetting seite;
 
     protected HudModul(String name, String beschreibung, boolean rechts) {
-        super(name, beschreibung, Category.HUD);
+        this(name, beschreibung, rechts, Category.HUD);
+    }
+
+    /** Mit eigener Kategorie - die PvP-Anzeigen stehen im Fenster "PvP-HUD". */
+    protected HudModul(String name, String beschreibung, boolean rechts, Category kategorie) {
+        super(name, beschreibung, kategorie);
         seite = register(new ModeSetting("Seite", "An welchem Bildschirmrand die Anzeige steht",
                 rechts ? "Rechts" : "Links", "Links", "Rechts"));
     }

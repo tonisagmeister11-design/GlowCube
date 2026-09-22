@@ -94,7 +94,7 @@ erkannt.
 | --- | --- |
 | `/glowcube seed <zahl>` | Setzt den Weltseed von Hand - das braucht OreSim |
 | `/glowcube seed` | Zeigt, welcher Seed gerade bekannt ist |
-| `/glowcube <modul>` | Schaltet ein Modul, ohne eine Taste zu belegen |
+| `/glowcube <modul>` | Schaltet ein Modul, ohne eine Taste zu belegen - Namen mit Leer- oder Bindestrich zusammengeschrieben, z. B. `keinwackeln`, `tnttimer` |
 | `/glowcube fenster` | Raeumt die Menuefenster ins Raster |
 
 Alle vier sind rein clientseitig - der Server sieht davon nichts.
@@ -163,11 +163,13 @@ Alle vier sind rein clientseitig - der Server sieht davon nichts.
 
 Die Kategorien folgen der Einteilung von BleachHack.
 
-### HUD (Bereich "Kein Hack")
+### PvP-HUD und Info-HUD (Bereich "Kein Hack")
 
 Anzeigen wie in PvP-Clients, uebertragen aus AxolotlClient. Sie laufen auf
-1.21.11 und 26.3. Jede hat die Einstellung **Seite**: Links stapelt sie unter
-das Wasserzeichen, Rechts unter die Modulliste.
+1.21.11 und 26.3 und stehen in zwei Fenstern: **PvP-HUD** (CPS, Keystrokes,
+Reichweite, Combo, Ruestung, Traenke, Pfeile, Bewegung, Mausbewegung) und
+**Info-HUD** (alles uebrige). Jede Anzeige hat die Einstellung **Seite**:
+Links stapelt sie unter das Wasserzeichen, Rechts unter die Modulliste.
 
 | Modul | Was es zeigt |
 | --- | --- |

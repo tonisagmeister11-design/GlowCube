@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.hud.KlickZaehler;
 import net.glowcube.client.hud.TextHudModul;
@@ -10,7 +11,7 @@ public final class CpsHud extends TextHudModul {
             new BooleanSetting("Rechtsklick", "Auch die Rechtsklicks zeigen: \"links | rechts CPS\"", false));
 
     public CpsHud() {
-        super("CPS", "Zeigt deine Klicks pro Sekunde");
+        super("CPS", "Zeigt deine Klicks pro Sekunde", Category.PVP_HUD);
     }
 
     @Override

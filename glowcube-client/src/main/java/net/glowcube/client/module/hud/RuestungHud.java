@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.core.setting.BooleanSetting;
 import net.glowcube.client.hud.HudModul;
 import net.glowcube.client.hud.HudZeichner;
@@ -29,7 +30,7 @@ public final class RuestungHud extends HudModul {
     private final ItemStack[] stapel = new ItemStack[PLAETZE.length];
 
     public RuestungHud() {
-        super("Ruestung", "Zeigt Ruestung und Hand mit Haltbarkeit", true);
+        super("Ruestung", "Zeigt Ruestung und Hand mit Haltbarkeit", true, Category.PVP_HUD);
     }
 
     private int anzahl() {

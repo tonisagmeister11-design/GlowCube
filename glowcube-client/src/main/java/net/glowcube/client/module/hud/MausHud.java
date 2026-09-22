@@ -1,5 +1,6 @@
 package net.glowcube.client.module.hud;
 
+import net.glowcube.client.core.Category;
 import net.glowcube.client.hud.HudModul;
 import net.glowcube.client.hud.HudZeichner;
 import net.glowcube.client.util.Theme;
@@ -18,7 +19,7 @@ public final class MausHud extends HudModul {
     private float py;
 
     public MausHud() {
-        super("Mausbewegung", "Zeigt, wie du die Maus gerade bewegst", false);
+        super("Mausbewegung", "Zeigt, wie du die Maus gerade bewegst", false, Category.PVP_HUD);
     }
 
     @Override
