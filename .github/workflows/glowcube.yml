@@ -133,6 +133,21 @@ jobs:
             "net.minecraft.client.gui.components.Renderable:" \
             "net.minecraft.client.gui.screens.Screen:extractRenderState|render" \
             "net.minecraft.client.Options:hideGui|hide" || true
+          # Die Optik-Module (nach AxolotlClient) haengen an diesen Stellen.
+          python3 probe-api.py build/classpath.txt \
+            "net.minecraft.client.Camera:setup|alignWithEntity|setRotation|update" \
+            "net.minecraft.client.renderer.GameRenderer:bobHurt|bobView" \
+            "net.minecraft.client.gui.Gui:ignette" \
+            "net.minecraft.client.gui.Hud:ignette" \
+            "net.minecraft.client.renderer.ScreenEffectRenderer:ire" \
+            "net.minecraft.client.renderer.blockentity.BeaconRenderer:Beam" \
+            "net.minecraft.world.level.Level:RainLevel|ThunderLevel" \
+            "net.minecraft.client.renderer.entity.LivingEntityRenderer:shouldShowName" \
+            "net.minecraft.world.entity.Entity:turn|setCustomName" \
+            "net.minecraft.world.entity.item.PrimedTnt:Fuse" \
+            "net.minecraft.world.item.ItemStack:HoverName" \
+            "net.minecraft.server.packs.repository.PackRepository:Selected" \
+            "net.minecraft.server.packs.repository.Pack:Title" || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
