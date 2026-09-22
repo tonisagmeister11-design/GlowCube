@@ -9,7 +9,6 @@ import net.glowcube.client.core.setting.ModeSetting;
 import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.core.setting.Setting;
 import net.glowcube.client.core.setting.TextListSetting;
-import net.glowcube.client.integration.SeedBridge;
 import net.glowcube.client.render.Netz;
 import net.glowcube.client.util.ColorUtil;
 import net.glowcube.client.util.Render2D;
@@ -158,20 +157,10 @@ public final class ClickGuiScreen extends Screen {
         String links = "Links schaltet - Rechts oeffnet Einstellungen - Mitte belegt die Taste";
         Render2D.text(gfx, links, 14, height - 15, Theme.TEXT_FAINT);
 
-        // Der SeedCracker-Stand gehoert dorthin, wo man ihn immer sieht:
-        // waehrend SeedHunt fliegt, hat man das Fenster ohnehin offen.
-        String rechts;
-        Long seed = SeedBridge.seed();
-        if (seed != null) {
-            rechts = "Seed " + seed;
-        } else {
-            Double bits = SeedBridge.bits();
-            rechts = bits == null
-                    ? "SeedCracker wartet"
-                    : String.format(Locale.ROOT, "SeedCracker %.1f / 48 Bit", bits);
-        }
-        Render2D.text(gfx, rechts, width - 14 - Render2D.width(rechts), height - 15,
-                seed != null ? Theme.accentStart() : Theme.TEXT_DIM);
+        // Auf 26.x gibt es kein SeedCrackerX - statt der Seed-Anzeige steht hier
+        // schlicht die laufende Fassung.
+        String rechts = GlowCubeClient.target();
+        Render2D.text(gfx, rechts, width - 14 - Render2D.width(rechts), height - 15, Theme.TEXT_DIM);
     }
 
     private void hinweis(GuiGraphicsExtractor gfx, String text) {

@@ -107,6 +107,26 @@ def main():
         melde("Keine Spielfassung gefunden - nichts eingebaut", "warning")
         return 0
 
+    # SeedCrackerX gibt es nur bis 1.21.x. Ab 26.x wird nichts eingebaut - und
+    # das mit Absicht fest verdrahtet, nicht bloss ueber die Fassungspruefung:
+    # eine 1.21er-SeedCrackerX-JAR in einer 26.x-Mod bringt ihre eigenen Mixins
+    # mit, die dort nicht greifen, und reisst beim Start halb GlowCube um.
+    if not fassung.startswith("1."):
+        # Zusaetzlich den "seedcrackerx"-Einstiegspunkt aus dem Manifest nehmen:
+        # ohne SeedCrackerX ruft ihn zwar ohnehin niemand, aber so bleibt das
+        # 26.x-Manifest sauber und nennt nichts, was es nicht gibt.
+        try:
+            manifest = json.loads(MOD_JSON.read_text(encoding="utf-8"))
+            manifest.get("entrypoints", {}).pop("seedcrackerx", None)
+            manifest.pop("suggests", None)
+            MOD_JSON.write_text(
+                json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        except Exception as fehler:
+            melde(f"Manifest nicht angepasst ({fehler}) - unkritisch", "warning")
+        melde(f"Minecraft {fassung}: SeedCrackerX gibt es dafuer nicht - "
+              f"nichts eingebaut (so gewollt)")
+        return 0
+
     kopf = {"User-Agent": "GlowCube-Build"}
     token = os.environ.get("GH_TOKEN")
     if token:

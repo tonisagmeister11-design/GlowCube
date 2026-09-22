@@ -15,15 +15,18 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Nimmt den Seed entgegen, sobald SeedCrackerX ihn geknackt hat.
+ * Fassung fuer <b>1.21.x</b>: hier gibt es SeedCrackerX, und diese Bruecke
+ * nimmt den Seed entgegen, sobald es ihn geknackt hat.
  *
- * SeedCrackerX sammelt beim Spielen Merkmale der Welt und rechnet daraus den
+ * <p>SeedCrackerX sammelt beim Spielen Merkmale der Welt und rechnet daraus den
  * Seed zurueck. Fertig ist es damit irgendwann - man muss nicht danebensitzen.
  * Diese Klasse sorgt dafuer, dass das Ergebnis nicht in einer Chatzeile
  * untergeht: es landet zusaetzlich in einer Datei und bleibt abrufbar.
  *
- * Eingehaengt ueber den Fabric-Einstiegspunkt "seedcrackerx" (siehe
- * fabric.mod.json). Ohne SeedCrackerX passiert hier nichts.
+ * <p>Eingehaengt ueber den Fabric-Einstiegspunkt "seedcrackerx" (siehe
+ * fabric.mod.json). Ohne SeedCrackerX passiert hier nichts. Ab 26.x gibt es
+ * SeedCrackerX nicht mehr - dort steht eine schlanke Fassung ohne diese
+ * Schnittstelle, siehe src/versionen/render_26.
  */
 public final class SeedBridge implements SeedCrackerAPI {
     private static volatile Long gefundenerSeed;

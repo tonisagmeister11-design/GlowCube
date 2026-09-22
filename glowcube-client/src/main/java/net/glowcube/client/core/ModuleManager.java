@@ -116,7 +116,12 @@ public final class ModuleManager {
         add(new XCarry());
         // Misc
         add(new AutoPlay());
-        add(new SeedHunt());
+        // SeedHunt haengt ganz an SeedCrackerX - das gibt es nur bis 1.21.x.
+        // Ab 26.x bleibt es darum draussen, sonst stuende ein Knopf im Menue,
+        // der nichts tun kann.
+        if (net.glowcube.client.GlowCubeClient.seedCrackerFassung()) {
+            add(new SeedHunt());
+        }
         add(new Spammer());
         add(new ClickGuiModule());
         // World
@@ -193,7 +198,7 @@ public final class ModuleManager {
             }
             pending.clear();
         }
-        if (geradeBetreten) {
+        if (geradeBetreten && net.glowcube.client.GlowCubeClient.seedCrackerFassung()) {
             SeedHunt seedHunt = get(SeedHunt.class);
             if (seedHunt.autoStart() && !seedHunt.isEnabled()) {
                 seedHunt.setEnabled(true);

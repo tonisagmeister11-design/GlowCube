@@ -27,6 +27,7 @@ public final class GlowCubeClient implements ClientModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger(NAME);
 
     private static String target;
+    private static Boolean seedCrackerFassung;
 
     private static ModuleManager modules;
     private static ConfigManager config;
@@ -106,6 +107,22 @@ public final class GlowCubeClient implements ClientModInitializer {
                     .orElse("?");
         }
         return target;
+    }
+
+    /**
+     * Ob diese Spielfassung SeedCrackerX kennt. Es gibt SeedCrackerX nur bis
+     * 1.21.x; ab 26.x nicht mehr. Danach richtet sich, ob SeedHunt und die
+     * Seed-Anzeige ueberhaupt erscheinen - auf 26.x sollen sie es nicht.
+     */
+    public static boolean seedCrackerFassung() {
+        if (seedCrackerFassung == null) {
+            String fassung = FabricLoader.getInstance()
+                    .getModContainer("minecraft")
+                    .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                    .orElse("");
+            seedCrackerFassung = fassung.startsWith("1.");
+        }
+        return seedCrackerFassung;
     }
 
     public static ModuleManager modules() {
