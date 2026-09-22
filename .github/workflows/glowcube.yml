@@ -103,6 +103,22 @@ jobs:
             "net.minecraft.client.renderer.rendertype.RenderTypes:ine|LINE" \
             "net.minecraft.client.renderer.LevelRenderer:renderLineBox|renderShape" \
             "com.mojang.blaze3d.vertex.VertexConsumer:setColor|setNormal|addVertex" || true
+          # Die 2D-Schicht: Screen.render() nennt den neuen Graphics-Typ und die
+          # Input-Ereignisse selbst - daran haengt das ganze ClickGUI/HUD.
+          python3 probe-api.py build/classpath.txt \
+            "net.minecraft.client.gui.screens.Screen:render|mouseClicked|mouseDragged|mouseReleased|mouseScrolled|keyPressed|charTyped" \
+            "net.minecraft.client.gui.GuiGraphicsExtractor:fill|text|Scissor|pose|gradient|blit|drawString" \
+            "net.minecraft.client.gui.GuiGraphics:fill|text|Scissor|pose|gradient|drawString" \
+            "net.minecraft.client.input.MouseButtonEvent:" \
+            "net.minecraft.client.input.KeyEvent:" \
+            "net.minecraft.client.input.CharacterEvent:" \
+            "net.minecraft.client.gui.Font:width|lineHeight" || true
+          # Das HUD haengt ab 26.x an Fabrics HudElementRegistry statt am alten
+          # HudRenderCallback. Dessen register-Signatur brauchen wir wortgenau.
+          python3 probe-api.py build/classpath.txt \
+            "net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry:" \
+            "net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement:" \
+            "net.minecraft.client.gui.render.state.GuiRenderState:" || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
