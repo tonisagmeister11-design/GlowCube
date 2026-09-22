@@ -259,7 +259,9 @@ jobs:
               "net.minecraft.world.inventory.ContainerInput#QUICK_MOVE" \
               "net.minecraft.world.inventory.ContainerInput#PICKUP" \
               "net.minecraft.client.multiplayer.MultiPlayerGameMode#handleContainerInput" \
-              "net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket#id"
+              "net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket#id" \
+              "net.minecraft.client.Minecraft#levelExtractor" \
+              "net.minecraft.client.renderer.extract.LevelExtractor#allChanged"
           fi
           # Die volle OreSim-Weltgenerierung laeuft nur dort, wo die alte
           # Erz-Konfiguration noch existiert (1.21.x und 26.2).

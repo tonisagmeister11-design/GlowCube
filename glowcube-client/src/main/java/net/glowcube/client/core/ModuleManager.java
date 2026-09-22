@@ -8,6 +8,7 @@ import net.glowcube.client.module.combat.MaceAura;
 import net.glowcube.client.module.combat.TriggerBot;
 import net.glowcube.client.module.movement.AutoSprint;
 import net.glowcube.client.module.movement.AutoWalk;
+import net.glowcube.client.module.movement.BunnyHop;
 import net.glowcube.client.module.movement.FastLadder;
 import net.glowcube.client.module.movement.Glide;
 import net.glowcube.client.module.movement.HighJump;
@@ -97,6 +98,7 @@ public final class ModuleManager {
         add(new HighJump());
         add(new FastLadder());
         add(new Jesus());
+        add(new BunnyHop());
         // Combat
         add(new KillAura());
         add(new MaceAura());

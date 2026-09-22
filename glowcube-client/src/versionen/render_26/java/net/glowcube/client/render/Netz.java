@@ -59,8 +59,37 @@ public final class Netz {
         return chunkAlsLong(chunkX(pos), chunkZ(pos));
     }
 
+    // Ab 26.x ist allChanged() vom LevelRenderer auf Minecraft.levelExtractor
+    // gewandert. Das Feld ist nicht oeffentlich, darum ueber Spiegelung - so
+    // baut X-Ray die Chunk-Meshes neu auf und die ausgeblendeten Bloecke
+    // verschwinden sofort statt erst beim naechsten Nachladen.
+    private static java.lang.reflect.Field extractorFeld;
+
     public static void chunksNeuZeichnen() {
-        // Chunk-Neuzeichnen auf 26.3 noch offen.
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (extractorFeld == null) {
+                extractorFeld = Minecraft.class.getDeclaredField("levelExtractor");
+                extractorFeld.setAccessible(true);
+            }
+            Object extractor = extractorFeld.get(mc);
+            if (extractor == null) {
+                return;
+            }
+            java.lang.reflect.Method allChanged;
+            try {
+                allChanged = extractor.getClass().getMethod("allChanged");
+            } catch (NoSuchMethodException fehlt) {
+                allChanged = extractor.getClass().getDeclaredMethod("allChanged");
+                allChanged.setAccessible(true);
+            }
+            allChanged.invoke(extractor);
+        } catch (ReflectiveOperationException fehler) {
+            // Kein Weltcrash: X-Ray zeigt dann erst nach dem naechsten
+            // Chunk-Nachladen, statt das Spiel mitzureissen.
+            net.glowcube.client.GlowCubeClient.LOGGER.warn(
+                    "GlowCube: Chunk-Neuzeichnen auf 26.3 fehlgeschlagen", fehler);
+        }
     }
 
     public static int interaktZielId(ServerboundInteractPacket paket) {
