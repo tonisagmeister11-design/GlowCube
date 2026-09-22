@@ -9,6 +9,7 @@ import net.glowcube.client.core.setting.NumberSetting;
 import net.glowcube.client.core.setting.Setting;
 import net.glowcube.client.core.setting.TextListSetting;
 import net.glowcube.client.integration.SeedBridge;
+import net.glowcube.client.render.Netz;
 import net.glowcube.client.util.ColorUtil;
 import net.glowcube.client.util.Render2D;
 import net.glowcube.client.util.Theme;
@@ -18,7 +19,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -473,20 +473,20 @@ public final class ClickGuiScreen extends Screen {
         int key = event.key();
 
         if (belegt != null) {
-            belegt.setKey(key == GLFW.GLFW_KEY_ESCAPE ? GLFW.GLFW_KEY_UNKNOWN : key);
+            belegt.setKey(key == Netz.TASTE_ESC ? Netz.TASTE_UNBEKANNT : key);
             belegt = null;
             speichern();
             return true;
         }
 
         if (sucheAktiv || !suche.isEmpty()) {
-            if (key == GLFW.GLFW_KEY_BACKSPACE) {
+            if (key == Netz.TASTE_RUECK) {
                 if (!suche.isEmpty()) {
                     suche = suche.substring(0, suche.length() - 1);
                 }
                 return true;
             }
-            if (key == GLFW.GLFW_KEY_ESCAPE) {
+            if (key == Netz.TASTE_ESC) {
                 suche = "";
                 sucheAktiv = false;
                 return true;
@@ -494,7 +494,7 @@ public final class ClickGuiScreen extends Screen {
         }
 
         // Fenster wieder einsammeln, wenn man sie verlegt hat.
-        if (key == GLFW.GLFW_KEY_HOME) {
+        if (key == Netz.TASTE_POS1) {
             Layout.zuruecksetzen();
             speichern();
             return true;

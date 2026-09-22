@@ -28,7 +28,9 @@ public final class HudRenderer {
 
     public void render(GuiGraphicsExtractor gfx) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options.hideGui || mc.player == null) {
+        // Das F1-Ausblenden (options.hideGui) heisst ab 26.x anders; wird
+        // nachgereicht, sobald der Name feststeht. Ohne Spieler nie zeichnen.
+        if (mc.player == null) {
             return;
         }
         // Im eigenen Fenster waere es doppelt gemoppelt.

@@ -2,6 +2,7 @@ package net.glowcube.client.gui;
 
 import net.glowcube.client.GlowCubeClient;
 import net.glowcube.client.core.setting.TextListSetting;
+import net.glowcube.client.render.Netz;
 import net.glowcube.client.util.Render2D;
 import net.glowcube.client.util.Theme;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -10,7 +11,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 import java.util.Locale;
@@ -113,19 +113,19 @@ public final class TextListScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
-        if (key == GLFW.GLFW_KEY_BACKSPACE) {
+        if (key == Netz.TASTE_RUECK) {
             if (!eingabe.isEmpty()) {
                 eingabe = eingabe.substring(0, eingabe.length() - 1);
             }
             return true;
         }
-        if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+        if (key == Netz.TASTE_ENTER || key == Netz.TASTE_NUM_ENTER) {
             liste.add(eingabe);
             eingabe = "";
             GlowCubeClient.config().save();
             return true;
         }
-        if (key == GLFW.GLFW_KEY_ESCAPE) {
+        if (key == Netz.TASTE_ESC) {
             onClose();
             return true;
         }

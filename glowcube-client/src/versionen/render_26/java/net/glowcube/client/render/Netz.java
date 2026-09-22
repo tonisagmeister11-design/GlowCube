@@ -19,6 +19,18 @@ public final class Netz {
     private Netz() {
     }
 
+    // Tastencodes: ab 26.x fehlt das Paket org.lwjgl.glfw (Umstieg auf SDL).
+    // Minecraft fuehrt die Tasten aber weiter unter den GLFW-kompatiblen
+    // Codes - genau die Zahlen, die auch KeyEvent.key() und InputConstants
+    // liefern. Deshalb hier fest, statt aus einer nicht mehr vorhandenen
+    // Klasse. So bleiben die Bildschirme frei von org.lwjgl.
+    public static final int TASTE_UNBEKANNT = -1;
+    public static final int TASTE_ESC = 256;
+    public static final int TASTE_ENTER = 257;
+    public static final int TASTE_RUECK = 259;      // Backspace
+    public static final int TASTE_POS1 = 268;       // Home
+    public static final int TASTE_NUM_ENTER = 335;  // Enter auf dem Ziffernblock
+
     public static void schwungSenden(InteractionHand hand) {
         // Auf 26.3 vorerst ohne eigenes Schwung-Paket.
     }

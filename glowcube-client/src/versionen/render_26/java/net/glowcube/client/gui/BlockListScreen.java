@@ -10,10 +10,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.glowcube.client.render.Netz;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -179,13 +179,13 @@ public final class BlockListScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
-        if (key == GLFW.GLFW_KEY_BACKSPACE) {
+        if (key == Netz.TASTE_RUECK) {
             if (!input.isEmpty()) {
                 input = input.substring(0, input.length() - 1);
             }
             return true;
         }
-        if (key == GLFW.GLFW_KEY_ENTER && !input.isEmpty()) {
+        if (key == Netz.TASTE_ENTER && !input.isEmpty()) {
             List<String> found = entries();
             if (!found.isEmpty()) {
                 list.add(found.get(0));
@@ -193,7 +193,7 @@ public final class BlockListScreen extends Screen {
             }
             return true;
         }
-        if (key == GLFW.GLFW_KEY_ESCAPE) {
+        if (key == Netz.TASTE_ESC) {
             onClose();
             return true;
         }
