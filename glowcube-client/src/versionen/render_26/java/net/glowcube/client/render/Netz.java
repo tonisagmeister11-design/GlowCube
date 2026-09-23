@@ -3,17 +3,18 @@ package net.glowcube.client.render;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 
 /**
  * Fassung fuer <b>26.3 und neuer</b>: dieselben Kleinigkeiten mit den neuen
- * 26.x-Namen. Arm-Animation und Chunk-Neuzeichnen folgen mit der uebrigen
- * Render-Anbindung; der Angriff laeuft ohnehin ueber {@code gameMode.attack}.
+ * 26.x-Namen.
  */
 public final class Netz {
     private Netz() {
@@ -32,7 +33,8 @@ public final class Netz {
     public static final int TASTE_NUM_ENTER = 335;  // Enter auf dem Ziffernblock
 
     public static void schwungSenden(InteractionHand hand) {
-        // Auf 26.3 vorerst ohne eigenes Schwung-Paket.
+        // Ab 26.x gibt es kein eigenes Schwung-Paket mehr (ServerboundSwingPacket
+        // ist weg) - der Server leitet den Schwung aus Angriff und Benutzen ab.
     }
 
     public static boolean istSchwungPaket(Packet<?> paket) {
@@ -40,7 +42,12 @@ public final class Netz {
     }
 
     public static void schwingen(InteractionHand hand) {
-        // Arm-Animation auf 26.3 vorerst aus (neuer SwingAnimation-Parameter).
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            SwingAnimation art = mc.player.getItemInHand(hand)
+                    .getOrDefault(DataComponents.ATTACK_ANIMATION, SwingAnimation.DEFAULT);
+            mc.player.swing(hand, art, false);
+        }
     }
 
     public static int chunkX(ChunkPos pos) {

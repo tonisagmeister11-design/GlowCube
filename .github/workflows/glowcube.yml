@@ -207,17 +207,17 @@ jobs:
         if: ${{ matrix.mc == '26.3' }}
         continue-on-error: true
         run: |
-          python3 probe-search.py build/classpath.txt Swing Animate | grep -v '::notice' || true
+          python3 probe-search.py build/classpath.txt OreConfiguration OreFeature VanillaRegistries | grep -v '::notice' || true
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.world.item.component.SwingAnimation:public" \
-            "net.minecraft.world.item.SwingAnimationType:public" \
-            "net.minecraft.core.component.DataComponents:(?i)swing" \
-            "net.minecraft.network.protocol.game.ClientboundSwingAnimationPacket:public" \
-            "net.minecraft.world.entity.LivingEntity\$SwingState:" \
-            "net.minecraft.client.player.LocalPlayer:(?i)swing|attack" \
-            "net.minecraft.client.Minecraft:(?i)levelRenderer|gui" \
-            "net.minecraft.client.gui.Gui:(?i)hidden|hide|visible" \
-            "net.minecraft.gizmos.Gizmos\$TemporaryCollection:" | grep -v '::notice' || true
+            "net.minecraft.data.registries.VanillaRegistries:public" \
+            "net.minecraft.world.level.levelgen.placement.PlacedFeature:public" \
+            "net.minecraft.world.level.levelgen.feature.ConfiguredFeature:public" \
+            "net.minecraft.world.level.levelgen.feature.OreFeature:public" \
+            "net.minecraft.world.level.levelgen.feature.ScatteredOreFeature:public" \
+            "net.minecraft.world.level.levelgen.feature.Feature:(?i)ore" \
+            "net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration:" \
+            "net.minecraft.world.level.biome.BiomeGenerationSettings:public" \
+            "net.minecraft.client.Options:(?i)gui" | grep -v '::notice' || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein

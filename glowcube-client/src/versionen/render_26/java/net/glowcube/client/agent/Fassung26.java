@@ -1,10 +1,13 @@
 package net.glowcube.client.agent;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.Mannequin;
+import net.minecraft.world.item.component.SwingAnimation;
 
 /**
  * Die Stellen, an denen sich der Agent auf 26.x anders schreibt als auf
@@ -18,7 +21,13 @@ final class Fassung26 {
     /** Ein neuer Mannequin-Koerper. Ab 26.x fuehrt EntityType kein MANNEQUIN-Feld mehr. */
     @SuppressWarnings("unchecked")
     static Mannequin mannequin(ServerLevel welt) {
-        EntityType<?> typ = EntityType.byString("minecraft:mannequin").orElse(null);
+        EntityType<?> typ = null;
+        for (EntityType<?> t : BuiltInRegistries.ENTITY_TYPE) {
+            if (BuiltInRegistries.ENTITY_TYPE.getKey(t).getPath().equals("mannequin")) {
+                typ = t;
+                break;
+            }
+        }
         if (typ == null) {
             return null;
         }
@@ -28,6 +37,7 @@ final class Fassung26 {
 
     /** Armschwung, fuer alle in der Naehe sichtbar. */
     static void schwingen(LivingEntity wer) {
-        // wird in der naechsten Runde mit dem 26.x-Schwung angebunden
+        // Ab 26.x nimmt swing die Schwung-Animation mit; true zeigt ihn allen.
+        wer.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, true);
     }
 }
