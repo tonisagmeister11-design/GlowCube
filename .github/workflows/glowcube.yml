@@ -167,6 +167,29 @@ jobs:
             "net.minecraft.client.CloudStatus:" \
             "net.minecraft.server.level.ParticleStatus:" \
             "net.minecraft.client.renderer.LevelRenderer:allChanged" || true
+          # Agent: Server-Seite in der eigenen Welt.
+          python3 probe-api.py build/classpath.txt \
+            "net.minecraft.world.entity.decoration.Mannequin:" \
+            "net.minecraft.world.entity.EntityType:MANNEQUIN|public .* create\\(" \
+            "net.minecraft.world.entity.Entity:snapTo|moveTo|teleportTo|setNoGravity|setInvulnerable|discard|setYHeadRot|setYBodyRot|setCustomName|setSilent" \
+            "net.minecraft.world.entity.LivingEntity:swing|setItemSlot|setYBodyRot" \
+            "net.minecraft.world.level.Level:destroyBlockProgress|destroyBlock|playSound\\(|levelEvent" \
+            "net.minecraft.world.level.block.Block:getDrops" \
+            "net.minecraft.server.level.ServerLevel:setChunkForced|sendParticles|addFreshEntity|getForceLoadedChunks" \
+            "net.minecraft.server.level.ServerPlayer:hasPermissions|permissions|getInventory" \
+            "net.minecraft.world.entity.player.Player:hasPermissions|permissions|getInventory" \
+            "net.minecraft.world.entity.Entity:hasPermissions|permissions|level\\(\\)|serverLevel" \
+            "net.minecraft.server.players.PlayerList:getPlayer\\(|isOp" \
+            "net.minecraft.server.MinecraftServer:getPlayerList|execute|getLevel\\(" \
+            "net.minecraft.client.Minecraft:getSingleplayerServer|hasSingleplayerServer" \
+            "net.minecraft.world.entity.item.ItemEntity:<init>|ItemEntity\\(|setPickUpDelay|setDefaultPickUpDelay" \
+            "net.minecraft.world.SimpleContainer:addItem|removeAllItems|getContainerSize" \
+            "net.minecraft.world.entity.EntitySpawnReason:COMMAND|MOB_SUMMONED" \
+            "net.minecraft.tags.BlockTags:LOGS|DIAMOND_ORES|IRON_ORES|GOLD_ORES|COAL_ORES|COPPER_ORES|REDSTONE_ORES|LAPIS_ORES|EMERALD_ORES|BASE_STONE|INCORRECT_FOR" \
+            "net.minecraft.world.level.block.state.BlockBehaviour\$BlockStateBase:getDestroySpeed|getCollisionShape|getFluidState|hasBlockEntity|isAir|is\\(" \
+            "net.minecraft.world.level.Level:getHeight\\(|dimension\\(" \
+            "net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents:" \
+            "net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents:" || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
