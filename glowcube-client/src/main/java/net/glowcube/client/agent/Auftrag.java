@@ -1,10 +1,12 @@
 package net.glowcube.client.agent;
 
-/** Was ein Agent abbaut. Die Erzart waehlt beim Erz-Agenten die Einstellung "Erz". */
+/** Was ein Agent tut. Die Zusatzangabe (Erzart, Ausruestung, Schematic) kommt aus dem Menue. */
 public enum Auftrag {
     ERZ("Erz-Agent"),
     STEIN("Stein-Agent"),
-    HOLZ("Holz-Agent");
+    HOLZ("Holz-Agent"),
+    WAECHTER("Guardian-Agent"),
+    BAUMEISTER("Builder-Agent");
 
     private final String name;
 
@@ -14,5 +16,10 @@ public enum Auftrag {
 
     public String anzeigename() {
         return name;
+    }
+
+    /** Die drei Abbau-Agenten - sie sammeln Beute und haben X-Ray. */
+    public boolean baut() {
+        return this == ERZ || this == STEIN || this == HOLZ;
     }
 }

@@ -28,12 +28,19 @@ final class AgentPfad {
 
     private final ServerLevel welt;
     private final boolean bausteine;
+    /** Darf er sich durchgraben? Der Guardian nicht - der laeuft nur. */
+    private final boolean graben;
     private final HashMap<Long, Double> zellKosten = new HashMap<>();
     private final HashMap<Long, Boolean> traegtCache = new HashMap<>();
 
     AgentPfad(ServerLevel welt, boolean bausteine) {
+        this(welt, bausteine, true);
+    }
+
+    AgentPfad(ServerLevel welt, boolean bausteine, boolean graben) {
         this.welt = welt;
         this.bausteine = bausteine;
+        this.graben = graben;
     }
 
     private record Knoten(BlockPos pos, double g, double f, Knoten vorher) {
@@ -134,7 +141,7 @@ final class AgentPfad {
             if (AgentBloecke.frei(welt, p, s)) {
                 // Wasser geht, aber ungern.
                 kosten = s.getFluidState().isEmpty() ? 0 : 2;
-            } else if (AgentBloecke.abbaubar(welt, p, s)) {
+            } else if (graben && AgentBloecke.abbaubar(welt, p, s)) {
                 kosten = 1 + AgentBloecke.abbauTicks(welt, p, s) / 4.0;
             } else {
                 kosten = AgentBloecke.NIE;

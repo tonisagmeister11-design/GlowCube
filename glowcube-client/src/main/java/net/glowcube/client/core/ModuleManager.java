@@ -50,6 +50,8 @@ import net.glowcube.client.module.hud.ComboHud;
 import net.glowcube.client.module.agent.AgentZurueck;
 import net.glowcube.client.module.agent.ErzAgent;
 import net.glowcube.client.module.agent.HolzAgent;
+import net.glowcube.client.module.agent.GuardianAgent;
+import net.glowcube.client.module.agent.BuilderAgent;
 import net.glowcube.client.module.agent.SteinAgent;
 import net.glowcube.client.module.hud.CpsHud;
 import net.glowcube.client.module.hud.FpsHud;
@@ -211,6 +213,8 @@ public final class ModuleManager {
         add(new ErzAgent());
         add(new SteinAgent());
         add(new HolzAgent());
+        add(new GuardianAgent());
+        add(new BuilderAgent());
         add(new AgentZurueck());
     }
 

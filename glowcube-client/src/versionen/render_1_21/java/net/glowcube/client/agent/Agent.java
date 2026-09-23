@@ -50,7 +50,7 @@ import java.util.UUID;
  * Laeuft nur auf dem Server-Thread. Der Agent haelt die Chunks um sich herum
  * geladen, solange er arbeitet.
  */
-final class Agent {
+final class Agent implements AgentArbeiter {
     private enum Zustand { ARBEITEN, ZURUECK, ABLIEFERN, FERTIG }
 
     private static final int SCHRITT_TICKS = 4;
@@ -147,29 +147,35 @@ final class Agent {
         return true;
     }
 
-    UUID besitzer() {
+    @Override
+    public UUID besitzer() {
         return besitzer;
     }
 
-    Auftrag auftrag() {
+    @Override
+    public Auftrag auftrag() {
         return auftrag;
     }
 
-    boolean beimZurueckkehren() {
+    @Override
+    public boolean beimZurueckkehren() {
         return zustand == Zustand.ZURUECK || zustand == Zustand.ABLIEFERN;
     }
 
-    boolean fertig() {
+    @Override
+    public boolean fertig() {
         return zustand == Zustand.FERTIG;
     }
 
-    String titel() {
+    @Override
+    public String titel() {
         return auftrag == Auftrag.ERZ && !art.isEmpty() && !art.equals("Alle")
                 ? auftrag.anzeigename() + " (" + art + ")" : auftrag.anzeigename();
     }
 
     /** Neue Einstellungen aus dem Menue - gelten ab dem naechsten Schritt bzw. Block. */
-    void einstellen(AgentWerte neu) {
+    @Override
+    public void einstellen(AgentWerte neu) {
         werte = neu;
         // Einen laufenden Abbau gleich mit beschleunigen.
         if (abbauPos != null) {
@@ -188,7 +194,8 @@ final class Agent {
         return Math.max(1, (int) Math.round(normal / Math.max(1.0, werte.abbauTempo())));
     }
 
-    void zurueckrufen() {
+    @Override
+    public void zurueckrufen() {
         if (zustand == Zustand.ARBEITEN) {
             abbauAbbrechen();
             pfad = null;
@@ -199,7 +206,8 @@ final class Agent {
 
     // ---------------------------------------------------------------- Tick
 
-    void tick(MinecraftServer server) {
+    @Override
+    public void tick(MinecraftServer server) {
         if (zustand == Zustand.FERTIG) {
             return;
         }
@@ -698,7 +706,7 @@ final class Agent {
     }
 
     /** Frei, zwei Bloecke hoch und mit Boden - moeglichst nah beim Spieler, aber nicht in ihm. */
-    private static BlockPos sichererPlatzBei(ServerLevel welt, BlockPos mitte) {
+    static BlockPos sichererPlatzBei(ServerLevel welt, BlockPos mitte) {
         int[][] versuche = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}, {2, 2}, {-2, -2}};
         for (int[] v : versuche) {
             for (int dy = 0; dy >= -2; dy--) {
@@ -764,7 +772,8 @@ final class Agent {
     }
 
     /** Ohne Umweg: alles direkt ins Inventar (Welt schliesst, Agent weg). Was nicht passt, faellt vor die Fuesse. */
-    void notfallUebergabe(MinecraftServer server) {
+    @Override
+    public void notfallUebergabe(MinecraftServer server) {
         ServerPlayer spieler = server.getPlayerList().getPlayer(besitzer);
         for (int i = 0; i < lager.getContainerSize(); i++) {
             ItemStack stapel = lager.getItem(i);
@@ -784,7 +793,8 @@ final class Agent {
         zustand = Zustand.FERTIG;
     }
 
-    void aufraeumen() {
+    @Override
+    public void aufraeumen() {
         abbauAbbrechen();
         chunksFreigeben();
         if (koerper != null && !koerper.isRemoved()) {

@@ -1,0 +1,8 @@
+# Eingebaute Schematics - je Zeile ein Dateiname aus diesem Ordner.
+# (.schem, .litematic oder .nbt). Weitere legt man einfach nach
+# .minecraft/config/glowcube/schematics/ - die erscheinen von selbst.
+Starter-Haus.litematic
+Japanischer-Tempel.litematic
+Orbital-Strike-Cannon.litematic
+Portal-Protegido.litematic
+Arc-de-Triomphe.litematic

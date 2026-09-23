@@ -20,20 +20,35 @@ import net.glowcube.client.core.setting.NumberSetting;
 public abstract class AgentModul extends Module {
     private final Auftrag auftrag;
 
-    private final NumberSetting tempo = register(new NumberSetting("Tempo",
-            "Wie schnell der Agent laeuft (1 = wie ein Spieler)", 2, 1, 4, 0.5));
-    private final NumberSetting abbauTempo = register(new NumberSetting("Abbau-Tempo",
-            "Wie viel schneller er abbaut als mit Diamantwerkzeug", 3, 1, 20, 1));
-    private final BooleanSetting xray = register(new BooleanSetting("X-Ray",
-            "Sieht Zielbloecke durch Stein und geht direkt zu ihnen", true));
-    private final NumberSetting xrayWeite = register(new NumberSetting("X-Ray-Weite",
-            "Wie weit X-Ray reicht, in Chunks um den Agenten", 3, 1, 6, 1));
+    private final NumberSetting tempo;
+    private final NumberSetting abbauTempo;
+    private final BooleanSetting xray;
+    private final NumberSetting xrayWeite;
 
     private AgentWerte gesendet;
 
     protected AgentModul(Auftrag auftrag, String beschreibung) {
         super(auftrag.anzeigename(), beschreibung, Category.AGENT);
         this.auftrag = auftrag;
+        tempo = register(new NumberSetting("Tempo",
+                "Wie schnell der Agent laeuft (1 = wie ein Spieler)", 2, 1, 4, 0.5));
+        if (auftrag.baut()) {
+            abbauTempo = register(new NumberSetting("Abbau-Tempo",
+                    "Wie viel schneller er abbaut als mit Diamantwerkzeug", 3, 1, 20, 1));
+            xray = register(new BooleanSetting("X-Ray",
+                    "Sieht Zielbloecke durch Stein und geht direkt zu ihnen", true));
+            xrayWeite = register(new NumberSetting("X-Ray-Weite",
+                    "Wie weit X-Ray reicht, in Chunks um den Agenten", 3, 1, 6, 1));
+        } else if (auftrag == Auftrag.BAUMEISTER) {
+            abbauTempo = register(new NumberSetting("Bau-Tempo",
+                    "Wie viele Bloecke er pro Sekunde setzt", 20, 1, 100, 1));
+            xray = null;
+            xrayWeite = null;
+        } else {
+            abbauTempo = null;
+            xray = null;
+            xrayWeite = null;
+        }
     }
 
     public Auftrag auftrag() {
@@ -46,7 +61,10 @@ public abstract class AgentModul extends Module {
     }
 
     private AgentWerte werte() {
-        return new AgentWerte(tempo.get(), abbauTempo.get(), xray.get(), xrayWeite.getInt());
+        return new AgentWerte(tempo.get(),
+                abbauTempo != null ? abbauTempo.get() : 1,
+                xray != null && xray.get(),
+                xrayWeite != null ? xrayWeite.getInt() : 1);
     }
 
     @Override

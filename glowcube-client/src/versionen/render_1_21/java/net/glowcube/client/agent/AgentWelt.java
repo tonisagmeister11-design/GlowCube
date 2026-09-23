@@ -8,7 +8,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -20,7 +19,7 @@ import java.util.UUID;
  * Je Spieler und Auftrag hoechstens ein Agent.
  */
 final class AgentWelt {
-    private static final List<Agent> AGENTEN = new ArrayList<>();
+    private static final List<AgentArbeiter> AGENTEN = new ArrayList<>();
 
     private AgentWelt() {
     }
@@ -30,20 +29,20 @@ final class AgentWelt {
         if (spieler == null) {
             return;
         }
-        // Admin-Rechte: dieselbe Stufe, die /give und /summon brauchen. In der
-        // Einzelspielerwelt heisst das: Cheats an.
-        if (!spieler.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
-            melden(spieler, ChatFormatting.RED, "Dafuer brauchst du Admin-Rechte (Cheats an).");
-            modulAus(auftrag);
-            return;
-        }
-        for (Agent agent : AGENTEN) {
+        // Die eigene Welt: der Befehl kommt immer vom Spieler, dem sie gehoert -
+        // darum auch im Survival ohne Cheats erlaubt. (Auf fremden Servern
+        // entscheidet das Plugin.)
+        for (AgentArbeiter agent : AGENTEN) {
             if (agent.besitzer().equals(besitzer) && agent.auftrag() == auftrag && !agent.beimZurueckkehren()) {
                 melden(spieler, ChatFormatting.YELLOW, auftrag.anzeigename() + " ist schon unterwegs.");
                 return;
             }
         }
-        Agent agent = Agent.erschaffen(spieler, auftrag, art, werte);
+        AgentArbeiter agent = switch (auftrag) {
+            case WAECHTER -> AgentWaechter.erschaffen(spieler, art, werte);
+            case BAUMEISTER -> AgentBaumeister.erschaffen(spieler, art, werte);
+            default -> Agent.erschaffen(spieler, auftrag, art, werte);
+        };
         if (agent == null) {
             melden(spieler, ChatFormatting.RED, "Der Agent konnte nicht erscheinen.");
             modulAus(auftrag);
@@ -54,7 +53,7 @@ final class AgentWelt {
     }
 
     static void zurueck(MinecraftServer server, UUID besitzer, Auftrag auftrag) {
-        for (Agent agent : AGENTEN) {
+        for (AgentArbeiter agent : AGENTEN) {
             if (agent.besitzer().equals(besitzer) && agent.auftrag() == auftrag) {
                 agent.zurueckrufen();
             }
@@ -62,7 +61,7 @@ final class AgentWelt {
     }
 
     static void einstellen(UUID besitzer, Auftrag auftrag, AgentWerte werte) {
-        for (Agent agent : AGENTEN) {
+        for (AgentArbeiter agent : AGENTEN) {
             if (agent.besitzer().equals(besitzer) && agent.auftrag() == auftrag) {
                 agent.einstellen(werte);
             }
@@ -73,8 +72,8 @@ final class AgentWelt {
         if (AGENTEN.isEmpty()) {
             return;
         }
-        for (Iterator<Agent> it = AGENTEN.iterator(); it.hasNext(); ) {
-            Agent agent = it.next();
+        for (Iterator<AgentArbeiter> it = AGENTEN.iterator(); it.hasNext(); ) {
+            AgentArbeiter agent = it.next();
             try {
                 agent.tick(server);
             } catch (RuntimeException fehler) {
@@ -91,7 +90,7 @@ final class AgentWelt {
 
     /** Welt wird geschlossen: Beute direkt ins Inventar, Agenten weg. */
     static void herunterfahren(MinecraftServer server) {
-        for (Agent agent : AGENTEN) {
+        for (AgentArbeiter agent : AGENTEN) {
             try {
                 agent.notfallUebergabe(server);
                 agent.aufraeumen();
