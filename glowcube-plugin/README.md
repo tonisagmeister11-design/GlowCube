@@ -33,10 +33,10 @@ Spieler brauchen nur den GlowCube-Client (1.21.11). Im Menue unter
 | `max-bau-tempo` | 100.0 | Builder: hoechstens so viele Bloecke pro Sekunde |
 | `xray-erlaubt` | true | X-Ray ueberhaupt zulassen |
 
-| `pvp-pro-erlaubt` | false | PvP Pro (Kampf-Automatik im Client) auf diesem Server erlauben |
+| `pvp-pro-erlaubt` | true | PvP Pro (Kampf-Automatik im Client) auf diesem Server erlauben |
 
 Berechtigungen: `glowcube.agent` (Agenten, Standard: jeder),
-`glowcube.pvppro` (PvP Pro, Standard: nur OPs - und nur, wenn
+`glowcube.pvppro` (PvP Pro, Standard: jeder - wirkt nur, solange
 `pvp-pro-erlaubt: true` gesetzt ist).
 
 **PvP Pro** laeuft im Client, nicht im Plugin - das Plugin gibt es nur frei.

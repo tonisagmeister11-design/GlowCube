@@ -10,4 +10,4 @@ permissions:
     default: true
   glowcube.pvppro:
     description: Darf PvP Pro im GlowCube-Client benutzen (nur wenn pvp-pro-erlaubt an ist).
-    default: op
+    default: true

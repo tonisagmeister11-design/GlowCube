@@ -194,7 +194,7 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
             return;
         }
         Player spieler = ereignis.getPlayer();
-        if (getConfig().getBoolean("pvp-pro-erlaubt", false) && spieler.hasPermission("glowcube.pvppro")) {
+        if (getConfig().getBoolean("pvp-pro-erlaubt", true) && spieler.hasPermission("glowcube.pvppro")) {
             spieler.sendPluginMessage(this, KANAL, schreiben("pvppro;an"));
             getLogger().info("PvP Pro fuer " + spieler.getName() + " freigegeben.");
         }

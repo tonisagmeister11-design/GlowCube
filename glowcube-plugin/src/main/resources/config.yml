@@ -19,6 +19,6 @@ max-bau-tempo: 100.0
 xray-erlaubt: true
 
 # PvP Pro (GlowCube-Client, Kampf-Automatik) auf diesem Server erlauben?
-# Nur fuer Testserver, auf denen alle Mitspieler Bescheid wissen. Benutzen
-# duerfen es dann Spieler mit der Berechtigung glowcube.pvppro (Standard: OPs).
-pvp-pro-erlaubt: false
+# Benutzen kann es nur, wer den GlowCube-Client installiert hat - und nur,
+# solange dieses Plugin auf dem Server liegt. Mit false ist es hier aus.
+pvp-pro-erlaubt: true
