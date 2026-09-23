@@ -176,6 +176,12 @@ Einzelspielerwelt heisst das: **Cheats an**.
 | Holz-Agent | Faellt Baeume |
 | Agent zurueckschicken | Ruft alle Agenten zurueck |
 
+Jeder Agent hat vier Einstellungen (Rechtsklick), die auch waehrend der
+Arbeit sofort gelten: **Tempo** (1-4, wie schnell er laeuft), **Abbau-Tempo**
+(1-20, wie viel schneller als mit Diamantwerkzeug), **X-Ray** (an: er sieht
+Zielbloecke durch Stein in allen Chunks um sich herum, ueber die ganze
+Welthoehe, und geht direkt hin) und **X-Ray-Weite** (1-6 Chunks).
+
 So arbeitet er: Er sucht im Umkreis die naechsten Zielbloecke und plant
 einen Weg dorthin - durch Hoehlen oder, wenn kuerzer, als Tunnel und Treppe
 durch den Stein. Lava meidet er, Bloecke neben Lava baut er nicht ab, Truhen

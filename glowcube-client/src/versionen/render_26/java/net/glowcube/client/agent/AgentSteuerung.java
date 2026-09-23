@@ -15,12 +15,15 @@ public final class AgentSteuerung {
     public static void registrieren() {
     }
 
-    public static boolean starten(Auftrag auftrag, String art) {
+    public static boolean starten(Auftrag auftrag, String art, AgentWerte werte) {
         Netz.nachricht(Component.literal("[Agent] Den Agenten gibt es bisher nur auf 1.21.11."), false);
         return false;
     }
 
     public static void zurueck(Auftrag auftrag) {
+    }
+
+    public static void einstellen(Auftrag auftrag, AgentWerte werte) {
     }
 
     public static void alleZurueck() {

@@ -62,6 +62,7 @@ final class Agent {
     private final UUID besitzer;
     private final Auftrag auftrag;
     private final String art;
+    private AgentWerte werte = AgentWerte.STANDARD;
     private final SimpleContainer lager = new SimpleContainer(36);
 
     private ServerLevel welt;
@@ -108,8 +109,9 @@ final class Agent {
 
     // --------------------------------------------------------------- Leben
 
-    static Agent erschaffen(ServerPlayer spieler, Auftrag auftrag, String art) {
+    static Agent erschaffen(ServerPlayer spieler, Auftrag auftrag, String art, AgentWerte werte) {
         Agent agent = new Agent(spieler.getUUID(), auftrag, art);
+        agent.werte = werte;
         agent.richtung = Math.floorMod(Math.round(spieler.getYRot() / 90f), 4);
         ServerLevel welt = (ServerLevel) spieler.level();
         BlockPos platz = sichererPlatzBei(welt, spieler.blockPosition());
@@ -164,6 +166,26 @@ final class Agent {
     String titel() {
         return auftrag == Auftrag.ERZ && !art.isEmpty() && !art.equals("Alle")
                 ? auftrag.anzeigename() + " (" + art + ")" : auftrag.anzeigename();
+    }
+
+    /** Neue Einstellungen aus dem Menue - gelten ab dem naechsten Schritt bzw. Block. */
+    void einstellen(AgentWerte neu) {
+        werte = neu;
+        // Einen laufenden Abbau gleich mit beschleunigen.
+        if (abbauPos != null) {
+            abbauDauer = abbauZeit(welt.getBlockState(abbauPos), abbauPos);
+        }
+    }
+
+    /** Ticks fuer einen Schritt: 4 bei Tempo 1, 1 bei Tempo 4. */
+    private int schrittTicks(boolean stufe) {
+        int basis = (int) Math.max(1, Math.round(SCHRITT_TICKS / Math.max(1.0, werte.tempo())));
+        return stufe ? basis + 1 : basis;
+    }
+
+    private int abbauZeit(BlockState s, BlockPos pos) {
+        int normal = AgentBloecke.abbauTicks(welt, pos, s);
+        return Math.max(1, (int) Math.round(normal / Math.max(1.0, werte.abbauTempo())));
     }
 
     void zurueckrufen() {
@@ -259,6 +281,9 @@ final class Agent {
 
     /** Die naechsten Zielbloecke im Umkreis anpeilen - der erste, zu dem ein Weg fuehrt, gewinnt. */
     private boolean zielPlanen() {
+        if (werte.xray()) {
+            return xrayPlanen();
+        }
         List<BlockPos> kandidaten = new ArrayList<>();
         BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
         for (int dy = -SUCH_HOEHE; dy <= SUCH_HOEHE; dy++) {
@@ -293,6 +318,56 @@ final class Agent {
             }
             gesperrt.add(ziel.asLong());
         }
+        return false;
+    }
+
+    /**
+     * X-Ray: die Chunks um den Agenten nach Zielbloecken durchsuchen - ganze
+     * Hoehe, ohne Ruecksicht auf Stein dazwischen ({@link AgentXray}). Dann
+     * direkt hin: ist der naechste Block zu weit fuer eine Wegsuche am Stueck,
+     * geht es in Etappen auf ihn zu.
+     */
+    private boolean xrayPlanen() {
+        List<BlockPos> kandidaten = AgentXray.suchen(welt, fuesse, werte.xrayChunks(), auftrag, art, gesperrt);
+        if (kandidaten.isEmpty()) {
+            return false;
+        }
+        AgentPfad suche = new AgentPfad(welt, bausteine() > 0);
+        for (int i = 0; i < Math.min(3, kandidaten.size()); i++) {
+            BlockPos ziel = kandidaten.get(i);
+            if (erreichbar(fuesse, ziel)) {
+                zielBlock = ziel;
+                return true;
+            }
+            if (ziel.distManhattan(fuesse) > 40) {
+                break;
+            }
+            List<BlockPos> weg = suche.suchen(fuesse, n -> erreichbar(n, ziel), ziel, 10000, 64);
+            if (weg != null) {
+                pfadSetzen(weg);
+                zielBlock = ziel;
+                return true;
+            }
+            gesperrt.add(ziel.asLong());
+        }
+        // Weit weg: eine Etappe von 12 Bloecken in seine Richtung.
+        BlockPos ziel = kandidaten.get(0);
+        double abstand = Math.sqrt(ziel.distSqr(fuesse));
+        if (abstand <= 12) {
+            gesperrt.add(ziel.asLong());
+            return false;
+        }
+        double f = 12 / abstand;
+        BlockPos etappe = new BlockPos(
+                fuesse.getX() + (int) Math.round((ziel.getX() - fuesse.getX()) * f),
+                fuesse.getY() + (int) Math.round((ziel.getY() - fuesse.getY()) * f),
+                fuesse.getZ() + (int) Math.round((ziel.getZ() - fuesse.getZ()) * f));
+        List<BlockPos> weg = suche.suchen(fuesse, n -> n.distManhattan(etappe) <= 2, etappe, 8000, 40);
+        if (weg != null && !weg.isEmpty()) {
+            pfadSetzen(weg);
+            return true;
+        }
+        gesperrt.add(ziel.asLong());
         return false;
     }
 
@@ -396,7 +471,7 @@ final class Agent {
                 }
             }
         }
-        bewegungStarten(nach, seitlich && dy != 0 ? SCHRITT_TICKS + 1 : SCHRITT_TICKS);
+        bewegungStarten(nach, schrittTicks(seitlich && dy != 0));
         pfadIndex++;
     }
 
@@ -465,7 +540,7 @@ final class Agent {
         BlockState s = welt.getBlockState(pos);
         abbauPos = pos;
         abbauFortschritt = 0;
-        abbauDauer = AgentBloecke.abbauTicks(welt, pos, s);
+        abbauDauer = abbauZeit(s, pos);
         koerper.setItemSlot(EquipmentSlot.MAINHAND, AgentBloecke.werkzeug(s).copy());
         anschauen(Vec3.atCenterOf(pos));
         koerper.swing(InteractionHand.MAIN_HAND, true);
@@ -757,7 +832,7 @@ final class Agent {
     }
 
     private void namenAktualisieren() {
-        String text = titel() + (abgebaut > 0 ? " · " + abgebaut : "");
+        String text = titel() + (werte.xray() ? " [X-Ray]" : "") + (abgebaut > 0 ? " · " + abgebaut : "");
         if (zustand == Zustand.ZURUECK || zustand == Zustand.ABLIEFERN) {
             text += " → zurueck";
         }

@@ -28,7 +28,7 @@ public final class AgentSteuerung {
     }
 
     /** @return false, wenn es hier nicht geht - das Modul schaltet sich dann wieder aus */
-    public static boolean starten(Auftrag auftrag, String art) {
+    public static boolean starten(Auftrag auftrag, String art, AgentWerte werte) {
         Minecraft mc = Minecraft.getInstance();
         IntegratedServer server = mc.getSingleplayerServer();
         if (server == null || mc.player == null) {
@@ -37,7 +37,7 @@ public final class AgentSteuerung {
             return false;
         }
         UUID spieler = mc.player.getUUID();
-        server.execute(() -> AgentWelt.starten(server, spieler, auftrag, art));
+        server.execute(() -> AgentWelt.starten(server, spieler, auftrag, art, werte));
         return true;
     }
 
@@ -49,6 +49,16 @@ public final class AgentSteuerung {
         }
         UUID spieler = mc.player.getUUID();
         server.execute(() -> AgentWelt.zurueck(server, spieler, auftrag));
+    }
+
+    public static void einstellen(Auftrag auftrag, AgentWerte werte) {
+        Minecraft mc = Minecraft.getInstance();
+        IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null || mc.player == null) {
+            return;
+        }
+        UUID spieler = mc.player.getUUID();
+        server.execute(() -> AgentWelt.einstellen(spieler, auftrag, werte));
     }
 
     public static void alleZurueck() {

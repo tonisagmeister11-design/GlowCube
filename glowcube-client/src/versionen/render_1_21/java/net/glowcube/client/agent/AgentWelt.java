@@ -25,7 +25,7 @@ final class AgentWelt {
     private AgentWelt() {
     }
 
-    static void starten(MinecraftServer server, UUID besitzer, Auftrag auftrag, String art) {
+    static void starten(MinecraftServer server, UUID besitzer, Auftrag auftrag, String art, AgentWerte werte) {
         ServerPlayer spieler = server.getPlayerList().getPlayer(besitzer);
         if (spieler == null) {
             return;
@@ -43,7 +43,7 @@ final class AgentWelt {
                 return;
             }
         }
-        Agent agent = Agent.erschaffen(spieler, auftrag, art);
+        Agent agent = Agent.erschaffen(spieler, auftrag, art, werte);
         if (agent == null) {
             melden(spieler, ChatFormatting.RED, "Der Agent konnte nicht erscheinen.");
             modulAus(auftrag);
@@ -57,6 +57,14 @@ final class AgentWelt {
         for (Agent agent : AGENTEN) {
             if (agent.besitzer().equals(besitzer) && agent.auftrag() == auftrag) {
                 agent.zurueckrufen();
+            }
+        }
+    }
+
+    static void einstellen(UUID besitzer, Auftrag auftrag, AgentWerte werte) {
+        for (Agent agent : AGENTEN) {
+            if (agent.besitzer().equals(besitzer) && agent.auftrag() == auftrag) {
+                agent.einstellen(werte);
             }
         }
     }
