@@ -216,7 +216,14 @@ ist, steht es im Chat. Eingebaut: Starter-Haus, Japanischer Tempel, Orbital
 Strike Cannon, Portal Protegido, Arc de Triomphe. Eigene Schematics
 (`.schem`, `.litematic`, `.nbt`) gehoeren nach
 `.minecraft/config/glowcube/schematics/` und stehen nach einem Neustart in
-der Auswahl. Inhalte von Truhen und Schildern baut er nicht mit.
+der Auswahl.
+
+Er baut **1:1 wie im Schematic**: jeder Block in genau seinem Zustand,
+Truhen, Trichter, Faesser, Schilder, Banner usw. mit genau dem Inhalt aus
+dem Schematic. Beim Bauen und Abraeumen loest er keine Nachbar-Updates aus -
+kein Wasser fliesst nach, kein Sand faellt, keine Tuer, Fackel oder
+Redstone-Leitung bricht weg. Beim Abraeumen hat er das passende Werkzeug in
+der Hand (Spitzhacke, Axt, Schaufel, Hacke, Schere).
 
 In der eigenen Welt laufen alle Agenten auch im Survival ohne Cheats.
 

@@ -18,6 +18,8 @@ final class Bloecke {
     static final ItemStack SPITZHACKE = new ItemStack(Material.DIAMOND_PICKAXE);
     static final ItemStack AXT = new ItemStack(Material.DIAMOND_AXE);
     static final ItemStack SCHAUFEL = new ItemStack(Material.DIAMOND_SHOVEL);
+    static final ItemStack HACKE = new ItemStack(Material.DIAMOND_HOE);
+    static final ItemStack SCHERE = new ItemStack(Material.SHEARS);
 
     private static final BlockFace[] SEITEN = {BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH,
             BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST};
@@ -118,7 +120,7 @@ final class Bloecke {
     static ItemStack werkzeug(Block b) {
         ItemStack bestes = SPITZHACKE;
         float tempo = b.getBlockData().getDestroySpeed(SPITZHACKE, false);
-        for (ItemStack w : new ItemStack[]{AXT, SCHAUFEL}) {
+        for (ItemStack w : new ItemStack[]{AXT, SCHAUFEL, HACKE, SCHERE}) {
             float t = b.getBlockData().getDestroySpeed(w, false);
             if (t > tempo) {
                 tempo = t;

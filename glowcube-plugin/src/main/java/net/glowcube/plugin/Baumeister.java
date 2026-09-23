@@ -33,7 +33,8 @@ import java.util.UUID;
  * Schicht; Meldung im Chat, wenn fertig.
  */
 final class Baumeister implements AgentArbeiter {
-    private record Auftragsblock(int x, int y, int z, BlockData daten) {
+    /** snbt: Inhalt (Truhe, Schild ...) oder null. */
+    private record Auftragsblock(int x, int y, int z, BlockData daten, String snbt) {
     }
 
     private final GlowCubeAgentPlugin plugin;
@@ -49,6 +50,7 @@ final class Baumeister implements AgentArbeiter {
     private int gesetzt;
     private int abgeraeumt;
     private int unbekannt;
+    private int befuellt;
     private int ticks;
     private int schwungPause;
     private boolean fertig;
@@ -109,6 +111,10 @@ final class Baumeister implements AgentArbeiter {
         Map<String, BlockData> zwischenspeicher = new HashMap<>();
         List<Auftragsblock> ergebnis = new ArrayList<>(plan.bloecke.size());
         int halbeBreite = plan.breite / 2;
+        Map<String, String> inhalte = new HashMap<>();
+        for (Bauplan.Daten d : plan.daten) {
+            inhalte.put(d.x() + "," + d.y() + "," + d.z(), d.snbt());
+        }
         for (Bauplan.Block b : plan.bloecke) {
             BlockData daten = zwischenspeicher.computeIfAbsent(b.zustand(), text -> {
                 try {
@@ -133,7 +139,8 @@ final class Baumeister implements AgentArbeiter {
                 case COUNTERCLOCKWISE_90 -> { wx = lz; wz = -lx; }
                 default -> { wx = lx; wz = lz; }
             }
-            ergebnis.add(new Auftragsblock(ox + wx, oy + b.y(), oz + wz, daten));
+            ergebnis.add(new Auftragsblock(ox + wx, oy + b.y(), oz + wz, daten,
+                    inhalte.get(b.x() + "," + b.y() + "," + b.z())));
         }
         ergebnis.sort((a, c) -> {
             if (a.y != c.y) {
@@ -228,7 +235,7 @@ final class Baumeister implements AgentArbeiter {
             }
             Block block = welt.getBlockAt(a.x, a.y, a.z);
             BlockData jetzt = block.getBlockData();
-            if (jetzt.equals(a.daten) || jetzt.getMaterial().isAir() && a.daten.getMaterial().isAir()) {
+            if ((jetzt.equals(a.daten) || jetzt.getMaterial().isAir() && a.daten.getMaterial().isAir()) && a.snbt == null) {
                 index++;
                 continue;
             }
@@ -244,27 +251,55 @@ final class Baumeister implements AgentArbeiter {
         schweben(naechster);
     }
 
+    /**
+     * Genau wie im Schematic setzen - ohne Physik, beim Abraeumen wie beim
+     * Bauen: kein Wasser fliesst nach, kein Sand faellt, nichts bricht weg,
+     * Redstone behaelt seinen Zustand. Danach bekommt ein Block mit Inhalt
+     * (Truhe, Trichter, Schild ...) seine Daten.
+     */
     private void setzen(Block block, Auftragsblock a) {
-        if (a.daten.getMaterial().isAir()) {
-            welt.playEffect(block.getLocation(), Effect.STEP_SOUND, block.getBlockData());
-            block.setType(Material.AIR, false);
+        BlockData jetzt = block.getBlockData();
+        boolean abraeumen = !jetzt.getMaterial().isAir() && !jetzt.equals(a.daten) && !block.isReplaceable();
+        if (abraeumen) {
+            welt.playEffect(block.getLocation(), Effect.STEP_SOUND, jetzt);
             abgeraeumt++;
-        } else {
-            if (!block.getType().isAir() && !block.isReplaceable()) {
-                abgeraeumt++;
-            }
+        }
+        if (!jetzt.equals(a.daten)) {
             block.setBlockData(a.daten, false);
-            gesetzt++;
-            if (gesetzt % 3 == 0) {
-                welt.playSound(block.getLocation(), a.daten.getSoundGroup().getPlaceSound(), 0.7f, 1f);
+            if (!a.daten.getMaterial().isAir()) {
+                gesetzt++;
+                if (gesetzt % 3 == 0) {
+                    welt.playSound(block.getLocation(), a.daten.getSoundGroup().getPlaceSound(), 0.7f, 1f);
+                }
             }
+        }
+        if (a.snbt != null) {
+            inhaltSetzen(a);
         }
         if (schwungPause == 0 && koerper.getEquipment() != null) {
             Material m = a.daten.getMaterial();
-            koerper.getEquipment().setItemInMainHand(new ItemStack(m.isAir() || !m.isItem() ? Material.DIAMOND_PICKAXE : m));
+            ItemStack hand;
+            if (abraeumen || m.isAir()) {
+                hand = Bloecke.werkzeug(block).clone();
+            } else {
+                hand = m.isItem() ? new ItemStack(m) : Bloecke.SPITZHACKE.clone();
+            }
+            koerper.getEquipment().setItemInMainHand(hand);
             anschauen(new Location(welt, a.x + 0.5, a.y + 0.5, a.z + 0.5));
             koerper.swingMainHand();
             schwungPause = 4;
+        }
+    }
+
+    /** Die Daten aus dem Schematic in den Block schreiben - per /data merge block, ohne Ausgabe. */
+    private void inhaltSetzen(Auftragsblock a) {
+        String befehl = "execute in " + welt.getKey().asString() + " run data merge block "
+                + a.x + " " + a.y + " " + a.z + " " + a.snbt;
+        try {
+            Bukkit.dispatchCommand(plugin.stillerBefehlsgeber(), befehl);
+            befuellt++;
+        } catch (RuntimeException fehler) {
+            plugin.getLogger().warning("Inhalt bei " + a.x + "," + a.y + "," + a.z + " nicht gesetzt: " + fehler);
         }
     }
 
@@ -281,7 +316,7 @@ final class Baumeister implements AgentArbeiter {
         if (spieler != null) {
             plugin.melden(spieler, wie.equals("fertig") ? NamedTextColor.GREEN : NamedTextColor.YELLOW,
                     "Builder: \"" + planName + "\" " + wie + " - " + gesetzt + " Bloecke gesetzt, " + abgeraeumt
-                            + " abgeraeumt" + (unbekannt > 0 ? ", " + unbekannt + " unbekannte Bloecke ausgelassen" : "") + ".");
+                            + " abgeraeumt" + (befuellt > 0 ? ", " + befuellt + " Truhen/Schilder befuellt" : "") + (unbekannt > 0 ? ", " + unbekannt + " unbekannte Bloecke ausgelassen" : "") + ".");
         }
         effekt(Particle.POOF, 30);
         welt.playSound(koerper.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.6f, 1.2f);

@@ -4,6 +4,7 @@ import net.glowcube.client.GlowCubeClient;
 import net.glowcube.client.bauplan.Bauplaene;
 import net.glowcube.client.bauplan.Bauplan;
 import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -46,12 +47,15 @@ import java.util.UUID;
  * Meldung im Chat, dann verschwindet er.
  */
 final class AgentBaumeister implements AgentArbeiter {
-    private record Auftragsblock(BlockPos pos, BlockState zustand) {
+    /** snbt: Inhalt (Truhe, Schild ...) oder null. */
+    private record Auftragsblock(BlockPos pos, BlockState zustand, String snbt) {
     }
 
     private final UUID besitzer;
     private final String planName;
     private AgentWerte werte;
+    private MinecraftServer server;
+    private int befuellt;
 
     private ServerLevel welt;
     private Mannequin koerper;
@@ -112,6 +116,10 @@ final class AgentBaumeister implements AgentArbeiter {
 
         List<Auftragsblock> ergebnis = new ArrayList<>(plan.bloecke.size());
         int halbeBreite = plan.breite / 2;
+        Map<Long, String> inhalte = new HashMap<>();
+        for (Bauplan.Daten d : plan.daten) {
+            inhalte.put(BlockPos.asLong(d.x(), d.y(), d.z()), d.snbt());
+        }
         for (Bauplan.Block b : plan.bloecke) {
             BlockState zustand = zwischenspeicher.computeIfAbsent(b.zustand(), text -> lesen(bloecke, text));
             if (zustand == null) {
@@ -129,7 +137,8 @@ final class AgentBaumeister implements AgentArbeiter {
                 default -> { wx = lx; wz = lz; }
             }
             BlockPos pos = ursprung.offset(wx, b.y(), wz);
-            ergebnis.add(new Auftragsblock(pos, zustand.rotate(drehung)));
+            ergebnis.add(new Auftragsblock(pos, zustand.rotate(drehung),
+                    inhalte.get(BlockPos.asLong(b.x(), b.y(), b.z()))));
         }
         // Von unten nach oben; je Schicht zeilenweise hin und her.
         ergebnis.sort((a, c) -> {
@@ -230,6 +239,7 @@ final class AgentBaumeister implements AgentArbeiter {
             return;
         }
         ticks++;
+        this.server = server;
         if (koerper == null || koerper.isRemoved()) {
             fertig = true;
             return;
@@ -257,7 +267,7 @@ final class AgentBaumeister implements AgentArbeiter {
                 chunks.halten(welt, a.pos, 1);
             }
             BlockState jetzt = welt.getBlockState(a.pos);
-            if (jetzt == a.zustand || jetzt.isAir() && a.zustand.isAir()) {
+            if ((jetzt == a.zustand || jetzt.isAir() && a.zustand.isAir()) && a.snbt == null) {
                 index++;
                 continue;
             }
@@ -272,29 +282,54 @@ final class AgentBaumeister implements AgentArbeiter {
         schweben(liste.get(index).pos);
     }
 
+    /**
+     * Einen Block genau wie im Schematic setzen - ohne Nachbar-Updates, beim
+     * Abraeumen wie beim Bauen. So fliesst kein Wasser nach, kein Sand faellt,
+     * keine Tuer, Fackel oder Redstone-Leitung bricht weg, und Redstone
+     * behaelt genau den Zustand aus dem Schematic. Danach bekommt ein Block
+     * mit Inhalt (Truhe, Trichter, Schild, Banner ...) seine Daten.
+     */
     private void setzen(Auftragsblock a, BlockState jetzt) {
-        if (a.zustand.isAir()) {
-            // Im Weg: abraeumen (mit Bruchpartikeln, ohne Drops).
-            welt.destroyBlock(a.pos, false, koerper, 512);
+        int still = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+        boolean abraeumen = !jetzt.isAir() && jetzt != a.zustand && !jetzt.canBeReplaced();
+        if (abraeumen) {
+            // Bruchpartikel und -geraeusch des alten Blocks, aber keine Drops und keine Updates.
+            welt.levelEvent(2001, a.pos, Block.getId(jetzt));
             abgeraeumt++;
-        } else {
-            if (!jetzt.isAir() && !jetzt.canBeReplaced()) {
-                abgeraeumt++;
-            }
-            // Ohne Nachbar-Updates, damit halbe Tueren und Betten nicht zerfallen,
-            // bevor ihre zweite Haelfte steht.
-            welt.setBlock(a.pos, a.zustand, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
-            gesetzt++;
-            if (gesetzt % 3 == 0) {
-                welt.playSound(null, a.pos, a.zustand.getSoundType().getPlaceSound(), SoundSource.BLOCKS, 0.7f, 1f);
+        }
+        if (jetzt != a.zustand) {
+            welt.setBlock(a.pos, a.zustand, still);
+            if (!a.zustand.isAir()) {
+                gesetzt++;
+                if (gesetzt % 3 == 0) {
+                    welt.playSound(null, a.pos, a.zustand.getSoundType().getPlaceSound(), SoundSource.BLOCKS, 0.7f, 1f);
+                }
             }
         }
+        if (a.snbt != null) {
+            inhaltSetzen(a);
+        }
         if (schwungPause == 0) {
-            koerper.setItemSlot(EquipmentSlot.MAINHAND, a.zustand.isAir()
-                    ? new ItemStack(Items.DIAMOND_PICKAXE) : new ItemStack(a.zustand.getBlock().asItem()));
+            // Abraeumen mit dem passenden Werkzeug, Bauen mit dem Block in der Hand.
+            ItemStack hand = abraeumen || a.zustand.isAir()
+                    ? AgentBloecke.werkzeug(jetzt).copy()
+                    : new ItemStack(a.zustand.getBlock().asItem());
+            koerper.setItemSlot(EquipmentSlot.MAINHAND, hand.isEmpty() ? AgentBloecke.SPITZHACKE.copy() : hand);
             anschauen(Vec3.atCenterOf(a.pos));
             koerper.swing(InteractionHand.MAIN_HAND, true);
             schwungPause = 4;
+        }
+    }
+
+    /** Die Daten aus dem Schematic in den Block schreiben - wie /data merge block, nur ohne Chatausgabe. */
+    private void inhaltSetzen(Auftragsblock a) {
+        try {
+            CommandSourceStack quelle = server.createCommandSourceStack().withLevel(welt).withSuppressedOutput();
+            server.getCommands().performPrefixedCommand(quelle,
+                    "data merge block " + a.pos.getX() + " " + a.pos.getY() + " " + a.pos.getZ() + " " + a.snbt);
+            befuellt++;
+        } catch (RuntimeException fehler) {
+            GlowCubeClient.LOGGER.warn("GlowCube: Inhalt bei {} nicht gesetzt", a.pos, fehler);
         }
     }
 
@@ -311,7 +346,7 @@ final class AgentBaumeister implements AgentArbeiter {
     private void abschliessen(ServerPlayer spieler, String wie) {
         if (spieler != null) {
             String text = "Builder: \"" + planName + "\" " + wie + " - " + gesetzt + " Bloecke gesetzt, "
-                    + abgeraeumt + " abgeraeumt" + (unbekannt > 0 ? ", " + unbekannt + " unbekannte Bloecke ausgelassen" : "") + ".";
+                    + abgeraeumt + " abgeraeumt" + (befuellt > 0 ? ", " + befuellt + " Truhen/Schilder befuellt" : "") + (unbekannt > 0 ? ", " + unbekannt + " unbekannte Bloecke ausgelassen" : "") + ".";
             AgentWelt.melden(spieler, wie.equals("fertig") ? ChatFormatting.GREEN : ChatFormatting.YELLOW, text);
         }
         effekt(ParticleTypes.POOF, 30);

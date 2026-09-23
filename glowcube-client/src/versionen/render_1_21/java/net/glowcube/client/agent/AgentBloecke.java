@@ -22,6 +22,8 @@ final class AgentBloecke {
     static final ItemStack SPITZHACKE = new ItemStack(Items.DIAMOND_PICKAXE);
     static final ItemStack AXT = new ItemStack(Items.DIAMOND_AXE);
     static final ItemStack SCHAUFEL = new ItemStack(Items.DIAMOND_SHOVEL);
+    static final ItemStack HACKE = new ItemStack(Items.DIAMOND_HOE);
+    static final ItemStack SCHERE = new ItemStack(Items.SHEARS);
 
     private AgentBloecke() {
     }
@@ -129,7 +131,7 @@ final class AgentBloecke {
     static ItemStack werkzeug(BlockState s) {
         ItemStack bestes = SPITZHACKE;
         float tempo = SPITZHACKE.getDestroySpeed(s);
-        for (ItemStack w : new ItemStack[]{AXT, SCHAUFEL}) {
+        for (ItemStack w : new ItemStack[]{AXT, SCHAUFEL, HACKE, SCHERE}) {
             float t = w.getDestroySpeed(s);
             if (t > tempo) {
                 tempo = t;

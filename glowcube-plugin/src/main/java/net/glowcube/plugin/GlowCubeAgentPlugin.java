@@ -229,6 +229,23 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
         }
     }
 
+    private org.bukkit.command.CommandSender stillerBefehlsgeber;
+
+    /**
+     * Ein Befehlsgeber mit Konsolenrechten, dessen Rueckmeldungen verschluckt
+     * werden - sonst stuende fuer jede befuellte Truhe eine Zeile im Server-Log.
+     */
+    org.bukkit.command.CommandSender stillerBefehlsgeber() {
+        if (stillerBefehlsgeber == null) {
+            try {
+                stillerBefehlsgeber = getServer().createCommandSender(rueckmeldung -> { });
+            } catch (RuntimeException | LinkageError fehlt) {
+                stillerBefehlsgeber = getServer().getConsoleSender();
+            }
+        }
+        return stillerBefehlsgeber;
+    }
+
     double maxTempo() {
         return getConfig().getDouble("max-tempo", 4.0);
     }

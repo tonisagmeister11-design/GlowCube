@@ -27,18 +27,27 @@ public final class Bauplan {
     public record Block(int x, int y, int z, String zustand) {
     }
 
+    /**
+     * Inhalt eines Blocks mit Daten (Truhe, Trichter, Schild, Banner ...), als
+     * SNBT-Text - so, wie ihn {@code /data merge block} erwartet.
+     */
+    public record Daten(int x, int y, int z, String snbt) {
+    }
+
     public final String name;
     public final int breite;
     public final int hoehe;
     public final int laenge;
     public final List<Block> bloecke;
+    public final List<Daten> daten;
 
-    private Bauplan(String name, int breite, int hoehe, int laenge, List<Block> bloecke) {
+    private Bauplan(String name, int breite, int hoehe, int laenge, List<Block> bloecke, List<Daten> daten) {
         this.name = name;
         this.breite = breite;
         this.hoehe = hoehe;
         this.laenge = laenge;
         this.bloecke = bloecke;
+        this.daten = daten;
     }
 
     /** Wie viele Bloecke keine Luft sind - fuer die Meldung am Ende. */
@@ -123,7 +132,23 @@ public final class Bauplan {
             }
             index++;
         }
-        return new Bauplan(name, w, h, l, liste);
+        // Blockdaten: v2 "BlockEntities" an der Wurzel (Pos, Id, Felder direkt),
+        // v3 unter Blocks/BlockEntities (Pos, Id, Felder unter "Data").
+        List<Daten> inhalte = new ArrayList<>();
+        Object be = s.containsKey("Blocks") ? ((Map<String, Object>) s.get("Blocks")).get("BlockEntities")
+                : s.get("BlockEntities");
+        if (be instanceof List<?> eintraege) {
+            for (Object o : eintraege) {
+                Map<String, Object> e = (Map<String, Object>) o;
+                int[] pos = (int[]) e.get("Pos");
+                Map<String, Object> felder = e.get("Data") instanceof Map<?, ?> d ? (Map<String, Object>) d : e;
+                String text = datenText(felder);
+                if (pos != null && pos.length == 3 && text != null) {
+                    inhalte.add(new Daten(pos[0], pos[1], pos[2], text));
+                }
+            }
+        }
+        return new Bauplan(name, w, h, l, liste, inhalte);
     }
 
     /** Minecrafts Strukturdatei: size, palette (oder palettes), blocks. */
@@ -143,6 +168,7 @@ public final class Bauplan {
             zustaende[i] = zustandText((Map<String, Object>) palette.get(i));
         }
         List<Block> liste = new ArrayList<>();
+        List<Daten> daten = new ArrayList<>();
         for (Object o : bloecke) {
             Map<String, Object> b = (Map<String, Object>) o;
             List<Object> pos = (List<Object>) b.get("pos");
@@ -150,9 +176,16 @@ public final class Bauplan {
             if (st < 0 || st >= zustaende.length || zustaende[st].startsWith("minecraft:structure_void")) {
                 continue;
             }
-            liste.add(new Block(zahl(pos.get(0)), zahl(pos.get(1)), zahl(pos.get(2)), zustaende[st]));
+            int x = zahl(pos.get(0)), y = zahl(pos.get(1)), z = zahl(pos.get(2));
+            liste.add(new Block(x, y, z, zustaende[st]));
+            if (b.get("nbt") instanceof Map<?, ?> nbt) {
+                String text = datenText((Map<String, Object>) nbt);
+                if (text != null) {
+                    daten.add(new Daten(x, y, z, text));
+                }
+            }
         }
-        return new Bauplan(name, zahl(groesse.get(0)), zahl(groesse.get(1)), zahl(groesse.get(2)), liste);
+        return new Bauplan(name, zahl(groesse.get(0)), zahl(groesse.get(1)), zahl(groesse.get(2)), liste, daten);
     }
 
     /** Litematica: jede Region hat ihre Palette und gepackte Blockzustaende; alle werden zusammengelegt. */
@@ -163,6 +196,7 @@ public final class Bauplan {
             throw new IOException("Litematic ohne Regionen");
         }
         List<Block> roh = new ArrayList<>();
+        List<Daten> rohDaten = new ArrayList<>();
         int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
         for (Object o : regionen.values()) {
@@ -206,12 +240,118 @@ public final class Bauplan {
                 maxX = Math.max(maxX, wx); maxY = Math.max(maxY, wy); maxZ = Math.max(maxZ, wz);
                 roh.add(new Block(wx, wy, wz, zustand));
             }
+            // Blockdaten stehen relativ zur Ecke der Region.
+            if (r.get("TileEntities") instanceof List<?> kacheln) {
+                for (Object k : kacheln) {
+                    Map<String, Object> t = (Map<String, Object>) k;
+                    String text = datenText(t);
+                    if (text != null && t.get("x") instanceof Number tx && t.get("y") instanceof Number ty
+                            && t.get("z") instanceof Number tz) {
+                        rohDaten.add(new Daten(ox + tx.intValue(), oy + ty.intValue(), oz + tz.intValue(), text));
+                    }
+                }
+            }
         }
         List<Block> liste = new ArrayList<>(roh.size());
         for (Block b : roh) {
             liste.add(new Block(b.x - minX, b.y - minY, b.z - minZ, b.zustand));
         }
-        return new Bauplan(name, maxX - minX + 1, maxY - minY + 1, maxZ - minZ + 1, liste);
+        List<Daten> daten = new ArrayList<>(rohDaten.size());
+        for (Daten d : rohDaten) {
+            daten.add(new Daten(d.x - minX, d.y - minY, d.z - minZ, d.snbt));
+        }
+        return new Bauplan(name, maxX - minX + 1, maxY - minY + 1, maxZ - minZ + 1, liste, daten);
+    }
+
+    /** Felder, die nur die Lage oder Art beschreiben - die setzt das Spiel selbst. */
+    private static final java.util.Set<String> LAGE = java.util.Set.of("x", "y", "z", "id", "Id", "Pos", "keepPacked");
+
+    /** Blockdaten ohne Lagefelder als SNBT - oder null, wenn nichts uebrig bleibt. */
+    private static String datenText(Map<String, Object> felder) {
+        Map<String, Object> rest = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Object> e : felder.entrySet()) {
+            if (!LAGE.contains(e.getKey())) {
+                rest.put(e.getKey(), e.getValue());
+            }
+        }
+        if (rest.isEmpty()) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        snbt(rest, sb);
+        return sb.toString();
+    }
+
+    /** Schreibt einen NBT-Wert als SNBT - mit Typ-Endungen, damit nichts verloren geht. */
+    @SuppressWarnings("unchecked")
+    public static void snbt(Object wert, StringBuilder sb) {
+        if (wert instanceof Map<?, ?> map) {
+            sb.append('{');
+            boolean erstes = true;
+            for (Map.Entry<String, Object> e : ((Map<String, Object>) map).entrySet()) {
+                if (!erstes) {
+                    sb.append(',');
+                }
+                zitat(e.getKey(), sb);
+                sb.append(':');
+                snbt(e.getValue(), sb);
+                erstes = false;
+            }
+            sb.append('}');
+        } else if (wert instanceof List<?> liste) {
+            sb.append('[');
+            for (int i = 0; i < liste.size(); i++) {
+                if (i > 0) {
+                    sb.append(',');
+                }
+                snbt(liste.get(i), sb);
+            }
+            sb.append(']');
+        } else if (wert instanceof String text) {
+            zitat(text, sb);
+        } else if (wert instanceof Byte b) {
+            sb.append(b).append('b');
+        } else if (wert instanceof Short sh) {
+            sb.append(sh).append('s');
+        } else if (wert instanceof Long l) {
+            sb.append(l).append('L');
+        } else if (wert instanceof Float f) {
+            sb.append(f).append('f');
+        } else if (wert instanceof Double d) {
+            sb.append(d).append('d');
+        } else if (wert instanceof byte[] feld) {
+            sb.append("[B;");
+            for (int i = 0; i < feld.length; i++) {
+                sb.append(i > 0 ? "," : "").append(feld[i]).append('b');
+            }
+            sb.append(']');
+        } else if (wert instanceof int[] feld) {
+            sb.append("[I;");
+            for (int i = 0; i < feld.length; i++) {
+                sb.append(i > 0 ? "," : "").append(feld[i]);
+            }
+            sb.append(']');
+        } else if (wert instanceof long[] feld) {
+            sb.append("[L;");
+            for (int i = 0; i < feld.length; i++) {
+                sb.append(i > 0 ? "," : "").append(feld[i]).append('L');
+            }
+            sb.append(']');
+        } else {
+            sb.append(wert);
+        }
+    }
+
+    private static void zitat(String text, StringBuilder sb) {
+        sb.append('"');
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '"' || c == '\\') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        sb.append('"');
     }
 
     /** {Name, Properties} -> "minecraft:name[a=b,c=d]" (Eigenschaften sortiert). */
