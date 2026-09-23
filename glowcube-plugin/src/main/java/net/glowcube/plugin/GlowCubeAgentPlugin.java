@@ -182,6 +182,24 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
         }
     }
 
+    /**
+     * PvP Pro freigeben: meldet der GlowCube-Client seinen Kanal an, bekommt
+     * er "pvppro;an" - aber nur, wenn der Betreiber es in der config.yml
+     * erlaubt hat und der Spieler die Berechtigung glowcube.pvppro hat.
+     * Ohne diese Meldung bleibt PvP Pro im Client auf diesem Server aus.
+     */
+    @EventHandler
+    public void kanalAngemeldet(org.bukkit.event.player.PlayerRegisterChannelEvent ereignis) {
+        if (!KANAL.equals(ereignis.getChannel())) {
+            return;
+        }
+        Player spieler = ereignis.getPlayer();
+        if (getConfig().getBoolean("pvp-pro-erlaubt", false) && spieler.hasPermission("glowcube.pvppro")) {
+            spieler.sendPluginMessage(this, KANAL, schreiben("pvppro;an"));
+            getLogger().info("PvP Pro fuer " + spieler.getName() + " freigegeben.");
+        }
+    }
+
     /** Der letzte Angreifer, wenn er hoechstens fuenf Sekunden her ist. */
     UUID letzterAngreifer(UUID spieler) {
         Long zeit = angriffZeit.get(spieler);

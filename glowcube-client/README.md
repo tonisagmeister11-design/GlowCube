@@ -108,6 +108,18 @@ Alle vier sind rein clientseitig - der Server sieht davon nichts.
 | Criticals | Erzwingt kritische Treffer - fuenf Betriebsarten, plus Schmetterschlag mit der Keule |
 | AutoTotem | Haelt ein Totem in der Zweithand, sobald es rechnerisch eng wird |
 
+**PvP Pro** (Combat) kaempft fuer dich gegen einen Spieler: Ziel ist der
+erste Spieler, den du schlaegst (oder der naechste). Modi Schwert, Axt und
+Crystal. Die Kamera dreht sich sichtbar und weich zum Gegner, geschlagen
+wird nur mit dem Fadenkreuz auf ihm und vollem Cooldown; kritische Treffer
+aus dem Sprung, Schild brechen mit der Axt, Laufen und seitliches Kreisen.
+Crystal setzt Kristalle (und notfalls Obsidian) nur, wenn es dem Gegner
+genug und dir hoechstens den eingestellten Schaden macht - nie toedlich.
+Dazu: Essen bei Hunger, goldener Apfel bei wenig Leben, Totem in der
+Nebenhand, Rueckzug. **Nur mit Erlaubnis:** in der eigenen Welt/LAN und auf
+Servern, die es ueber das GlowCube-Plugin freigeben (`pvp-pro-erlaubt: true`,
+Berechtigung `glowcube.pvppro`). Sonst schaltet es sich selbst ab.
+
 ### Movement
 | Modul | Was es tut |
 | --- | --- |

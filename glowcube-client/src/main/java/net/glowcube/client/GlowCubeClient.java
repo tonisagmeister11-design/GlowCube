@@ -49,7 +49,10 @@ public final class GlowCubeClient implements ClientModInitializer {
         // Fabrics WorldRenderEvents/HudRenderCallback, ab 26.x am neuen
         // Rendersystem. Deshalb ueber die versionsgetrennte Bruecke.
         net.glowcube.client.render.RenderBruecke.registriere(modules, hud);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> modules.onWorldLeave());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            net.glowcube.client.agent.PvpFreigabe.zuruecksetzen();
+            modules.onWorldLeave();
+        });
         // Search durchsucht jeden Chunk einmal beim Laden statt jeden Tick
         // von neuem - dafuer muss es wissen, wann einer kommt und geht.
         ClientChunkEvents.CHUNK_LOAD.register((welt, chunk) -> Search.chunkGeladen(chunk.getPos()));

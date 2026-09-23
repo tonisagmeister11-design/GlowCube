@@ -17,3 +17,8 @@ max-bau-tempo: 100.0
 
 # Darf der Agent X-Ray benutzen?
 xray-erlaubt: true
+
+# PvP Pro (GlowCube-Client, Kampf-Automatik) auf diesem Server erlauben?
+# Nur fuer Testserver, auf denen alle Mitspieler Bescheid wissen. Benutzen
+# duerfen es dann Spieler mit der Berechtigung glowcube.pvppro (Standard: OPs).
+pvp-pro-erlaubt: false

@@ -41,6 +41,10 @@ public final class AgentSteuerung {
     /** Das Plugin meldet: dieser Agent ist fertig - das Modul im Menue nachziehen. */
     private static void vomServer(String text) {
         String[] teile = text.split(";");
+        if (teile.length == 2 && teile[0].equals("pvppro") && teile[1].equals("an")) {
+            PvpFreigabe.vomServerErlaubt();
+            return;
+        }
         if (teile.length == 2 && teile[0].equals("aus")) {
             Minecraft.getInstance().execute(() -> {
                 for (Module modul : GlowCubeClient.modules().all()) {

@@ -2,6 +2,7 @@ package net.glowcube.client.core;
 
 import net.glowcube.client.module.combat.AntiKnockback;
 import net.glowcube.client.module.combat.AutoTotem;
+import net.glowcube.client.module.combat.PvpPro;
 import net.glowcube.client.module.combat.Criticals;
 import net.glowcube.client.module.combat.KillAura;
 import net.glowcube.client.module.combat.MaceAura;
@@ -144,6 +145,7 @@ public final class ModuleManager {
         add(new AntiKnockback());
         add(new Criticals());
         add(new AutoTotem());
+        add(new PvpPro());
         // Player
         add(new AutoTool());
         add(new AutoEat());
