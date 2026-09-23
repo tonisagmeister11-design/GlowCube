@@ -225,6 +225,12 @@ kein Wasser fliesst nach, kein Sand faellt, keine Tuer, Fackel oder
 Redstone-Leitung bricht weg. Beim Abraeumen hat er das passende Werkzeug in
 der Hand (Spitzhacke, Axt, Schaufel, Hacke, Schere).
 
+**Orbital Strike Cannon:** Der Builder setzt ganz oben einen Leitstein mit
+Hebel darauf. Ziel markieren: auf die Stelle schauen (bis 500 Bloecke) und
+`/glowcube ziel` eingeben. Dann den Hebel umlegen - am Ziel fallen Ringe aus
+gezuendetem TNT vom Himmel. Jeder Hebel auf einem Leitstein funktioniert so,
+auch ein selbst gebauter. Nur in der eigenen Welt.
+
 In der eigenen Welt laufen alle Agenten auch im Survival ohne Cheats.
 
 ### Performance (Bereich "Kein Hack")

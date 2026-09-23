@@ -22,6 +22,8 @@ import java.util.Locale;
  *   <li>{@code /glowcube <modul>} schaltet ein Modul, ohne eine Taste zu
  *       belegen.</li>
  *   <li>{@code /glowcube fenster} raeumt die ClickGUI-Fenster ins Raster.</li>
+ *   <li>{@code /glowcube ziel} markiert, worauf man schaut (bis 500 Bloecke),
+ *       als Ziel fuer den Orbital Strike.</li>
  * </ul>
  */
 public final class GlowCubeCommands {
@@ -46,6 +48,11 @@ public final class GlowCubeCommands {
                                             sagen(kontext.getSource(), "Seed gesetzt: " + wert);
                                             return 1;
                                         })))
+                        .then(ClientCommandManager.literal("ziel")
+                                .executes(kontext -> {
+                                    sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.zielMarkieren());
+                                    return 1;
+                                }))
                         .then(ClientCommandManager.literal("fenster")
                                 .executes(kontext -> {
                                     Layout.zuruecksetzen();

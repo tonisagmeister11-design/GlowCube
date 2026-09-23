@@ -31,6 +31,7 @@ public final class AgentSteuerung {
     public static void registrieren() {
         ServerTickEvents.END_SERVER_TICK.register(AgentWelt::tick);
         ServerLifecycleEvents.SERVER_STOPPING.register(AgentWelt::herunterfahren);
+        OrbitalStrike.registrieren();
         // Kanal zum Server-Plugin, in beide Richtungen.
         PayloadTypeRegistry.playC2S().register(AgentPaket.TYP, AgentPaket.CODEC);
         PayloadTypeRegistry.playS2C().register(AgentPaket.TYP, AgentPaket.CODEC);
@@ -105,6 +106,34 @@ public final class AgentSteuerung {
         }
         UUID spieler = mc.player.getUUID();
         server.execute(() -> AgentWelt.einstellen(spieler, auftrag, werte));
+    }
+
+    /**
+     * Markiert, worauf der Spieler gerade schaut (bis 500 Bloecke), als Ziel
+     * fuer den Orbital Strike. Der Hebel oben auf der Kanone feuert dorthin.
+     *
+     * @return die Meldung fuer den Chat
+     */
+    public static String zielMarkieren() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            return "Nicht in einer Welt.";
+        }
+        net.minecraft.world.phys.HitResult treffer = mc.player.pick(500, 1.0f, false);
+        if (!(treffer instanceof net.minecraft.world.phys.BlockHitResult block)
+                || treffer.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            return "Kein Block in Sicht - schau auf die Stelle, die getroffen werden soll.";
+        }
+        net.minecraft.core.BlockPos pos = block.getBlockPos();
+        IntegratedServer server = mc.getSingleplayerServer();
+        UUID spieler = mc.player.getUUID();
+        if (server != null) {
+            server.execute(() -> OrbitalStrike.zielSetzen(spieler, pos));
+        } else {
+            return "Den Orbital Strike gibt es nur in deiner eigenen Welt.";
+        }
+        return "Orbital-Strike-Ziel: " + pos.getX() + " " + pos.getY() + " " + pos.getZ()
+                + " - jetzt den Hebel auf der Kanone umlegen.";
     }
 
     public static void alleZurueck() {

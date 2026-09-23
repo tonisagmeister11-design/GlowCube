@@ -26,6 +26,10 @@ public final class AgentSteuerung {
     public static void einstellen(Auftrag auftrag, AgentWerte werte) {
     }
 
+    public static String zielMarkieren() {
+        return "Den Orbital Strike gibt es bisher nur auf 1.21.11.";
+    }
+
     public static void alleZurueck() {
     }
 }

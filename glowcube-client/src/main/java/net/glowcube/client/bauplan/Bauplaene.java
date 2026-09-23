@@ -91,6 +91,17 @@ public final class Bauplaene {
 
     /** Laedt einen Plan nach Namen - oder null, wenn es ihn nicht gibt oder er kaputt ist. */
     public static Bauplan laden(String name) {
+        Bauplan plan = ladenRoh(name);
+        if (plan != null && name.equals("Orbital-Strike-Cannon")) {
+            // Der Feuer-Hebel ganz oben: Leitstein mit Hebel darauf. Legt man
+            // ihn um, schlaegt am markierten Ziel ein Orbital Strike ein.
+            plan.bloecke.add(new Bauplan.Block(33, 51, 3, "minecraft:lodestone"));
+            plan.bloecke.add(new Bauplan.Block(33, 52, 3, "minecraft:lever[face=floor,facing=north,powered=false]"));
+        }
+        return plan;
+    }
+
+    private static Bauplan ladenRoh(String name) {
         Path datei = imOrdner().get(name);
         try {
             if (datei != null) {
