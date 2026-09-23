@@ -203,22 +203,6 @@ jobs:
 
       # 26.3-Portierung: Pakete und Signaturen, die Agent, Befehle und das
       # Welt-Rendern auf 26.3 brauchen. Reines Erzaehlen, bricht nie ab.
-      - name: 26.3-Portierung ausleuchten
-        if: ${{ matrix.mc == '26.3' }}
-        continue-on-error: true
-        run: |
-          python3 probe-search.py build/classpath.txt OreConfiguration OreFeature VanillaRegistries | grep -v '::notice' || true
-          python3 probe-api.py build/classpath.txt \
-            "net.minecraft.data.registries.VanillaRegistries:public" \
-            "net.minecraft.world.level.levelgen.placement.PlacedFeature:public" \
-            "net.minecraft.world.level.levelgen.feature.ConfiguredFeature:public" \
-            "net.minecraft.world.level.levelgen.feature.OreFeature:public" \
-            "net.minecraft.world.level.levelgen.feature.ScatteredOreFeature:public" \
-            "net.minecraft.world.level.levelgen.feature.Feature:(?i)ore" \
-            "net.minecraft.world.level.levelgen.feature.configurations.OreConfiguration:" \
-            "net.minecraft.world.level.biome.BiomeGenerationSettings:public" \
-            "net.minecraft.client.Options:(?i)gui" | grep -v '::notice' || true
-
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
       # falscher Mixin-Name erst beim Spielstart auf, und zwar beim Nutzer.
@@ -380,10 +364,19 @@ jobs:
               "net.minecraft.client.gui.GuiGraphicsExtractor#itemDecorations" \
               "net.minecraft.client.Camera#void alignWithEntity(float)" \
               "net.minecraft.client.gui.Hud#void extractVignette(" \
-              "net.minecraft.client.renderer.ScreenEffectRenderer#static void lambda\$submitFire\$0("
+              "net.minecraft.client.renderer.ScreenEffectRenderer#static void lambda\$submitFire\$0(" \
+              "net.minecraft.client.renderer.LevelRenderer#collectPerFrameRenderThreadGizmos" \
+              "net.minecraft.gizmos.Gizmos#cuboid" \
+              "net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents#COLLECT_SUBMITS" \
+              "net.fabricmc.fabric.api.client.command.v2.ClientCommands#literal" \
+              "net.minecraft.world.level.levelgen.feature.AbstractOreFeature#"
           fi
           # Die volle OreSim-Weltgenerierung laeuft nur dort, wo die alte
           # Erz-Konfiguration noch existiert (1.21.x und 26.2).
+          if [[ "$mcv" == 26.3 ]]; then
+            python3 verify-api.py build/classpath.txt \
+              "net.minecraft.data.registries.VanillaRegistries#createWorldLookup"
+          fi
           if [[ "$mcv" == 1.* || "$mcv" == "26.2" ]]; then
             python3 verify-api.py build/classpath.txt \
               "net.minecraft.data.registries.VanillaRegistries#createLookup" \

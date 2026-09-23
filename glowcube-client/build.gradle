@@ -89,7 +89,7 @@ def slotOrdner = alteFassung ? 'slotklick_1_21' : 'slotklick_26'
 sourceSets.main.java.srcDir "src/versionen/${slotOrdner}/java"
 
 // Erz/OreSim: die volle Weltgenerierung geht auf 1.21.x und 26.2; ab 26.3
-// ist die Erz-Konfiguration umgebaut, dort steht eine ruhende Fassung.
+// steckt die Erz-Konfiguration im Merkmal selbst, dort liest eine eigene Fassung sie aus.
 def erzOrdner = erzUmbau ? 'erz_26_3' : 'erz_1_21_26_2'
 sourceSets.main.java.srcDir "src/versionen/${erzOrdner}/java"
 

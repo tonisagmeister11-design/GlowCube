@@ -35,8 +35,9 @@ public final class HudRenderer {
         Minecraft mc = Minecraft.getInstance();
         // Klicks auch zaehlen, solange das HUD nichts zeichnet.
         KlickZaehler.aktualisieren();
-        // Das F1-Ausblenden (options.hideGui) heisst ab 26.x anders; wird
-        // nachgereicht, sobald der Name feststeht. Ohne Spieler nie zeichnen.
+        // F1 muss hier nicht geprueft werden: ab 26.x haengt das HUD als
+        // Element an Fabrics HudElementRegistry, und die zeichnet bei
+        // ausgeblendeter Oberflaeche gar nicht erst. Ohne Spieler nie zeichnen.
         if (mc.player == null) {
             return;
         }
