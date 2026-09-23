@@ -144,3 +144,8 @@ tasks.register('classpathReport') {
         println "Classpath steht in ${ziel}"
     }
 }
+
+// Bei vielen Fehlern alle zeigen, nicht nur die ersten hundert.
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xmaxerrs', '2000']
+}

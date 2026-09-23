@@ -201,6 +201,52 @@ jobs:
             "net.minecraft.world.level.material.FluidState:isEmpty|is\\(" \
             "net.minecraft.world.entity.Entity:getX\\(|getEyeY|position\\(\\)|blockPosition|getYRot|setYRot|setXRot|isRemoved|getId\\(" || true
 
+      # 26.3-Portierung: Pakete und Signaturen, die Agent, Befehle und das
+      # Welt-Rendern auf 26.3 brauchen. Reines Erzaehlen, bricht nie ab.
+      - name: 26.3-Portierung ausleuchten
+        if: ${{ matrix.mc == '26.3' }}
+        continue-on-error: true
+        run: |
+          python3 - build/classpath.txt <<'PY' || true
+          import sys, pathlib
+          sys.path.insert(0, ".")
+          from probe_imports_helper import klassen_im_classpath
+          alle = sorted(klassen_im_classpath(sys.argv[1]))
+          for praefix in ["net.fabricmc.fabric.api.client.command", "net.fabricmc.fabric.api.client.rendering.v1",
+                          "net.fabricmc.fabric.api.command", "net.minecraft.gizmos", "net.minecraft.client.renderer.debug"]:
+              treffer = [k for k in alle if k.startswith(praefix)]
+              print(f"PAKET {praefix}: {len(treffer)}")
+              for k in treffer[:120]:
+                  print("   PK " + k)
+          PY
+          python3 probe-search.py build/classpath.txt Gizmo SwingPacket ActionBar ShapeRenderer || true
+          python3 probe-api.py build/classpath.txt \
+            "net.minecraft.network.protocol.game.ServerboundSwingPacket:" \
+            "net.minecraft.client.player.LocalPlayer:swing" \
+            "net.minecraft.world.entity.LivingEntity:swing" \
+            "net.minecraft.world.entity.player.Player:swing|sendOverlay|displayClientMessage|sendSystemMessage" \
+            "net.minecraft.client.Options:hide|Gui" \
+            "net.minecraft.client.Minecraft:gui|hud|options" \
+            "net.minecraft.client.renderer.LevelRenderer:submit|render|extract" \
+            "net.minecraft.client.renderer.SubmitNodeCollector:" \
+            "net.minecraft.client.renderer.OrderedSubmitNodeCollector:" \
+            "net.minecraft.client.renderer.rendertype.RenderTypes:ine" \
+            "net.minecraft.client.renderer.ShapeRenderer:" \
+            "net.minecraft.gizmos.Gizmos:" \
+            "net.minecraft.gizmos.GizmoStyle:" \
+            "net.minecraft.client.renderer.GameRenderer:render|extract|Level|getMainCamera" \
+            "net.minecraft.client.Camera:position|getPosition|pos" || true
+          # Bei jedem Fabric-Rendering-Ereignis die volle Signatur.
+          for k in $(python3 - build/classpath.txt <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          from probe_imports_helper import klassen_im_classpath
+          for k in sorted(klassen_im_classpath(sys.argv[1])):
+              if (k.startswith("net.fabricmc.fabric.api.client.rendering.v1") or k.startswith("net.fabricmc.fabric.api.client.command")) and "$" not in k:
+                  print(k)
+          PY
+          ); do python3 probe-api.py build/classpath.txt "$k:" | grep -v '::notice' || true; done
+
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
       # falscher Mixin-Name erst beim Spielstart auf, und zwar beim Nutzer.
@@ -404,6 +450,13 @@ jobs:
                   seen.add(line)
                   unique.append(line)
           print("::error title=Build-Fehler::" + "%0A".join(unique[:15]))
+          print("===== ALLE FEHLER =====")
+          roh = log.read_text(errors="replace").splitlines()
+          for i, line in enumerate(roh):
+              if re.search(r"\.java:\d+: error:", line):
+                  teil = line.split("/src/", 1)[-1]
+                  mehr = [z.strip() for z in roh[i + 1:i + 5] if z.strip().startswith(("symbol:", "location:", "required:", "found:", "reason:"))]
+                  print("FEHLER " + teil[:260] + (" || " + " | ".join(mehr) if mehr else ""))
           PY
 
       # Die fertige Mod bekommt die Spielfassung in den Dateinamen, damit
