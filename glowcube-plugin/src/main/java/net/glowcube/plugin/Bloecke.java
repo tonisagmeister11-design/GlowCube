@@ -35,9 +35,22 @@ final class Bloecke {
             case STEIN -> Tag.BASE_STONE_OVERWORLD.isTagged(m) && m != Material.GRAVEL
                     || m == Material.COBBLESTONE || m == Material.COBBLED_DEEPSLATE;
             case ERZ -> istErz(m, art);
-            // Guardian und Builder suchen keine Bloecke.
-            case WAECHTER, BAUMEISTER -> false;
+            case TUNNEL -> istErz(m, "Alle");
+            // Reife pruefen geht nur am Block - siehe istZiel(Block, ...).
+            case BAUER -> m == Material.WHEAT || m == Material.CARROTS || m == Material.POTATOES
+                    || m == Material.BEETROOTS || m == Material.NETHER_WART;
+            // Guardian, Jaeger und Builder suchen keine Bloecke.
+            case WAECHTER, BAUMEISTER, JAEGER -> false;
         };
+    }
+
+    /** Wie istZiel, aber am Block - der Farm-Agent erntet nur Reifes. */
+    static boolean istZiel(Block b, Auftrag auftrag, String art) {
+        if (auftrag == Auftrag.BAUER) {
+            return istZiel(b.getType(), auftrag, art) && b.getBlockData() instanceof org.bukkit.block.data.Ageable a
+                    && a.getAge() >= a.getMaximumAge();
+        }
+        return istZiel(b.getType(), auftrag, art);
     }
 
     private static boolean istErz(Material m, String art) {

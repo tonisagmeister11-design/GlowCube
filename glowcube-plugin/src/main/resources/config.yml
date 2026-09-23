@@ -4,9 +4,10 @@
 # Agenten losschicken. Wer das darf, regelt die Berechtigung glowcube.agent
 # (Standard: jeder). Hier die Grenzen:
 
-# Wie viele Agenten ein Spieler gleichzeitig haben darf (einer je Sorte:
-# Erz, Stein, Holz, Guardian, Builder).
-max-agenten-je-spieler: 5
+# Wie viele Agenten ein Spieler gleichzeitig haben darf - insgesamt und je
+# Art (Erz, Stein, Holz, Guardian, Builder, Farm, Tunnel, Jaeger).
+max-agenten-je-spieler: 20
+max-agenten-je-art: 5
 
 # Obergrenzen fuer die Einstellungen aus dem Client.
 max-tempo: 4.0
@@ -14,6 +15,9 @@ max-abbau-tempo: 20.0
 max-xray-chunks: 6
 # Builder: hoechstens so viele Bloecke pro Sekunde.
 max-bau-tempo: 100.0
+
+# Tunnel-Agent: hoechstens so viele Bloecke lang.
+max-tunnel-laenge: 512
 
 # Darf der Agent X-Ray benutzen?
 xray-erlaubt: true

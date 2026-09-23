@@ -39,7 +39,10 @@ final class Baumeister implements AgentArbeiter {
 
     private final GlowCubeAgentPlugin plugin;
     private final UUID besitzer;
+    private final int nummer;
     private final String planName;
+    private int versatz;
+    private int rechterRand;
     private Werte werte;
 
     private World welt;
@@ -57,24 +60,34 @@ final class Baumeister implements AgentArbeiter {
     private boolean abgebrochen;
     private long ticketChunk = Long.MIN_VALUE;
 
-    private Baumeister(GlowCubeAgentPlugin plugin, UUID besitzer, String planName, Werte werte) {
+    private Baumeister(GlowCubeAgentPlugin plugin, UUID besitzer, int nummer, String planName, Werte werte) {
         this.plugin = plugin;
         this.besitzer = besitzer;
+        this.nummer = nummer;
         this.planName = planName;
         this.werte = werte;
     }
 
-    static Baumeister erschaffen(GlowCubeAgentPlugin plugin, Player spieler, String planName, Werte werte) {
+    /** linkerRand: 0 fuer den ersten Builder, sonst ab wo seine Baustelle (seitlich) anfangen muss. */
+    static Baumeister erschaffen(GlowCubeAgentPlugin plugin, Player spieler, int nummer, String planName, Werte werte,
+                                 int linkerRand) {
         Bauplan plan = Bauplaene.laden(plugin, planName);
         if (plan == null) {
             plugin.melden(spieler, NamedTextColor.RED, "Schematic \"" + planName + "\" gibt es auf diesem Server nicht. "
                     + "Der Server-Admin kann es nach plugins/GlowCubeAgent/schematics legen.");
             return null;
         }
-        Baumeister b = new Baumeister(plugin, spieler.getUniqueId(), planName, werte);
-        b.welt = spieler.getWorld();
-        b.liste = b.planen(plan, spieler);
-        Pos platz = Agent.sichererPlatzBei(b.welt, Pos.von(spieler.getLocation()));
+        Baumeister b = new Baumeister(plugin, spieler.getUniqueId(), nummer, planName, werte);
+        Location ursprung = spieler.getLocation();
+        Location ort = plugin.einsatzort(spieler.getUniqueId());
+        if (ort != null && ort.getWorld() != null) {
+            ursprung = ort;
+        }
+        b.welt = ursprung.getWorld();
+        b.versatz = linkerRand > 0 ? linkerRand + plan.breite / 2 : 0;
+        b.rechterRand = b.versatz + plan.breite - 1 - plan.breite / 2;
+        b.liste = b.planen(plan, spieler, ursprung);
+        Pos platz = Agent.sichererPlatzBei(b.welt, Pos.von(ursprung));
         try {
             b.koerper = (LivingEntity) b.welt.spawnEntity(platz.fuesse(b.welt), EntityType.MANNEQUIN);
         } catch (RuntimeException fehler) {
@@ -86,6 +99,7 @@ final class Baumeister implements AgentArbeiter {
         b.koerper.setPersistent(false);
         b.koerper.setCustomNameVisible(true);
         b.koerper.setCollidable(false);
+        b.koerper.setGlowing(werte.leuchten());
         if (b.koerper.getEquipment() != null) {
             b.koerper.getEquipment().setItemInMainHand(new ItemStack(Material.BRICKS));
         }
@@ -96,7 +110,7 @@ final class Baumeister implements AgentArbeiter {
         return b;
     }
 
-    private List<Auftragsblock> planen(Bauplan plan, Player spieler) {
+    private List<Auftragsblock> planen(Bauplan plan, Player spieler, Location ursprung) {
         BlockFace blick = spieler.getFacing();
         StructureRotation drehung = switch (blick) {
             case WEST -> StructureRotation.CLOCKWISE_90;
@@ -104,7 +118,6 @@ final class Baumeister implements AgentArbeiter {
             case EAST -> StructureRotation.COUNTERCLOCKWISE_90;
             default -> StructureRotation.NONE;
         };
-        Location ursprung = spieler.getLocation();
         int ox = ursprung.getBlockX();
         int oy = ursprung.getBlockY();
         int oz = ursprung.getBlockZ();
@@ -129,7 +142,7 @@ final class Baumeister implements AgentArbeiter {
                 unbekannt++;
                 continue;
             }
-            int lx = b.x() - halbeBreite;
+            int lx = b.x() - halbeBreite + versatz;
             int lz = b.z() + 2;
             int wx;
             int wz;
@@ -160,13 +173,40 @@ final class Baumeister implements AgentArbeiter {
     }
 
     @Override
+    public int nummer() {
+        return nummer;
+    }
+
+    int rechterRand() {
+        return rechterRand;
+    }
+
+    @Override
+    public org.bukkit.entity.Entity koerper() {
+        return koerper;
+    }
+
+    @Override
+    public String zustandText() {
+        if (liste == null || liste.isEmpty()) {
+            return "baut";
+        }
+        return abgebrochen ? "hoert auf" : "baut " + Math.min(100, index * 100 / liste.size()) + "%";
+    }
+
+    @Override
+    public int beute() {
+        return gesetzt;
+    }
+
+    @Override
     public Auftrag auftrag() {
         return Auftrag.BAUMEISTER;
     }
 
     @Override
     public String titel() {
-        return "Builder-Agent (" + planName + ")";
+        return "Builder-Agent #" + nummer + " (" + planName + ")";
     }
 
     @Override
@@ -189,6 +229,9 @@ final class Baumeister implements AgentArbeiter {
     @Override
     public void einstellen(Werte neu) {
         werte = neu;
+        if (koerper != null) {
+            koerper.setGlowing(neu.leuchten());
+        }
     }
 
     @Override

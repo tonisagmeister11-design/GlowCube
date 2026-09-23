@@ -6,7 +6,10 @@ enum Auftrag {
     STEIN("Stein-Agent"),
     HOLZ("Holz-Agent"),
     WAECHTER("Guardian-Agent"),
-    BAUMEISTER("Builder-Agent");
+    BAUMEISTER("Builder-Agent"),
+    BAUER("Farm-Agent"),
+    TUNNEL("Tunnel-Agent"),
+    JAEGER("Jaeger-Agent");
 
     final String anzeigename;
 

@@ -29,12 +29,17 @@ import java.util.UUID;
  * Schutz direkt am Spieler.
  */
 final class Waechter implements AgentArbeiter {
+    // Jaeger-Agent: derselbe Koerper und Kampf, aber Tiere statt Monster (siehe Client, AgentWaechter).
+    private static final double JAGD_UMKREIS = 24;
     private static final double UMKREIS = 16;
     private static final double REICHWEITE = 3.0;
     private static final int ANGRIFF_PAUSE = 12;
 
     private final GlowCubeAgentPlugin plugin;
     private final UUID besitzer;
+    private final Auftrag auftrag;
+    private final int nummer;
+    private final boolean jaeger;
     private final String ruestung;
     private final double schaden;
     private Werte werte;
@@ -50,6 +55,13 @@ final class Waechter implements AgentArbeiter {
     private int kills;
     private boolean fertig;
 
+    private final org.bukkit.inventory.Inventory lager = Bukkit.createInventory(null, 27);
+    private Location beuteOrt;
+    private int beuteTicks;
+    private boolean abliefern;
+    private int wurfPause;
+    private int geliefert;
+
     private List<Pos> pfad;
     private int pfadIndex;
     private int planAlter;
@@ -59,20 +71,25 @@ final class Waechter implements AgentArbeiter {
     private int bewegDauer;
     private int ticks;
 
-    private Waechter(GlowCubeAgentPlugin plugin, UUID besitzer, String ruestung, Werte werte) {
+    private Waechter(GlowCubeAgentPlugin plugin, UUID besitzer, Auftrag auftrag, int nummer, String ruestung,
+                     Werte werte) {
         this.plugin = plugin;
         this.besitzer = besitzer;
+        this.auftrag = auftrag;
+        this.nummer = nummer;
+        this.jaeger = auftrag == Auftrag.JAEGER;
         this.ruestung = ruestung;
         this.werte = werte;
-        this.schaden = switch (ruestung) {
+        this.schaden = jaeger ? 8 : switch (ruestung) {
             case "Eisen" -> 8;
             case "Netherite" -> 12;
             default -> 10;
         };
     }
 
-    static Waechter erschaffen(GlowCubeAgentPlugin plugin, Player spieler, String ruestung, Werte werte) {
-        Waechter w = new Waechter(plugin, spieler.getUniqueId(), ruestung, werte);
+    static Waechter erschaffen(GlowCubeAgentPlugin plugin, Player spieler, Auftrag auftrag, int nummer, String art,
+                               Werte werte) {
+        Waechter w = new Waechter(plugin, spieler.getUniqueId(), auftrag, nummer, art, werte);
         if (!w.koerperBauen(spieler.getWorld(), Agent.sichererPlatzBei(spieler.getWorld(), Pos.von(spieler.getLocation())))) {
             return null;
         }
@@ -93,6 +110,7 @@ final class Waechter implements AgentArbeiter {
         neu.setPersistent(false);
         neu.setCustomNameVisible(true);
         neu.setCollidable(false);
+        neu.setGlowing(werte.leuchten());
         ausruesten(neu.getEquipment());
         if (koerper != null && koerper.isValid()) {
             koerper.remove();
@@ -108,6 +126,14 @@ final class Waechter implements AgentArbeiter {
 
     private void ausruesten(EntityEquipment e) {
         if (e == null) {
+            return;
+        }
+        if (jaeger) {
+            e.setHelmet(new ItemStack(Material.LEATHER_HELMET));
+            e.setChestplate(new ItemStack(Material.LEATHER_CHESTPLATE));
+            e.setLeggings(new ItemStack(Material.LEATHER_LEGGINGS));
+            e.setBoots(new ItemStack(Material.LEATHER_BOOTS));
+            e.setItemInMainHand(new ItemStack(Material.IRON_SWORD));
             return;
         }
         String m = switch (ruestung) {
@@ -129,17 +155,43 @@ final class Waechter implements AgentArbeiter {
 
     @Override
     public Auftrag auftrag() {
-        return Auftrag.WAECHTER;
+        return auftrag;
+    }
+
+    @Override
+    public int nummer() {
+        return nummer;
     }
 
     @Override
     public String titel() {
-        return "Guardian-Agent (" + ruestung + ")";
+        return auftrag.anzeigename + " #" + nummer + " (" + ruestung + ")";
+    }
+
+    @Override
+    public Entity koerper() {
+        return koerper;
+    }
+
+    @Override
+    public String zustandText() {
+        if (abliefern) {
+            return "bringt die Beute";
+        }
+        if (schuetzen) {
+            return "beschuetzt dich";
+        }
+        return ziel != null ? (jaeger ? "jagt" : "kaempft") : (jaeger ? "sucht Tiere" : "wacht");
+    }
+
+    @Override
+    public int beute() {
+        return jaeger ? Kiste.anzahl(lager) : kills;
     }
 
     @Override
     public boolean beimZurueckkehren() {
-        return fertig;
+        return fertig || abliefern;
     }
 
     @Override
@@ -149,6 +201,11 @@ final class Waechter implements AgentArbeiter {
 
     @Override
     public void zurueckrufen() {
+        if (jaeger && Kiste.anzahl(lager) > 0 && koerper != null && koerper.isValid()) {
+            abliefern = true;
+            ziel = null;
+            return;
+        }
         effekt(Particle.POOF, 20);
         fertig = true;
     }
@@ -156,10 +213,26 @@ final class Waechter implements AgentArbeiter {
     @Override
     public void einstellen(Werte neu) {
         werte = neu;
+        if (koerper != null) {
+            koerper.setGlowing(neu.leuchten());
+        }
     }
 
     @Override
     public void notfallUebergabe() {
+        Player spieler = Bukkit.getPlayer(besitzer);
+        for (int i = 0; i < lager.getSize(); i++) {
+            ItemStack stapel = lager.getItem(i);
+            if (stapel == null || stapel.getType().isAir()) {
+                continue;
+            }
+            lager.setItem(i, null);
+            if (spieler != null) {
+                for (ItemStack rest : spieler.getInventory().addItem(stapel).values()) {
+                    spieler.getWorld().dropItem(spieler.getLocation(), rest);
+                }
+            }
+        }
         fertig = true;
     }
 
@@ -197,7 +270,7 @@ final class Waechter implements AgentArbeiter {
             return;
         }
         double leben = spieler.getHealth();
-        if (!schuetzen && leben <= 2.0) {
+        if (!jaeger && !schuetzen && leben <= 2.0) {
             schuetzen = true;
             ziel = null;
             pfad = null;
@@ -208,9 +281,20 @@ final class Waechter implements AgentArbeiter {
         if (bewegNach != null) {
             bewegen();
         }
+        if (jaeger) {
+            if (abliefern) {
+                abliefern(spieler);
+                return;
+            }
+            beuteEinsammeln();
+            if (lager.firstEmpty() < 0) {
+                lagerLeeren(spieler);
+                return;
+            }
+        }
         if (--suchPause <= 0 || ziel == null || ziel.isDead() || !ziel.isValid()) {
             suchPause = 5;
-            ziel = zielWaehlen(spieler);
+            ziel = jaeger ? tierWaehlen(spieler) : zielWaehlen(spieler);
         }
         if (ziel != null) {
             kaempfen(spieler);
@@ -245,9 +329,142 @@ final class Waechter implements AgentArbeiter {
         return bester;
     }
 
+    // ----------------------------------------------------------------- Jaeger
+
+    private boolean passt(Entity e) {
+        EntityType t = e.getType();
+        return switch (ruestung) {
+            case "Kuh" -> t == EntityType.COW;
+            case "Schwein" -> t == EntityType.PIG;
+            case "Schaf" -> t == EntityType.SHEEP;
+            case "Huhn" -> t == EntityType.CHICKEN;
+            case "Kaninchen" -> t == EntityType.RABBIT;
+            default -> t == EntityType.COW || t == EntityType.PIG || t == EntityType.SHEEP
+                    || t == EntityType.CHICKEN || t == EntityType.RABBIT;
+        };
+    }
+
+    private LivingEntity tierWaehlen(Player spieler) {
+        List<LivingEntity> tiere = new java.util.ArrayList<>();
+        java.util.Map<EntityType, Integer> anzahl = new java.util.HashMap<>();
+        for (Entity e : spieler.getNearbyEntities(JAGD_UMKREIS, JAGD_UMKREIS, JAGD_UMKREIS)) {
+            if (e instanceof LivingEntity le && !le.isDead() && passt(e) && e.customName() == null
+                    && !(e instanceof org.bukkit.entity.Ageable a && !a.isAdult())) {
+                tiere.add(le);
+                anzahl.merge(e.getType(), 1, Integer::sum);
+            }
+        }
+        int uebrig = Math.max(0, werte.zahl());
+        LivingEntity bester = null;
+        double besterAbstand = Double.MAX_VALUE;
+        for (LivingEntity e : tiere) {
+            if (anzahl.get(e.getType()) <= uebrig) {
+                continue;
+            }
+            double d = e.getLocation().distanceSquared(koerper.getLocation());
+            if (d < besterAbstand) {
+                besterAbstand = d;
+                bester = e;
+            }
+        }
+        return bester;
+    }
+
+    private void beuteEinsammeln() {
+        if (beuteOrt == null || --beuteTicks < 0 || beuteTicks % 5 != 0) {
+            return;
+        }
+        for (Entity e : welt.getNearbyEntities(beuteOrt, 3, 3, 3, x -> x instanceof org.bukkit.entity.Item)) {
+            org.bukkit.entity.Item item = (org.bukkit.entity.Item) e;
+            java.util.Map<Integer, ItemStack> rest = lager.addItem(item.getItemStack());
+            if (rest.isEmpty()) {
+                item.remove();
+            } else {
+                item.setItemStack(rest.values().iterator().next());
+            }
+        }
+        if (beuteTicks <= 0) {
+            beuteOrt = null;
+        }
+    }
+
+    private void lagerLeeren(Player spieler) {
+        Location kiste = plugin.kiste(besitzer);
+        if (kiste == null || kiste.getWorld() == null || !Kiste.istKiste(kiste.getBlock())) {
+            plugin.melden(spieler, NamedTextColor.YELLOW, titel() + ": Mein Beutel ist voll - hier, fang!");
+            abliefern = true;
+            return;
+        }
+        Pos zurueck = fuesse;
+        World zurueckWelt = welt;
+        springen(kiste.getWorld(), Agent.sichererPlatzBei(kiste.getWorld(), Pos.von(kiste)));
+        int bewegt = Kiste.einlagern(kiste.getBlock(), lager, x -> false);
+        if (bewegt > 0) {
+            geliefert += bewegt;
+            welt.playSound(kiste, Sound.BLOCK_CHEST_CLOSE, 0.6f, 1f);
+        }
+        springen(zurueckWelt, zurueck);
+        if (lager.firstEmpty() < 0) {
+            plugin.melden(spieler, NamedTextColor.YELLOW, titel() + ": Die Sammelkiste ist voll - hier, fang!");
+            abliefern = true;
+        }
+    }
+
+    private void abliefern(Player spieler) {
+        anschauen(spieler.getEyeLocation());
+        if (!spieler.getWorld().equals(welt) || koerper.getLocation().distanceSquared(spieler.getLocation()) > 25) {
+            if (bewegNach == null) {
+                laufenZu(Pos.von(spieler.getLocation()), 2);
+            }
+            return;
+        }
+        if (wurfPause-- > 0) {
+            return;
+        }
+        wurfPause = 3;
+        for (int i = 0; i < lager.getSize(); i++) {
+            ItemStack stapel = lager.getItem(i);
+            if (stapel == null || stapel.getType().isAir()) {
+                continue;
+            }
+            lager.setItem(i, null);
+            Location von = koerper.getEyeLocation().subtract(0, 0.3, 0);
+            Vector zum = spieler.getEyeLocation().toVector().subtract(von.toVector());
+            Vector schwung = zum.clone().normalize().multiply(Math.min(0.45, 0.12 * zum.length())).add(new Vector(0, 0.18, 0));
+            welt.dropItem(von, stapel, (org.bukkit.entity.Item wurf) -> {
+                wurf.setVelocity(schwung);
+                wurf.setPickupDelay(8);
+            });
+            koerper.swingMainHand();
+            geliefert += stapel.getAmount();
+            return;
+        }
+        abliefern = false;
+        plugin.melden(spieler, NamedTextColor.GREEN, titel() + " hat dir " + geliefert + " Items gebracht ("
+                + kills + " Tiere erlegt).");
+        effekt(Particle.POOF, 20);
+        fertig = true;
+    }
+
+    private void springen(World zielWelt, Pos platz) {
+        effekt(Particle.PORTAL, 20);
+        if (zielWelt.equals(welt)) {
+            koerper.teleport(platz.fuesse(welt));
+            fuesse = platz;
+            pfad = null;
+            bewegNach = null;
+        } else {
+            koerperBauen(zielWelt, platz);
+        }
+        effekt(Particle.PORTAL, 20);
+    }
+
+    // ------------------------------------------------------------- Kampf
+
     private void kaempfen(Player spieler) {
+        double grenze = (jaeger ? JAGD_UMKREIS : UMKREIS) + 6;
         if (!ziel.getWorld().equals(welt)
-                || ziel.getLocation().distanceSquared(spieler.getLocation()) > (UMKREIS + 6) * (UMKREIS + 6)) {
+                || ziel.getLocation().distanceSquared(spieler.getLocation()) > grenze * grenze) {
             ziel = null;
             return;
         }
@@ -261,6 +478,10 @@ final class Waechter implements AgentArbeiter {
                 welt.playSound(ziel.getLocation(), Sound.ENTITY_PLAYER_ATTACK_STRONG, 1f, 1f);
                 if (ziel.isDead()) {
                     kills++;
+                    if (jaeger) {
+                        beuteOrt = ziel.getLocation();
+                        beuteTicks = 40;
+                    }
                     ziel = null;
                 }
                 angriffPause = ANGRIFF_PAUSE;
@@ -357,7 +578,8 @@ final class Waechter implements AgentArbeiter {
     }
 
     private void namenAktualisieren() {
-        String text = titel() + (kills > 0 ? " · " + kills + " besiegt" : "") + (schuetzen ? " ❤" : "");
+        String text = titel() + (kills > 0 ? " · " + kills + (jaeger ? " erlegt" : " besiegt") : "")
+                + (schuetzen ? " ❤" : "");
         koerper.customName(Component.text(text, schuetzen ? NamedTextColor.RED : NamedTextColor.GOLD));
     }
 
