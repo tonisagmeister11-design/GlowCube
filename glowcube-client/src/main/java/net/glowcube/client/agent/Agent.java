@@ -11,10 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.SimpleContainer;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.decoration.Mannequin;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -123,13 +120,13 @@ final class Agent implements AgentArbeiter {
     }
 
     private boolean koerperBauen(ServerLevel neueWelt, BlockPos platz) {
-        Mannequin neu = Fassung26.mannequin(neueWelt);
+        Mannequin neu = AgentFassung.mannequin(neueWelt);
         if (neu == null) {
             return false;
         }
         neu.snapTo(platz.getX() + 0.5, platz.getY(), platz.getZ() + 0.5, richtung * 90f, 0);
         neu.setNoGravity(true);
-        neu.setPermanentlyInvulnerable(true);
+        AgentFassung.unverwundbar(neu);
         neu.setCustomNameVisible(true);
         neu.setItemSlot(EquipmentSlot.MAINHAND,
                 (auftrag == Auftrag.HOLZ ? AgentBloecke.AXT : AgentBloecke.SPITZHACKE).copy());
@@ -551,7 +548,7 @@ final class Agent implements AgentArbeiter {
         abbauDauer = abbauZeit(s, pos);
         koerper.setItemSlot(EquipmentSlot.MAINHAND, AgentBloecke.werkzeug(s).copy());
         anschauen(Vec3.atCenterOf(pos));
-        Fassung26.schwingen(koerper);
+        AgentFassung.schwingen(koerper);
     }
 
     private void abbauen() {
@@ -564,7 +561,7 @@ final class Agent implements AgentArbeiter {
         abbauFortschritt++;
         anschauen(Vec3.atCenterOf(abbauPos));
         if (abbauFortschritt % 4 == 0) {
-            Fassung26.schwingen(koerper);
+            AgentFassung.schwingen(koerper);
         }
         int stufe = Math.min(9, abbauFortschritt * 10 / Math.max(1, abbauDauer));
         welt.destroyBlockProgress(koerper.getId(), abbauPos, stufe);
@@ -576,7 +573,7 @@ final class Agent implements AgentArbeiter {
         List<ItemStack> beute = Block.getDrops(s, welt, abbauPos, welt.getBlockEntity(abbauPos), koerper, werkzeug);
         welt.destroyBlockProgress(koerper.getId(), abbauPos, -1);
         welt.destroyBlock(abbauPos, false, koerper, 512);
-        Fassung26.schwingen(koerper);
+        AgentFassung.schwingen(koerper);
         if (ziel) {
             abgebaut++;
         }
@@ -640,7 +637,7 @@ final class Agent implements AgentArbeiter {
                 s.shrink(1);
                 lager.setChanged();
                 anschauen(Vec3.atCenterOf(pos));
-                Fassung26.schwingen(koerper);
+                AgentFassung.schwingen(koerper);
                 welt.playSound(null, pos, SoundEvents.STONE_PLACE, SoundSource.BLOCKS, 1f, 1f);
                 return true;
             }
@@ -768,7 +765,7 @@ final class Agent implements AgentArbeiter {
         ItemEntity wurf = new ItemEntity(welt, von.x, von.y, von.z, stapel, schwung.x, schwung.y, schwung.z);
         wurf.setPickUpDelay(8);
         welt.addFreshEntity(wurf);
-        Fassung26.schwingen(koerper);
+        AgentFassung.schwingen(koerper);
     }
 
     /** Ohne Umweg: alles direkt ins Inventar (Welt schliesst, Agent weg). Was nicht passt, faellt vor die Fuesse. */
@@ -806,11 +803,10 @@ final class Agent implements AgentArbeiter {
 
     /** Die Chunks um den Agenten geladen halten - nur die, die wir selbst erzwungen haben, geben wir wieder frei. */
     private void chunksHalten() {
-        ChunkPos mitte = ChunkPos.containing(fuesse);
         Set<Long> gewuenscht = new HashSet<>();
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
-                gewuenscht.add(ChunkPos.pack(mitte.x() + dx, mitte.z() + dz));
+                gewuenscht.add(AgentFassung.chunk(fuesse, dx, dz));
             }
         }
         for (long c : new ArrayList<>(erzwungen)) {

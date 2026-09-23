@@ -11,9 +11,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -93,13 +90,13 @@ final class AgentWaechter implements AgentArbeiter {
     }
 
     private boolean koerperBauen(ServerLevel neueWelt, BlockPos platz) {
-        Mannequin neu = EntityType.MANNEQUIN.create(neueWelt, EntitySpawnReason.COMMAND);
+        Mannequin neu = AgentFassung.mannequin(neueWelt);
         if (neu == null) {
             return false;
         }
         neu.snapTo(platz.getX() + 0.5, platz.getY(), platz.getZ() + 0.5, 0, 0);
         neu.setNoGravity(true);
-        neu.setInvulnerable(true);
+        AgentFassung.unverwundbar(neu);
         neu.setCustomNameVisible(true);
         ausruesten(neu);
         if (!neueWelt.addFreshEntity(neu)) {
@@ -295,12 +292,12 @@ final class AgentWaechter implements AgentArbeiter {
     }
 
     private void zuschlagen() {
-        koerper.swing(InteractionHand.MAIN_HAND, true);
+        AgentFassung.schwingen(koerper);
         boolean getroffen = ziel.hurtServer(welt, welt.damageSources().mobAttack(koerper), schaden);
         if (getroffen) {
             double dx = koerper.getX() - ziel.getX();
             double dz = koerper.getZ() - ziel.getZ();
-            ziel.knockback(0.5, dx, dz);
+            AgentFassung.rueckstoss(ziel, koerper, welt, dx, dz);
             welt.playSound(null, ziel.getX(), ziel.getY(), ziel.getZ(),
                     SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1f, 1f);
             if (!ziel.isAlive()) {

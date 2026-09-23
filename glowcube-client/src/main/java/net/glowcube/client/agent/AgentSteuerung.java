@@ -3,7 +3,6 @@ package net.glowcube.client.agent;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.glowcube.client.GlowCubeClient;
 import net.glowcube.client.core.Module;
 import net.glowcube.client.module.agent.AgentModul;
@@ -33,8 +32,7 @@ public final class AgentSteuerung {
         ServerLifecycleEvents.SERVER_STOPPING.register(AgentWelt::herunterfahren);
         OrbitalStrike.registrieren();
         // Kanal zum Server-Plugin, in beide Richtungen.
-        PayloadTypeRegistry.playC2S().register(AgentPaket.TYP, AgentPaket.CODEC);
-        PayloadTypeRegistry.playS2C().register(AgentPaket.TYP, AgentPaket.CODEC);
+        AgentFassung.kanaeleRegistrieren();
         ClientPlayNetworking.registerGlobalReceiver(AgentPaket.TYP, (paket, kontext) -> vomServer(paket.text()));
     }
 

@@ -18,9 +18,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.decoration.Mannequin;
 import net.minecraft.world.item.ItemStack;
@@ -164,13 +161,13 @@ final class AgentBaumeister implements AgentArbeiter {
     }
 
     private boolean koerperBauen(BlockPos platz) {
-        Mannequin neu = Fassung26.mannequin(welt);
+        Mannequin neu = AgentFassung.mannequin(welt);
         if (neu == null) {
             return false;
         }
         neu.snapTo(platz.getX() + 0.5, platz.getY(), platz.getZ() + 0.5, 0, 0);
         neu.setNoGravity(true);
-        neu.setPermanentlyInvulnerable(true);
+        AgentFassung.unverwundbar(neu);
         neu.setCustomNameVisible(true);
         neu.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BRICKS));
         if (!welt.addFreshEntity(neu)) {
@@ -316,7 +313,7 @@ final class AgentBaumeister implements AgentArbeiter {
                     : new ItemStack(a.zustand.getBlock().asItem());
             koerper.setItemSlot(EquipmentSlot.MAINHAND, hand.isEmpty() ? AgentBloecke.SPITZHACKE.copy() : hand);
             anschauen(Vec3.atCenterOf(a.pos));
-            Fassung26.schwingen(koerper);
+            AgentFassung.schwingen(koerper);
             schwungPause = 4;
         }
     }
