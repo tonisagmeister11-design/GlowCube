@@ -104,8 +104,12 @@ erkannt.
 | `/glowcube seed` | Zeigt, welcher Seed gerade bekannt ist |
 | `/glowcube <modul>` | Schaltet ein Modul, ohne eine Taste zu belegen - Namen mit Leer- oder Bindestrich zusammengeschrieben, z. B. `keinwackeln`, `tnttimer` |
 | `/glowcube fenster` | Raeumt die Menuefenster ins Raster |
+| `/coordinates` (`/koordinaten`) | Deine Position im Chat - Klick kopiert sie; Knoepfe fuer Strike-Ziel und Einsatzort |
+| `/strike [x y z]` | Ziel fuer den Orbital Strike |
+| `/agentort [x y z \| weg]` | Einsatzort der Agenten (ohne Zahlen: wo du stehst) |
+| `/agentkiste [weg]` | Die Kiste, auf die du schaust, wird Sammelkiste |
 
-Alle vier sind rein clientseitig - der Server sieht davon nichts.
+Die ersten vier sind rein clientseitig - der Server sieht davon nichts.
 
 ## Die Module
 
@@ -184,7 +188,7 @@ Berechtigung `glowcube.pvppro`). Sonst schaltet es sich selbst ab.
 
 Die Kategorien folgen der Einteilung von BleachHack.
 
-### Agent (Bereich "Kein Hack", nur 1.21.11)
+### Agent (Bereich "Kein Hack")
 
 Ein NPC in Spielergestalt, der fuer dich abbaut. Geht in der eigenen Welt
 (Einzelspieler oder LAN-Host, mit **Cheats an**) und auf jedem Paper-Server
@@ -197,10 +201,30 @@ siehe `glowcube-plugin/README.md`).
 | Stein-Agent | Baut Stein ab |
 | Holz-Agent | Faellt Baeume |
 | Guardian-Agent | Leibwaechter in Eisen-, Diamant- oder Netherite-Ruestung: folgt dir und bekaempft alles Feindliche um dich |
-| Builder-Agent | Baut ein Schematic genau auf deiner Hoehe direkt vor dir |
+| Builder-Agent | Baut ein Schematic genau auf deiner Hoehe direkt vor dir - mehrere Builder nebeneinander |
+| Farm-Agent | Erntet reifes Getreide, Karotten, Kartoffeln, Rote Bete und Netherwarzen im einstellbaren Radius, pflanzt sofort neu |
+| Tunnel-Agent | Graebt einen Tunnel (1x2, 2x2 oder 3x3) in deine Blickrichtung, bis 512 Bloecke, mit Fackeln alle 8 Bloecke; dichtet Lava und Wasser ab und nimmt Erze aus den Waenden mit |
+| Jaeger-Agent | Jagt Tiere in deiner Naehe (alle oder Kuh/Schwein/Schaf/Huhn/Kaninchen), laesst je Sorte einstellbar viele uebrig, nie Jungtiere oder benannte Tiere, und bringt dir die Beute |
+| Agenten-Uebersicht | HUD-Kasten mit allen deinen Agenten: was sie tun, wie viel Beute, Entfernung und Richtungspfeil |
 | Agent zurueckschicken | Ruft alle Agenten zurueck |
 
-Jeder Agent hat vier Einstellungen (Rechtsklick), die auch waehrend der
+**Mehrere Agenten je Art:** Unter **Anzahl** (1-5) stellst du ein, wie viele
+losgeschickt werden. Unter **Einstellen fuer** waehlst du Agent 1 bis 5 -
+darunter stehen dann nur dessen Einstellungen (Erzart, Tempo, Schematic,
+Radius ...). So sucht etwa Erz-Agent 1 Diamanten und Erz-Agent 2 Eisen.
+Mehrere Agenten schwaermen in verschiedene Richtungen aus und nehmen sich nie
+denselben Block vor. Anzahl waehrend der Arbeit hochdrehen schickt weitere
+los, runterdrehen ruft die ueberzaehligen zurueck. **Leuchten** laesst alle
+Agenten der Art durch Waende leuchten.
+
+**Einsatzort** (`/agentort`): Neue Abbau-, Farm- und Tunnel-Agenten arbeiten
+dort statt bei dir, der Builder baut dort. Guardian und Jaeger bleiben bei dir.
+
+**Sammelkiste** (`/agentkiste`, auf eine Kiste oder ein Fass schauen): Ist ein
+Agent voll, bringt er alles dorthin und arbeitet danach an derselben Stelle
+weiter - so koennen Agenten endlos arbeiten. Ist die Kiste voll, kommt er zu dir.
+
+Die Abbau-Agenten haben dazu je Agent vier Einstellungen, die auch waehrend der
 Arbeit sofort gelten: **Tempo** (1-4, wie schnell er laeuft), **Abbau-Tempo**
 (1-20, wie viel schneller als mit Diamantwerkzeug), **X-Ray** (an: er sieht
 Zielbloecke durch Stein in allen Chunks um sich herum, ueber die ganze
