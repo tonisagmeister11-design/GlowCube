@@ -164,13 +164,13 @@ final class AgentBaumeister implements AgentArbeiter {
     }
 
     private boolean koerperBauen(BlockPos platz) {
-        Mannequin neu = EntityType.MANNEQUIN.create(welt, EntitySpawnReason.COMMAND);
+        Mannequin neu = Fassung26.mannequin(welt);
         if (neu == null) {
             return false;
         }
         neu.snapTo(platz.getX() + 0.5, platz.getY(), platz.getZ() + 0.5, 0, 0);
         neu.setNoGravity(true);
-        neu.setInvulnerable(true);
+        neu.setPermanentlyInvulnerable(true);
         neu.setCustomNameVisible(true);
         neu.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BRICKS));
         if (!welt.addFreshEntity(neu)) {
@@ -316,7 +316,7 @@ final class AgentBaumeister implements AgentArbeiter {
                     : new ItemStack(a.zustand.getBlock().asItem());
             koerper.setItemSlot(EquipmentSlot.MAINHAND, hand.isEmpty() ? AgentBloecke.SPITZHACKE.copy() : hand);
             anschauen(Vec3.atCenterOf(a.pos));
-            koerper.swing(InteractionHand.MAIN_HAND, true);
+            Fassung26.schwingen(koerper);
             schwungPause = 4;
         }
     }

@@ -44,19 +44,19 @@ final class AgentBloecke {
 
     private static boolean istErz(BlockState s, String art) {
         return switch (art) {
-            case "Diamant" -> s.is(BlockTags.DIAMOND_ORES);
+            case "Diamant" -> s.is(Blocks.DIAMOND_ORE) || s.is(Blocks.DEEPSLATE_DIAMOND_ORE);
             case "Eisen" -> s.is(BlockTags.IRON_ORES);
             case "Gold" -> s.is(BlockTags.GOLD_ORES);
-            case "Redstone" -> s.is(BlockTags.REDSTONE_ORES);
-            case "Lapis" -> s.is(BlockTags.LAPIS_ORES);
-            case "Kohle" -> s.is(BlockTags.COAL_ORES);
+            case "Redstone" -> s.is(Blocks.REDSTONE_ORE) || s.is(Blocks.DEEPSLATE_REDSTONE_ORE);
+            case "Lapis" -> s.is(Blocks.LAPIS_ORE) || s.is(Blocks.DEEPSLATE_LAPIS_ORE);
+            case "Kohle" -> s.is(Blocks.COAL_ORE) || s.is(Blocks.DEEPSLATE_COAL_ORE);
             case "Kupfer" -> s.is(BlockTags.COPPER_ORES);
-            case "Smaragd" -> s.is(BlockTags.EMERALD_ORES);
+            case "Smaragd" -> s.is(Blocks.EMERALD_ORE) || s.is(Blocks.DEEPSLATE_EMERALD_ORE);
             case "Antiker Schrott" -> s.is(Blocks.ANCIENT_DEBRIS);
             case "Quarz" -> s.is(Blocks.NETHER_QUARTZ_ORE);
-            default -> s.is(BlockTags.DIAMOND_ORES) || s.is(BlockTags.IRON_ORES) || s.is(BlockTags.GOLD_ORES)
-                    || s.is(BlockTags.REDSTONE_ORES) || s.is(BlockTags.LAPIS_ORES) || s.is(BlockTags.COAL_ORES)
-                    || s.is(BlockTags.COPPER_ORES) || s.is(BlockTags.EMERALD_ORES)
+            default -> s.is(Blocks.DIAMOND_ORE) || s.is(Blocks.DEEPSLATE_DIAMOND_ORE) || s.is(BlockTags.IRON_ORES) || s.is(BlockTags.GOLD_ORES)
+                    || s.is(Blocks.REDSTONE_ORE) || s.is(Blocks.DEEPSLATE_REDSTONE_ORE) || s.is(Blocks.LAPIS_ORE) || s.is(Blocks.DEEPSLATE_LAPIS_ORE) || s.is(Blocks.COAL_ORE) || s.is(Blocks.DEEPSLATE_COAL_ORE)
+                    || s.is(BlockTags.COPPER_ORES) || s.is(Blocks.EMERALD_ORE) || s.is(Blocks.DEEPSLATE_EMERALD_ORE)
                     || s.is(Blocks.ANCIENT_DEBRIS) || s.is(Blocks.NETHER_QUARTZ_ORE);
         };
     }

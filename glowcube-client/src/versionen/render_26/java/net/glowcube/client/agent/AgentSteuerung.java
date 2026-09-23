@@ -33,8 +33,8 @@ public final class AgentSteuerung {
         ServerLifecycleEvents.SERVER_STOPPING.register(AgentWelt::herunterfahren);
         OrbitalStrike.registrieren();
         // Kanal zum Server-Plugin, in beide Richtungen.
-        PayloadTypeRegistry.playC2S().register(AgentPaket.TYP, AgentPaket.CODEC);
-        PayloadTypeRegistry.playS2C().register(AgentPaket.TYP, AgentPaket.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(AgentPaket.TYP, AgentPaket.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(AgentPaket.TYP, AgentPaket.CODEC);
         ClientPlayNetworking.registerGlobalReceiver(AgentPaket.TYP, (paket, kontext) -> vomServer(paket.text()));
     }
 

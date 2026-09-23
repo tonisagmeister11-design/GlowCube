@@ -93,13 +93,13 @@ final class AgentWaechter implements AgentArbeiter {
     }
 
     private boolean koerperBauen(ServerLevel neueWelt, BlockPos platz) {
-        Mannequin neu = EntityType.MANNEQUIN.create(neueWelt, EntitySpawnReason.COMMAND);
+        Mannequin neu = Fassung26.mannequin(neueWelt);
         if (neu == null) {
             return false;
         }
         neu.snapTo(platz.getX() + 0.5, platz.getY(), platz.getZ() + 0.5, 0, 0);
         neu.setNoGravity(true);
-        neu.setInvulnerable(true);
+        neu.setPermanentlyInvulnerable(true);
         neu.setCustomNameVisible(true);
         ausruesten(neu);
         if (!neueWelt.addFreshEntity(neu)) {
@@ -295,12 +295,12 @@ final class AgentWaechter implements AgentArbeiter {
     }
 
     private void zuschlagen() {
-        koerper.swing(InteractionHand.MAIN_HAND, true);
+        Fassung26.schwingen(koerper);
         boolean getroffen = ziel.hurtServer(welt, welt.damageSources().mobAttack(koerper), schaden);
         if (getroffen) {
             double dx = koerper.getX() - ziel.getX();
             double dz = koerper.getZ() - ziel.getZ();
-            ziel.knockback(0.5, dx, dz);
+            ziel.knockback(0.5, dx, dz, welt.damageSources().mobAttack(koerper), 1.0f);
             welt.playSound(null, ziel.getX(), ziel.getY(), ziel.getZ(),
                     SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1f, 1f);
             if (!ziel.isAlive()) {

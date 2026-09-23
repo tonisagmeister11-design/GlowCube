@@ -19,11 +19,11 @@ final class ChunkHalter {
             freigeben();
         }
         welt = neueWelt;
-        ChunkPos mitte = new ChunkPos(um);
+        ChunkPos mitte = ChunkPos.containing(um);
         Set<Long> gewuenscht = new HashSet<>();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                gewuenscht.add(ChunkPos.asLong(mitte.x + dx, mitte.z + dz));
+                gewuenscht.add(ChunkPos.pack(mitte.x() + dx, mitte.z() + dz));
             }
         }
         for (long c : new ArrayList<>(erzwungen)) {

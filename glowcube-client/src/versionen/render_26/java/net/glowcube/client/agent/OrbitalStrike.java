@@ -285,7 +285,7 @@ final class OrbitalStrike {
                 double x = z.getX() + 0.5 + Math.cos(winkel) * radius;
                 double zz = z.getZ() + 0.5 + Math.sin(winkel) * radius;
                 PrimedTnt tnt = new PrimedTnt(e.welt, x, z.getY() + 40, zz, null);
-                tnt.setFuse(58 + e.welt.random.nextInt(6));
+                tnt.setFuse(58 + e.welt.getRandom().nextInt(6));
                 e.welt.addFreshEntity(tnt);
             }
         }
