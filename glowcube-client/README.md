@@ -108,8 +108,9 @@ Alle vier sind rein clientseitig - der Server sieht davon nichts.
 | Criticals | Erzwingt kritische Treffer - fuenf Betriebsarten, plus Schmetterschlag mit der Keule |
 | AutoTotem | Haelt ein Totem in der Zweithand, sobald es rechnerisch eng wird |
 
-**PvP Pro** (Combat) kaempft fuer dich gegen einen Spieler: Ziel ist der
-erste Spieler, den du schlaegst (oder der naechste). Modi Schwert, Axt und
+**PvP Pro** (Combat) kaempft fuer dich gegen einen Spieler oder Mob: Ziel ist
+das erste Lebewesen, das du schlaegst - Spieler oder Mob (oder der naechste
+Spieler). Modi Schwert, Axt und
 Crystal. Die Kamera dreht sich sichtbar und weich zum Gegner, geschlagen
 wird nur mit dem Fadenkreuz auf ihm und vollem Cooldown; kritische Treffer
 aus dem Sprung, Schild brechen mit der Axt, Laufen und seitliches Kreisen.

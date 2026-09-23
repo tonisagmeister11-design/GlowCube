@@ -21,6 +21,8 @@ import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -36,7 +38,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Random;
 
 /**
- * PvP Pro: kaempft fuer dich gegen einen Spieler - so, wie ein guter Spieler
+ * PvP Pro: kaempft fuer dich gegen einen Spieler oder Mob - so, wie ein guter Spieler
  * es tun wuerde, nicht wie eine KillAura.
  *
  * <p><b>Nur mit Erlaubnis:</b> laeuft in der eigenen Welt (Einzelspieler,
@@ -68,7 +70,7 @@ public final class PvpPro extends Module {
     private final ModeSetting modus = register(new ModeSetting("Modus", "Wie gekaempft wird",
             "Schwert", "Schwert", "Axt", "Crystal"));
     private final ModeSetting zielWahl = register(new ModeSetting("Ziel",
-            "Erster Schlag: wen du zuerst schlaegst. Naechster: der naechste Spieler",
+            "Erster Schlag: wen du zuerst schlaegst (Spieler oder Mob). Naechster: der naechste Spieler",
             "Erster Schlag", "Erster Schlag", "Naechster"));
     private final NumberSetting reichweite = register(new NumberSetting("Reichweite",
             "Ab welchem Abstand geschlagen wird", 2.9, 2.5, 3.0, 0.05));
@@ -101,7 +103,7 @@ public final class PvpPro extends Module {
 
     private final Random zufall = new Random();
 
-    private Player ziel;
+    private LivingEntity ziel;
     private Vec3 trefferVersatz = Vec3.ZERO;
     private int versatzAlter;
     private int aktionPause;
@@ -129,7 +131,7 @@ public final class PvpPro extends Module {
         }
         if (inGame()) {
             Netz.nachricht(Component.literal(zielWahl.is("Erster Schlag")
-                    ? "[PvP Pro] Bereit - schlag den Spieler, gegen den ich kaempfen soll."
+                    ? "[PvP Pro] Bereit - schlag den Spieler oder Mob, gegen den ich kaempfen soll."
                     : "[PvP Pro] Bereit - ich nehme den naechsten Spieler."), false);
         }
     }
@@ -147,9 +149,11 @@ public final class PvpPro extends Module {
     /** Der erste Spieler, den du schlaegst, wird zum Ziel. */
     @Override
     public boolean onEntityAttack(Entity getroffen) {
-        if (ziel == null && getroffen instanceof Player p && p != player()) {
-            ziel = p;
-            Netz.nachricht(Component.literal("[PvP Pro] Ziel: " + p.getName().getString()), false);
+        // Spieler oder Mob - wer zuerst geschlagen wird, ist das Ziel.
+        if (ziel == null && getroffen instanceof LivingEntity lebend && lebend != player()
+                && !(lebend instanceof ArmorStand)) {
+            ziel = lebend;
+            Netz.nachricht(Component.literal("[PvP Pro] Ziel: " + lebend.getName().getString()), false);
         }
         return false;
     }
