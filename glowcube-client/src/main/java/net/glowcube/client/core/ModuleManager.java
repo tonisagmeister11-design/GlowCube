@@ -47,6 +47,10 @@ import net.glowcube.client.module.optik.KeineVignette;
 import net.glowcube.client.module.optik.NiedrigesFeuer;
 import net.glowcube.client.module.optik.TntTimer;
 import net.glowcube.client.module.hud.ComboHud;
+import net.glowcube.client.module.agent.AgentZurueck;
+import net.glowcube.client.module.agent.ErzAgent;
+import net.glowcube.client.module.agent.HolzAgent;
+import net.glowcube.client.module.agent.SteinAgent;
 import net.glowcube.client.module.hud.CpsHud;
 import net.glowcube.client.module.hud.FpsHud;
 import net.glowcube.client.module.hud.KeystrokesHud;
@@ -202,6 +206,12 @@ public final class ModuleManager {
         add(new EigenerName());
         add(new KeinBeaconStrahl());
         add(new TntTimer());
+
+        // Agenten: NPCs, die in der eigenen Welt fuer dich abbauen.
+        add(new ErzAgent());
+        add(new SteinAgent());
+        add(new HolzAgent());
+        add(new AgentZurueck());
     }
 
     private void add(Module module) {
@@ -444,7 +454,11 @@ public final class ModuleManager {
         for (Module module : modules) {
             if (module.isEnabled()) {
                 module.onDisable();
-                pending.add(module);
+                if (module.bleibtNachWeltwechsel()) {
+                    pending.add(module);
+                } else {
+                    module.setEnabledSilently(false);
+                }
             }
         }
     }

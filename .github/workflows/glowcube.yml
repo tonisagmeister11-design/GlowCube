@@ -345,7 +345,10 @@ jobs:
               "net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket#getId" \
               "net.minecraft.client.Camera#void setup(" \
               "net.minecraft.client.gui.Gui#void renderVignette(" \
-              "net.minecraft.client.renderer.ScreenEffectRenderer#static void renderFire(com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.MultiBufferSource, net.minecraft.client.renderer.texture.TextureAtlasSprite)"
+              "net.minecraft.client.renderer.ScreenEffectRenderer#static void renderFire(com.mojang.blaze3d.vertex.PoseStack, net.minecraft.client.renderer.MultiBufferSource, net.minecraft.client.renderer.texture.TextureAtlasSprite)" \
+              "net.minecraft.world.entity.EntityType#MANNEQUIN" \
+              "net.minecraft.world.entity.LivingEntity#void swing(net.minecraft.world.InteractionHand, boolean)" \
+              "net.minecraft.server.level.ServerLevel#boolean setChunkForced(int, int, boolean)"
           else
             python3 verify-api.py build/classpath.txt \
               "net.minecraft.client.DeltaTracker\$Timer#advanceGameTime" \

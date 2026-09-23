@@ -182,6 +182,14 @@ public abstract class Module {
                 .getDisplayName().getString().toUpperCase(java.util.Locale.ROOT);
     }
 
+    /**
+     * Ob das Modul nach einem Weltwechsel von selbst wieder anspringt. Die
+     * Agenten nicht - sonst stuende bei jedem Betreten ein neuer da.
+     */
+    public boolean bleibtNachWeltwechsel() {
+        return true;
+    }
+
     /** Was im HUD hinter dem Namen steht, z.B. "Speed [2.5]". Null heisst: nichts. */
     public String hudSuffix() {
         return null;

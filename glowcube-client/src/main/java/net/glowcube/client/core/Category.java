@@ -20,7 +20,9 @@ public enum Category {
     PERFORMANCE("Performance", "\u2726", 0xFFB6FF3B, Bereich.KEIN_HACK),
     PVP_HUD("PvP-HUD", "\u2694", 0xFFFF7A7A, Bereich.KEIN_HACK),
     HUD("Info-HUD", "\u25A3", 0xFF7FC4FF, Bereich.KEIN_HACK),
-    OPTIK("Optik", "\u25C9", 0xFFFF9F5F, Bereich.KEIN_HACK);
+    OPTIK("Optik", "\u25C9", 0xFFFF9F5F, Bereich.KEIN_HACK),
+    // Admin-Werkzeug fuer die eigene Welt: ein NPC, der fuer dich abbaut.
+    AGENT("Agent", "\u263A", 0xFF5FD7FF, Bereich.KEIN_HACK);
 
     /**
      * Die zwei Bereiche, in die das Menue oben aufteilt: was ein Hack ist und

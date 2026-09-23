@@ -163,6 +163,34 @@ Alle vier sind rein clientseitig - der Server sieht davon nichts.
 
 Die Kategorien folgen der Einteilung von BleachHack.
 
+### Agent (Bereich "Kein Hack", nur 1.21.11)
+
+Ein NPC in Spielergestalt, der fuer dich abbaut. Geht nur in der eigenen
+Welt (Einzelspieler oder LAN-Host) und nur mit Admin-Rechten - in der
+Einzelspielerwelt heisst das: **Cheats an**.
+
+| Modul | Was es tut |
+| --- | --- |
+| Erz-Agent | Baut Erz ab - alle oder gezielt eine Sorte (Diamant, Eisen, Gold, Redstone, Lapis, Kohle, Kupfer, Smaragd, Antiker Schrott, Quarz) |
+| Stein-Agent | Baut Stein ab |
+| Holz-Agent | Faellt Baeume |
+| Agent zurueckschicken | Ruft alle Agenten zurueck |
+
+So arbeitet er: Er sucht im Umkreis die naechsten Zielbloecke und plant
+einen Weg dorthin - durch Hoehlen oder, wenn kuerzer, als Tunnel und Treppe
+durch den Stein. Lava meidet er, Bloecke neben Lava baut er nicht ab, Truhen
+und Spawner laesst er stehen. Findet er nichts, graebt er sich in die beste
+Hoehe fuer das gewaehlte Erz (Diamant: Y -58) und legt dort einen Gang an;
+der Holz-Agent zieht ueber die Oberflaeche weiter. Ueber Luecken baut er
+Bruecken, zu hohen Staemmen einen Turm. Die Chunks um ihn herum bleiben
+geladen, solange er arbeitet.
+
+Zurueckschicken (Modul ausschalten oder "Agent zurueckschicken"): Ist er
+nah genug, laeuft oder graebt er sich zu dir, sonst teleportiert er sich.
+Dann wirft er dir seine Beute Stapel fuer Stapel zu und verschwindet. Ist
+sein Inventar voll, kommt er von selbst. Wird die Welt geschlossen, landet
+die Beute direkt in deinem Inventar.
+
 ### Performance (Bereich "Kein Hack")
 
 **Ultra-Performance** dreht alles herunter, was Bild kostet: Sichtweite

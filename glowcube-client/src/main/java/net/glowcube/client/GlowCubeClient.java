@@ -56,6 +56,8 @@ public final class GlowCubeClient implements ClientModInitializer {
         ClientChunkEvents.CHUNK_UNLOAD.register((welt, chunk) -> Search.chunkEntladen(chunk.getPos()));
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> config.save());
         GlowCubeCommands.registrieren();
+        // Agenten laufen auf dem Server der eigenen Welt - dessen Ticks abonnieren.
+        net.glowcube.client.agent.AgentSteuerung.registrieren();
 
         LOGGER.info("{} {} geladen - {} Module", NAME, VERSION, modules.all().size());
     }
