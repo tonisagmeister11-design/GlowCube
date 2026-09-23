@@ -150,7 +150,9 @@ jobs:
             "net.minecraft.server.packs.repository.Pack:Title" || true
           # Performance-Modus: alle Optionen und was das Ressourcenpaket braucht.
           python3 probe-api.py build/classpath.txt \
-            "net.minecraft.client.Options:OptionInstance|resourcePacks|save|updateResourcePacks" \
+            "net.minecraft.client.Options:^public .*OptionInstance.* (render|simul|entity|frame|graphic|cloud|weather|cutout|vignette|improved|ambient|chunk|priorit|mipmap)" \
+            "net.minecraft.client.Options:^public .*OptionInstance.* (anisotrop|texture|particle|bob|vsync|enableVsync|biome|screenEffect|fov|distortion|damageTilt|glint|darkness|menuBackground|inactivity|hideLightning|fullscreen|showAutosave)" \
+            "net.minecraft.client.Options:resourcePacks|save\\(|updateResourcePacks" \
             "com.mojang.blaze3d.platform.NativeImage:read\\(|getPixel|setPixel|writeToFile|<init>|NativeImage\\(int|getWidth|getHeight|close" \
             "net.minecraft.client.Minecraft:ResourcePack|getResourceManager|gameDirectory" \
             "net.minecraft.server.packs.resources.ResourceManager:listResources" \
