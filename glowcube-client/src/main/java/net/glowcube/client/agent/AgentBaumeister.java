@@ -49,7 +49,11 @@ final class AgentBaumeister implements AgentArbeiter {
     }
 
     private final UUID besitzer;
+    private final int nummer;
     private final String planName;
+    /** Seitlicher Versatz, damit mehrere Builder nebeneinander bauen. */
+    private int versatz;
+    private int rechterRand;
     private AgentWerte werte;
     private MinecraftServer server;
     private int befuellt;
@@ -69,24 +73,39 @@ final class AgentBaumeister implements AgentArbeiter {
     private boolean fertig;
     private boolean abgebrochen;
 
-    private AgentBaumeister(UUID besitzer, String planName, AgentWerte werte) {
+    private AgentBaumeister(UUID besitzer, int nummer, String planName, AgentWerte werte) {
         this.besitzer = besitzer;
+        this.nummer = nummer;
         this.planName = planName;
         this.werte = werte;
     }
 
-    static AgentBaumeister erschaffen(ServerPlayer spieler, String planName, AgentWerte werte) {
+    /**
+     * @param linkerRand 0 fuer den ersten Builder; sonst die seitliche Stelle,
+     *                   ab der seine Baustelle anfangen muss (rechts neben den anderen)
+     */
+    static AgentBaumeister erschaffen(ServerPlayer spieler, int nummer, String planName, AgentWerte werte,
+                                      int linkerRand) {
         Bauplan plan = Bauplaene.laden(planName);
         if (plan == null) {
             AgentWelt.melden(spieler, ChatFormatting.RED, "Schematic \"" + planName + "\" gibt es nicht oder es ist kaputt. "
                     + "Eigene Schematics gehoeren nach " + Bauplaene.ordner());
             return null;
         }
-        AgentBaumeister b = new AgentBaumeister(spieler.getUUID(), planName, werte);
+        AgentBaumeister b = new AgentBaumeister(spieler.getUUID(), nummer, planName, werte);
         ServerLevel welt = (ServerLevel) spieler.level();
+        BlockPos ursprung = spieler.blockPosition();
+        // Einsatzort: dort bauen statt vor dem Spieler.
+        AgentWelt.WeltOrt ort = AgentWelt.ort(spieler.getUUID());
+        if (ort != null) {
+            welt = ort.welt();
+            ursprung = ort.pos();
+        }
         b.welt = welt;
-        b.liste = b.planen(plan, spieler);
-        if (!b.koerperBauen(Agent.sichererPlatzBei(welt, spieler.blockPosition()))) {
+        b.versatz = linkerRand > 0 ? linkerRand + plan.breite / 2 : 0;
+        b.rechterRand = b.versatz + plan.breite - 1 - plan.breite / 2;
+        b.liste = b.planen(plan, spieler, ursprung);
+        if (!b.koerperBauen(Agent.sichererPlatzBei(welt, ursprung))) {
             return null;
         }
         b.effekt(ParticleTypes.PORTAL, 40);
@@ -99,7 +118,7 @@ final class AgentBaumeister implements AgentArbeiter {
      * Aus dem Plan die Liste der Weltpositionen und Zustaende: gedreht in die
      * Blickrichtung des Spielers, von unten nach oben, je Schicht in Schlangenlinien.
      */
-    private List<Auftragsblock> planen(Bauplan plan, ServerPlayer spieler) {
+    private List<Auftragsblock> planen(Bauplan plan, ServerPlayer spieler, BlockPos ursprung) {
         Direction blick = spieler.getDirection();
         Rotation drehung = switch (blick) {
             case WEST -> Rotation.CLOCKWISE_90;
@@ -107,7 +126,6 @@ final class AgentBaumeister implements AgentArbeiter {
             case EAST -> Rotation.COUNTERCLOCKWISE_90;
             default -> Rotation.NONE;
         };
-        BlockPos ursprung = spieler.blockPosition();
         HolderLookup.RegistryLookup<Block> bloecke = welt.registryAccess().lookupOrThrow(Registries.BLOCK);
         Map<String, BlockState> zwischenspeicher = new HashMap<>();
 
@@ -123,7 +141,7 @@ final class AgentBaumeister implements AgentArbeiter {
                 unbekannt++;
                 continue;
             }
-            int lx = b.x() - halbeBreite;
+            int lx = b.x() - halbeBreite + versatz;
             int lz = b.z() + 2;
             int wx;
             int wz;
@@ -169,6 +187,7 @@ final class AgentBaumeister implements AgentArbeiter {
         neu.setNoGravity(true);
         AgentFassung.unverwundbar(neu);
         neu.setCustomNameVisible(true);
+        neu.setGlowingTag(werte.leuchten());
         neu.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.BRICKS));
         if (!welt.addFreshEntity(neu)) {
             return false;
@@ -189,8 +208,36 @@ final class AgentBaumeister implements AgentArbeiter {
     }
 
     @Override
+    public int nummer() {
+        return nummer;
+    }
+
+    /** Die aeusserste seitliche Stelle seiner Baustelle - der naechste Builder faengt rechts davon an. */
+    int rechterRand() {
+        return rechterRand;
+    }
+
+    @Override
     public String titel() {
-        return "Builder-Agent (" + planName + ")";
+        return "Builder-Agent #" + nummer + " (" + planName + ")";
+    }
+
+    @Override
+    public net.minecraft.world.entity.Entity koerper() {
+        return koerper;
+    }
+
+    @Override
+    public String zustandText() {
+        if (liste == null || liste.isEmpty()) {
+            return "baut";
+        }
+        return abgebrochen ? "hoert auf" : "baut " + Math.min(100, index * 100 / liste.size()) + "%";
+    }
+
+    @Override
+    public int beute() {
+        return gesetzt;
     }
 
     @Override
@@ -213,6 +260,9 @@ final class AgentBaumeister implements AgentArbeiter {
     @Override
     public void einstellen(AgentWerte neu) {
         werte = neu;
+        if (koerper != null) {
+            koerper.setGlowingTag(neu.leuchten());
+        }
     }
 
     @Override

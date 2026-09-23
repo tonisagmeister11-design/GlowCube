@@ -33,6 +33,9 @@ import java.util.Locale;
  *   <li>{@code /strike x y z} (oder {@code /glowcube ziel x y z}) setzt das
  *       Ziel auf feste Koordinaten; {@code /strike} allein nimmt, worauf man
  *       schaut.</li>
+ *   <li>{@code /agentort [x y z | weg]} setzt den Einsatzort der Agenten
+ *       (ohne Zahlen: wo man steht); {@code /agentkiste [weg]} macht die Kiste,
+ *       auf die man schaut, zur Sammelkiste.</li>
  *   <li>{@code /coordinates} (auch {@code /koordinaten}) schreibt die eigene
  *       Position in den Chat - Klick darauf kopiert sie.</li>
  * </ul>
@@ -45,6 +48,35 @@ public final class GlowCubeCommands {
         ClientCommandRegistrationCallback.EVENT.register((zweig, zugriff) -> {
             zweig.register(ClientCommandManager.literal("coordinates").executes(kontext -> koordinaten(kontext.getSource())));
             zweig.register(ClientCommandManager.literal("koordinaten").executes(kontext -> koordinaten(kontext.getSource())));
+            zweig.register(ClientCommandManager.literal("agentort")
+                    .executes(kontext -> {
+                        net.minecraft.core.BlockPos p = kontext.getSource().getPlayer().blockPosition();
+                        sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.ortSetzen(p.getX(), p.getY(), p.getZ()));
+                        return 1;
+                    })
+                    .then(ClientCommandManager.literal("weg").executes(kontext -> {
+                        sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.ortLoeschen());
+                        return 1;
+                    }))
+                    .then(ClientCommandManager.argument("x", IntegerArgumentType.integer())
+                            .then(ClientCommandManager.argument("y", IntegerArgumentType.integer())
+                                    .then(ClientCommandManager.argument("z", IntegerArgumentType.integer())
+                                            .executes(kontext -> {
+                                                sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.ortSetzen(
+                                                        IntegerArgumentType.getInteger(kontext, "x"),
+                                                        IntegerArgumentType.getInteger(kontext, "y"),
+                                                        IntegerArgumentType.getInteger(kontext, "z")));
+                                                return 1;
+                                            })))));
+            zweig.register(ClientCommandManager.literal("agentkiste")
+                    .executes(kontext -> {
+                        sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.kisteMarkieren());
+                        return 1;
+                    })
+                    .then(ClientCommandManager.literal("weg").executes(kontext -> {
+                        sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.kisteLoeschen());
+                        return 1;
+                    })));
             zweig.register(ClientCommandManager.literal("strike")
                     .executes(kontext -> {
                         sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.zielMarkieren());
@@ -138,8 +170,12 @@ public final class GlowCubeCommands {
                 .withColor(ChatFormatting.RED)
                 .withClickEvent(new ClickEvent.SuggestCommand("/strike " + text))
                 .withHoverEvent(new HoverEvent.ShowText(Component.literal("/strike " + text + " ins Chatfeld"))));
+        MutableComponent einsatz = Component.literal("[Als Einsatzort]").withStyle(stil -> stil
+                .withColor(ChatFormatting.AQUA)
+                .withClickEvent(new ClickEvent.SuggestCommand("/agentort " + text))
+                .withHoverEvent(new HoverEvent.ShowText(Component.literal("/agentort " + text + " ins Chatfeld"))));
         quelle.sendFeedback(Component.literal("[GlowCube] Du stehst bei ").append(zahlen)
-                .append(Component.literal(" ")).append(strike));
+                .append(Component.literal(" ")).append(strike).append(Component.literal(" ")).append(einsatz));
         return 1;
     }
 

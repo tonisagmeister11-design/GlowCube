@@ -48,7 +48,11 @@ import net.glowcube.client.module.optik.KeineVignette;
 import net.glowcube.client.module.optik.NiedrigesFeuer;
 import net.glowcube.client.module.optik.TntTimer;
 import net.glowcube.client.module.hud.ComboHud;
+import net.glowcube.client.module.agent.AgentUebersicht;
 import net.glowcube.client.module.agent.AgentZurueck;
+import net.glowcube.client.module.agent.FarmAgent;
+import net.glowcube.client.module.agent.JaegerAgent;
+import net.glowcube.client.module.agent.TunnelAgent;
 import net.glowcube.client.module.agent.ErzAgent;
 import net.glowcube.client.module.agent.HolzAgent;
 import net.glowcube.client.module.agent.GuardianAgent;
@@ -217,6 +221,10 @@ public final class ModuleManager {
         add(new HolzAgent());
         add(new GuardianAgent());
         add(new BuilderAgent());
+        add(new FarmAgent());
+        add(new TunnelAgent());
+        add(new JaegerAgent());
+        add(new AgentUebersicht());
         add(new AgentZurueck());
     }
 

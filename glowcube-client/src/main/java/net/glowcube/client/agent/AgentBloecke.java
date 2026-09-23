@@ -9,6 +9,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -37,9 +39,19 @@ final class AgentBloecke {
             case STEIN -> s.is(BlockTags.BASE_STONE_OVERWORLD) && !s.is(Blocks.GRAVEL)
                     || s.is(Blocks.COBBLESTONE) || s.is(Blocks.COBBLED_DEEPSLATE);
             case ERZ -> istErz(s, art);
-            // Guardian und Builder suchen keine Bloecke.
-            case WAECHTER, BAUMEISTER -> false;
+            case TUNNEL -> istErz(s, "Alle");
+            case BAUER -> reif(s);
+            // Guardian, Jaeger und Builder suchen keine Bloecke.
+            case WAECHTER, BAUMEISTER, JAEGER -> false;
         };
+    }
+
+    /** Reifes Feld: Weizen, Karotten, Kartoffeln, Rote Bete (ausgewachsen) und Netherwarzen. */
+    static boolean reif(BlockState s) {
+        if (s.getBlock() instanceof CropBlock pflanze) {
+            return pflanze.isMaxAge(s);
+        }
+        return s.is(Blocks.NETHER_WART) && s.getValue(NetherWartBlock.AGE) >= 3;
     }
 
     private static boolean istErz(BlockState s, String art) {

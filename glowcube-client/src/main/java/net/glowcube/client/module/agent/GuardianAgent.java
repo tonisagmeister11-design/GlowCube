@@ -9,15 +9,13 @@ import net.glowcube.client.core.setting.ModeSetting;
  * noch ein Herz, laesst er den Gegner und kommt zu dir.
  */
 public final class GuardianAgent extends AgentModul {
-    private final ModeSetting ruestung = register(new ModeSetting("Ausruestung",
-            "Ruestung und Schwert des Waechters", "Diamant", "Eisen", "Diamant", "Netherite"));
-
     public GuardianAgent() {
-        super(Auftrag.WAECHTER, "Ein Leibwaechter, der alles Feindliche um dich herum bekaempft");
+        super(Auftrag.WAECHTER, "Leibwaechter, die alles Feindliche um dich herum bekaempfen");
     }
 
     @Override
-    protected String art() {
-        return ruestung.get();
+    protected ModeSetting artEinstellung(String vor) {
+        return new ModeSetting(vor + "Ausruestung", "Ruestung und Schwert dieses Waechters",
+                "Diamant", "Eisen", "Diamant", "Netherite");
     }
 }

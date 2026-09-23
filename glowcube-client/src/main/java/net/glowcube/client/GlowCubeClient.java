@@ -51,6 +51,8 @@ public final class GlowCubeClient implements ClientModInitializer {
         net.glowcube.client.render.RenderBruecke.registriere(modules, hud);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             net.glowcube.client.agent.PvpFreigabe.zuruecksetzen();
+            net.glowcube.client.agent.AgentStatus.leeren();
+            net.glowcube.client.agent.AgentStatus.leeren();
             modules.onWorldLeave();
         });
         // Search durchsucht jeden Chunk einmal beim Laden statt jeden Tick

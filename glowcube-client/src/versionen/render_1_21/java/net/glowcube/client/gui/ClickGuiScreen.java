@@ -307,6 +307,9 @@ public final class ClickGuiScreen extends Screen {
         }
 
         for (Setting setting : module.settings()) {
+            if (!setting.sichtbar()) {
+                continue;
+            }
             cursor = einstellungZeichnen(gfx, fenster, module, setting, x, cursor, mouseX, mouseY);
         }
         // Eine Trennlinie unter dem aufgeklappten Block, sonst laeuft er

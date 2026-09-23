@@ -17,6 +17,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.decoration.Mannequin;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
@@ -26,7 +27,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Guardian-Agent: ein Leibwaechter in voller Ruestung (Eisen, Diamant oder
+ * Guardian- und Jaeger-Agent. Der <b>Jaeger</b> nutzt denselben Koerper und
+ * dieselbe Kampflogik, greift aber Tiere an statt Monster: Kuehe, Schweine,
+ * Schafe, Huehner und Kaninchen im Umkreis von 24 Bloecken um den Spieler,
+ * nie Jungtiere, nie benannte Tiere, und von jeder Sorte laesst er so viele
+ * uebrig wie eingestellt. Die Beute sammelt er ein; beim Zurueckrufen wirft
+ * er sie dem Spieler zu, mit Sammelkiste bringt er sie dorthin.
+ *
+ * <p>Guardian-Agent: ein Leibwaechter in voller Ruestung (Eisen, Diamant oder
  * Netherite) mit Schwert. Er haelt sich bei seinem Spieler und greift an:
  * jedes Monster im Umkreis von 16 Bloecken um den Spieler, jeden Mob, der
  * den Spieler ins Visier nimmt, und wer den Spieler gerade getroffen hat.
@@ -42,6 +50,9 @@ final class AgentWaechter implements AgentArbeiter {
     private static final int ANGRIFF_PAUSE = 12;
 
     private final UUID besitzer;
+    private final Auftrag auftrag;
+    private final int nummer;
+    private final boolean jaeger;
     private final String ruestung;
     private final float schaden;
     private AgentWerte werte;
@@ -58,6 +69,14 @@ final class AgentWaechter implements AgentArbeiter {
     private int kills;
     private boolean fertig;
 
+    // Jaeger: Beute
+    private final SimpleContainer lager = new SimpleContainer(27);
+    private BlockPos beuteOrt;
+    private int beuteTicks;
+    private boolean abliefern;
+    private int wurfPause;
+    private int geliefert;
+
     private List<BlockPos> pfad;
     private int pfadIndex;
     private int planAlter;
@@ -67,20 +86,23 @@ final class AgentWaechter implements AgentArbeiter {
     private int bewegDauer;
     private int ticks;
 
-    private AgentWaechter(UUID besitzer, String ruestung, AgentWerte werte) {
+    private AgentWaechter(UUID besitzer, Auftrag auftrag, int nummer, String ruestung, AgentWerte werte) {
         this.besitzer = besitzer;
+        this.auftrag = auftrag;
+        this.nummer = nummer;
+        this.jaeger = auftrag == Auftrag.JAEGER;
         this.ruestung = ruestung;
         this.werte = werte;
         // Schwertschaden wie mit Schaerfe III - er soll zuegig aufraeumen.
-        this.schaden = switch (ruestung) {
+        this.schaden = jaeger ? 8f : switch (ruestung) {
             case "Eisen" -> 8f;
             case "Netherite" -> 12f;
             default -> 10f;
         };
     }
 
-    static AgentWaechter erschaffen(ServerPlayer spieler, String ruestung, AgentWerte werte) {
-        AgentWaechter w = new AgentWaechter(spieler.getUUID(), ruestung, werte);
+    static AgentWaechter erschaffen(ServerPlayer spieler, Auftrag auftrag, int nummer, String art, AgentWerte werte) {
+        AgentWaechter w = new AgentWaechter(spieler.getUUID(), auftrag, nummer, art, werte);
         ServerLevel welt = (ServerLevel) spieler.level();
         if (!w.koerperBauen(welt, Agent.sichererPlatzBei(welt, spieler.blockPosition()))) {
             return null;
@@ -98,6 +120,7 @@ final class AgentWaechter implements AgentArbeiter {
         neu.setNoGravity(true);
         AgentFassung.unverwundbar(neu);
         neu.setCustomNameVisible(true);
+        neu.setGlowingTag(werte.leuchten());
         ausruesten(neu);
         if (!neueWelt.addFreshEntity(neu)) {
             return false;
@@ -116,6 +139,14 @@ final class AgentWaechter implements AgentArbeiter {
     }
 
     private void ausruesten(Mannequin k) {
+        if (jaeger) {
+            k.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+            k.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.LEATHER_CHESTPLATE));
+            k.setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.LEATHER_LEGGINGS));
+            k.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.LEATHER_BOOTS));
+            k.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.IRON_SWORD));
+            return;
+        }
         switch (ruestung) {
             case "Eisen" -> {
                 k.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
@@ -148,17 +179,43 @@ final class AgentWaechter implements AgentArbeiter {
 
     @Override
     public Auftrag auftrag() {
-        return Auftrag.WAECHTER;
+        return auftrag;
+    }
+
+    @Override
+    public int nummer() {
+        return nummer;
     }
 
     @Override
     public String titel() {
-        return "Guardian-Agent (" + ruestung + ")";
+        return auftrag.anzeigename() + " #" + nummer + " (" + ruestung + ")";
+    }
+
+    @Override
+    public net.minecraft.world.entity.Entity koerper() {
+        return koerper;
+    }
+
+    @Override
+    public String zustandText() {
+        if (abliefern) {
+            return "bringt die Beute";
+        }
+        if (schuetzen) {
+            return "beschuetzt dich";
+        }
+        return ziel != null ? (jaeger ? "jagt" : "kaempft") : (jaeger ? "sucht Tiere" : "wacht");
+    }
+
+    @Override
+    public int beute() {
+        return jaeger ? AgentKiste.anzahl(lager) : kills;
     }
 
     @Override
     public boolean beimZurueckkehren() {
-        return fertig;
+        return fertig || abliefern;
     }
 
     @Override
@@ -168,6 +225,12 @@ final class AgentWaechter implements AgentArbeiter {
 
     @Override
     public void zurueckrufen() {
+        if (jaeger && AgentKiste.anzahl(lager) > 0 && koerper != null && !koerper.isRemoved()) {
+            // Erst die Beute zuwerfen, dann gehen.
+            abliefern = true;
+            ziel = null;
+            return;
+        }
         if (koerper != null && !koerper.isRemoved()) {
             effekt(ParticleTypes.POOF, 20);
         }
@@ -177,10 +240,27 @@ final class AgentWaechter implements AgentArbeiter {
     @Override
     public void einstellen(AgentWerte neu) {
         werte = neu;
+        if (koerper != null) {
+            koerper.setGlowingTag(neu.leuchten());
+        }
     }
 
     @Override
     public void notfallUebergabe(MinecraftServer server) {
+        ServerPlayer spieler = server.getPlayerList().getPlayer(besitzer);
+        for (int i = 0; i < lager.getContainerSize(); i++) {
+            ItemStack stapel = lager.getItem(i);
+            if (stapel.isEmpty()) {
+                continue;
+            }
+            lager.setItem(i, ItemStack.EMPTY);
+            if (spieler != null && spieler.getInventory().add(stapel) && stapel.isEmpty()) {
+                continue;
+            }
+            if (spieler != null) {
+                spieler.drop(stapel, false);
+            }
+        }
         fertig = true;
     }
 
@@ -224,7 +304,7 @@ final class AgentWaechter implements AgentArbeiter {
 
         // Ein Herz (2 Lebenspunkte) oder weniger: nur noch beschuetzen.
         float leben = spieler.getHealth();
-        if (!schuetzen && leben <= 2.0f) {
+        if (!jaeger && !schuetzen && leben <= 2.0f) {
             schuetzen = true;
             ziel = null;
             pfad = null;
@@ -237,9 +317,21 @@ final class AgentWaechter implements AgentArbeiter {
             bewegen();
         }
 
+        if (jaeger) {
+            if (abliefern) {
+                abliefern(spieler);
+                return;
+            }
+            beuteEinsammeln();
+            if (lagerVoll()) {
+                lagerLeeren(spieler);
+                return;
+            }
+        }
+
         if (--suchPause <= 0 || ziel == null || !ziel.isAlive() || ziel.isRemoved()) {
             suchPause = 5;
-            ziel = zielWaehlen(spieler);
+            ziel = jaeger ? tierWaehlen(spieler) : zielWaehlen(spieler);
         }
 
         if (ziel != null) {
@@ -272,9 +364,159 @@ final class AgentWaechter implements AgentArbeiter {
         return bester;
     }
 
+    // ----------------------------------------------------------------- Jaeger
+
+    private static final double JAGD_UMKREIS = 24;
+
+    /** Passt das Tier zur Auswahl? */
+    private boolean passt(LivingEntity e) {
+        net.minecraft.world.entity.EntityType<?> t = e.getType();
+        return switch (ruestung) {
+            case "Kuh" -> t == net.minecraft.world.entity.EntityType.COW;
+            case "Schwein" -> t == net.minecraft.world.entity.EntityType.PIG;
+            case "Schaf" -> t == net.minecraft.world.entity.EntityType.SHEEP;
+            case "Huhn" -> t == net.minecraft.world.entity.EntityType.CHICKEN;
+            case "Kaninchen" -> t == net.minecraft.world.entity.EntityType.RABBIT;
+            default -> t == net.minecraft.world.entity.EntityType.COW || t == net.minecraft.world.entity.EntityType.PIG
+                    || t == net.minecraft.world.entity.EntityType.SHEEP || t == net.minecraft.world.entity.EntityType.CHICKEN
+                    || t == net.minecraft.world.entity.EntityType.RABBIT;
+        };
+    }
+
+    /** Das naechste erwachsene, unbenannte Tier - aber nur, wenn von seiner Sorte genug uebrig bleiben. */
+    private LivingEntity tierWaehlen(ServerPlayer spieler) {
+        AABB box = spieler.getBoundingBox().inflate(JAGD_UMKREIS);
+        List<LivingEntity> tiere = welt.getEntitiesOfClass(LivingEntity.class, box, e ->
+                e.isAlive() && !e.isBaby() && !e.hasCustomName() && passt(e));
+        java.util.Map<net.minecraft.world.entity.EntityType<?>, Integer> anzahl = new java.util.HashMap<>();
+        for (LivingEntity e : tiere) {
+            anzahl.merge(e.getType(), 1, Integer::sum);
+        }
+        int uebrig = Math.max(0, werte.zahl());
+        LivingEntity bester = null;
+        double besterAbstand = Double.MAX_VALUE;
+        for (LivingEntity e : tiere) {
+            if (anzahl.get(e.getType()) <= uebrig) {
+                continue;
+            }
+            double d = e.distanceToSqr(koerper);
+            if (d < besterAbstand) {
+                besterAbstand = d;
+                bester = e;
+            }
+        }
+        return bester;
+    }
+
+    /** Nach einer Jagd die fallengelassenen Items am Ort des Tieres einsammeln. */
+    private void beuteEinsammeln() {
+        if (beuteOrt == null || --beuteTicks < 0 || beuteTicks % 5 != 0) {
+            return;
+        }
+        AABB box = new AABB(beuteOrt.getX(), beuteOrt.getY(), beuteOrt.getZ(),
+                beuteOrt.getX() + 1, beuteOrt.getY() + 1, beuteOrt.getZ() + 1).inflate(3);
+        for (net.minecraft.world.entity.item.ItemEntity item
+                : welt.getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, box, i -> i.isAlive())) {
+            ItemStack rest = lager.addItem(item.getItem().copy());
+            if (rest.isEmpty()) {
+                item.discard();
+            } else {
+                item.setItem(rest);
+            }
+        }
+        if (beuteTicks <= 0) {
+            beuteOrt = null;
+        }
+    }
+
+    private boolean lagerVoll() {
+        for (int i = 0; i < lager.getContainerSize(); i++) {
+            if (lager.getItem(i).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Lager voll: in die Sammelkiste (hin und zurueck teleportieren) oder dem Spieler geben. */
+    private void lagerLeeren(ServerPlayer spieler) {
+        AgentWelt.WeltOrt kiste = AgentWelt.kiste(besitzer);
+        if (kiste == null || !AgentKiste.istKiste(kiste.welt(), kiste.pos())) {
+            AgentWelt.melden(spieler, ChatFormatting.YELLOW, titel() + ": Mein Beutel ist voll - hier, fang!");
+            abliefern = true;
+            return;
+        }
+        BlockPos zurueck = fuesse;
+        ServerLevel zurueckWelt = welt;
+        springen(kiste.welt(), Agent.sichererPlatzBei(kiste.welt(), kiste.pos()));
+        int bewegt = AgentKiste.einlagern(welt, kiste.pos(), lager, x -> false);
+        if (bewegt > 0) {
+            geliefert += bewegt;
+            welt.playSound(null, kiste.pos(), SoundEvents.CHEST_CLOSE, SoundSource.BLOCKS, 0.6f, 1f);
+        }
+        springen(zurueckWelt, zurueck);
+        if (lagerVoll()) {
+            AgentWelt.melden(spieler, ChatFormatting.YELLOW, titel() + ": Die Sammelkiste ist voll - hier, fang!");
+            abliefern = true;
+        }
+    }
+
+    /** Beute zuwerfen, ein Stapel alle drei Ticks - dann gehen. */
+    private void abliefern(ServerPlayer spieler) {
+        anschauen(spieler.getEyePosition());
+        if (koerper.distanceToSqr(spieler) > 5 * 5) {
+            if (bewegNach == null) {
+                laufenZu(spieler.blockPosition(), 2);
+            }
+            return;
+        }
+        if (wurfPause-- > 0) {
+            return;
+        }
+        wurfPause = 3;
+        for (int i = 0; i < lager.getContainerSize(); i++) {
+            ItemStack stapel = lager.getItem(i);
+            if (stapel.isEmpty()) {
+                continue;
+            }
+            lager.setItem(i, ItemStack.EMPTY);
+            Vec3 von = koerper.getEyePosition().subtract(0, 0.3, 0);
+            Vec3 zum = spieler.getEyePosition().subtract(von);
+            Vec3 schwung = zum.normalize().scale(Math.min(0.45, 0.12 * zum.length())).add(0, 0.18, 0);
+            net.minecraft.world.entity.item.ItemEntity wurf = new net.minecraft.world.entity.item.ItemEntity(
+                    welt, von.x, von.y, von.z, stapel, schwung.x, schwung.y, schwung.z);
+            wurf.setPickUpDelay(8);
+            welt.addFreshEntity(wurf);
+            AgentFassung.schwingen(koerper);
+            geliefert += stapel.getCount();
+            return;
+        }
+        abliefern = false;
+        AgentWelt.melden(spieler, ChatFormatting.GREEN, titel() + " hat dir " + geliefert + " Items gebracht ("
+                + kills + " Tiere erlegt).");
+        effekt(ParticleTypes.POOF, 20);
+        fertig = true;
+    }
+
+    private void springen(ServerLevel zielWelt, BlockPos platz) {
+        effekt(ParticleTypes.PORTAL, 20);
+        if (zielWelt == welt) {
+            koerper.snapTo(platz.getX() + 0.5, platz.getY(), platz.getZ() + 0.5, koerper.getYRot(), 0);
+            fuesse = platz;
+            pfad = null;
+            bewegNach = null;
+        } else {
+            koerperBauen(zielWelt, platz);
+        }
+        effekt(ParticleTypes.PORTAL, 20);
+    }
+
+    // ------------------------------------------------------------ Kampf
+
     private void kaempfen(ServerPlayer spieler) {
         // Nicht zu weit vom Spieler weglocken lassen.
-        if (ziel.distanceToSqr(spieler) > (UMKREIS + 6) * (UMKREIS + 6)) {
+        double grenze = (jaeger ? JAGD_UMKREIS : UMKREIS) + 6;
+        if (ziel.distanceToSqr(spieler) > grenze * grenze) {
             ziel = null;
             return;
         }
@@ -302,6 +544,10 @@ final class AgentWaechter implements AgentArbeiter {
                     SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1f, 1f);
             if (!ziel.isAlive()) {
                 kills++;
+                if (jaeger) {
+                    beuteOrt = ziel.blockPosition();
+                    beuteTicks = 40;
+                }
                 ziel = null;
             }
         }
@@ -399,7 +645,8 @@ final class AgentWaechter implements AgentArbeiter {
     }
 
     private void namenAktualisieren() {
-        String text = titel() + (kills > 0 ? " · " + kills + " besiegt" : "") + (schuetzen ? " ❤" : "");
+        String text = titel() + (kills > 0 ? " · " + kills + (jaeger ? " erlegt" : " besiegt") : "")
+                + (schuetzen ? " ❤" : "");
         koerper.setCustomName(Component.literal(text).withStyle(schuetzen ? ChatFormatting.RED : ChatFormatting.GOLD));
     }
 

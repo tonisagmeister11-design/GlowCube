@@ -17,6 +17,7 @@ import net.minecraft.world.entity.decoration.Mannequin;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -48,7 +49,7 @@ import java.util.UUID;
  * geladen, solange er arbeitet.
  */
 final class Agent implements AgentArbeiter {
-    private enum Zustand { ARBEITEN, ZURUECK, ABLIEFERN, FERTIG }
+    private enum Zustand { ARBEITEN, KISTE, ZURUECK, ABLIEFERN, FERTIG }
 
     private static final int SCHRITT_TICKS = 4;
     private static final int SUCH_WEITE = 20;
@@ -58,6 +59,7 @@ final class Agent implements AgentArbeiter {
 
     private final UUID besitzer;
     private final Auftrag auftrag;
+    private final int nummer;
     private final String art;
     private AgentWerte werte = AgentWerte.STANDARD;
     private final SimpleContainer lager = new SimpleContainer(36);
@@ -92,26 +94,63 @@ final class Agent implements AgentArbeiter {
     private int zurueckTicks;
     private int wurfPause;
 
+    // Startpunkt (Farm: Feldmitte, Tunnel: Tunnelanfang) und Arbeitsplatz vor dem Kistengang
+    private BlockPos heimat;
+    private BlockPos arbeitsPlatz;
+    private ServerLevel arbeitsWelt;
+    private int kisteTicks;
+
+    // Tunnel
+    private int tunnelDx;
+    private int tunnelDz;
+    private int tunnelBreite = 3;
+    private int tunnelHoehe = 3;
+    private int tunnelSchritt;
+    private int tunnelVersuche;
+
     private final Set<Long> erzwungen = new HashSet<>();
     private int ticks;
     private int abgebaut;
     private int geliefert;
     private boolean voll;
 
-    private Agent(UUID besitzer, Auftrag auftrag, String art) {
+    private Agent(UUID besitzer, Auftrag auftrag, int nummer, String art) {
         this.besitzer = besitzer;
         this.auftrag = auftrag;
+        this.nummer = nummer;
         this.art = art;
     }
 
     // --------------------------------------------------------------- Leben
 
-    static Agent erschaffen(ServerPlayer spieler, Auftrag auftrag, String art, AgentWerte werte) {
-        Agent agent = new Agent(spieler.getUUID(), auftrag, art);
+    static Agent erschaffen(ServerPlayer spieler, Auftrag auftrag, int nummer, String art, AgentWerte werte) {
+        Agent agent = new Agent(spieler.getUUID(), auftrag, nummer, art);
         agent.werte = werte;
-        agent.richtung = Math.floorMod(Math.round(spieler.getYRot() / 90f), 4);
+        int blick = Math.floorMod(Math.round(spieler.getYRot() / 90f), 4);
+        // Mehrere Agenten schwaermen in verschiedene Richtungen aus.
+        agent.richtung = auftrag == Auftrag.TUNNEL ? blick : (blick + nummer - 1) % 4;
         ServerLevel welt = (ServerLevel) spieler.level();
-        BlockPos platz = sichererPlatzBei(welt, spieler.blockPosition());
+        BlockPos start = spieler.blockPosition();
+        // Einsatzort: dort arbeiten, statt beim Spieler.
+        AgentWelt.WeltOrt ort = AgentWelt.ort(spieler.getUUID());
+        if (ort != null) {
+            welt = ort.welt();
+            start = ort.pos();
+        }
+        agent.heimat = start;
+        if (auftrag == Auftrag.TUNNEL) {
+            int[][] r = {{0, 1}, {-1, 0}, {0, -1}, {1, 0}};
+            agent.tunnelDx = r[blick][0];
+            agent.tunnelDz = r[blick][1];
+            switch (art) {
+                case "1x2" -> { agent.tunnelBreite = 1; agent.tunnelHoehe = 2; }
+                case "2x2" -> { agent.tunnelBreite = 2; agent.tunnelHoehe = 2; }
+                default -> { agent.tunnelBreite = 3; agent.tunnelHoehe = 3; }
+            }
+            // Bausteine zum Abdichten von Lava und Wasser.
+            agent.lager.addItem(new ItemStack(Items.COBBLESTONE, 64));
+        }
+        BlockPos platz = sichererPlatzBei(welt, start);
         if (!agent.koerperBauen(welt, platz)) {
             return null;
         }
@@ -128,8 +167,9 @@ final class Agent implements AgentArbeiter {
         neu.setNoGravity(true);
         AgentFassung.unverwundbar(neu);
         neu.setCustomNameVisible(true);
-        neu.setItemSlot(EquipmentSlot.MAINHAND,
-                (auftrag == Auftrag.HOLZ ? AgentBloecke.AXT : AgentBloecke.SPITZHACKE).copy());
+        neu.setItemSlot(EquipmentSlot.MAINHAND, (auftrag == Auftrag.HOLZ ? AgentBloecke.AXT
+                : auftrag == Auftrag.BAUER ? AgentBloecke.HACKE : AgentBloecke.SPITZHACKE).copy());
+        neu.setGlowingTag(werte.leuchten());
         if (!neueWelt.addFreshEntity(neu)) {
             return false;
         }
@@ -155,6 +195,37 @@ final class Agent implements AgentArbeiter {
     }
 
     @Override
+    public int nummer() {
+        return nummer;
+    }
+
+    @Override
+    public net.minecraft.world.entity.Entity koerper() {
+        return koerper;
+    }
+
+    @Override
+    public String zustandText() {
+        return switch (zustand) {
+            case KISTE -> "zur Kiste";
+            case ZURUECK, ABLIEFERN -> "kommt zurueck";
+            case FERTIG -> "fertig";
+            default -> auftrag == Auftrag.TUNNEL ? "graebt " + tunnelSchritt + "/" + werte.zahl()
+                    : abbauPos != null ? "baut ab" : pfad != null ? "unterwegs" : "sucht";
+        };
+    }
+
+    @Override
+    public int beute() {
+        return AgentKiste.anzahl(lager);
+    }
+
+    @Override
+    public long reservierung() {
+        return zielBlock != null ? zielBlock.asLong() : abbauPos != null ? abbauPos.asLong() : Long.MIN_VALUE;
+    }
+
+    @Override
     public boolean beimZurueckkehren() {
         return zustand == Zustand.ZURUECK || zustand == Zustand.ABLIEFERN;
     }
@@ -166,14 +237,20 @@ final class Agent implements AgentArbeiter {
 
     @Override
     public String titel() {
-        return auftrag == Auftrag.ERZ && !art.isEmpty() && !art.equals("Alle")
-                ? auftrag.anzeigename() + " (" + art + ")" : auftrag.anzeigename();
+        String name = auftrag.anzeigename() + " #" + nummer;
+        if (auftrag == Auftrag.ERZ && !art.isEmpty() && !art.equals("Alle") || auftrag == Auftrag.TUNNEL) {
+            name += " (" + art + ")";
+        }
+        return name;
     }
 
     /** Neue Einstellungen aus dem Menue - gelten ab dem naechsten Schritt bzw. Block. */
     @Override
     public void einstellen(AgentWerte neu) {
         werte = neu;
+        if (koerper != null) {
+            koerper.setGlowingTag(neu.leuchten());
+        }
         // Einen laufenden Abbau gleich mit beschleunigen.
         if (abbauPos != null) {
             abbauDauer = abbauZeit(welt.getBlockState(abbauPos), abbauPos);
@@ -193,7 +270,7 @@ final class Agent implements AgentArbeiter {
 
     @Override
     public void zurueckrufen() {
-        if (zustand == Zustand.ARBEITEN) {
+        if (zustand == Zustand.ARBEITEN || zustand == Zustand.KISTE) {
             abbauAbbrechen();
             pfad = null;
             zurueckTicks = 0;
@@ -246,7 +323,14 @@ final class Agent implements AgentArbeiter {
         }
 
         switch (zustand) {
-            case ARBEITEN -> arbeiten();
+            case ARBEITEN -> {
+                if (auftrag == Auftrag.TUNNEL) {
+                    tunnelArbeiten();
+                } else {
+                    arbeiten();
+                }
+            }
+            case KISTE -> zurKiste();
             case ZURUECK -> zurueckkehren(spieler);
             case ABLIEFERN -> abliefern(spieler);
             default -> {
@@ -258,7 +342,7 @@ final class Agent implements AgentArbeiter {
 
     private void arbeiten() {
         if (voll) {
-            zurueckrufen();
+            vollGeworden();
             return;
         }
         if (pfad != null && pfadIndex < pfad.size()) {
@@ -290,12 +374,21 @@ final class Agent implements AgentArbeiter {
             return xrayPlanen();
         }
         List<BlockPos> kandidaten = new ArrayList<>();
+        Set<Long> belegt = AgentWelt.reserviertVonAnderen(this);
         BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
-        for (int dy = -SUCH_HOEHE; dy <= SUCH_HOEHE; dy++) {
-            for (int dx = -SUCH_WEITE; dx <= SUCH_WEITE; dx++) {
-                for (int dz = -SUCH_WEITE; dz <= SUCH_WEITE; dz++) {
-                    p.set(fuesse.getX() + dx, fuesse.getY() + dy, fuesse.getZ() + dz);
-                    if (welt.isOutsideBuildHeight(p) || !welt.isLoaded(p) || gesperrt.contains(p.asLong())) {
+        boolean feld = auftrag == Auftrag.BAUER;
+        BlockPos mitte = feld ? heimat : fuesse;
+        int weite = feld ? Math.max(4, werte.zahl()) : SUCH_WEITE;
+        int hoehe = feld ? 6 : SUCH_HOEHE;
+        for (int dy = -hoehe; dy <= hoehe; dy++) {
+            for (int dx = -weite; dx <= weite; dx++) {
+                for (int dz = -weite; dz <= weite; dz++) {
+                    p.set(mitte.getX() + dx, mitte.getY() + dy, mitte.getZ() + dz);
+                    if (welt.isOutsideBuildHeight(p) || !welt.isLoaded(p) || gesperrt.contains(p.asLong())
+                            || belegt.contains(p.asLong())) {
+                        continue;
+                    }
+                    if (feld && dx * dx + dz * dz > weite * weite) {
                         continue;
                     }
                     if (AgentBloecke.istZiel(welt.getBlockState(p), auftrag, art)) {
@@ -308,7 +401,7 @@ final class Agent implements AgentArbeiter {
             return false;
         }
         kandidaten.sort((a, b) -> Double.compare(a.distSqr(fuesse), b.distSqr(fuesse)));
-        AgentPfad suche = new AgentPfad(welt, bausteine() > 0);
+        AgentPfad suche = feld ? new AgentPfad(welt, false, false) : new AgentPfad(welt, bausteine() > 0);
         for (int i = 0; i < Math.min(4, kandidaten.size()); i++) {
             BlockPos ziel = kandidaten.get(i);
             if (erreichbar(fuesse, ziel)) {
@@ -333,7 +426,9 @@ final class Agent implements AgentArbeiter {
      * geht es in Etappen auf ihn zu.
      */
     private boolean xrayPlanen() {
-        List<BlockPos> kandidaten = AgentXray.suchen(welt, fuesse, werte.xrayChunks(), auftrag, art, gesperrt);
+        Set<Long> meiden = new HashSet<>(gesperrt);
+        meiden.addAll(AgentWelt.reserviertVonAnderen(this));
+        List<BlockPos> kandidaten = AgentXray.suchen(welt, fuesse, werte.xrayChunks(), auftrag, art, meiden);
         if (kandidaten.isEmpty()) {
             return false;
         }
@@ -378,6 +473,20 @@ final class Agent implements AgentArbeiter {
 
     /** Nichts in Sicht: weiterziehen - beim Erz in die beste Hoehe, beim Holz ueber die Oberflaeche. */
     private void erkunden() {
+        if (auftrag == Auftrag.BAUER) {
+            // Nichts reif: zurueck zur Feldmitte und warten, bis etwas nachwaechst.
+            if (fuesse.distManhattan(heimat) > 3) {
+                BlockPos h = heimat;
+                List<BlockPos> weg = new AgentPfad(welt, false, false)
+                        .suchen(fuesse, n -> n.distManhattan(h) <= 2, h, 6000, 48);
+                if (weg != null && !weg.isEmpty()) {
+                    pfadSetzen(weg);
+                    return;
+                }
+            }
+            planPause = 40;
+            return;
+        }
         int[][] r = {{0, 1}, {-1, 0}, {0, -1}, {1, 0}};
         int dx = r[richtung][0];
         int dz = r[richtung][1];
@@ -546,7 +655,8 @@ final class Agent implements AgentArbeiter {
         abbauPos = pos;
         abbauFortschritt = 0;
         abbauDauer = abbauZeit(s, pos);
-        koerper.setItemSlot(EquipmentSlot.MAINHAND, AgentBloecke.werkzeug(s).copy());
+        koerper.setItemSlot(EquipmentSlot.MAINHAND,
+                (auftrag == Auftrag.BAUER ? AgentBloecke.HACKE : AgentBloecke.werkzeug(s)).copy());
         anschauen(Vec3.atCenterOf(pos));
         AgentFassung.schwingen(koerper);
     }
@@ -580,6 +690,9 @@ final class Agent implements AgentArbeiter {
         for (ItemStack stapel : beute) {
             einlagern(stapel, ziel);
         }
+        if (ziel && auftrag == Auftrag.BAUER) {
+            neuPflanzen(abbauPos, s);
+        }
         abbauPos = null;
     }
 
@@ -598,7 +711,7 @@ final class Agent implements AgentArbeiter {
         if (stapel.isEmpty()) {
             return;
         }
-        boolean behalten = vomZiel || auftrag == Auftrag.STEIN
+        boolean behalten = vomZiel || auftrag == Auftrag.STEIN || auftrag == Auftrag.BAUER
                 || AgentBloecke.istBaustein(stapel) && bausteine() < MAX_BAUSTEINE;
         if (!behalten) {
             return;
@@ -608,7 +721,9 @@ final class Agent implements AgentArbeiter {
             voll = true;
             ServerPlayer spieler = welt.getServer().getPlayerList().getPlayer(besitzer);
             if (spieler != null) {
-                AgentWelt.melden(spieler, ChatFormatting.YELLOW, titel() + ": Inventar voll - ich komme zurueck.");
+                AgentWelt.melden(spieler, ChatFormatting.YELLOW, titel() + (AgentWelt.kiste(besitzer) != null
+                        ? ": Inventar voll - ich bringe alles in die Sammelkiste."
+                        : ": Inventar voll - ich komme zurueck."));
             }
         }
     }
@@ -643,6 +758,271 @@ final class Agent implements AgentArbeiter {
             }
         }
         return false;
+    }
+
+    // ---------------------------------------------------------- Sammelkiste
+
+    /** Lager voll: mit Sammelkiste dorthin, sonst zurueck zum Spieler. */
+    private void vollGeworden() {
+        AgentWelt.WeltOrt kiste = AgentWelt.kiste(besitzer);
+        if (kiste == null || !AgentKiste.istKiste(kiste.welt(), kiste.pos())) {
+            zurueckrufen();
+            return;
+        }
+        abbauAbbrechen();
+        pfad = null;
+        zielBlock = null;
+        arbeitsPlatz = fuesse;
+        arbeitsWelt = welt;
+        kisteTicks = 0;
+        zustand = Zustand.KISTE;
+    }
+
+    /** Was der Agent beim Abladen behaelt: Bausteine fuer Bruecken (ausser beim Stein-Agenten - der sammelt sie). */
+    private boolean behaeltBeimAbladen(ItemStack stapel) {
+        return auftrag != Auftrag.STEIN && AgentBloecke.istBaustein(stapel);
+    }
+
+    private void zurKiste() {
+        AgentWelt.WeltOrt kiste = AgentWelt.kiste(besitzer);
+        if (kiste == null) {
+            zustand = Zustand.ZURUECK;
+            zurueckTicks = 0;
+            return;
+        }
+        kisteTicks++;
+        BlockPos ziel = kiste.pos();
+        boolean andereWelt = kiste.welt() != welt;
+        double abstand = andereWelt ? Double.MAX_VALUE : Math.sqrt(fuesse.distSqr(ziel));
+        if (!andereWelt && abstand <= 2.5) {
+            anschauen(Vec3.atCenterOf(ziel));
+            AgentFassung.schwingen(koerper);
+            ServerPlayer spieler = welt.getServer().getPlayerList().getPlayer(besitzer);
+            int bewegt = AgentKiste.einlagern(welt, ziel, lager, this::behaeltBeimAbladen);
+            if (bewegt < 0) {
+                if (spieler != null) {
+                    AgentWelt.melden(spieler, ChatFormatting.YELLOW, titel() + ": Die Sammelkiste ist weg - ich komme zu dir.");
+                }
+                zustand = Zustand.ZURUECK;
+                zurueckTicks = 0;
+                return;
+            }
+            geliefert += bewegt;
+            welt.playSound(null, ziel, SoundEvents.CHEST_CLOSE, SoundSource.BLOCKS, 0.6f, 1f);
+            for (int i = 0; i < lager.getContainerSize(); i++) {
+                ItemStack rest = lager.getItem(i);
+                if (!rest.isEmpty() && !behaeltBeimAbladen(rest)) {
+                    if (spieler != null) {
+                        AgentWelt.melden(spieler, ChatFormatting.YELLOW, titel() + ": Die Sammelkiste ist voll - ich komme zu dir.");
+                    }
+                    zustand = Zustand.ZURUECK;
+                    zurueckTicks = 0;
+                    return;
+                }
+            }
+            voll = false;
+            // Zurueck an die Arbeit, genau dorthin, wo er aufgehoert hat.
+            zustand = Zustand.ARBEITEN;
+            pfad = null;
+            planPause = 0;
+            if (arbeitsPlatz != null && arbeitsWelt != null) {
+                teleportierenNach(arbeitsWelt, arbeitsPlatz);
+            }
+            return;
+        }
+        if (andereWelt || abstand > NAH_GENUG || kisteTicks > 600) {
+            teleportierenNach(kiste.welt(), ziel);
+            return;
+        }
+        if (pfad == null || pfadIndex >= pfad.size() || kisteTicks % 40 == 0) {
+            List<BlockPos> weg = new AgentPfad(welt, bausteine() > 0)
+                    .suchen(fuesse, n -> n.distManhattan(ziel) <= 2, ziel, 8000, 64);
+            if (weg == null) {
+                teleportierenNach(kiste.welt(), ziel);
+                return;
+            }
+            pfadSetzen(weg);
+            if (weg.isEmpty()) {
+                return;
+            }
+        }
+        schritt();
+    }
+
+    // ----------------------------------------------------------------- Farm
+
+    /** Frisch geerntet: dieselbe Pflanze wieder setzen, mit Saat aus dem Lager. */
+    private void neuPflanzen(BlockPos pos, BlockState alt) {
+        BlockState neu = alt.getBlock().defaultBlockState();
+        if (!welt.getBlockState(pos).isAir() || !neu.canSurvive(welt, pos)) {
+            return;
+        }
+        net.minecraft.world.item.Item saat = alt.getBlock().asItem();
+        for (int i = 0; i < lager.getContainerSize(); i++) {
+            ItemStack stapel = lager.getItem(i);
+            if (stapel.is(saat)) {
+                stapel.shrink(1);
+                lager.setChanged();
+                welt.setBlockAndUpdate(pos, neu);
+                welt.playSound(null, pos, SoundEvents.CROP_PLANTED, SoundSource.BLOCKS, 0.8f, 1f);
+                return;
+            }
+        }
+    }
+
+    // --------------------------------------------------------------- Tunnel
+
+    /** Eine Zelle des Tunnels: schritt nach vorn, seite nach rechts, hoch nach oben (0 = Boden). */
+    private BlockPos tunnelZelle(int schritt, int seite, int hoch) {
+        return heimat.offset(tunnelDx * schritt - tunnelDz * seite, hoch, tunnelDz * schritt + tunnelDx * seite);
+    }
+
+    private int[] seiten() {
+        return tunnelBreite == 1 ? new int[] {0} : tunnelBreite == 2 ? new int[] {0, 1} : new int[] {-1, 0, 1};
+    }
+
+    private List<BlockPos> scheibe(int schritt) {
+        List<BlockPos> zellen = new ArrayList<>();
+        for (int hoch = 0; hoch < tunnelHoehe; hoch++) {
+            for (int seite : seiten()) {
+                zellen.add(tunnelZelle(schritt, seite, hoch));
+            }
+        }
+        return zellen;
+    }
+
+    /**
+     * Scheibe fuer Scheibe: erst Lava und Wasser ringsum abdichten, dann die
+     * naechste Scheibe freigraben, Erze aus den Waenden mitnehmen, einen Schritt
+     * vor - und alle acht Bloecke eine Fackel.
+     */
+    private void tunnelArbeiten() {
+        if (voll) {
+            vollGeworden();
+            return;
+        }
+        if (pfad != null && pfadIndex < pfad.size()) {
+            schritt();
+            return;
+        }
+        pfad = null;
+        BlockPos stand = tunnelZelle(tunnelSchritt, 0, 0);
+        if (!fuesse.equals(stand)) {
+            List<BlockPos> weg = new AgentPfad(welt, bausteine() > 0)
+                    .suchen(fuesse, n -> n.equals(stand), stand, 6000, 64);
+            if (weg != null && !weg.isEmpty()) {
+                pfadSetzen(weg);
+                return;
+            }
+            for (BlockPos zelle : new BlockPos[] {stand, stand.above()}) {
+                BlockState zs = welt.getBlockState(zelle);
+                if (!AgentBloecke.frei(welt, zelle, zs) && AgentBloecke.abbaubar(welt, zelle, zs)
+                        && fuesse.distManhattan(zelle) <= 4) {
+                    abbauStarten(zelle);
+                    return;
+                }
+            }
+            koerper.snapTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, koerper.getYRot(), 0);
+            fuesse = stand;
+            return;
+        }
+        if (tunnelSchritt >= Math.max(1, werte.zahl())) {
+            tunnelFertig(null);
+            return;
+        }
+        int naechste = tunnelSchritt + 1;
+        List<BlockPos> vorn = scheibe(naechste);
+        Set<BlockPos> offen = new HashSet<>(vorn);
+        offen.addAll(scheibe(tunnelSchritt));
+        // 1. Abdichten: Fluessigkeit ringsum und in der Scheibe selbst
+        for (BlockPos zelle : vorn) {
+            for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
+                BlockPos n = zelle.relative(d);
+                if (offen.contains(n)) {
+                    continue;
+                }
+                BlockState ns = welt.getBlockState(n);
+                if (!ns.getFluidState().isEmpty() && ns.canBeReplaced()) {
+                    if (!bausteinSetzen(n)) {
+                        tunnelFertig("Mir sind die Bausteine zum Abdichten ausgegangen");
+                    }
+                    return;
+                }
+            }
+            BlockState zs = welt.getBlockState(zelle);
+            if (!zs.getFluidState().isEmpty() && zs.canBeReplaced()) {
+                if (!bausteinSetzen(zelle)) {
+                    tunnelFertig("Mir sind die Bausteine zum Abdichten ausgegangen");
+                }
+                return;
+            }
+        }
+        // 2. Freigraben (herabfallender Kies wird einfach nochmal abgebaut)
+        for (BlockPos zelle : vorn) {
+            BlockState zs = welt.getBlockState(zelle);
+            if (AgentBloecke.frei(welt, zelle, zs)) {
+                continue;
+            }
+            if (++tunnelVersuche > 400) {
+                tunnelFertig("Hier komme ich nicht weiter");
+                return;
+            }
+            if (AgentBloecke.abbaubar(welt, zelle, zs)) {
+                abbauStarten(zelle);
+                return;
+            }
+            tunnelFertig("Ein Block, den ich nicht abbauen kann (z. B. Grundgestein)");
+            return;
+        }
+        // 3. Erze aus den Waenden der Scheibe, in der er steht
+        Set<BlockPos> hier = new HashSet<>(scheibe(tunnelSchritt));
+        for (BlockPos zelle : hier) {
+            for (net.minecraft.core.Direction d : net.minecraft.core.Direction.values()) {
+                BlockPos n = zelle.relative(d);
+                if (hier.contains(n) || offen.contains(n)) {
+                    continue;
+                }
+                BlockState ns = welt.getBlockState(n);
+                if (AgentBloecke.istZiel(ns, auftrag, art) && AgentBloecke.abbaubar(welt, n, ns)) {
+                    abbauStarten(n);
+                    return;
+                }
+            }
+        }
+        // 4. Boden pruefen, einen Schritt vor
+        BlockPos ziel = tunnelZelle(naechste, 0, 0);
+        BlockPos unten = ziel.below();
+        if (!AgentBloecke.traegt(welt, unten, welt.getBlockState(unten)) && !bausteinSetzen(unten)) {
+            tunnelFertig("Mir sind die Bausteine fuer den Boden ausgegangen");
+            return;
+        }
+        tunnelVersuche = 0;
+        bewegungStarten(ziel, schrittTicks(false));
+        tunnelSchritt = naechste;
+        if (tunnelSchritt % 8 == 0) {
+            fackelSetzen(tunnelSchritt);
+        }
+    }
+
+    private void fackelSetzen(int schritt) {
+        int[] seiten = seiten();
+        BlockPos p = tunnelBreite >= 2 ? tunnelZelle(schritt, seiten[seiten.length - 1], 0)
+                : tunnelZelle(schritt - 1, 0, 0);
+        if (welt.getBlockState(p).isAir() && AgentBloecke.traegt(welt, p.below(), welt.getBlockState(p.below()))) {
+            welt.setBlockAndUpdate(p, net.minecraft.world.level.block.Blocks.TORCH.defaultBlockState());
+            welt.playSound(null, p, SoundEvents.WOOD_PLACE, SoundSource.BLOCKS, 0.8f, 1.2f);
+        }
+    }
+
+    /** Fertig (grund == null) oder abgebrochen: Bescheid geben und mit der Beute zurueck. */
+    private void tunnelFertig(String grund) {
+        ServerPlayer spieler = welt.getServer().getPlayerList().getPlayer(besitzer);
+        if (spieler != null) {
+            AgentWelt.melden(spieler, grund == null ? ChatFormatting.GREEN : ChatFormatting.YELLOW,
+                    titel() + (grund == null ? ": Tunnel fertig - " : ": " + grund + " - Tunnel endet nach ")
+                            + tunnelSchritt + " Bloecken, " + abgebaut + " Erze gefunden.");
+        }
+        zurueckrufen();
     }
 
     // ------------------------------------------------------------ Rueckweg
@@ -684,8 +1064,11 @@ final class Agent implements AgentArbeiter {
     }
 
     private void teleportieren(ServerPlayer spieler) {
-        ServerLevel zielWelt = (ServerLevel) spieler.level();
-        BlockPos platz = sichererPlatzBei(zielWelt, spieler.blockPosition());
+        teleportierenNach((ServerLevel) spieler.level(), spieler.blockPosition());
+    }
+
+    private void teleportierenNach(ServerLevel zielWelt, BlockPos um) {
+        BlockPos platz = sichererPlatzBei(zielWelt, um);
         effekt(ParticleTypes.PORTAL, 40);
         welt.playSound(null, koerper.getX(), koerper.getY(), koerper.getZ(),
                 SoundEvents.ENDERMAN_TELEPORT, SoundSource.NEUTRAL, 1f, 1f);
@@ -841,6 +1224,10 @@ final class Agent implements AgentArbeiter {
         String text = titel() + (werte.xray() ? " [X-Ray]" : "") + (abgebaut > 0 ? " · " + abgebaut : "");
         if (zustand == Zustand.ZURUECK || zustand == Zustand.ABLIEFERN) {
             text += " → zurueck";
+        } else if (zustand == Zustand.KISTE) {
+            text += " → Kiste";
+        } else if (auftrag == Auftrag.TUNNEL) {
+            text += " · " + tunnelSchritt + "/" + werte.zahl();
         }
         koerper.setCustomName(Component.literal(text).withStyle(ChatFormatting.AQUA));
     }
