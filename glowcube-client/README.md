@@ -9,7 +9,14 @@ echten Quelltext von Meteor Client, BleachHack und Meteor Rejects, mit
 deren Reihenfolgen, Grenzfaellen und krummen Zahlen. Wer was von wo hat,
 steht in [HERKUNFT.md](HERKUNFT.md).
 
-**Eine Datei.** SeedCrackerX steckt als eingebettete JAR mit drin. In den
+**Zwei Spielfassungen.** Es gibt eine JAR fuer **1.21.11** und eine fuer
+**26.3** (`glowcube-1.21.11.jar` / `glowcube-26.3.jar`). Alle Funktionen -
+Module, Agenten, Orbital Strike, `/strike`, `/coordinates`, ESP, OreSim -
+laufen auf beiden. Einzige Ausnahme: SeedCrackerX (und damit SeedHunt) gibt
+es nur fuer 1.21.11; auf 26.3 laesst sich der Seed fuer OreSim mit
+`/glowcube seed <zahl>` von Hand eintragen.
+
+**Eine Datei.** SeedCrackerX steckt als eingebettete JAR mit drin (1.21.11). In den
 `mods`-Ordner kommen nur GlowCube und die Fabric API, sonst nichts.
 
 > Auf oeffentlichen Servern faellt das sofort auf und ist dort Bannmaterial.
@@ -22,7 +29,8 @@ jeder Aenderung selbst und haengt ihn an den Release **neueste**:
 
 **<https://github.com/tonisagmeister11-design/GlowCube/releases/latest>**
 
-Dort unter *Assets* auf `glowcube-1.0.0.jar` klicken - fertig. Keine ZIP, kein
+Dort unter *Assets* auf die JAR deiner Fassung klicken (`glowcube-1.21.11.jar`
+oder `glowcube-26.3.jar`) - fertig. Keine ZIP, kein
 Entpacken, keine Anmeldung noetig.
 
 ### Der andere Weg (nur mit GitHub-Konto)
