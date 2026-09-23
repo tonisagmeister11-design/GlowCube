@@ -189,7 +189,16 @@ jobs:
             "net.minecraft.world.level.block.state.BlockBehaviour\$BlockStateBase:getDestroySpeed|getCollisionShape|getFluidState|hasBlockEntity|isAir|is\\(" \
             "net.minecraft.world.level.Level:getHeight\\(|dimension\\(" \
             "net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents:" \
-            "net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents:" || true
+            "net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents:" \
+            "net.minecraft.server.permissions.PermissionSet:" \
+            "net.minecraft.server.permissions.Permissions:" \
+            "net.minecraft.server.permissions.PermissionLevel:" \
+            "net.minecraft.server.players.NameAndId:" \
+            "net.minecraft.server.level.ServerPlayer:nameAndId|getGameProfile" \
+            "net.minecraft.world.entity.player.Player:nameAndId|getGameProfile" \
+            "net.minecraft.world.item.ItemStack:getDestroySpeed|isCorrectToolForDrops" \
+            "net.minecraft.world.level.material.FluidState:isEmpty|is\\(" \
+            "net.minecraft.world.entity.Entity:getX\\(|getEyeY|position\\(\\)|blockPosition|getYRot|setYRot|setXRot|isRemoved|getId\\(" || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
