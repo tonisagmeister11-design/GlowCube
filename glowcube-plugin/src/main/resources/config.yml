@@ -1,0 +1,16 @@
+# GlowCube-Agent-Plugin
+#
+# Wer den GlowCube-Client hat, kann ueber das Menue (Kein Hack -> Agent)
+# Agenten losschicken. Wer das darf, regelt die Berechtigung glowcube.agent
+# (Standard: jeder). Hier die Grenzen:
+
+# Wie viele Agenten ein Spieler gleichzeitig haben darf (einer je Sorte: Erz, Stein, Holz).
+max-agenten-je-spieler: 3
+
+# Obergrenzen fuer die Einstellungen aus dem Client.
+max-tempo: 4.0
+max-abbau-tempo: 20.0
+max-xray-chunks: 6
+
+# Darf der Agent X-Ray benutzen?
+xray-erlaubt: true

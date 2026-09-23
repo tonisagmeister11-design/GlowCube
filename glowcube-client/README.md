@@ -165,9 +165,10 @@ Die Kategorien folgen der Einteilung von BleachHack.
 
 ### Agent (Bereich "Kein Hack", nur 1.21.11)
 
-Ein NPC in Spielergestalt, der fuer dich abbaut. Geht nur in der eigenen
-Welt (Einzelspieler oder LAN-Host) und nur mit Admin-Rechten - in der
-Einzelspielerwelt heisst das: **Cheats an**.
+Ein NPC in Spielergestalt, der fuer dich abbaut. Geht in der eigenen Welt
+(Einzelspieler oder LAN-Host, mit **Cheats an**) und auf jedem Paper-Server
+mit dem **GlowCube-Agent-Plugin** (`glowcube-agent-plugin.jar` im Release,
+siehe `glowcube-plugin/README.md`).
 
 | Modul | Was es tut |
 | --- | --- |

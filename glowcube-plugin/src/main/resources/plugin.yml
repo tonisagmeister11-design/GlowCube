@@ -1,0 +1,10 @@
+name: GlowCubeAgent
+version: '${version}'
+main: net.glowcube.plugin.GlowCubeAgentPlugin
+api-version: '1.21'
+description: Agenten fuer Spieler mit dem GlowCube-Client - NPCs, die Erz, Stein oder Holz abbauen.
+author: GlowCube
+permissions:
+  glowcube.agent:
+    description: Darf Agenten losschicken.
+    default: true

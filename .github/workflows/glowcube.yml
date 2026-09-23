@@ -6,6 +6,7 @@ on:
   push:
     paths:
       - 'glowcube-client/**'
+      - 'glowcube-plugin/**'
       - '.github/workflows/glowcube.yml'
   workflow_dispatch:
 
@@ -424,10 +425,56 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  # Das Server-Plugin fuer Paper: damit laufen die Agenten auch auf einem
+  # Server, fuer jeden Spieler mit GlowCube.
+  plugin:
+    name: Server-Plugin bauen
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: glowcube-plugin
+    steps:
+      - name: Quelltext holen
+        uses: actions/checkout@v4
+
+      - name: JDK einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Bauen
+        run: |
+          set -o pipefail
+          gradle build --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
+
+      - name: Fehler herausziehen
+        if: failure()
+        run: |
+          grep -E "error:|warning: \[|What went wrong|Could not" /tmp/gradle.log | head -40 | sed 's/^/::error::/' || true
+
+      - name: JAR einsammeln
+        run: |
+          mkdir -p /tmp/ausgabe
+          cp build/libs/glowcube-agent-plugin.jar /tmp/ausgabe/
+          echo "### Server-Plugin" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`glowcube-agent-plugin.jar\` ($(du -h /tmp/ausgabe/glowcube-agent-plugin.jar | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: JAR zum Weiterreichen ablegen
+        uses: actions/upload-artifact@v4
+        with:
+          name: glowcube-mc-plugin
+          path: /tmp/ausgabe/*.jar
+          if-no-files-found: error
+          retention-days: 90
+
   veroeffentlichen:
     name: Alle Fassungen veroeffentlichen
     runs-on: ubuntu-latest
-    needs: bauen
+    needs: [bauen, plugin]
     # Auch wenn eine Fassung noch nicht baut, sollen die fertigen trotzdem
     # herauskommen. Der Schritt sammelt schlicht ein, was da ist.
     if: ${{ always() }}
@@ -462,6 +509,7 @@ jobs:
           fassungen=""
           for j in "${jars[@]}"; do
             f=$(basename "$j" .jar); f=${f#glowcube-}
+            [ "$f" = "agent-plugin" ] && continue
             fassungen="${fassungen} ${f}"
           done
 
@@ -483,6 +531,10 @@ jobs:
             "jedes Modul ein- und ausschalten und neu belegen." \
             "Vorbelegt: X = X-Ray, B = SeedHunt." \
             "Alles weitere in glowcube-client/README.md." \
+            "" \
+            "Fuer Server: glowcube-agent-plugin.jar in den plugins-Ordner" \
+            "eines Paper-Servers (1.21.11). Dann kann jeder Spieler mit" \
+            "GlowCube dort Agenten losschicken." \
             "" \
             "Automatisch gebaut aus Commit ${GITHUB_SHA}.")
 
