@@ -207,45 +207,28 @@ jobs:
         if: ${{ matrix.mc == '26.3' }}
         continue-on-error: true
         run: |
-          python3 - build/classpath.txt <<'PY' || true
-          import sys, pathlib
-          sys.path.insert(0, ".")
-          from probe_imports_helper import klassen_im_classpath
-          alle = sorted(klassen_im_classpath(sys.argv[1]))
-          for praefix in ["net.fabricmc.fabric.api.client.command", "net.fabricmc.fabric.api.client.rendering.v1",
-                          "net.fabricmc.fabric.api.command", "net.minecraft.gizmos", "net.minecraft.client.renderer.debug"]:
-              treffer = [k for k in alle if k.startswith(praefix)]
-              print(f"PAKET {praefix}: {len(treffer)}")
-              for k in treffer[:120]:
-                  print("   PK " + k)
-          PY
-          python3 probe-search.py build/classpath.txt Gizmo SwingPacket ActionBar ShapeRenderer || true
+          python3 probe-search.py build/classpath.txt SwingAnimation Mannequin GizmoCollector | grep -v '::notice' || true
           python3 probe-api.py build/classpath.txt \
+            "net.minecraft.world.entity.EntityType:(?i)mannequin" \
+            "net.minecraft.world.entity.Entity:(?i)invulnerable" \
+            "net.minecraft.world.entity.LivingEntity:(?i)knockback|swing" \
+            "net.minecraft.world.entity.player.Player:(?i)swing|overlay|clientmessage" \
+            "net.minecraft.client.player.LocalPlayer:(?i)swing" \
             "net.minecraft.network.protocol.game.ServerboundSwingPacket:" \
-            "net.minecraft.client.player.LocalPlayer:swing" \
-            "net.minecraft.world.entity.LivingEntity:swing" \
-            "net.minecraft.world.entity.player.Player:swing|sendOverlay|displayClientMessage|sendSystemMessage" \
-            "net.minecraft.client.Options:hide|Gui" \
-            "net.minecraft.client.Minecraft:gui|hud|options" \
-            "net.minecraft.client.renderer.LevelRenderer:submit|render|extract" \
-            "net.minecraft.client.renderer.SubmitNodeCollector:" \
-            "net.minecraft.client.renderer.OrderedSubmitNodeCollector:" \
-            "net.minecraft.client.renderer.rendertype.RenderTypes:ine" \
-            "net.minecraft.client.renderer.ShapeRenderer:" \
-            "net.minecraft.gizmos.Gizmos:" \
-            "net.minecraft.gizmos.GizmoStyle:" \
-            "net.minecraft.client.renderer.GameRenderer:render|extract|Level|getMainCamera" \
-            "net.minecraft.client.Camera:position|getPosition|pos" || true
-          # Bei jedem Fabric-Rendering-Ereignis die volle Signatur.
-          for k in $(python3 - build/classpath.txt <<'PY'
-          import sys
-          sys.path.insert(0, ".")
-          from probe_imports_helper import klassen_im_classpath
-          for k in sorted(klassen_im_classpath(sys.argv[1])):
-              if (k.startswith("net.fabricmc.fabric.api.client.rendering.v1") or k.startswith("net.fabricmc.fabric.api.client.command")) and "$" not in k:
-                  print(k)
-          PY
-          ); do python3 probe-api.py build/classpath.txt "$k:" | grep -v '::notice' || true; done
+            "net.minecraft.world.level.ChunkPos:public" \
+            "net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry:" \
+            "net.minecraft.tags.BlockTags:(?i)ore" \
+            "net.minecraft.world.level.Level:(?i)random" \
+            "net.minecraft.client.renderer.rendertype.RenderTypes:(?i)line|debug|gui" \
+            "net.minecraft.client.renderer.SubmitNodeCollector\$CustomGeometryRenderer:" \
+            "com.mojang.blaze3d.vertex.VertexConsumer:(?i)addVertex|setColor|setNormal|width" \
+            "net.minecraft.gizmos.GizmoProperties:" \
+            "net.minecraft.gizmos.SimpleGizmoCollector:" \
+            "net.minecraft.client.renderer.LevelRenderer:(?i)gizmo" \
+            "net.minecraft.client.Minecraft:(?i)gizmo" \
+            "net.minecraft.client.renderer.GameRenderer:(?i)gizmo" \
+            "net.minecraft.client.Options:(?i)hide" \
+            "net.minecraft.world.entity.decoration.Mannequin:public" | grep -v '::notice' || true
 
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein

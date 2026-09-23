@@ -3,7 +3,7 @@ package net.glowcube.client.command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.glowcube.client.GlowCubeClient;
 import net.glowcube.client.core.Module;
@@ -43,16 +43,16 @@ public final class GlowCubeCommands {
 
     public static void registrieren() {
         ClientCommandRegistrationCallback.EVENT.register((zweig, zugriff) -> {
-            zweig.register(ClientCommandManager.literal("coordinates").executes(kontext -> koordinaten(kontext.getSource())));
-            zweig.register(ClientCommandManager.literal("koordinaten").executes(kontext -> koordinaten(kontext.getSource())));
-            zweig.register(ClientCommandManager.literal("strike")
+            zweig.register(ClientCommands.literal("coordinates").executes(kontext -> koordinaten(kontext.getSource())));
+            zweig.register(ClientCommands.literal("koordinaten").executes(kontext -> koordinaten(kontext.getSource())));
+            zweig.register(ClientCommands.literal("strike")
                     .executes(kontext -> {
                         sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.zielMarkieren());
                         return 1;
                     })
                     .then(zielKoordinaten()));
-            zweig.register(ClientCommandManager.literal("glowcube")
-                        .then(ClientCommandManager.literal("seed")
+            zweig.register(ClientCommands.literal("glowcube")
+                        .then(ClientCommands.literal("seed")
                                 .executes(kontext -> {
                                     Long seed = SeedBridge.seed();
                                     sagen(kontext.getSource(), seed == null
@@ -60,27 +60,27 @@ public final class GlowCubeCommands {
                                             : "Seed: " + seed);
                                     return 1;
                                 })
-                                .then(ClientCommandManager.argument("wert", LongArgumentType.longArg())
+                                .then(ClientCommands.argument("wert", LongArgumentType.longArg())
                                         .executes(kontext -> {
                                             long wert = LongArgumentType.getLong(kontext, "wert");
                                             SeedBridge.setzeSeed(wert);
                                             sagen(kontext.getSource(), "Seed gesetzt: " + wert);
                                             return 1;
                                         })))
-                        .then(ClientCommandManager.literal("ziel")
+                        .then(ClientCommands.literal("ziel")
                                 .executes(kontext -> {
                                     sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.zielMarkieren());
                                     return 1;
                                 })
                                 .then(zielKoordinaten()))
-                        .then(ClientCommandManager.literal("fenster")
+                        .then(ClientCommands.literal("fenster")
                                 .executes(kontext -> {
                                     Layout.zuruecksetzen();
                                     GlowCubeClient.config().save();
                                     sagen(kontext.getSource(), "Fenster zurueckgesetzt.");
                                     return 1;
                                 }))
-                        .then(ClientCommandManager.argument("modul",
+                        .then(ClientCommands.argument("modul",
                                         com.mojang.brigadier.arguments.StringArgumentType.word())
                                 .executes(kontext -> {
                                     String name = com.mojang.brigadier.arguments.StringArgumentType
@@ -110,9 +110,9 @@ public final class GlowCubeCommands {
 
     /** x y z als drei ganze Zahlen - so, wie /coordinates sie kopiert. */
     private static com.mojang.brigadier.builder.RequiredArgumentBuilder<FabricClientCommandSource, Integer> zielKoordinaten() {
-        return ClientCommandManager.argument("x", IntegerArgumentType.integer())
-                .then(ClientCommandManager.argument("y", IntegerArgumentType.integer())
-                        .then(ClientCommandManager.argument("z", IntegerArgumentType.integer())
+        return ClientCommands.argument("x", IntegerArgumentType.integer())
+                .then(ClientCommands.argument("y", IntegerArgumentType.integer())
+                        .then(ClientCommands.argument("z", IntegerArgumentType.integer())
                                 .executes(kontext -> {
                                     sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.zielSetzen(
                                             IntegerArgumentType.getInteger(kontext, "x"),
