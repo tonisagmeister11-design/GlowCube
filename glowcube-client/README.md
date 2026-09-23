@@ -163,6 +163,19 @@ Alle vier sind rein clientseitig - der Server sieht davon nichts.
 
 Die Kategorien folgen der Einteilung von BleachHack.
 
+### Performance (Bereich "Kein Hack")
+
+**Ultra-Performance** dreht alles herunter, was Bild kostet: Sichtweite
+(einstellbar, Standard 2 Chunks), Wolken, Schatten, Partikel, Wetter,
+Blattdurchsicht, Umgebungsverdeckung, Mipmaps, Bildschirmeffekte, Bildsync
+und Bildratengrenze. Dazu schaltet es das Ressourcenpaket **GlowCube-Pixel**
+zu: jeder Block wird ein einziges Pixel in seiner Durchschnittsfarbe,
+Spieler, Mobs und Items bleiben normal. Das Paket wird beim Einschalten aus
+den gerade aktiven Texturen erzeugt (Minecraft laedt dabei kurz neu).
+
+Nochmals draufdruecken stellt jeden Wert und die Paketliste genau wieder her.
+In `options.txt` landet vom Modus nichts.
+
 ### PvP-HUD und Info-HUD (Bereich "Kein Hack")
 
 Anzeigen wie in PvP-Clients, uebertragen aus AxolotlClient. Sie laufen auf

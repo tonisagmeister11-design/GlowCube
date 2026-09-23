@@ -246,6 +246,16 @@ jobs:
             "net.minecraft.client.Camera#void setRotation(float, float)" \
             "net.minecraft.world.entity.item.PrimedTnt#getFuse" \
             "net.minecraft.server.packs.repository.PackRepository#getSelectedPacks" \
+            "net.minecraft.client.PrioritizeChunkUpdates#NONE" \
+            "net.minecraft.client.CloudStatus#OFF" \
+            "net.minecraft.server.level.ParticleStatus#MINIMAL" \
+            "net.minecraft.client.GraphicsPreset#FAST" \
+            "net.minecraft.client.TextureFilteringMethod#values" \
+            "net.minecraft.resources.Identifier#fromNamespaceAndPath" \
+            "net.minecraft.server.packs.repository.PackRepository#void setSelected(" \
+            "net.minecraft.client.Minecraft#java.nio.file.Path getResourcePackDirectory()" \
+            "com.mojang.blaze3d.platform.NativeImage#public int getPixel(int, int)" \
+            "net.minecraft.WorldVersion#packVersion" \
             "net.minecraft.world.entity.player.Player#getDestroySpeed" \
             "net.minecraft.world.phys.Vec3#directionFromRotation" \
             "net.minecraft.world.level.block.Block#isShapeFullBlock" \

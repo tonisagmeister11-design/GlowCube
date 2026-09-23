@@ -1,105 +1,103 @@
 package net.glowcube.client.util;
 
+import net.glowcube.client.GlowCubeClient;
+import net.glowcube.client.mixin.OptionInstanceAccessor;
+import net.minecraft.client.CloudStatus;
+import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
+import net.minecraft.client.Options;
+import net.minecraft.client.PrioritizeChunkUpdates;
+import net.minecraft.client.TextureFilteringMethod;
+import net.minecraft.server.level.ParticleStatus;
 
-import java.lang.reflect.Method;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Der Ultra-Performance-Modus: dreht in einem Rutsch alles herunter, was Bild
  * kostet, und stellt beim Ausschalten jeden Wert genau so wieder her, wie er
  * beim Einschalten war - man muss also nichts von Hand zuruecksetzen.
  *
- * <p>Warum ueber Spiegelung statt fester Aufrufe: die Optionen von Minecraft
- * heissen zwischen 1.21.x und 26.x nicht ueberall gleich, und ein Teil davon
- * gibt es nur in einer der beiden Fassungen. Jede Regel wird darum einzeln
- * versucht; was es in der laufenden Fassung nicht gibt, wird still uebergangen,
- * statt den ganzen Schalter scheitern zu lassen. So laeuft dieselbe Klasse aus
- * {@code src/main} auf beiden Fassungen.
+ * <p>Jede Option wird direkt angesprochen ({@code options.renderDistance()}
+ * usw.). Die fruehere Fassung suchte sie per Spiegelung nach Namen - das
+ * scheiterte auf 1.21.11 still, weil die Namen dort in der fertigen JAR
+ * verschleiert sind; der Modus tat dort also gar nichts. Die Optionen hier
+ * gibt es auf 1.21.11 und 26.3 gleich (per CI-Probe ausgelesen).
  *
- * <p>Gesetzt wird ueber {@code OptionInstance.set(..)} - nicht ueber den
- * Rohzugriff wie bei {@link Gamma}: alle Zielwerte liegen im erlaubten Bereich,
- * und {@code set} loest nebenbei die richtigen Folgen aus (etwa das Neuladen der
- * Chunks bei der Sichtweite). Der Typ des Zielwerts richtet sich nach dem, was
- * die Option gerade zurueckgibt - so passt Ganzzahl, Kommazahl, Wahrheitswert
- * oder Aufzaehlung von selbst.
+ * <p>Gesetzt wird ueber {@code OptionInstance.set(..)}, damit die Folgen
+ * mitlaufen (Chunks neu bauen usw.). Ein Wert ausserhalb des erlaubten
+ * Bereichs wird von Minecraft abgelehnt - dann bleibt die Option einfach,
+ * wie sie war, und steht auch nicht auf der Rueckweg-Liste.
  */
 public final class Leistung {
     private Leistung() {
     }
 
-    /**
-     * Eine Regel je Option: der Name des Zugriffs auf {@code Options} und die
-     * drei moeglichen Zielformen. Welche gilt, entscheidet der Laufzeittyp des
-     * aktuellen Werts.
-     *
-     * @param getter    Name der Methode auf {@code Options}, z.B. "renderDistance"
-     * @param zahl      Ziel fuer Zahlenoptionen (Chunks, Skalen ...)
-     * @param flag      Ziel fuer Wahrheitswert-Optionen
-     * @param aufzaehl  bevorzugte Namen fuer Aufzaehlungs-Optionen (erster Treffer gilt)
-     */
-    private record Regel(String getter, double zahl, boolean flag, String[] aufzaehl) {
-        static Regel zahl(String getter, double wert) {
-            return new Regel(getter, wert, false, null);
-        }
-
-        static Regel flag(String getter, boolean wert) {
-            return new Regel(getter, 0, wert, null);
-        }
-
-        static Regel aufzaehl(String getter, String... namen) {
-            return new Regel(getter, 0, false, namen);
-        }
-    }
-
-    // Reihenfolge egal - jede Regel steht fuer sich.
-    private static final Regel[] REGELN = {
-            // Die grossen Hebel: Sicht- und Simulationsweite klein halten.
-            Regel.zahl("renderDistance", 4),
-            Regel.zahl("simulationDistance", 5),
-            // Feineres, das trotzdem spuerbar Bild kostet.
-            Regel.zahl("biomeBlendRadius", 0),
-            Regel.zahl("mipmapLevels", 0),
-            Regel.zahl("entityDistanceScaling", 0.5),
-            // Bildrate nach oben aufmachen (260 = ohne Grenze).
-            Regel.zahl("framerateLimit", 260),
-            // Bildschirmeffekte kosten nur Rechenzeit, hier weg.
-            Regel.zahl("screenEffectScale", 0.0),
-            Regel.zahl("fovEffectScale", 0.0),
-            Regel.zahl("distortionEffectScale", 0.0),
-            Regel.zahl("damageTiltStrength", 0.0),
-            Regel.zahl("glintSpeed", 0.0),
-            Regel.zahl("glintStrength", 0.0),
-            Regel.zahl("darknessEffectScale", 0.0),
-            // Schatten, Wackeln, Bildsync und Umgebungsverdeckung aus.
-            Regel.flag("entityShadows", false),
-            Regel.flag("bobView", false),
-            Regel.flag("enableVsync", false),
-            Regel.flag("ambientOcclusion", false),
-            // Aufzaehlungen: schnellstes Bild, keine Wolken, kaum Partikel.
-            Regel.aufzaehl("graphicsMode", "FAST"),
-            Regel.aufzaehl("cloudStatus", "OFF"),
-            Regel.aufzaehl("particles", "MINIMAL"),
-            Regel.aufzaehl("prioritizeChunkUpdates", "NEARBY", "NONE"),
-    };
-
-    private static final Map<String, Object> GESICHERT = new LinkedHashMap<>();
+    /** Was beim Ausschalten zu tun ist, in der Reihenfolge des Einschaltens. */
+    private static final List<Runnable> RUECKWEG = new ArrayList<>();
     private static boolean aktiv;
 
-    /** Alles herunterdrehen und den Ausgangszustand merken. */
-    public static void an() {
+    /**
+     * @param sichtweite Sichtweite in Chunks (2 = kleinstmoeglich)
+     * @param pixel      das Pixel-Ressourcenpaket dazuschalten
+     */
+    public static void an(int sichtweite, boolean pixel) {
         if (aktiv) {
             return;
         }
         aktiv = true;
-        GESICHERT.clear();
+        RUECKWEG.clear();
         Minecraft mc = Minecraft.getInstance();
-        for (Regel regel : REGELN) {
-            anwenden(mc, regel);
-        }
+        Options o = mc.options;
+
+        // Die Grafikstufe nur roh umstellen: ueber set() wuerde sie ihre
+        // Voreinstellungen ueber alles Folgende schreiben - und beim
+        // Zuruecksetzen ueber die wiederhergestellten Werte.
+        roh(o.graphicsPreset(), GraphicsPreset.FAST);
+
+        // Die grossen Hebel: wie weit gezeichnet und gerechnet wird.
+        setze(o.renderDistance(), sichtweite);
+        setze(o.simulationDistance(), 5);
+        setze(o.entityDistanceScaling(), 0.5);
+        setze(o.prioritizeChunkUpdates(), PrioritizeChunkUpdates.NONE);
+        setze(o.chunkSectionFadeInTime(), 0.0);
+
+        // Bildrate ohne Grenze, kein Warten auf den Bildschirm.
+        setze(o.framerateLimit(), 260);
+        setze(o.enableVsync(), false);
+
+        // Was an Welt-Optik Leistung frisst.
+        setze(o.cloudStatus(), CloudStatus.OFF);
+        setze(o.cloudRange(), 2);
+        setze(o.weatherRadius(), 3);
+        setze(o.cutoutLeaves(), false);
+        setze(o.improvedTransparency(), false);
+        setze(o.ambientOcclusion(), false);
+        setze(o.entityShadows(), false);
+        setze(o.biomeBlendRadius(), 0);
+        setze(o.mipmapLevels(), 0);
+        setze(o.textureFiltering(), TextureFilteringMethod.values()[0]);
+        setze(o.particles(), ParticleStatus.MINIMAL);
+        setze(o.hideLightningFlash(), true);
+
+        // Bildschirmeffekte - kosten nur Rechenzeit.
+        setze(o.vignette(), false);
+        setze(o.bobView(), false);
+        setze(o.screenEffectScale(), 0.0);
+        setze(o.fovEffectScale(), 0.0);
+        setze(o.darknessEffectScale(), 0.0);
+        setze(o.damageTiltStrength(), 0.0);
+        setze(o.glintSpeed(), 0.0);
+        setze(o.glintStrength(), 0.0);
+        setze(o.menuBackgroundBlurriness(), 0);
+
         neuZeichnen();
+        if (pixel) {
+            PixelPaket.an();
+        }
+        GlowCubeClient.LOGGER.info("GlowCube: Ultra-Performance an ({} Werte geaendert)", RUECKWEG.size());
     }
 
     /** Jeden gemerkten Wert wieder auf den Ausgangsstand setzen. */
@@ -108,19 +106,24 @@ public final class Leistung {
             return;
         }
         aktiv = false;
-        Minecraft mc = Minecraft.getInstance();
-        for (Map.Entry<String, Object> eintrag : GESICHERT.entrySet()) {
+        PixelPaket.aus();
+        for (int i = RUECKWEG.size() - 1; i >= 0; i--) {
             try {
-                OptionInstance<?> option = option(mc, eintrag.getKey());
-                if (option != null && eintrag.getValue() != null) {
-                    setzen(option, eintrag.getValue());
-                }
-            } catch (RuntimeException ignoriert) {
-                // Ein einzelner Wert, der sich nicht zuruecksetzen laesst, darf
-                // die uebrigen nicht aufhalten.
+                RUECKWEG.get(i).run();
+            } catch (RuntimeException fehler) {
+                // Ein Wert, der sich nicht zuruecksetzen laesst, haelt die
+                // uebrigen nicht auf.
+                GlowCubeClient.LOGGER.warn("GlowCube: Wert nicht zurueckgesetzt", fehler);
             }
         }
-        GESICHERT.clear();
+        RUECKWEG.clear();
+        // Falls zwischendurch das Optionsmenue gespeichert hat, stehen die
+        // heruntergedrehten Werte in options.txt - jetzt wieder die echten.
+        try {
+            Minecraft.getInstance().options.save();
+        } catch (RuntimeException ignoriert) {
+            // Nur ein Sicherheitsnetz.
+        }
         neuZeichnen();
     }
 
@@ -130,66 +133,34 @@ public final class Leistung {
 
     // --------------------------------------------------------------- intern
 
-    private static void anwenden(Minecraft mc, Regel regel) {
+    private static <T> void setze(OptionInstance<T> option, T ziel) {
         try {
-            OptionInstance<?> option = option(mc, regel.getter());
-            if (option == null) {
+            T alt = option.get();
+            if (Objects.equals(alt, ziel)) {
                 return;
             }
-            Object jetzt = option.get();
-            GESICHERT.put(regel.getter(), jetzt);
-            Object ziel = zielWert(jetzt, regel);
-            if (ziel != null) {
-                setzen(option, ziel);
+            option.set(ziel);
+            if (!Objects.equals(option.get(), alt)) {
+                RUECKWEG.add(() -> option.set(alt));
             }
-        } catch (RuntimeException ignoriert) {
-            // Option in dieser Fassung nicht vorhanden oder anders gebaut:
-            // still uebergehen.
+        } catch (RuntimeException fehler) {
+            GlowCubeClient.LOGGER.warn("GlowCube: Option nicht gesetzt", fehler);
         }
     }
 
-    private static OptionInstance<?> option(Minecraft mc, String getter) {
+    @SuppressWarnings("unchecked")
+    private static <T> void roh(OptionInstance<T> option, T ziel) {
         try {
-            Method methode = mc.options.getClass().getMethod(getter);
-            Object wert = methode.invoke(mc.options);
-            return wert instanceof OptionInstance<?> option ? option : null;
-        } catch (ReflectiveOperationException fehlt) {
-            return null;
-        }
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void setzen(OptionInstance option, Object wert) {
-        option.set(wert);
-    }
-
-    /** Passt das Ziel an den Laufzeittyp des aktuellen Werts an. */
-    private static Object zielWert(Object jetzt, Regel regel) {
-        if (jetzt instanceof Boolean) {
-            return regel.flag();
-        }
-        if (jetzt instanceof Integer) {
-            return (int) regel.zahl();
-        }
-        if (jetzt instanceof Long) {
-            return (long) regel.zahl();
-        }
-        if (jetzt instanceof Double) {
-            return regel.zahl();
-        }
-        if (jetzt instanceof Float) {
-            return (float) regel.zahl();
-        }
-        if (jetzt instanceof Enum<?> aktuell && regel.aufzaehl() != null) {
-            for (Object konstante : aktuell.getDeclaringClass().getEnumConstants()) {
-                for (String name : regel.aufzaehl()) {
-                    if (((Enum<?>) konstante).name().equalsIgnoreCase(name)) {
-                        return konstante;
-                    }
-                }
+            T alt = option.get();
+            if (Objects.equals(alt, ziel)) {
+                return;
             }
+            OptionInstanceAccessor<T> zugriff = (OptionInstanceAccessor<T>) (Object) option;
+            zugriff.glowcube$setValue(ziel);
+            RUECKWEG.add(() -> zugriff.glowcube$setValue(alt));
+        } catch (RuntimeException fehler) {
+            GlowCubeClient.LOGGER.warn("GlowCube: Option nicht roh gesetzt", fehler);
         }
-        return null;
     }
 
     private static void neuZeichnen() {
