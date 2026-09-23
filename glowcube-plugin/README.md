@@ -46,8 +46,11 @@ fuer Testserver, auf denen alle Mitspieler Bescheid wissen.
 
 **Orbital Strike:** Ziel im Client mit `/strike x y z` setzen (Position
 bekommt man mit `/coordinates`, Klick kopiert sie), dann den Hebel auf dem
-Leitstein oben auf der Orbital Strike Cannon umlegen. Die Kanone schiesst
-eine Salve TNT in den Himmel, kurz darauf fallen am Ziel Ringe aus TNT herab.
+Leitstein oben auf der Orbital Strike Cannon umlegen. Das geht nur, wenn die
+Kanone dort wirklich steht (Vergleich mit dem Schematic, auch gedreht). Man
+sieht sie arbeiten: Signal durch die Leitungen, TNT in den Ladearmen, Portale,
+Knall im Kern, dann schiesst die Salve senkrecht aus der Kanone. Kurz darauf
+fallen am Ziel Ringe aus TNT herab.
 
 ## Wie es spricht
 

@@ -238,17 +238,23 @@ kein Wasser fliesst nach, kein Sand faellt, keine Tuer, Fackel oder
 Redstone-Leitung bricht weg. Beim Abraeumen hat er das passende Werkzeug in
 der Hand (Spitzhacke, Axt, Schaufel, Hacke, Schere).
 
-**Orbital Strike Cannon:** Der Builder setzt ganz oben einen Leitstein mit
-Hebel darauf (jeder Hebel auf einem Leitstein funktioniert so, auch ein
-selbst gebauter). So geht's:
+**Orbital Strike Cannon:** Die Kanone muss stehen - der Hebel feuert nur,
+wenn rund um ihn wirklich die Orbital Strike Cannon gebaut ist (GlowCube
+vergleicht sie mit dem Schematic, auch gedreht). Der Builder setzt ganz oben
+einen Leitstein mit Hebel darauf; wer die Kanone anders baut, setzt die
+beiden selbst an dieselbe Stelle. So geht's:
 
 1. Zum Ziel gehen und `/coordinates` (oder `/koordinaten`) eingeben. Im Chat
    steht die Position - ein Klick auf die Zahlen kopiert sie, ein Klick auf
    `[Als Strike-Ziel]` schreibt gleich `/strike x y z` ins Chatfeld.
 2. `/strike x y z` eingeben (kopierte Zahlen einfuegen). `/strike` allein
    nimmt den Block, auf den man schaut (bis 500 Bloecke).
-3. Den Hebel oben auf der Kanone umlegen: die Kanone schiesst eine Salve TNT
-   in den Himmel, kurz darauf fallen am Ziel Ringe aus TNT herab.
+3. Den Hebel oben auf der Kanone umlegen. Dann sieht man die Kanone
+   arbeiten (Schritt fuer Schritt auch in der Anzeige ueber der Leiste):
+   das Signal laeuft rot leuchtend durch die Redstone-Leitungen, das TNT in
+   den vier Ladearmen zuendet von aussen nach innen, die Portale leuchten,
+   im Kern knallt es und die Salve schiesst senkrecht aus der Kanone in den
+   Himmel. Nach der Flugzeit fallen am Ziel Ringe aus TNT herab.
 
 Laeuft in der eigenen Welt und auf Servern mit dem GlowCube-Agent-Plugin -
 ohne Bestaetigen, direkt.
