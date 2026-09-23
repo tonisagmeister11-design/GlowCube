@@ -126,18 +126,33 @@ public final class AgentSteuerung {
         net.minecraft.world.phys.HitResult treffer = mc.player.pick(500, 1.0f, false);
         if (!(treffer instanceof net.minecraft.world.phys.BlockHitResult block)
                 || treffer.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) {
-            return "Kein Block in Sicht - schau auf die Stelle, die getroffen werden soll.";
+            return "Kein Block in Sicht - schau auf die Stelle oder gib /strike x y z ein.";
         }
         net.minecraft.core.BlockPos pos = block.getBlockPos();
-        IntegratedServer server = mc.getSingleplayerServer();
-        UUID spieler = mc.player.getUUID();
-        if (server != null) {
-            server.execute(() -> OrbitalStrike.zielSetzen(spieler, pos));
-        } else {
-            return "Den Orbital Strike gibt es nur in deiner eigenen Welt.";
+        return zielSetzen(pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    /**
+     * Setzt das Ziel fuer den Orbital Strike auf feste Koordinaten - in der
+     * eigenen Welt direkt, auf einem Server ueber das GlowCube-Plugin.
+     *
+     * @return die Meldung fuer den Chat
+     */
+    public static String zielSetzen(int x, int y, int z) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            return "Nicht in einer Welt.";
         }
-        return "Orbital-Strike-Ziel: " + pos.getX() + " " + pos.getY() + " " + pos.getZ()
-                + " - jetzt den Hebel auf der Kanone umlegen.";
+        IntegratedServer server = mc.getSingleplayerServer();
+        if (server != null) {
+            UUID spieler = mc.player.getUUID();
+            net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+            server.execute(() -> OrbitalStrike.zielSetzen(spieler, pos));
+        } else if (!anPlugin("ziel;" + x + ";" + y + ";" + z, false)) {
+            return "Dieser Server hat das GlowCube-Plugin nicht - dort gibt es keinen Orbital Strike.";
+        }
+        return "Orbital-Strike-Ziel: " + x + " " + y + " " + z
+                + " - jetzt den Hebel oben auf der Kanone umlegen.";
     }
 
     public static void alleZurueck() {

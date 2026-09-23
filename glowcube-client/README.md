@@ -239,10 +239,19 @@ Redstone-Leitung bricht weg. Beim Abraeumen hat er das passende Werkzeug in
 der Hand (Spitzhacke, Axt, Schaufel, Hacke, Schere).
 
 **Orbital Strike Cannon:** Der Builder setzt ganz oben einen Leitstein mit
-Hebel darauf. Ziel markieren: auf die Stelle schauen (bis 500 Bloecke) und
-`/glowcube ziel` eingeben. Dann den Hebel umlegen - am Ziel fallen Ringe aus
-gezuendetem TNT vom Himmel. Jeder Hebel auf einem Leitstein funktioniert so,
-auch ein selbst gebauter. Nur in der eigenen Welt.
+Hebel darauf (jeder Hebel auf einem Leitstein funktioniert so, auch ein
+selbst gebauter). So geht's:
+
+1. Zum Ziel gehen und `/coordinates` (oder `/koordinaten`) eingeben. Im Chat
+   steht die Position - ein Klick auf die Zahlen kopiert sie, ein Klick auf
+   `[Als Strike-Ziel]` schreibt gleich `/strike x y z` ins Chatfeld.
+2. `/strike x y z` eingeben (kopierte Zahlen einfuegen). `/strike` allein
+   nimmt den Block, auf den man schaut (bis 500 Bloecke).
+3. Den Hebel oben auf der Kanone umlegen: die Kanone schiesst eine Salve TNT
+   in den Himmel, kurz darauf fallen am Ziel Ringe aus TNT herab.
+
+Laeuft in der eigenen Welt und auf Servern mit dem GlowCube-Agent-Plugin -
+ohne Bestaetigen, direkt.
 
 In der eigenen Welt laufen alle Agenten auch im Survival ohne Cheats.
 

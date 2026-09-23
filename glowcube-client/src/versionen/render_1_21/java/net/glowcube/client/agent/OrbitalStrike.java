@@ -26,9 +26,10 @@ import java.util.UUID;
 /**
  * Orbital Strike: ein Hebel auf einem Leitstein ist der Ausloeser (der
  * Builder setzt einen oben auf die Orbital Strike Cannon, man kann aber auch
- * selbst einen bauen). Wird er eingeschaltet, fallen am markierten Ziel
- * ({@code /glowcube ziel}) Ringe aus gezuendetem TNT vom Himmel - erst die
- * Mitte, dann nach aussen immer groessere Ringe.
+ * selbst einen bauen). Wird er eingeschaltet, schiesst die Kanone eine Salve
+ * TNT senkrecht in den Himmel; kurz darauf fallen am Ziel
+ * ({@code /strike x y z} oder {@code /glowcube ziel}) Ringe aus gezuendetem
+ * TNT herunter - erst die Mitte, dann nach aussen immer groessere Ringe.
  *
  * <p>Laeuft auf dem Server der eigenen Welt.
  */
@@ -40,12 +41,20 @@ final class OrbitalStrike {
     private static final class Einschlag {
         final ServerLevel welt;
         final BlockPos ziel;
+        /** Der Hebel oben auf der Kanone - von dort geht die Salve hoch. */
+        final BlockPos kanone;
+        /** Ab diesem Tick faellt das TNT am Ziel (Flugzeit je nach Entfernung). */
+        final int ankunft;
+        final List<PrimedTnt> salve = new ArrayList<>();
         final ChunkHalter chunks = new ChunkHalter();
         int tick;
 
-        Einschlag(ServerLevel welt, BlockPos ziel) {
+        Einschlag(ServerLevel welt, BlockPos ziel, BlockPos kanone) {
             this.welt = welt;
             this.ziel = ziel;
+            this.kanone = kanone;
+            double weg = Math.sqrt(ziel.distSqr(kanone));
+            this.ankunft = 40 + (int) Math.min(100, weg / 20);
             chunks.halten(welt, ziel, 1);
         }
     }
@@ -63,7 +72,7 @@ final class OrbitalStrike {
             if (zustand.is(Blocks.LEVER) && welt.getBlockState(pos.below()).is(Blocks.LODESTONE)
                     && !zustand.getValue(LeverBlock.POWERED)) {
                 // Der Hebel geht gleich an - dann feuern.
-                feuern(sp);
+                feuern(sp, pos);
             }
             return InteractionResult.PASS;
         });
@@ -74,15 +83,15 @@ final class OrbitalStrike {
         ZIELE.put(spieler, ziel);
     }
 
-    private static void feuern(ServerPlayer spieler) {
+    private static void feuern(ServerPlayer spieler, BlockPos kanone) {
         BlockPos ziel = ZIELE.get(spieler.getUUID());
         if (ziel == null) {
             AgentWelt.melden(spieler, ChatFormatting.YELLOW,
-                    "Orbital Strike: erst ein Ziel markieren - draufschauen und /glowcube ziel eingeben.");
+                    "Orbital Strike: erst ein Ziel setzen - /strike x y z (Koordinaten mit /coordinates).");
             return;
         }
         ServerLevel welt = (ServerLevel) spieler.level();
-        LAUFEND.add(new Einschlag(welt, ziel));
+        LAUFEND.add(new Einschlag(welt, ziel, kanone));
         AgentWelt.melden(spieler, ChatFormatting.RED, "Orbital Strike auf " + ziel.getX() + " " + ziel.getY() + " "
                 + ziel.getZ() + " - Einschlag in wenigen Sekunden!");
         welt.playSound(null, spieler.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.BLOCKS, 1f, 0.6f);
@@ -93,7 +102,36 @@ final class OrbitalStrike {
             Einschlag e = it.next();
             e.tick++;
             BlockPos z = e.ziel;
-            if (e.tick == 1) {
+            BlockPos k = e.kanone;
+            // Abschuss: die Kanone feuert eine Salve TNT senkrecht nach oben.
+            if (e.tick <= 20 && e.tick % 4 == 1) {
+                PrimedTnt tnt = new PrimedTnt(e.welt, k.getX() + 0.5, k.getY() + 1, k.getZ() + 0.5, null);
+                tnt.setFuse(60);
+                tnt.setNoGravity(true);
+                tnt.setDeltaMovement(0, 2.5, 0);
+                e.welt.addFreshEntity(tnt);
+                e.salve.add(tnt);
+                e.welt.sendParticles(ParticleTypes.EXPLOSION, k.getX() + 0.5, k.getY() + 1.5, k.getZ() + 0.5,
+                        2, 0.3, 0.3, 0.3, 0);
+                e.welt.sendParticles(ParticleTypes.FLAME, k.getX() + 0.5, k.getY() + 1.5, k.getZ() + 0.5,
+                        20, 0.2, 0.5, 0.2, 0.08);
+                e.welt.playSound(null, k, SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.BLOCKS, 4f, 0.5f);
+                e.welt.playSound(null, k, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 1.5f, 1.4f);
+            }
+            // Die Salve verschwindet oben im Himmel, bevor sie zuendet.
+            for (Iterator<PrimedTnt> s = e.salve.iterator(); s.hasNext(); ) {
+                PrimedTnt tnt = s.next();
+                e.welt.sendParticles(ParticleTypes.FIREWORK, tnt.getX(), tnt.getY() - 1, tnt.getZ(), 2, 0.1, 0.3, 0.1, 0);
+                if (tnt.getFuse() <= 40 || tnt.isRemoved()) {
+                    tnt.discard();
+                    s.remove();
+                }
+            }
+            if (e.tick < e.ankunft) {
+                continue;
+            }
+            int t = e.tick - e.ankunft + 1;
+            if (t == 1) {
                 // Der Leitstrahl: ein Lichtband vom Himmel auf das Ziel.
                 for (int y = 0; y < 60; y += 2) {
                     e.welt.sendParticles(ParticleTypes.END_ROD, z.getX() + 0.5, z.getY() + 1 + y, z.getZ() + 0.5,
@@ -102,8 +140,8 @@ final class OrbitalStrike {
                 e.welt.playSound(null, z, SoundEvents.WARDEN_SONIC_BOOM, SoundSource.BLOCKS, 4f, 0.5f);
             }
             // Ring 0 (Mitte) bis Ring 4 (Radius 16), alle 8 Ticks ein Ring.
-            if (e.tick % 8 == 0 && e.tick <= 40) {
-                int ring = e.tick / 8 - 1;
+            if (t % 8 == 0 && t <= 40) {
+                int ring = t / 8 - 1;
                 int radius = ring * 4;
                 int anzahl = ring == 0 ? 3 : (int) Math.round(2 * Math.PI * radius / 2.5);
                 for (int i = 0; i < anzahl; i++) {
@@ -115,7 +153,10 @@ final class OrbitalStrike {
                     e.welt.addFreshEntity(tnt);
                 }
             }
-            if (e.tick > 200) {
+            if (t > 200) {
+                for (PrimedTnt tnt : e.salve) {
+                    tnt.discard();
+                }
                 e.chunks.freigeben();
                 it.remove();
             }

@@ -22,3 +22,7 @@ xray-erlaubt: true
 # Benutzen kann es nur, wer den GlowCube-Client installiert hat - und nur,
 # solange dieses Plugin auf dem Server liegt. Mit false ist es hier aus.
 pvp-pro-erlaubt: true
+
+# Orbital Strike: Ziel mit /strike x y z im GlowCube-Client setzen, dann den
+# Hebel oben auf der Orbital Strike Cannon umlegen. Mit false ist er hier aus.
+orbital-strike-erlaubt: true

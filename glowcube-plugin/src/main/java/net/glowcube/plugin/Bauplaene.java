@@ -50,6 +50,16 @@ final class Bauplaene {
     }
 
     static Bauplan laden(GlowCubeAgentPlugin plugin, String name) {
+        Bauplan plan = ladenRoh(plugin, name);
+        if (plan != null && name.equals("Orbital-Strike-Cannon")) {
+            // Der Feuer-Hebel ganz oben: Leitstein mit Hebel darauf (wie im Client).
+            plan.bloecke.add(new Bauplan.Block(33, 51, 3, "minecraft:lodestone"));
+            plan.bloecke.add(new Bauplan.Block(33, 52, 3, "minecraft:lever[face=floor,facing=north,powered=false]"));
+        }
+        return plan;
+    }
+
+    private static Bauplan ladenRoh(GlowCubeAgentPlugin plugin, String name) {
         try {
             File[] dateien = ordner(plugin).listFiles();
             if (dateien != null) {

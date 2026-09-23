@@ -32,19 +32,25 @@ Spieler brauchen nur den GlowCube-Client (1.21.11). Im Menue unter
 | `max-xray-chunks` | 6 | Wie weit X-Ray hoechstens reicht |
 | `max-bau-tempo` | 100.0 | Builder: hoechstens so viele Bloecke pro Sekunde |
 | `xray-erlaubt` | true | X-Ray ueberhaupt zulassen |
-
 | `pvp-pro-erlaubt` | true | PvP Pro (Kampf-Automatik im Client) auf diesem Server erlauben |
+| `orbital-strike-erlaubt` | true | Orbital Strike (Hebel auf der Orbital Strike Cannon) erlauben |
 
 Berechtigungen: `glowcube.agent` (Agenten, Standard: jeder),
 `glowcube.pvppro` (PvP Pro, Standard: jeder - wirkt nur, solange
-`pvp-pro-erlaubt: true` gesetzt ist).
+`pvp-pro-erlaubt: true` gesetzt ist), `glowcube.orbital` (Orbital Strike,
+Standard: jeder).
 
 **PvP Pro** laeuft im Client, nicht im Plugin - das Plugin gibt es nur frei.
 Ohne diese Freigabe schaltet es sich auf einem Server von selbst ab. Gedacht
 fuer Testserver, auf denen alle Mitspieler Bescheid wissen.
 
+**Orbital Strike:** Ziel im Client mit `/strike x y z` setzen (Position
+bekommt man mit `/coordinates`, Klick kopiert sie), dann den Hebel auf dem
+Leitstein oben auf der Orbital Strike Cannon umlegen. Die Kanone schiesst
+eine Salve TNT in den Himmel, kurz darauf fallen am Ziel Ringe aus TNT herab.
+
 ## Wie es spricht
 
 Kanal `glowcube:agent`, ein Text (UTF-8 mit VarInt-Laenge):
 `start;ERZ|STEIN|HOLZ|WAECHTER|BAUMEISTER;art;tempo;abbau;xray;chunks` (art = Erzart, Ausruestung oder Schematic-Name), `werte;...`,
-`zurueck;AUFTRAG`, `alle`. Zurueck an den Client: `aus;AUFTRAG`.
+`zurueck;AUFTRAG`, `alle`, `ziel;x;y;z` (Orbital-Strike-Ziel). Zurueck an den Client: `aus;AUFTRAG`.

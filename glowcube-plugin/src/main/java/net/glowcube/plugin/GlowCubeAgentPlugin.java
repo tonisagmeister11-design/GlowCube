@@ -31,7 +31,7 @@ import java.util.UUID;
  * <p>Der Client schickt seine Befehle ueber den Kanal {@code glowcube:agent}
  * (Text mit Semikolons, UTF-8 mit VarInt-Laenge davor):
  * {@code start;AUFTRAG;art;tempo;abbau;xray;chunks}, {@code werte;...},
- * {@code zurueck;AUFTRAG}, {@code alle}. Zurueck geht {@code aus;AUFTRAG},
+ * {@code zurueck;AUFTRAG}, {@code alle}, {@code ziel;x;y;z} (Orbital Strike). Zurueck geht {@code aus;AUFTRAG},
  * wenn ein Agent fertig ist - dann springt der Schalter im Menue um.
  */
 public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessageListener, Listener {
@@ -41,6 +41,7 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
     /** Wer welchen Spieler zuletzt getroffen hat (fuer den Guardian): Spieler -> Angreifer, Zeitpunkt. */
     private final Map<UUID, UUID> angreifer = new HashMap<>();
     private final Map<UUID, Long> angriffZeit = new HashMap<>();
+    private final OrbitalStrike orbitalStrike = new OrbitalStrike(this);
 
     @Override
     public void onEnable() {
@@ -49,6 +50,7 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
         getServer().getMessenger().registerOutgoingPluginChannel(this, KANAL);
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(orbitalStrike, this);
         Bauplaene.ordner(this);
         getLogger().info("GlowCube-Agenten bereit - Kanal " + KANAL);
     }
@@ -65,6 +67,7 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
             }
         }
         agenten.clear();
+        orbitalStrike.aufraeumen();
     }
 
     // ------------------------------------------------------------- Befehle
@@ -104,6 +107,7 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
                     zurueck(spieler.getUniqueId(), auftrag(t[1]));
                 }
             }
+            case "ziel" -> orbitalStrike.zielSetzen(spieler, t);
             case "alle" -> {
                 for (Auftrag a : Auftrag.values()) {
                     zurueck(spieler.getUniqueId(), a);
@@ -212,6 +216,11 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
     // ---------------------------------------------------------------- Tick
 
     private void tick() {
+        try {
+            orbitalStrike.tick();
+        } catch (RuntimeException fehler) {
+            getLogger().warning("Orbital Strike: " + fehler);
+        }
         for (Iterator<AgentArbeiter> it = agenten.iterator(); it.hasNext(); ) {
             AgentArbeiter agent = it.next();
             try {

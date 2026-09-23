@@ -11,3 +11,6 @@ permissions:
   glowcube.pvppro:
     description: Darf PvP Pro im GlowCube-Client benutzen (nur wenn pvp-pro-erlaubt an ist).
     default: true
+  glowcube.orbital:
+    description: Darf den Orbital Strike (Hebel auf der Orbital Strike Cannon) benutzen.
+    default: true

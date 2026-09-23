@@ -30,6 +30,10 @@ public final class AgentSteuerung {
         return "Den Orbital Strike gibt es bisher nur auf 1.21.11.";
     }
 
+    public static String zielSetzen(int x, int y, int z) {
+        return zielMarkieren();
+    }
+
     public static void alleZurueck() {
     }
 }
