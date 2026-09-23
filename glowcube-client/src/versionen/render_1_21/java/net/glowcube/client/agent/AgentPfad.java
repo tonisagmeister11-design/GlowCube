@@ -1,12 +1,12 @@
 package net.glowcube.client.agent;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.function.Predicate;
@@ -28,8 +28,8 @@ final class AgentPfad {
 
     private final ServerLevel welt;
     private final boolean bausteine;
-    private final Long2ObjectOpenHashMap<Double> zellKosten = new Long2ObjectOpenHashMap<>();
-    private final Long2ObjectOpenHashMap<Boolean> traegtCache = new Long2ObjectOpenHashMap<>();
+    private final HashMap<Long, Double> zellKosten = new HashMap<>();
+    private final HashMap<Long, Boolean> traegtCache = new HashMap<>();
 
     AgentPfad(ServerLevel welt, boolean bausteine) {
         this.welt = welt;
@@ -49,7 +49,7 @@ final class AgentPfad {
      */
     List<BlockPos> suchen(BlockPos start, Predicate<BlockPos> ziel, BlockPos richtwert, int maxKnoten, int maxAbstand) {
         PriorityQueue<Knoten> offen = new PriorityQueue<>((a, b) -> Double.compare(a.f, b.f));
-        Long2ObjectOpenHashMap<Double> besteG = new Long2ObjectOpenHashMap<>();
+        HashMap<Long, Double> besteG = new HashMap<>();
         offen.add(new Knoten(start, 0, schaetzung(start, richtwert), null));
         besteG.put(start.asLong(), 0.0);
         int besucht = 0;
