@@ -35,6 +35,8 @@ final class AgentBloecke {
             case STEIN -> s.is(BlockTags.BASE_STONE_OVERWORLD) && !s.is(Blocks.GRAVEL)
                     || s.is(Blocks.COBBLESTONE) || s.is(Blocks.COBBLED_DEEPSLATE);
             case ERZ -> istErz(s, art);
+            // Guardian und Builder suchen keine Bloecke.
+            case WAECHTER, BAUMEISTER -> false;
         };
     }
 

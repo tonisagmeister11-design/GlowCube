@@ -33,6 +33,8 @@ final class Bloecke {
             case STEIN -> Tag.BASE_STONE_OVERWORLD.isTagged(m) && m != Material.GRAVEL
                     || m == Material.COBBLESTONE || m == Material.COBBLED_DEEPSLATE;
             case ERZ -> istErz(m, art);
+            // Guardian und Builder suchen keine Bloecke.
+            case WAECHTER, BAUMEISTER -> false;
         };
     }
 

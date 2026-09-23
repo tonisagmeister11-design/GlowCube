@@ -2,9 +2,14 @@
 
 Server-Plugin fuer **Paper 1.21.11**. Damit koennen Spieler mit dem
 GlowCube-Client auf deinem Server Agenten losschicken - genau wie in der
-Einzelspielerwelt: NPCs in Spielergestalt, die Erz, Stein oder Holz abbauen,
-mit Tempo, Abbau-Tempo und X-Ray, und die Beute beim Zurueckschicken
-zuwerfen.
+Einzelspielerwelt: Abbau-Agenten fuer Erz, Stein und Holz (mit Tempo,
+Abbau-Tempo und X-Ray, Beute wird zugeworfen), den Guardian-Agenten als
+Leibwaechter und den Builder-Agenten, der Schematics baut.
+
+Schematics fuer den Builder: die fuenf eingebauten, dazu alles in
+`plugins/GlowCubeAgent/schematics/` (`.schem`, `.litematic`, `.nbt`). Der
+Client schickt nur den Namen - ein eigenes Schematic muss also sowohl beim
+Spieler (fuer die Auswahl) als auch auf dem Server liegen.
 
 ## Einbauen
 
@@ -21,10 +26,11 @@ Spieler brauchen nur den GlowCube-Client (1.21.11). Im Menue unter
 
 | Schluessel | Standard | Bedeutung |
 | --- | --- | --- |
-| `max-agenten-je-spieler` | 3 | Agenten gleichzeitig je Spieler (einer je Sorte) |
+| `max-agenten-je-spieler` | 5 | Agenten gleichzeitig je Spieler (einer je Sorte) |
 | `max-tempo` | 4.0 | Hoechstes Lauftempo |
 | `max-abbau-tempo` | 20.0 | Hoechstes Abbau-Tempo |
 | `max-xray-chunks` | 6 | Wie weit X-Ray hoechstens reicht |
+| `max-bau-tempo` | 100.0 | Builder: hoechstens so viele Bloecke pro Sekunde |
 | `xray-erlaubt` | true | X-Ray ueberhaupt zulassen |
 
 Berechtigung: `glowcube.agent` (Standard: jeder).
@@ -32,5 +38,5 @@ Berechtigung: `glowcube.agent` (Standard: jeder).
 ## Wie es spricht
 
 Kanal `glowcube:agent`, ein Text (UTF-8 mit VarInt-Laenge):
-`start;ERZ|STEIN|HOLZ;erzart;tempo;abbau;xray;chunks`, `werte;...`,
+`start;ERZ|STEIN|HOLZ|WAECHTER|BAUMEISTER;art;tempo;abbau;xray;chunks` (art = Erzart, Ausruestung oder Schematic-Name), `werte;...`,
 `zurueck;AUFTRAG`, `alle`. Zurueck an den Client: `aus;AUFTRAG`.

@@ -9,7 +9,17 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Projectile;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
@@ -24,10 +34,13 @@ import java.util.UUID;
  * {@code zurueck;AUFTRAG}, {@code alle}. Zurueck geht {@code aus;AUFTRAG},
  * wenn ein Agent fertig ist - dann springt der Schalter im Menue um.
  */
-public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessageListener {
+public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessageListener, Listener {
     static final String KANAL = "glowcube:agent";
 
-    private final List<Agent> agenten = new ArrayList<>();
+    private final List<AgentArbeiter> agenten = new ArrayList<>();
+    /** Wer welchen Spieler zuletzt getroffen hat (fuer den Guardian): Spieler -> Angreifer, Zeitpunkt. */
+    private final Map<UUID, UUID> angreifer = new HashMap<>();
+    private final Map<UUID, Long> angriffZeit = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -35,13 +48,15 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
         getServer().getMessenger().registerIncomingPluginChannel(this, KANAL, this);
         getServer().getMessenger().registerOutgoingPluginChannel(this, KANAL);
         Bukkit.getScheduler().runTaskTimer(this, this::tick, 1L, 1L);
+        getServer().getPluginManager().registerEvents(this, this);
+        Bauplaene.ordner(this);
         getLogger().info("GlowCube-Agenten bereit - Kanal " + KANAL);
     }
 
     @Override
     public void onDisable() {
         // Server faehrt herunter: Beute direkt ins Inventar, Agenten weg.
-        for (Agent agent : agenten) {
+        for (AgentArbeiter agent : agenten) {
             try {
                 agent.notfallUebergabe();
                 agent.aufraeumen();
@@ -69,14 +84,15 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
         switch (t[0]) {
             case "start" -> {
                 if (t.length >= 7) {
-                    starten(spieler, auftrag(t[1]), t[2], Werte.lesen(t, 3, this));
+                    Auftrag a = auftrag(t[1]);
+                    starten(spieler, a, t[2], Werte.lesen(t, 3, this, a == Auftrag.BAUMEISTER));
                 }
             }
             case "werte" -> {
                 if (t.length >= 6) {
                     Auftrag a = auftrag(t[1]);
-                    Werte w = Werte.lesen(t, 2, this);
-                    for (Agent agent : agenten) {
+                    Werte w = Werte.lesen(t, 2, this, a == Auftrag.BAUMEISTER);
+                    for (AgentArbeiter agent : agenten) {
                         if (agent.besitzer().equals(spieler.getUniqueId()) && agent.auftrag() == a) {
                             agent.einstellen(w);
                         }
@@ -113,7 +129,7 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
             return;
         }
         int eigene = 0;
-        for (Agent agent : agenten) {
+        for (AgentArbeiter agent : agenten) {
             if (!agent.besitzer().equals(spieler.getUniqueId())) {
                 continue;
             }
@@ -123,12 +139,16 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
             }
             eigene++;
         }
-        if (eigene >= getConfig().getInt("max-agenten-je-spieler", 3)) {
+        if (eigene >= getConfig().getInt("max-agenten-je-spieler", 5)) {
             melden(spieler, NamedTextColor.RED, "Du hast schon genug Agenten unterwegs.");
             aus(spieler, auftrag);
             return;
         }
-        Agent agent = Agent.erschaffen(this, spieler, auftrag, art, werte);
+        AgentArbeiter agent = switch (auftrag) {
+            case WAECHTER -> Waechter.erschaffen(this, spieler, art, werte);
+            case BAUMEISTER -> Baumeister.erschaffen(this, spieler, art, werte);
+            default -> Agent.erschaffen(this, spieler, auftrag, art, werte);
+        };
         if (agent == null) {
             melden(spieler, NamedTextColor.RED, "Der Agent konnte nicht erscheinen.");
             aus(spieler, auftrag);
@@ -139,18 +159,43 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
     }
 
     private void zurueck(UUID besitzer, Auftrag auftrag) {
-        for (Agent agent : agenten) {
+        for (AgentArbeiter agent : agenten) {
             if (agent.besitzer().equals(besitzer) && agent.auftrag() == auftrag) {
                 agent.zurueckrufen();
             }
         }
     }
 
+    /** Merkt sich, wer einen Spieler getroffen hat - Pfeile zaehlen fuer den Schuetzen. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void getroffen(EntityDamageByEntityEvent ereignis) {
+        if (!(ereignis.getEntity() instanceof Player opfer)) {
+            return;
+        }
+        Entity taeter = ereignis.getDamager();
+        if (taeter instanceof Projectile geschoss && geschoss.getShooter() instanceof Entity schuetze) {
+            taeter = schuetze;
+        }
+        if (taeter instanceof LivingEntity && !taeter.equals(opfer)) {
+            angreifer.put(opfer.getUniqueId(), taeter.getUniqueId());
+            angriffZeit.put(opfer.getUniqueId(), System.currentTimeMillis());
+        }
+    }
+
+    /** Der letzte Angreifer, wenn er hoechstens fuenf Sekunden her ist. */
+    UUID letzterAngreifer(UUID spieler) {
+        Long zeit = angriffZeit.get(spieler);
+        if (zeit == null || System.currentTimeMillis() - zeit > 5000) {
+            return null;
+        }
+        return angreifer.get(spieler);
+    }
+
     // ---------------------------------------------------------------- Tick
 
     private void tick() {
-        for (Iterator<Agent> it = agenten.iterator(); it.hasNext(); ) {
-            Agent agent = it.next();
+        for (Iterator<AgentArbeiter> it = agenten.iterator(); it.hasNext(); ) {
+            AgentArbeiter agent = it.next();
             try {
                 agent.tick();
             } catch (RuntimeException fehler) {
@@ -190,6 +235,10 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
 
     double maxAbbauTempo() {
         return getConfig().getDouble("max-abbau-tempo", 20.0);
+    }
+
+    double maxBauTempo() {
+        return getConfig().getDouble("max-bau-tempo", 100.0);
     }
 
     int maxXrayChunks() {

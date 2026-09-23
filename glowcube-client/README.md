@@ -175,6 +175,8 @@ siehe `glowcube-plugin/README.md`).
 | Erz-Agent | Baut Erz ab - alle oder gezielt eine Sorte (Diamant, Eisen, Gold, Redstone, Lapis, Kohle, Kupfer, Smaragd, Antiker Schrott, Quarz) |
 | Stein-Agent | Baut Stein ab |
 | Holz-Agent | Faellt Baeume |
+| Guardian-Agent | Leibwaechter in Eisen-, Diamant- oder Netherite-Ruestung: folgt dir und bekaempft alles Feindliche um dich |
+| Builder-Agent | Baut ein Schematic genau auf deiner Hoehe direkt vor dir |
 | Agent zurueckschicken | Ruft alle Agenten zurueck |
 
 Jeder Agent hat vier Einstellungen (Rechtsklick), die auch waehrend der
@@ -197,6 +199,26 @@ nah genug, laeuft oder graebt er sich zu dir, sonst teleportiert er sich.
 Dann wirft er dir seine Beute Stapel fuer Stapel zu und verschwindet. Ist
 sein Inventar voll, kommt er von selbst. Wird die Welt geschlossen, landet
 die Beute direkt in deinem Inventar.
+
+**Guardian-Agent:** Er folgt dir und greift an: jedes Monster im Umkreis von
+16 Bloecken um dich, jeden Mob, der dich ins Visier nimmt, und wer dich
+gerade getroffen hat - den dir naechsten zuerst. Hast du nur noch ein Herz,
+laesst er den Gegner stehen, stellt sich neben dich und wehrt nur noch ab,
+was direkt an dir dran ist, bis du wieder drei Herzen hast. Zurueckschicken
+laesst ihn verschwinden.
+
+**Builder-Agent:** Er baut das gewaehlte Schematic auf deiner Hoehe (nicht
+darunter, nicht darueber), beginnend zwei Bloecke vor dir, in deine
+Blickrichtung gedreht. Alle Bloecke hat er dabei; was im Weg ist, raeumt er
+ab. Gebaut wird Schicht fuer Schicht im **Bau-Tempo** (1-100 Bloecke pro
+Sekunde, Standard 20); er schwebt dabei ueber der Baustelle. Wenn er fertig
+ist, steht es im Chat. Eingebaut: Starter-Haus, Japanischer Tempel, Orbital
+Strike Cannon, Portal Protegido, Arc de Triomphe. Eigene Schematics
+(`.schem`, `.litematic`, `.nbt`) gehoeren nach
+`.minecraft/config/glowcube/schematics/` und stehen nach einem Neustart in
+der Auswahl. Inhalte von Truhen und Schildern baut er nicht mit.
+
+In der eigenen Welt laufen alle Agenten auch im Survival ohne Cheats.
 
 ### Performance (Bereich "Kein Hack")
 

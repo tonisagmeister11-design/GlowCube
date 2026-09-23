@@ -20,12 +20,19 @@ final class Pfad {
 
     private final World welt;
     private final boolean bausteine;
+    private final boolean graben;
     private final HashMap<Long, Double> zellKosten = new HashMap<>();
     private final HashMap<Long, Boolean> traegtCache = new HashMap<>();
 
     Pfad(World welt, boolean bausteine) {
+        this(welt, bausteine, true);
+    }
+
+    /** graben = false: nur laufen (Guardian). */
+    Pfad(World welt, boolean bausteine, boolean graben) {
         this.welt = welt;
         this.bausteine = bausteine;
+        this.graben = graben;
     }
 
     private record Knoten(Pos pos, double g, double f, Knoten vorher) {
@@ -103,7 +110,7 @@ final class Pfad {
             Block b = p.block(welt);
             if (Bloecke.frei(b)) {
                 kosten = b.isLiquid() ? 2 : 0;
-            } else if (Bloecke.abbaubar(b)) {
+            } else if (graben && Bloecke.abbaubar(b)) {
                 kosten = 1 + Bloecke.abbauTicks(b) / 4.0;
             } else {
                 kosten = Bloecke.NIE;

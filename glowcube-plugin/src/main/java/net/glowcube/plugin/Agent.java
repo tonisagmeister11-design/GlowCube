@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
  * Koerper ist ein Mannequin in Spielergestalt, den das Plugin Tick fuer Tick
  * selbst bewegt.
  */
-final class Agent {
+final class Agent implements AgentArbeiter {
     private enum Zustand { ARBEITEN, ZURUECK, ABLIEFERN, FERTIG }
 
     private static final int SCHRITT_TICKS = 4;
@@ -137,35 +137,42 @@ final class Agent {
         return true;
     }
 
-    UUID besitzer() {
+    @Override
+    public UUID besitzer() {
         return besitzer;
     }
 
-    Auftrag auftrag() {
+    @Override
+    public Auftrag auftrag() {
         return auftrag;
     }
 
-    boolean beimZurueckkehren() {
+    @Override
+    public boolean beimZurueckkehren() {
         return zustand == Zustand.ZURUECK || zustand == Zustand.ABLIEFERN;
     }
 
-    boolean fertig() {
+    @Override
+    public boolean fertig() {
         return zustand == Zustand.FERTIG;
     }
 
-    String titel() {
+    @Override
+    public String titel() {
         return auftrag == Auftrag.ERZ && !art.isEmpty() && !art.equals("Alle")
                 ? auftrag.anzeigename + " (" + art + ")" : auftrag.anzeigename;
     }
 
-    void einstellen(Werte neu) {
+    @Override
+    public void einstellen(Werte neu) {
         werte = neu;
         if (abbauPos != null) {
             abbauDauer = abbauZeit(abbauPos.block(welt));
         }
     }
 
-    void zurueckrufen() {
+    @Override
+    public void zurueckrufen() {
         if (zustand == Zustand.ARBEITEN) {
             abbauAbbrechen();
             pfad = null;
@@ -185,7 +192,8 @@ final class Agent {
 
     // ---------------------------------------------------------------- Tick
 
-    void tick() {
+    @Override
+    public void tick() {
         if (zustand == Zustand.FERTIG) {
             return;
         }
@@ -689,7 +697,7 @@ final class Agent {
         welt.playSound(platz.fuesse(welt), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
     }
 
-    private static Pos sichererPlatzBei(World welt, Pos mitte) {
+    static Pos sichererPlatzBei(World welt, Pos mitte) {
         int[][] versuche = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}, {2, 2}, {-2, -2}};
         for (int[] v : versuche) {
             for (int dy = 0; dy >= -2; dy--) {
@@ -750,7 +758,8 @@ final class Agent {
         koerper.swingMainHand();
     }
 
-    void notfallUebergabe() {
+    @Override
+    public void notfallUebergabe() {
         Player spieler = Bukkit.getPlayer(besitzer);
         for (int i = 0; i < lager.getSize(); i++) {
             ItemStack stapel = lager.getItem(i);
@@ -769,7 +778,8 @@ final class Agent {
         zustand = Zustand.FERTIG;
     }
 
-    void aufraeumen() {
+    @Override
+    public void aufraeumen() {
         abbauAbbrechen();
         chunksFreigeben();
         if (koerper != null && koerper.isValid()) {
