@@ -258,7 +258,8 @@ final class AgentWaechter implements AgentArbeiter {
                 continue;
             }
             if (spieler != null) {
-                spieler.drop(stapel, false);
+                spieler.level().addFreshEntity(new net.minecraft.world.entity.item.ItemEntity(spieler.level(),
+                        spieler.getX(), spieler.getY() + 0.5, spieler.getZ(), stapel));
             }
         }
         fertig = true;
@@ -370,16 +371,16 @@ final class AgentWaechter implements AgentArbeiter {
 
     /** Passt das Tier zur Auswahl? */
     private boolean passt(LivingEntity e) {
-        net.minecraft.world.entity.EntityType<?> t = e.getType();
+        // Ueber den Registernamen - ab 26.x fuehrt EntityType diese Felder nicht mehr.
+        String t = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath();
         return switch (ruestung) {
-            case "Kuh" -> t == net.minecraft.world.entity.EntityType.COW;
-            case "Schwein" -> t == net.minecraft.world.entity.EntityType.PIG;
-            case "Schaf" -> t == net.minecraft.world.entity.EntityType.SHEEP;
-            case "Huhn" -> t == net.minecraft.world.entity.EntityType.CHICKEN;
-            case "Kaninchen" -> t == net.minecraft.world.entity.EntityType.RABBIT;
-            default -> t == net.minecraft.world.entity.EntityType.COW || t == net.minecraft.world.entity.EntityType.PIG
-                    || t == net.minecraft.world.entity.EntityType.SHEEP || t == net.minecraft.world.entity.EntityType.CHICKEN
-                    || t == net.minecraft.world.entity.EntityType.RABBIT;
+            case "Kuh" -> t.equals("cow");
+            case "Schwein" -> t.equals("pig");
+            case "Schaf" -> t.equals("sheep");
+            case "Huhn" -> t.equals("chicken");
+            case "Kaninchen" -> t.equals("rabbit");
+            default -> t.equals("cow") || t.equals("pig") || t.equals("sheep") || t.equals("chicken")
+                    || t.equals("rabbit");
         };
     }
 
