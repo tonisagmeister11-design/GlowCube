@@ -307,7 +307,24 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             }
         }
         if (client == null) {
-            throw new IllegalStateException("Weder getClientWorld noch getClientLevel gefunden");
+            // Unbekannter Name: die Methode ohne Parameter nehmen, deren Ergebnis waitForChunksRender kennt.
+            for (java.lang.reflect.Method m : welt.getClass().getMethods()) {
+                if (m.getParameterCount() != 0) {
+                    continue;
+                }
+                try {
+                    m.getReturnType().getMethod("waitForChunksRender");
+                } catch (NoSuchMethodException nein) {
+                    continue;
+                }
+                m.setAccessible(true);
+                client = m.invoke(welt);
+                System.out.println("GLOWCUBE-TEST Client-Welt ueber " + m.getName() + "()");
+                break;
+            }
+        }
+        if (client == null) {
+            throw new IllegalStateException("Keine Client-Welt gefunden");
         }
         java.lang.reflect.Method warten = client.getClass().getMethod("waitForChunksRender");
         warten.setAccessible(true);

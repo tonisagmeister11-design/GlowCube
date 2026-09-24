@@ -163,4 +163,12 @@ if (project.hasProperty('spieltest')) {
             eula = true
         }
     }
+    // Genug Speicher, sonst haengt der Welt-Server beim Laden an der Speicherbereinigung.
+    loom {
+        runs {
+            configureEach {
+                vmArg '-Xmx4G'
+            }
+        }
+    }
 }
