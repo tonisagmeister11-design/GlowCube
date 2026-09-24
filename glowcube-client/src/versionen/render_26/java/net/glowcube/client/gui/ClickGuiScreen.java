@@ -413,7 +413,7 @@ public final class ClickGuiScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doppelklick) {
         double mx = event.x();
         double my = event.y();
-        int knopf = event.button();
+        int knopf = knopf(event);
 
         if (belegt != null) {
             return true;
@@ -438,6 +438,26 @@ public final class ClickGuiScreen extends Screen {
             return behandeln(t, knopf, mx, my);
         }
         return super.mouseClicked(event, doppelklick);
+    }
+
+    /**
+     * Ab 26.x zaehlt Minecraft die Maustasten wie SDL: links 1, Mitte 2,
+     * rechts 3 (1.21.11 und GLFW: links 0, rechts 1, Mitte 2). Das Menue
+     * rechnet intern mit den alten Nummern - so bleibt die Bedienung in
+     * beiden Fassungen gleich: links schaltet, rechts klappt auf, Mitte belegt.
+     */
+    static int knopf(MouseButtonEvent event) {
+        int roh = event.button();
+        if (roh == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
+            return 0;
+        }
+        if (roh == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) {
+            return 1;
+        }
+        if (roh == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_MIDDLE) {
+            return 2;
+        }
+        return roh;
     }
 
     private boolean behandeln(Treffer t, int knopf, double mx, double my) {

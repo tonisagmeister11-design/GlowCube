@@ -95,6 +95,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             pruefe("ESP und Tracer", () -> esp(kontext, welt));
             pruefe("KillAura", () -> killAura(kontext, server));
             pruefe("Agenten", () -> agenten(kontext, server));
+            pruefe("ClickGUI mit der Maus", () -> klickGui(kontext));
             pruefe("Freecam", () -> freecam(kontext));
             pruefe("Karte und HUD", () -> karte(kontext, welt));
             pruefe("AutoArmor", () -> autoArmor(kontext, server));
@@ -318,6 +319,84 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         }
         k.runOnClient(mc -> AgentSteuerung.zurueck(Auftrag.JAEGER, 0));
         k.waitTicks(100);
+    }
+
+    // ------------------------------------------------ ClickGUI per Maus
+
+    /**
+     * Bedient das Menue wie ein Mensch: echte Mausklicks ueber die
+     * Test-Eingabe (sie laufen durch Minecrafts MouseHandler, also mit den
+     * Tastennummern der jeweiligen Fassung). Erst "Hacks" waehlen, dann ein
+     * Modul mit links an-, mit links wieder ausschalten.
+     */
+    private void klickGui(ClientGameTestContext k) throws Exception {
+        Module ziel = modul("FastPlace");
+        k.runOnClient(mc -> ziel.setEnabled(false));
+        k.setScreen(() -> new net.glowcube.client.gui.ClickGuiScreen());
+        k.waitTicks(10);
+        if (!linksKlicken(k, "WAHL_HACKS", null)) {
+            kaputt("ClickGUI: Knopf \\"Hacks\\" nicht gefunden");
+            k.setScreen(() -> null);
+            return;
+        }
+        k.waitTicks(10);
+        boolean gefunden = linksKlicken(k, "MODUL", ziel);
+        k.waitTicks(5);
+        boolean an = k.computeOnClient(mc -> ziel.isEnabled());
+        linksKlicken(k, "MODUL", ziel);
+        k.waitTicks(5);
+        boolean wiederAus = k.computeOnClient(mc -> !ziel.isEnabled());
+        k.setScreen(() -> null);
+        k.runOnClient(mc -> ziel.setEnabled(false));
+        if (!gefunden) {
+            kaputt("ClickGUI: Zeile fuer FastPlace nicht gefunden");
+        } else if (an && wiederAus) {
+            ok("ClickGUI: Linksklick schaltet ein Modul an und wieder aus");
+        } else {
+            kaputt("ClickGUI: Linksklick schaltet nicht (an=" + an + ", wieder aus=" + wiederAus + ")");
+        }
+    }
+
+    /** Klickt mit der linken Maustaste mitten auf ein Element des ClickGUI. */
+    private static boolean linksKlicken(ClientGameTestContext k, String art, Module modul) throws Exception {
+        double[] ort = k.computeOnClient(mc -> {
+            try {
+                Object bild = net.glowcube.client.render.Netz.bildschirm();
+                java.lang.reflect.Field feld = bild.getClass().getDeclaredField("treffer");
+                feld.setAccessible(true);
+                for (Object t : new ArrayList<>((List<?>) feld.get(bild))) {
+                    Class<?> c = t.getClass();
+                    if (!String.valueOf(wert(c, t, "art")).equals(art)) {
+                        continue;
+                    }
+                    if (modul != null && wert(c, t, "module") != modul) {
+                        continue;
+                    }
+                    float x = (Float) wert(c, t, "x");
+                    float y = (Float) wert(c, t, "y");
+                    float w = (Float) wert(c, t, "w");
+                    float h = (Float) wert(c, t, "h");
+                    double massstab = (double) mc.getWindow().getWidth() / mc.getWindow().getGuiScaledWidth();
+                    return new double[] {(x + w / 2) * massstab, (y + h / 2) * massstab};
+                }
+            } catch (ReflectiveOperationException e) {
+                System.out.println("GLOWCUBE-TEST ClickGUI-Spiegelung: " + e);
+            }
+            return null;
+        });
+        if (ort == null) {
+            return false;
+        }
+        k.getInput().setCursorPos(ort[0], ort[1]);
+        k.waitTicks(1);
+        k.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+        return true;
+    }
+
+    private static Object wert(Class<?> c, Object t, String name) throws ReflectiveOperationException {
+        java.lang.reflect.Method m = c.getDeclaredMethod(name);
+        m.setAccessible(true);
+        return m.invoke(t);
     }
 
     // ----------------------------------------------------- Neue Features
