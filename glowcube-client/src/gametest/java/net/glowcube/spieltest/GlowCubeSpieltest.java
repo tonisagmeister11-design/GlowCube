@@ -31,7 +31,7 @@ import java.util.Set;
  */
 public final class GlowCubeSpieltest implements FabricClientGameTest {
     /** Module, die der Rundlauf nicht einfach an- und ausschaltet (eigene Pruefung oder stoerend). */
-    private static final Set<String> AUSLASSEN = Set.of("ClickGUI", "Click GUI", "SeedHunt", "Agent zurueckschicken",
+    private static final Set<String> AUSLASSEN = Set.of("Panic", "ClickGUI", "Click GUI", "SeedHunt", "Agent zurueckschicken",
             "Erz-Agent", "Stein-Agent", "Holz-Agent", "Guardian-Agent", "Builder-Agent", "Farm-Agent", "Tunnel-Agent",
             "Jaeger-Agent");
 
@@ -105,6 +105,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             pruefe("CrystalAura", () -> crystalAura(kontext, server));
             pruefe("Totem-Pops", () -> totemPops(kontext, server));
             pruefe("Alle Module an/aus", () -> rundlauf(kontext));
+            pruefe("Panic", () -> panic(kontext));
         } catch (Throwable t) {
             kaputt("Test selbst abgebrochen: " + t);
             t.printStackTrace();
@@ -691,6 +692,30 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             } else if (s instanceof net.glowcube.client.core.setting.NumberSetting n) {
                 n.set(((Number) wert).doubleValue());
             }
+        }
+    }
+
+    // ------------------------------------------------------------ Panic
+
+    private void panic(ClientGameTestContext k) throws Exception {
+        String[] namen = {"Fullbright", "Minimap", "AutoSprint", "Weltkarte", "Koordinaten"};
+        for (String name : namen) {
+            Module m = modulOderNull(name);
+            if (m != null) {
+                k.runOnClient(mc -> m.setEnabled(true));
+            }
+        }
+        k.waitTicks(5);
+        int vorher = k.computeOnClient(mc -> GlowCubeClient.modules().enabled().size());
+        Module panic = modul("Panic");
+        k.runOnClient(mc -> panic.setEnabled(true));
+        k.waitTicks(5);
+        List<String> nochAn = k.computeOnClient(mc -> GlowCubeClient.modules().enabled().stream()
+                .map(Module::name).toList());
+        if (vorher >= 3 && nochAn.isEmpty()) {
+            ok("Panic schaltet alle " + vorher + " aktivierten Features aus");
+        } else {
+            kaputt("Panic: vorher " + vorher + " an, danach noch an: " + nochAn);
         }
     }
 

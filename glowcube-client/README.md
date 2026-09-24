@@ -108,6 +108,7 @@ erkannt.
 | `/strike [x y z]` | Ziel fuer den Orbital Strike |
 | `/agentort [x y z \| weg]` | Einsatzort der Agenten (ohne Zahlen: wo du stehst) |
 | `/agentkiste [weg]` | Die Kiste, auf die du schaust, wird Sammelkiste |
+| `/panic` | Schaltet sofort alle aktivierten Features aus (Hacks, HUD, Karte, Agenten) - gibt es auch als Modul **Panic** unter Misc |
 | `/wp` (`/wegpunkt`) | Alle Wegpunkte dieser Welt mit Entfernung |
 | `/wp add <name> [x y z]` | Wegpunkt anlegen (ohne Zahlen: wo du stehst) |
 | `/wp del <name>` | Wegpunkt loeschen |
@@ -199,6 +200,7 @@ Berechtigung `glowcube.pvppro`). Sonst schaltet es sich selbst ab.
 | SeedHunt | Faehrt selbsttaetig Flaeche ab, damit SeedCrackerX Daten bekommt |
 | Spammer | Schickt regelmaessig Chatnachrichten |
 | ClickGUI | Das Menue |
+| Panic | Ein Klick schaltet alles aus, was an ist - wie `/panic` |
 
 Die Kategorien folgen der Einteilung von BleachHack.
 

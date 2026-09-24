@@ -198,6 +198,7 @@ public final class ModuleManager {
         }
         add(new Spammer());
         add(new ClickGuiModule());
+        add(new net.glowcube.client.module.misc.Panic());
         // World
         add(new Nuker());
         add(new VeinMiner());

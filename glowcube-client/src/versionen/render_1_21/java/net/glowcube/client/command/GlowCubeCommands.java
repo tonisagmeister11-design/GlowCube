@@ -36,6 +36,7 @@ import java.util.Locale;
  *   <li>{@code /agentort [x y z | weg]} setzt den Einsatzort der Agenten
  *       (ohne Zahlen: wo man steht); {@code /agentkiste [weg]} macht die Kiste,
  *       auf die man schaut, zur Sammelkiste.</li>
+ *   <li>{@code /panic} schaltet sofort alle aktivierten Features aus.</li>
  *   <li>{@code /wp} (auch {@code /wegpunkt}) zeigt die Wegpunkte dieser Welt;
  *       {@code /wp add <name> [x y z]}, {@code /wp del <name>} und
  *       {@code /wp tp <name>} legen an, loeschen und teleportieren.</li>
@@ -122,6 +123,11 @@ public final class GlowCubeCommands {
                                             return 1;
                                         }))));
             }
+            zweig.register(ClientCommandManager.literal("panic").executes(kontext -> {
+                sagen(kontext.getSource(), "Panic: " + net.glowcube.client.module.misc.Panic.ausfuehren()
+                        + " Features ausgeschaltet.");
+                return 1;
+            }));
             zweig.register(ClientCommandManager.literal("strike")
                     .executes(kontext -> {
                         sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.zielMarkieren());
