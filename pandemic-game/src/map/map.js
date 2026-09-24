@@ -7,7 +7,7 @@ import { MAP_IMAGE } from '../generated/mapimg.js';
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 // Kalibrierung der Projektion auf das Kartenbild (16:9)
-const CAL = { latTop: 84, latBot: -84, lonOff: 0.018, lonScale: 0.964, aspect: 1671 / 941 };
+const CAL = { latTop: 90, latBot: -66, lonOff: -0.015, lonScale: 0.99, aspect: 1671 / 941 };
 
 export class WorldMap {
   constructor(canvas, world) {
@@ -316,12 +316,17 @@ export class WorldMap {
     if (this._infDirty && this._infCanvas) this._renderInfectionLayer();
     if (this._infCanvas && this.eng) { ctx.globalAlpha = 0.95; ctx.drawImage(this._infCanvas, 0, 0, this.baseW, this.baseH); ctx.globalAlpha = 1; }
 
-    // KEINE eigenen Grenzen mehr zeichnen – die Grenzen des Kartenbildes gelten.
-    // Auswahl/Hover werden als weicher Flächen-Glow gezeigt (kein konkurrierender Umriss).
-    if (this.hoverIso && this.hoverIso !== this.selectedIso) this._glowCountry(ctx, this.hoverIso, 'rgba(255,255,255,0.14)');
+    // Im Normalzustand keine eigenen Grenzen (nur die des Kartenbildes).
+    // Nur das Land unter der Maus bzw. das ausgewählte Land bekommt einen weichen
+    // Flächen-Glow UND einen nachgezogenen, leuchtenden Grenz-Umriss.
+    if (this.hoverIso && this.hoverIso !== this.selectedIso) {
+      this._glowCountry(ctx, this.hoverIso, 'rgba(255,255,255,0.12)');
+      this._outlineCountry(ctx, this.hoverIso, 'rgba(255,255,255,0.95)', 1.6, 6, 'rgba(255,255,255,0.7)');
+    }
     if (this.selectedIso) {
       const pulse = 0.16 + 0.08 * Math.sin(t * 3);
       this._glowCountry(ctx, this.selectedIso, `rgba(255,225,120,${pulse})`);
+      this._outlineCountry(ctx, this.selectedIso, '#ffe070', 2.2, 10 + 5 * Math.sin(t * 3), '#ffb020');
     }
 
     if (this.eng) { this._drawVehicles(ctx, t); this._drawSpecialAgents(ctx, t); }
@@ -353,6 +358,19 @@ export class WorldMap {
     const path = this.paths[iso]; if (!path) return;
     const c = this.byIso[iso]; const [bx, by] = this.proj(c.lon, c.lat);
     ctx.save(); ctx.clip(path); ctx.fillStyle = style; ctx.fillRect(bx - 300, by - 300, 600, 600); ctx.restore();
+  }
+
+  // Nachgezogener, leuchtender Grenz-Umriss um ein Land
+  _outlineCountry(ctx, iso, color, width, glow, glowColor) {
+    const path = this.paths[iso]; if (!path) return;
+    ctx.save();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.shadowColor = glowColor || color; ctx.shadowBlur = glow / this.view.scale;
+    ctx.strokeStyle = color; ctx.lineWidth = width / this.view.scale;
+    ctx.stroke(path);
+    ctx.shadowBlur = 0; // zweiter, klarer Strich obendrauf
+    ctx.stroke(path);
+    ctx.restore();
   }
 
   _drawClouds(ctx, t) {
