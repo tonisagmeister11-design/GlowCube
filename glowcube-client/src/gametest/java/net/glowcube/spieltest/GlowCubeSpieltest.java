@@ -494,7 +494,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         server.runCommand("gamemode survival @a");
         server.runCommand("item replace entity @a weapon.offhand with minecraft:totem_of_undying");
         k.waitTicks(10);
-        server.runCommand("damage @a 100 minecraft:generic");
+        server.runCommand("damage @p 100 minecraft:generic");
         int pops = 0;
         for (int i = 0; i < 20 && pops == 0; i++) {
             k.waitTicks(10);
