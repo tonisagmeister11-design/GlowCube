@@ -6,8 +6,29 @@
 import { MAP_IMAGE } from '../generated/mapimg.js';
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-// Kalibrierung der Projektion auf das Kartenbild (16:9)
-const CAL = { latTop: 90, latBot: -66, lonOff: -0.015, lonScale: 0.99, aspect: 1671 / 941 };
+// Kalibrierung der Projektion auf das Kartenbild (16:9).
+// Längengrad linear; Breitengrad stückweise (die KI-Karte verteilt die Breiten
+// nicht ganz gleichmäßig – v.a. die mittleren Nordbreiten liegen tiefer).
+const CAL = {
+  lonOff: -0.02, lonScale: 0.982, aspect: 1671 / 941,
+  // [Breitengrad, y-Anteil 0..1 von oben], absteigend
+  latPts: [
+    [90, 0.000], [66, 0.150], [55, 0.225], [45, 0.320], [35, 0.405],
+    [23, 0.487], [10, 0.545], [0, 0.588], [-15, 0.665], [-34, 0.792], [-55, 0.930], [-66, 1.000],
+  ],
+};
+function latToFrac(lat) {
+  const p = CAL.latPts;
+  if (lat >= p[0][0]) return p[0][1];
+  if (lat <= p[p.length - 1][0]) return p[p.length - 1][1];
+  for (let i = 0; i < p.length - 1; i++) {
+    if (lat <= p[i][0] && lat >= p[i + 1][0]) {
+      const t = (p[i][0] - lat) / (p[i][0] - p[i + 1][0]);
+      return p[i][1] + (p[i + 1][1] - p[i][1]) * t;
+    }
+  }
+  return 0.5;
+}
 
 export class WorldMap {
   constructor(canvas, world) {
@@ -40,9 +61,8 @@ export class WorldMap {
 
   // ---------- Projektion ----------
   proj(lon, lat) {
-    const W = this.baseW, H = this.baseH;
-    const px = ((lon + 180) / 360 * CAL.lonScale + CAL.lonOff) * W;
-    const py = (CAL.latTop - lat) / (CAL.latTop - CAL.latBot) * H;
+    const px = ((lon + 180) / 360 * CAL.lonScale + CAL.lonOff) * this.baseW;
+    const py = latToFrac(lat) * this.baseH;
     return [px, py];
   }
 
@@ -203,12 +223,30 @@ export class WorldMap {
     this._infDirty = true;
   }
 
+  // Ring in Bildschirmpunkte projizieren; Längengrad "entrollen", damit Länder,
+  // die die Datumsgrenze überschreiten (Alaska/Russland/Fidschi), keine Linie
+  // quer über die Karte ziehen.
+  _ringPoints(ring) {
+    const out = [];
+    let prevLon = ring[0][0];
+    let acc = ring[0][0];
+    for (let i = 0; i < ring.length; i++) {
+      let lon = ring[i][0];
+      while (lon - prevLon > 180) lon -= 360;
+      while (lon - prevLon < -180) lon += 360;
+      prevLon = lon;
+      out.push(this.proj(lon, ring[i][1]));
+    }
+    return out;
+  }
+
   _buildPaths() {
     this.paths = {};
     for (const c of this.world.countries) {
       const p = new Path2D();
       for (const ring of this.world.geo[c.iso]) {
-        for (let i = 0; i < ring.length; i++) { const [x, y] = this.proj(ring[i][0], ring[i][1]); if (i === 0) p.moveTo(x, y); else p.lineTo(x, y); }
+        const pts = this._ringPoints(ring);
+        for (let i = 0; i < pts.length; i++) { if (i === 0) p.moveTo(pts[i][0], pts[i][1]); else p.lineTo(pts[i][0], pts[i][1]); }
         p.closePath();
       }
       this.paths[c.iso] = p;
@@ -245,9 +283,7 @@ export class WorldMap {
       // dezente Einfärbung des Landes
       const sev = clamp(infF * 1.3 + deadF * 2.2 + zF + vF + ctF + st.xeno, 0, 1);
       x.save();
-      x.beginPath();
-      for (const ring of this.world.geo[c.iso]) { for (let i = 0; i < ring.length; i++) { const [px, py] = this.proj(ring[i][0], ring[i][1]); if (i === 0) x.moveTo(px, py); else x.lineTo(px, py); } x.closePath(); }
-      x.clip();
+      x.clip(this.paths[c.iso]);
       const g = `rgba(${Math.round(150 + sev * 100)},${Math.round(40 - sev * 20)},${Math.round(30)},${0.18 + sev * 0.4})`;
       x.fillStyle = g;
       const [bx, by] = this.proj(c.lon, c.lat);
