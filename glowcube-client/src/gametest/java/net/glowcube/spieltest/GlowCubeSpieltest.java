@@ -333,6 +333,15 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         Module ziel = modul("FastPlace");
         k.runOnClient(mc -> ziel.setEnabled(false));
         k.setScreen(() -> new net.glowcube.client.gui.ClickGuiScreen());
+        try {
+            klickGuiInnen(k, ziel);
+        } finally {
+            k.setScreen(() -> null);
+            k.runOnClient(mc -> ziel.setEnabled(false));
+        }
+    }
+
+    private void klickGuiInnen(ClientGameTestContext k, Module ziel) throws Exception {
         k.waitTicks(10);
         if (!linksKlicken(k, "WAHL_HACKS", null)) {
             kaputt("ClickGUI: Knopf Hacks nicht gefunden");

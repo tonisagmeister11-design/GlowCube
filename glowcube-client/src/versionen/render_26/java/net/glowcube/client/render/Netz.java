@@ -160,20 +160,47 @@ public final class Netz {
         }
     }
 
-    // Das Feld screen ist ab 26.x privat und hat keinen Getter; ueber
-    // Spiegelung kommt man neutral heran.
+    // Ab 26.3 haengt der offene Bildschirm nicht mehr an Minecraft selbst,
+    // sondern an Minecraft.gui (Gui.screen()). Beides wird ueber Spiegelung
+    // versucht - 26.x ist unverschleiert, die Namen gelten auch im Spiel.
     private static java.lang.reflect.Field screenFeld;
+    private static java.lang.reflect.Field guiFeld;
+    private static java.lang.reflect.Method guiScreen;
+    private static boolean gesucht;
 
     public static Screen bildschirm() {
+        Minecraft mc = Minecraft.getInstance();
         try {
-            if (screenFeld == null) {
-                screenFeld = Minecraft.class.getDeclaredField("screen");
-                screenFeld.setAccessible(true);
+            if (!gesucht) {
+                gesucht = true;
+                try {
+                    screenFeld = Minecraft.class.getDeclaredField("screen");
+                    screenFeld.setAccessible(true);
+                } catch (NoSuchFieldException fehlt) {
+                    screenFeld = null;
+                }
+                try {
+                    guiFeld = Minecraft.class.getDeclaredField("gui");
+                    guiFeld.setAccessible(true);
+                    guiScreen = guiFeld.getType().getDeclaredMethod("screen");
+                    guiScreen.setAccessible(true);
+                } catch (NoSuchFieldException | NoSuchMethodException fehlt) {
+                    guiFeld = null;
+                }
             }
-            return (Screen) screenFeld.get(Minecraft.getInstance());
-        } catch (ReflectiveOperationException fehler) {
+            if (guiFeld != null) {
+                Object gui = guiFeld.get(mc);
+                if (gui != null) {
+                    return (Screen) guiScreen.invoke(gui);
+                }
+            }
+            if (screenFeld != null) {
+                return (Screen) screenFeld.get(mc);
+            }
+        } catch (ReflectiveOperationException | ClassCastException fehler) {
             return null;
         }
+        return null;
     }
 
     public static void bildschirmSetzen(Screen bildschirm) {
