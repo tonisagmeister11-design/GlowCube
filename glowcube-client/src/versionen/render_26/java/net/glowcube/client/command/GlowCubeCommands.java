@@ -36,6 +36,9 @@ import java.util.Locale;
  *   <li>{@code /agentort [x y z | weg]} setzt den Einsatzort der Agenten
  *       (ohne Zahlen: wo man steht); {@code /agentkiste [weg]} macht die Kiste,
  *       auf die man schaut, zur Sammelkiste.</li>
+ *   <li>{@code /wp} (auch {@code /wegpunkt}) zeigt die Wegpunkte dieser Welt;
+ *       {@code /wp add <name> [x y z]}, {@code /wp del <name>} und
+ *       {@code /wp tp <name>} legen an, loeschen und teleportieren.</li>
  *   <li>{@code /coordinates} (auch {@code /koordinaten}) schreibt die eigene
  *       Position in den Chat - Klick darauf kopiert sie.</li>
  * </ul>
@@ -77,6 +80,48 @@ public final class GlowCubeCommands {
                         sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.kisteLoeschen());
                         return 1;
                     })));
+            // Wegpunkte: /wp, /wp add <name> [x y z], /wp del <name>, /wp tp <name>
+            for (String wort : new String[] {"wp", "wegpunkt"}) {
+                zweig.register(ClientCommands.literal(wort)
+                        .executes(kontext -> {
+                            sagen(kontext.getSource(), net.glowcube.client.module.karte.Wegpunkte.auflisten());
+                            return 1;
+                        })
+                        .then(ClientCommands.literal("add")
+                                .then(ClientCommands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                        .executes(kontext -> {
+                                            net.minecraft.core.BlockPos p = kontext.getSource().getPlayer().blockPosition();
+                                            sagen(kontext.getSource(), net.glowcube.client.module.karte.Wegpunkte.hinzufuegen(
+                                                    com.mojang.brigadier.arguments.StringArgumentType.getString(kontext, "name"),
+                                                    p.getX(), p.getY(), p.getZ()));
+                                            return 1;
+                                        })
+                                        .then(ClientCommands.argument("x", IntegerArgumentType.integer())
+                                                .then(ClientCommands.argument("y", IntegerArgumentType.integer())
+                                                        .then(ClientCommands.argument("z", IntegerArgumentType.integer())
+                                                                .executes(kontext -> {
+                                                                    sagen(kontext.getSource(), net.glowcube.client.module.karte.Wegpunkte.hinzufuegen(
+                                                                            com.mojang.brigadier.arguments.StringArgumentType.getString(kontext, "name"),
+                                                                            IntegerArgumentType.getInteger(kontext, "x"),
+                                                                            IntegerArgumentType.getInteger(kontext, "y"),
+                                                                            IntegerArgumentType.getInteger(kontext, "z")));
+                                                                    return 1;
+                                                                }))))))
+                        .then(ClientCommands.literal("del")
+                                .then(ClientCommands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                        .executes(kontext -> {
+                                            sagen(kontext.getSource(), net.glowcube.client.module.karte.Wegpunkte.entfernen(
+                                                    com.mojang.brigadier.arguments.StringArgumentType.getString(kontext, "name")));
+                                            return 1;
+                                        })))
+                        .then(ClientCommands.literal("tp")
+                                .then(ClientCommands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.word())
+                                        .executes(kontext -> {
+                                            sagen(kontext.getSource(), net.glowcube.client.module.karte.Wegpunkte.teleport(
+                                                    com.mojang.brigadier.arguments.StringArgumentType.getString(kontext, "name")));
+                                            return 1;
+                                        }))));
+            }
             zweig.register(ClientCommands.literal("strike")
                     .executes(kontext -> {
                         sagen(kontext.getSource(), net.glowcube.client.agent.AgentSteuerung.zielMarkieren());

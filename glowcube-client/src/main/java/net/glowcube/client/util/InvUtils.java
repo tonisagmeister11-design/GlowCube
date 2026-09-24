@@ -197,6 +197,12 @@ public final class InvUtils {
             ausfuehren();
         }
 
+        /** In einen Ruestungsplatz (Rucksack-Index 36 bis 39). */
+        public void nachRuestung(int index) {
+            nach = SlotUtils.indexToId(index);
+            ausfuehren();
+        }
+
         public void nachHotbar(int i) {
             nach = SlotUtils.indexToId(SlotUtils.HOTBAR_START + i);
             ausfuehren();

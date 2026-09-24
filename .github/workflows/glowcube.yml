@@ -220,6 +220,29 @@ jobs:
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
       # falscher Mixin-Name erst beim Spielstart auf, und zwar beim Nutzer.
+      - name: Namen fuer Freecam, Karte und Co. pruefen
+        continue-on-error: true
+        run: |
+          python3 verify-api.py build/classpath.txt \
+            "net.minecraft.client.Minecraft#rightClickDelay" \
+            "net.minecraft.client.Minecraft#setCameraEntity" \
+            "net.minecraft.client.Minecraft#getCameraEntity" \
+            "net.minecraft.client.player.LocalPlayer#input" \
+            "net.minecraft.client.player.ClientInput#" \
+            "net.minecraft.client.player.RemotePlayer#" \
+            "net.minecraft.world.entity.player.Player#tryToStartFallFlying" \
+            "net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket$Action#START_FALL_FLYING" \
+            "net.minecraft.world.entity.Entity#noPhysics" \
+            "net.minecraft.world.entity.Entity#setYHeadRot" \
+            "net.minecraft.world.level.Level#getMinY" \
+            "net.minecraft.world.level.material.MapColor#col" \
+            "net.minecraft.world.level.material.MapColor#NONE" \
+            "net.minecraft.world.level.levelgen.Heightmap$Types#WORLD_SURFACE" \
+            "net.minecraft.client.KeyMapping#saveString" \
+            "com.mojang.blaze3d.platform.InputConstants#getKey" \
+            "net.minecraft.sounds.SoundEvents#NOTE_BLOCK_PLING" \
+            "net.minecraft.client.multiplayer.ServerData#ip" \
+            "net.minecraft.world.level.storage.WorldData#getLevelName" || true
       - name: Namen der Mixin-Ziele festnageln
         run: |
           python3 verify-api.py build/classpath.txt \

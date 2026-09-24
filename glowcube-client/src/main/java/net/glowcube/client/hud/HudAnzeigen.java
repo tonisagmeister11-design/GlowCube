@@ -20,7 +20,7 @@ public final class HudAnzeigen {
      * @param linksStart  erste freie Zeile links (unter dem Wasserzeichen)
      * @param rechtsStart erste freie Zeile rechts (unter der Modulliste)
      */
-    public static void zeichnen(HudZeichner z, int bildBreite, float linksStart, float rechtsStart) {
+    public static void zeichnen(HudZeichner z, int bildBreite, int bildHoehe, float linksStart, float rechtsStart) {
         float links = linksStart;
         float rechts = rechtsStart;
         for (Module module : GlowCubeClient.modules().all()) {
@@ -29,6 +29,10 @@ public final class HudAnzeigen {
             }
             try {
                 anzeige.vorbereiten();
+                if (anzeige.frei()) {
+                    anzeige.zeichnenFrei(z, bildBreite, bildHoehe);
+                    continue;
+                }
                 float w = anzeige.breite(z);
                 float h = anzeige.hoehe();
                 if (h <= 0) {

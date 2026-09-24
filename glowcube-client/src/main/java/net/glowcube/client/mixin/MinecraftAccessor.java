@@ -15,4 +15,11 @@ public interface MinecraftAccessor {
     static int glowcube$fps() {
         throw new AssertionError();
     }
+
+    /** Die Pause zwischen zwei Rechtsklicks (Vanilla: 4 Ticks) - FastPlace. */
+    @Accessor("rightClickDelay")
+    int glowcube$rechtsklickPause();
+
+    @Accessor("rightClickDelay")
+    void glowcube$setzeRechtsklickPause(int ticks);
 }

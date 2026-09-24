@@ -37,4 +37,16 @@ public abstract class HudModul extends Module {
     public abstract float hoehe();
 
     public abstract void zeichnen(HudZeichner z, float x, float y);
+
+    /**
+     * True: die Anzeige steht nicht im Stapel am Rand, sondern zeichnet sich
+     * selbst irgendwo auf den Bildschirm (die grosse Karte, Benachrichtigungen).
+     */
+    public boolean frei() {
+        return false;
+    }
+
+    /** Nur fuer {@link #frei()}: zeichnen mit der ganzen Bildschirmgroesse. */
+    public void zeichnenFrei(HudZeichner z, int bildBreite, int bildHoehe) {
+    }
 }

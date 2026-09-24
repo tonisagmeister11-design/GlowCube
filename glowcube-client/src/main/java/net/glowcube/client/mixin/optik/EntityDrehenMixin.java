@@ -17,6 +17,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class EntityDrehenMixin {
     @Inject(method = "turn", at = @At("HEAD"), cancellable = true)
     private void glowcube$drehen(double dy, double dx, CallbackInfo ci) {
+        if (net.glowcube.client.module.render.Freecam.aktiv() && (Object) this == Minecraft.getInstance().player) {
+            net.glowcube.client.module.render.Freecam.drehen(dy, dx);
+            ci.cancel();
+            return;
+        }
         if (Freelook.aktiv() && (Object) this == Minecraft.getInstance().getCameraEntity()) {
             Freelook.drehen(dy, dx);
             ci.cancel();

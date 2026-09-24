@@ -1,5 +1,26 @@
 package net.glowcube.client.core;
 
+import net.glowcube.client.module.combat.AutoBlock;
+import net.glowcube.client.module.combat.BedAura;
+import net.glowcube.client.module.combat.CrystalAura;
+import net.glowcube.client.module.combat.Surround;
+import net.glowcube.client.module.hud.Haltbarkeit;
+import net.glowcube.client.module.hud.ItemZaehler;
+import net.glowcube.client.module.hud.SessionStatistik;
+import net.glowcube.client.module.hud.TotemPops;
+import net.glowcube.client.module.karte.KlickTeleport;
+import net.glowcube.client.module.karte.Minimap;
+import net.glowcube.client.module.karte.Todespunkt;
+import net.glowcube.client.module.karte.Wegpunkte;
+import net.glowcube.client.module.karte.Weltkarte;
+import net.glowcube.client.module.movement.AntiVoid;
+import net.glowcube.client.module.movement.ElytraFly;
+import net.glowcube.client.module.movement.InventoryMove;
+import net.glowcube.client.module.player.AutoArmor;
+import net.glowcube.client.module.player.FastPlace;
+import net.glowcube.client.module.render.Freecam;
+import net.glowcube.client.module.werkzeug.Benachrichtigungen;
+import net.glowcube.client.module.werkzeug.Makros;
 import net.glowcube.client.module.combat.AntiKnockback;
 import net.glowcube.client.module.combat.AutoTotem;
 import net.glowcube.client.module.combat.PvpPro;
@@ -127,6 +148,7 @@ public final class ModuleManager {
         add(new HoleEsp());
         add(new Trajectories());
         add(new Zoom());
+        add(new Freecam());
         // Movement
         add(new Flight());
         add(new Speed());
@@ -142,6 +164,9 @@ public final class ModuleManager {
         add(new FastLadder());
         add(new Jesus());
         add(new BunnyHop());
+        add(new InventoryMove());
+        add(new AntiVoid());
+        add(new ElytraFly());
         // Combat
         add(new KillAura());
         add(new MaceAura());
@@ -150,6 +175,10 @@ public final class ModuleManager {
         add(new Criticals());
         add(new AutoTotem());
         add(new PvpPro());
+        add(new AutoBlock());
+        add(new CrystalAura());
+        add(new BedAura());
+        add(new Surround());
         // Player
         add(new AutoTool());
         add(new AutoEat());
@@ -157,6 +186,8 @@ public final class ModuleManager {
         add(new AntiAfk());
         add(new NoInteract());
         add(new XCarry());
+        add(new AutoArmor());
+        add(new FastPlace());
         // Misc
         add(new AutoPlay());
         // SeedHunt haengt ganz an SeedCrackerX - das gibt es nur bis 1.21.x.
@@ -204,6 +235,19 @@ public final class ModuleManager {
         add(new AufgesammeltHud());
         add(new MausHud());
         add(new RessourcenpaketeHud());
+        add(new ItemZaehler());
+        add(new SessionStatistik());
+        add(new Haltbarkeit());
+        add(new TotemPops());
+
+        // Karte und Werkzeuge (kein Hack).
+        add(new Minimap());
+        add(new Weltkarte());
+        add(new Wegpunkte());
+        add(new Todespunkt());
+        add(new KlickTeleport());
+        add(new Benachrichtigungen());
+        add(new Makros());
 
         // Optik-Einstellungen nach AxolotlClient.
         add(new Freelook());

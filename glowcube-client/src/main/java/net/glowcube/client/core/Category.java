@@ -22,7 +22,11 @@ public enum Category {
     HUD("Info-HUD", "\u25A3", 0xFF7FC4FF, Bereich.KEIN_HACK),
     OPTIK("Optik", "\u25C9", 0xFFFF9F5F, Bereich.KEIN_HACK),
     // Admin-Werkzeug fuer die eigene Welt: ein NPC, der fuer dich abbaut.
-    AGENT("Agent", "\u263A", 0xFF5FD7FF, Bereich.KEIN_HACK);
+    AGENT("Agent", "\u263A", 0xFF5FD7FF, Bereich.KEIN_HACK),
+    // Karte, Wegpunkte und Teleport - alles rund um "wo bin ich, wo war ich".
+    KARTE("Karte", "\u2316", 0xFF6BE08A, Bereich.KEIN_HACK),
+    // Kleine Helfer: Makros, Benachrichtigungen.
+    WERKZEUG("Werkzeuge", "\u2692", 0xFFE0C36B, Bereich.KEIN_HACK);
 
     /**
      * Die zwei Bereiche, in die das Menue oben aufteilt: was ein Hack ist und

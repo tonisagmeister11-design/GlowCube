@@ -95,6 +95,12 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             pruefe("ESP und Tracer", () -> esp(kontext, welt));
             pruefe("KillAura", () -> killAura(kontext, server));
             pruefe("Agenten", () -> agenten(kontext, server));
+            pruefe("Freecam", () -> freecam(kontext));
+            pruefe("Karte und HUD", () -> karte(kontext, welt));
+            pruefe("AutoArmor", () -> autoArmor(kontext, server));
+            pruefe("Surround", () -> surround(kontext, server));
+            pruefe("CrystalAura", () -> crystalAura(kontext, server));
+            pruefe("Totem-Pops", () -> totemPops(kontext, server));
             pruefe("Alle Module an/aus", () -> rundlauf(kontext));
         } catch (Throwable t) {
             kaputt("Test selbst abgebrochen: " + t);
@@ -312,6 +318,207 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         }
         k.runOnClient(mc -> AgentSteuerung.zurueck(Auftrag.JAEGER, 0));
         k.waitTicks(100);
+    }
+
+    // ----------------------------------------------------- Neue Features
+
+    private void freecam(ClientGameTestContext k) throws Exception {
+        Module freecam = modul("Freecam");
+        net.minecraft.world.phys.Vec3 vorher = k.computeOnClient(mc -> mc.player.position());
+        k.runOnClient(mc -> freecam.setEnabled(true));
+        k.waitTicks(5);
+        k.runOnClient(mc -> mc.options.keyUp.setDown(true));
+        k.waitTicks(20);
+        k.runOnClient(mc -> mc.options.keyUp.setDown(false));
+        String ergebnis = k.computeOnClient(mc -> {
+            Entity kamera = mc.getCameraEntity();
+            if (kamera == mc.player) {
+                return "Kamera sitzt noch im Spieler";
+            }
+            double flug = kamera.position().distanceTo(mc.player.position());
+            double gelaufen = mc.player.position().distanceTo(vorher);
+            if (flug < 3) {
+                return "Kamera ist nicht losgeflogen (" + String.format("%.1f", flug) + " Bloecke)";
+            }
+            if (gelaufen > 0.5) {
+                return "Koerper ist mitgelaufen (" + String.format("%.1f", gelaufen) + " Bloecke)";
+            }
+            return null;
+        });
+        k.runOnClient(mc -> freecam.setEnabled(false));
+        k.waitTicks(5);
+        boolean zurueck = k.computeOnClient(mc -> mc.getCameraEntity() == mc.player);
+        if (ergebnis != null) {
+            kaputt("Freecam: " + ergebnis);
+        } else if (!zurueck) {
+            kaputt("Freecam: nach dem Ausschalten sitzt die Kamera nicht wieder im Spieler");
+        } else {
+            ok("Freecam fliegt los, Koerper bleibt stehen, Kamera kommt zurueck");
+        }
+    }
+
+    private void karte(ClientGameTestContext k, Object weltObjekt) throws Exception {
+        var welt = (net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext) weltObjekt;
+        chunksAbwarten(welt);
+        BufferedImage ohne = bild(k.takeScreenshot("hud-aus"));
+        String gesetzt = k.computeOnClient(mc -> net.glowcube.client.module.karte.Wegpunkte.hinzufuegen("Testpunkt",
+                mc.player.getBlockX() + 5, mc.player.getBlockY(), mc.player.getBlockZ() - 5));
+        int anzahl = k.computeOnClient(mc -> net.glowcube.client.module.karte.Wegpunkte.hier().size());
+        if (anzahl < 1) {
+            kaputt("Wegpunkt wurde nicht gespeichert: " + gesetzt);
+        } else {
+            ok("Wegpunkt gespeichert (" + anzahl + " in dieser Welt)");
+        }
+        String[] hud = {"Minimap", "Wegpunkte", "Item-Zaehler", "Session-Statistik"};
+        for (String name : hud) {
+            Module m = modul(name);
+            k.runOnClient(mc -> m.setEnabled(true));
+        }
+        k.waitTicks(30);
+        BufferedImage mit = bild(k.takeScreenshot("hud-an"));
+        double anteil = unterschied(ohne, mit);
+        for (String name : hud) {
+            Module m = modul(name);
+            k.runOnClient(mc -> m.setEnabled(false));
+        }
+        String werte = String.format("%.2f%% der Pixel veraendert", anteil * 100);
+        if (anteil > 0.01) {
+            ok("Minimap, Wegpunkte, Item-Zaehler und Session-Statistik zeichnen (" + werte + ")");
+        } else {
+            kaputt("Minimap und HUD zeichnen kaum etwas (" + werte + ")");
+        }
+        Module weltkarte = modul("Weltkarte");
+        k.runOnClient(mc -> weltkarte.setEnabled(true));
+        k.waitTicks(30);
+        BufferedImage karte = bild(k.takeScreenshot("weltkarte"));
+        k.runOnClient(mc -> weltkarte.setEnabled(false));
+        double anteilKarte = unterschied(ohne, karte);
+        String werteKarte = String.format("%.1f%% der Pixel veraendert", anteilKarte * 100);
+        if (anteilKarte > 0.3) {
+            ok("Weltkarte ueberdeckt den Bildschirm (" + werteKarte + ")");
+        } else {
+            kaputt("Weltkarte zeichnet zu wenig (" + werteKarte + ")");
+        }
+        k.runOnClient(mc -> net.glowcube.client.module.karte.Wegpunkte.entfernen("Testpunkt"));
+    }
+
+    private void autoArmor(ClientGameTestContext k, Object serverObjekt) throws Exception {
+        var server = (net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) serverObjekt;
+        server.runCommand("clear @a");
+        server.runCommand("give @a minecraft:diamond_chestplate");
+        server.runCommand("give @a minecraft:iron_boots");
+        k.waitTicks(10);
+        Module m = modul("AutoArmor");
+        k.runOnClient(mc -> m.setEnabled(true));
+        k.waitTicks(40);
+        k.runOnClient(mc -> m.setEnabled(false));
+        String brust = k.computeOnClient(mc -> net.glowcube.client.util.Ids.item(
+                mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST)));
+        String fuesse = k.computeOnClient(mc -> net.glowcube.client.util.Ids.item(
+                mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET)));
+        server.runCommand("clear @a");
+        if (brust.equals("diamond_chestplate") && fuesse.equals("iron_boots")) {
+            ok("AutoArmor zieht Brustpanzer und Stiefel an");
+        } else {
+            kaputt("AutoArmor: Brust=" + brust + ", Fuesse=" + fuesse);
+        }
+    }
+
+    private void surround(ClientGameTestContext k, Object serverObjekt) throws Exception {
+        var server = (net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) serverObjekt;
+        server.runCommand("gamemode survival @a");
+        server.runCommand("clear @a");
+        server.runCommand("give @a minecraft:obsidian 16");
+        k.waitTicks(10);
+        Module m = modul("Surround");
+        k.runOnClient(mc -> m.setEnabled(true));
+        k.waitTicks(40);
+        k.runOnClient(mc -> m.setEnabled(false));
+        int obsidian = k.computeOnClient(mc -> {
+            net.minecraft.core.BlockPos f = mc.player.blockPosition();
+            int n = 0;
+            for (net.minecraft.core.BlockPos p : new net.minecraft.core.BlockPos[] {f.north(), f.south(), f.east(), f.west()}) {
+                if (net.glowcube.client.util.Ids.block(mc.level.getBlockState(p)).equals("obsidian")) {
+                    n++;
+                }
+            }
+            return n;
+        });
+        server.runCommand("execute as @a at @s run fill ~-2 ~-1 ~-2 ~2 ~1 ~2 minecraft:air replace minecraft:obsidian");
+        server.runCommand("clear @a");
+        server.runCommand("gamemode creative @a");
+        if (obsidian == 4) {
+            ok("Surround mauert alle vier Seiten mit Obsidian ein");
+        } else {
+            kaputt("Surround: nur " + obsidian + " von 4 Seiten mit Obsidian");
+        }
+    }
+
+    private void crystalAura(ClientGameTestContext k, Object serverObjekt) throws Exception {
+        var server = (net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) serverObjekt;
+        server.runCommand("gamemode creative @a");
+        server.runCommand("clear @a");
+        server.runCommand("give @a minecraft:end_crystal 16");
+        server.runCommand("execute as @a at @s run fill ~-2 ~-1 ~-3 ~2 ~-1 ~-5 minecraft:obsidian");
+        server.runCommand("execute as @a at @s run summon minecraft:husk ~ ~ ~-4 {NoAI:1b,Silent:1b,Health:20f}");
+        k.waitTicks(20);
+        int vorher = zaehle(server, "husk");
+        Module m = modul("CrystalAura");
+        k.runOnClient(mc -> {
+            einstellen(m, "Monster", true);
+            einstellen(m, "Spieler", false);
+            m.setEnabled(true);
+        });
+        k.waitTicks(100);
+        k.runOnClient(mc -> {
+            m.setEnabled(false);
+            einstellen(m, "Monster", false);
+            einstellen(m, "Spieler", true);
+        });
+        int nachher = zaehle(server, "husk");
+        server.runCommand("kill @e[type=minecraft:end_crystal]");
+        server.runCommand("kill @e[type=minecraft:husk]");
+        server.runCommand("execute as @a at @s run fill ~-3 ~-1 ~-6 ~3 ~-1 ~-2 minecraft:grass_block replace minecraft:obsidian");
+        server.runCommand("clear @a");
+        if (vorher > 0 && nachher < vorher) {
+            ok("CrystalAura legt und zuendet Kristalle - der Husk ist tot");
+        } else {
+            kaputt("CrystalAura hat den Husk nicht besiegt (" + vorher + " -> " + nachher + ")");
+        }
+    }
+
+    private void totemPops(ClientGameTestContext k, Object serverObjekt) throws Exception {
+        var server = (net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) serverObjekt;
+        Module m = modul("Totem-Pops");
+        k.runOnClient(mc -> m.setEnabled(true));
+        server.runCommand("gamemode survival @a");
+        server.runCommand("item replace entity @a weapon.offhand with minecraft:totem_of_undying");
+        k.waitTicks(10);
+        server.runCommand("damage @a 100 minecraft:generic");
+        k.waitTicks(30);
+        int pops = k.computeOnClient(mc -> net.glowcube.client.module.hud.TotemPops.anzahl(
+                mc.player.getName().getString()));
+        k.runOnClient(mc -> m.setEnabled(false));
+        server.runCommand("gamemode creative @a");
+        server.runCommand("effect clear @a");
+        if (pops == 1) {
+            ok("Totem-Pop-Zaehler zaehlt den Pop");
+        } else {
+            kaputt("Totem-Pop-Zaehler steht bei " + pops + " statt 1");
+        }
+    }
+
+    private static void einstellen(Module m, String name, Object wert) {
+        for (net.glowcube.client.core.setting.Setting s : m.settings()) {
+            if (!s.name().equals(name)) {
+                continue;
+            }
+            if (s instanceof net.glowcube.client.core.setting.BooleanSetting b) {
+                b.set((Boolean) wert);
+            } else if (s instanceof net.glowcube.client.core.setting.NumberSetting n) {
+                n.set(((Number) wert).doubleValue());
+            }
+        }
     }
 
     // --------------------------------------------------------- Rundlauf

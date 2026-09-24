@@ -48,7 +48,7 @@ public final class HudRenderer {
         drawWatermark(gfx);
         int breite = mc.getWindow().getGuiScaledWidth();
         float listeEnde = drawModuleList(gfx, breite);
-        HudAnzeigen.zeichnen(zeichner(gfx), breite, MARGIN + 20, listeEnde + 3);
+        HudAnzeigen.zeichnen(zeichner(gfx), breite, mc.getWindow().getGuiScaledHeight(), MARGIN + 20, listeEnde + 3);
     }
 
     private void drawWatermark(GuiGraphicsExtractor gfx) {

@@ -94,7 +94,8 @@ public final class SlotUtils {
             return 36 + i;
         }
         if (istRuestung(i)) {
-            return 5 + (i - ARMOR_START);
+            // 36 sind die Stiefel (Menue-Platz 8), 39 der Helm (Platz 5).
+            return 8 - (i - ARMOR_START);
         }
         if (i == OFFHAND) {
             return 45;
