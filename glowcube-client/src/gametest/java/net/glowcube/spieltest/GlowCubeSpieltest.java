@@ -53,9 +53,16 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext kontext) {
-        try (var welt = kontext.worldBuilder().create()) {
+        // Kleine Sichtweite - der CI-Rechner zeichnet ohne Grafikkarte.
+        kontext.runOnClient(mc -> {
+            mc.options.renderDistance().set(4);
+            mc.options.simulationDistance().set(5);
+        });
+        var bauer = kontext.worldBuilder();
+        flachwelt(bauer);
+        try (var welt = bauer.create()) {
             var server = welt.getServer();
-            welt.getClientWorld().waitForChunksRender();
+            chunksAbwarten(welt);
             server.runCommand("time set noon");
             server.runCommand("weather clear");
             server.runCommand("gamemode creative @a");
@@ -66,7 +73,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             server.runCommand("execute as @a at @s run setblock ~2 ~3 ~6 minecraft:gold_ore");
             server.runCommand("execute as @a at @s run setblock ~-2 ~1 ~6 minecraft:iron_ore");
             kontext.waitTicks(40);
-            welt.getClientWorld().waitForChunksRender();
+            chunksAbwarten(welt);
             ok("Welt geladen auf " + kontext.computeOnClient(mc -> mc.getLaunchedVersion()));
 
             pruefe("X-Ray", () -> xray(kontext, welt));
@@ -99,17 +106,17 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
     private void xray(ClientGameTestContext k, Object weltObjekt) throws Exception {
         var welt = (net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext) weltObjekt;
         Module xray = modul("X-Ray");
-        welt.getClientWorld().waitForChunksRender();
+        chunksAbwarten(welt);
         BufferedImage ohne = bild(k.takeScreenshot("xray-aus"));
         k.runOnClient(mc -> xray.setEnabled(true));
         k.waitTicks(20);
-        welt.getClientWorld().waitForChunksRender();
+        chunksAbwarten(welt);
         k.waitTicks(10);
         BufferedImage mit = bild(k.takeScreenshot("xray-an"));
         double anteil = unterschied(ohne, mit);
         k.runOnClient(mc -> xray.setEnabled(false));
         k.waitTicks(20);
-        welt.getClientWorld().waitForChunksRender();
+        chunksAbwarten(welt);
         String werte = String.format("%.1f%% der Pixel veraendert", anteil * 100);
         if (anteil > 0.10) {
             ok("X-Ray blendet Stein aus (" + werte + ")");
@@ -122,7 +129,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
 
     private void esp(ClientGameTestContext k, Object weltObjekt) throws Exception {
         var welt = (net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext) weltObjekt;
-        welt.getServer().runCommand("execute as @a at @s run summon minecraft:zombie ~1 ~ ~4 {NoAI:1b,Silent:1b}");
+        welt.getServer().runCommand("execute as @a at @s run summon minecraft:husk ~1 ~ ~4 {NoAI:1b,Silent:1b}");
         k.waitTicks(20);
         for (String name : new String[] {"EntityESP", "Tracers", "StorageESP"}) {
             Module m = modulOderNull(name);
@@ -134,7 +141,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
                 welt.getServer().runCommand("execute as @a at @s run setblock ~-1 ~ ~3 minecraft:chest");
                 k.waitTicks(10);
             }
-            welt.getClientWorld().waitForChunksRender();
+            chunksAbwarten(welt);
             BufferedImage ohne = bild(k.takeScreenshot(name.toLowerCase() + "-aus"));
             k.runOnClient(mc -> m.setEnabled(true));
             k.waitTicks(10);
@@ -148,7 +155,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
                 kaputt(name + " zeichnet nichts sichtbar (" + werte + ")");
             }
         }
-        welt.getServer().runCommand("kill @e[type=minecraft:zombie]");
+        welt.getServer().runCommand("kill @e[type=minecraft:husk]");
         k.waitTicks(10);
     }
 
@@ -157,16 +164,16 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
     private void killAura(ClientGameTestContext k, Object serverObjekt) throws Exception {
         var server = (net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext) serverObjekt;
         server.runCommand("gamemode survival @a");
-        server.runCommand("execute as @a at @s run summon minecraft:zombie ~ ~ ~2 {NoAI:1b,Silent:1b,Health:10f}");
+        server.runCommand("execute as @a at @s run summon minecraft:husk ~ ~ ~2 {NoAI:1b,Silent:1b,Health:10f}");
         k.waitTicks(10);
-        int vorher = zaehle(server, "zombie");
+        int vorher = zaehle(server, "husk");
         Module aura = modul("KillAura");
         k.runOnClient(mc -> aura.setEnabled(true));
         k.waitTicks(120);
         k.runOnClient(mc -> aura.setEnabled(false));
-        int nachher = zaehle(server, "zombie");
+        int nachher = zaehle(server, "husk");
         server.runCommand("gamemode creative @a");
-        server.runCommand("kill @e[type=minecraft:zombie]");
+        server.runCommand("kill @e[type=minecraft:husk]");
         if (vorher > 0 && nachher < vorher) {
             ok("KillAura hat den Zombie besiegt (" + vorher + " -> " + nachher + ")");
         } else {
@@ -279,6 +286,72 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
     }
 
     // -------------------------------------------------------- Hilfen
+
+    /**
+     * Wartet, bis alle Chunks gezeichnet sind. Die Methode heisst je nach
+     * Fabric-Fassung getClientWorld() oder getClientLevel() - darum ueber
+     * Spiegelung, so laeuft derselbe Test auf 1.21.11 und 26.3.
+     */
+    private static void chunksAbwarten(Object welt) throws Exception {
+        Object client = null;
+        for (String name : new String[] {"getClientWorld", "getClientLevel"}) {
+            try {
+                java.lang.reflect.Method m = welt.getClass().getMethod(name);
+                m.setAccessible(true);
+                client = m.invoke(welt);
+                break;
+            } catch (NoSuchMethodException weiter) {
+                // naechsten Namen versuchen
+            }
+        }
+        if (client == null) {
+            throw new IllegalStateException("Weder getClientWorld noch getClientLevel gefunden");
+        }
+        java.lang.reflect.Method warten = client.getClass().getMethod("waitForChunksRender");
+        warten.setAccessible(true);
+        warten.invoke(client);
+    }
+
+    /** Flachwelt einstellen - die ist sofort erzeugt (normale Welten dauern auf dem CI-Rechner zu lange). */
+    private static void flachwelt(Object bauer) {
+        try {
+            for (java.lang.reflect.Method m : bauer.getClass().getMethods()) {
+                if (!m.getName().equals("adjustSettings") || m.getParameterCount() != 1) {
+                    continue;
+                }
+                java.util.function.Consumer<Object> anpassen = ui -> {
+                    try {
+                        for (String liste : new String[] {"getNormalPresetList", "getAltPresetList"}) {
+                            java.lang.reflect.Method lm = ui.getClass().getMethod(liste);
+                            for (Object eintrag : (List<?>) lm.invoke(ui)) {
+                                java.lang.reflect.Method pm = eintrag.getClass().getMethod("preset");
+                                pm.setAccessible(true);
+                                Object preset = pm.invoke(eintrag);
+                                if (preset != null && preset.toString().contains("flat")) {
+                                    for (java.lang.reflect.Method sm : ui.getClass().getMethods()) {
+                                        if (sm.getName().equals("setWorldType") && sm.getParameterCount() == 1) {
+                                            sm.invoke(ui, eintrag);
+                                            System.out.println("GLOWCUBE-TEST Flachwelt eingestellt");
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        System.out.println("GLOWCUBE-TEST Flachwelt nicht gefunden - normale Welt");
+                    } catch (Exception e) {
+                        System.out.println("GLOWCUBE-TEST Flachwelt nicht einstellbar: " + e);
+                    }
+                };
+                m.setAccessible(true);
+                m.invoke(bauer, anpassen);
+                return;
+            }
+            System.out.println("GLOWCUBE-TEST adjustSettings fehlt - normale Welt");
+        } catch (Exception e) {
+            System.out.println("GLOWCUBE-TEST Flachwelt nicht einstellbar: " + e);
+        }
+    }
 
     private static Module modul(String name) {
         Module m = modulOderNull(name);
