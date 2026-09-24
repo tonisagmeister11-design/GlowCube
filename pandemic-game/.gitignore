@@ -1,4 +1,7 @@
-node_modules/
+__pycache__/
 blender/backups/
 blender/export/
-__pycache__/
+blender/previews/
+blender/shots/
+node_modules/
+src/generated/models.js

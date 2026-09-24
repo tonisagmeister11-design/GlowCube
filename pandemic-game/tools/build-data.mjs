@@ -126,10 +126,28 @@ for (let i = 0; i < newGeoms.length; i++) {
 const RENAME = { PSE: 'Palästina', ESH: 'Westsahara', XKX: 'Kosovo', TWN: 'Taiwan', PRK: 'Nordkorea', KOR: 'Südkorea', COD: 'DR Kongo', COG: 'Kongo', CAF: 'Zentralafrika', FLK: 'Falklandinseln' };
 for (const c of countries) if (RENAME[c.iso]) c.name = RENAME[c.iso];
 
+// Länder-Polygone (Ringe aus [lon,lat]) für das Canvas-Rendering.
+// Koordinaten auf 2 Nachkommastellen gerundet (spart Platz, reicht für die Karte).
+const geo = {};
+for (let i = 0; i < newGeoms.length; i++) {
+  const iso = newGeoms[i].id;
+  const f = features[i];
+  const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+  const rings = [];
+  for (const poly of polys) {
+    for (const ring of poly) {
+      if (ring.length < 4) continue;
+      const r = ring.map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]);
+      rings.push(r);
+    }
+  }
+  geo[iso] = rings;
+}
+
 const out = {
   countries,
   sea: { nodes: SEA, edges: SEA_EDGES.split(/\s+/).map((e) => e.split('-')) },
-  topo,
+  geo,
 };
 for (const [a, b] of out.sea.edges) if (!SEA[a] || !SEA[b]) throw new Error('Seekante ' + a + '-' + b);
 fs.mkdirSync(path.join(root, 'src', 'data'), { recursive: true });
