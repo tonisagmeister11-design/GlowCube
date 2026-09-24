@@ -47,7 +47,7 @@ export class Engine {
       zombieActive: false, zombies: 0, hordeActive: false,
       apesActive: false, apes: 0, apeSpread: false,
       vampireActive: false, vampires: 0,
-      xenoActive: false, xeno: 0,
+      xenoActive: false, xeno: 0, xmon: 0,
     };
 
     const total = world.countries.reduce((a, c) => a + c.pop, 0);
@@ -67,6 +67,7 @@ export class Engine {
     const seed = Math.max(1, Math.round(s.pop * 0.000003));
     s.infected = seed; s.healthy -= seed;
     this.startCountry = opts.startIso;
+    this.craterIso = opts.type === 'xenolith' ? opts.startIso : null;
 
     // Verkehr
     this.vehicles = [];        // {kind, from, to, path, t, speed, infected}
@@ -329,6 +330,7 @@ export class Engine {
         let deaths = st.infected * lethRate;
         deaths = Math.min(deaths, st.infected);
         st.infected -= deaths; st.dead += deaths;
+        if (!this.firstDeathIso && st.dead >= 1) this.firstDeathIso = iso;
         // Heilung, sobald Cure fortgeschritten
         if (this.cure > 0.15) {
           const heal = st.infected * this.cure * (0.02 * c.medical + this.cure * 0.03);
@@ -362,6 +364,7 @@ export class Engine {
     this.updateCure();
     this.worldReactions();
     this.updateDna();
+    this._milestones();
     this.stats.infectedPeak = Math.max(this.stats.infectedPeak, this.totalInfected());
     this.checkEnd();
   }
@@ -386,12 +389,11 @@ export class Engine {
     this.vehicles = this.vehicles.filter((v) => v.t < 1);
     // Fahrzeuge visualisieren die Übertragung (spreadInternational rechnet sie);
     // ein infiziertes Fahrzeug erreicht ein Land = sichtbarer Ausbreitungsweg.
-    const maxV = 64;
+    const maxV = 16;
     let guard = 0;
-    while (this.vehicles.length < maxV && guard++ < 20) {
-      if (this.rng() < 0.55) this.spawnAir(); else this.spawnSea();
-      if (this.vehicles.length >= maxV) break;
-      if (this.rng() > 0.7) break;
+    while (this.vehicles.length < maxV && guard++ < 6) {
+      if (this.rng() < 0.6) this.spawnAir(); else this.spawnSea();
+      if (this.rng() > 0.4) break;  // meist nur 1 neues Fahrzeug pro Tag
     }
   }
 
@@ -444,7 +446,8 @@ export class Engine {
       st.infected += seed; st.healthy -= seed;
       this.spawnBubble(iso, 'country');
       this.dna += 1; this.totalDnaEarned += 1;
-      this.pushNews(`${st.ref.name} meldet die ersten Fälle von „${this.opts.name}“.`, 'spread', iso);
+      this._spreadNews = (this._spreadNews || 0) + 1;
+      if (this._spreadNews <= 45) this.pushNews(`${st.ref.name} meldet die ersten Fälle von „${this.opts.name}“.`, 'spread', iso);
     } else {
       const add = Math.min(st.healthy, st.infected * 0.02 + 5);
       st.infected += add; st.healthy -= add;
@@ -491,15 +494,38 @@ export class Engine {
   // ---- DNA ----
   updateDna() {
     const inf = this.totalInfected() + this.totalDead();
-    this._dnaAccum = (this._dnaAccum || 0) + inf / this.worldPop * 0.16 * this.diff.dna * (this.def.dnaSymptomMul || 1);
+    const rate = (this.def.dnaRate != null ? this.def.dnaRate : 1) * (this.def.dnaSymptomMul || 1);
+    this._dnaAccum = (this._dnaAccum || 0) + inf / this.worldPop * 0.16 * this.diff.dna * rate;
     while (this._dnaAccum >= 1) { this._dnaAccum -= 1; this.dna += 1; this.totalDnaEarned += 1; }
   }
 
   clickBubble(b) {
     let gain = b.type === 'country' ? 2 : b.type === 'special' ? 3 : 1;
-    gain = Math.round(gain * this.diff.dna * (this.def.dnaSymptomMul || 1) + 0.4);
+    const rate = (this.def.dnaRate != null ? this.def.dnaRate : 1) * (this.def.dnaSymptomMul || 1);
+    gain = Math.round(gain * this.diff.dna * rate + 0.4);
     this.dna += gain; this.totalDnaEarned += gain;
     return gain;
+  }
+
+  // ---- Meilenstein-Nachrichten (kontextbezogen, kein Spam) ----
+  _milestones() {
+    const M = (this._ms ||= new Set());
+    const mile = (k, cond, text, kind, iso) => { if (cond && !M.has(k)) { M.add(k); this.pushNews(text, kind || 'milestone', iso); } };
+    const name = this.opts.name;
+    const inf = this.totalInfected() + this.totalDead();
+    const dead = this.totalDead();
+    mile('firstdeath', this.firstDeathIso, `Erster Todesfall durch „${name}" in ${this.firstDeathIso ? this.countries[this.firstDeathIso].ref.name : ''}.`, 'lose', this.firstDeathIso);
+    mile('inf1m', inf >= 1e6, `„${name}" hat über 1 Million Menschen infiziert.`);
+    mile('inf100m', inf >= 1e8, `Über 100 Millionen Infektionen weltweit mit „${name}".`);
+    mile('inf1b', inf >= 1e9, `„${name}" überschreitet 1 Milliarde Infizierte.`);
+    mile('dead1m', dead >= 1e6, `„${name}" hat bereits über 1 Million Todesopfer gefordert.`, 'lose');
+    mile('dead100m', dead >= 1e8, `Katastrophe: Über 100 Millionen Tote durch „${name}".`, 'lose');
+    mile('c20', this.cure >= 0.2, `Forschungsteams melden erste Fortschritte beim Heilmittel (20 %).`, 'detect');
+    mile('c50', this.cure >= 0.5, `Das Heilmittel gegen „${name}" ist zur Hälfte fertig (50 %).`, 'react');
+    mile('c75', this.cure >= 0.75, `Warnung: Die Heilmittelforschung erreicht 75 %.`, 'react');
+    mile('c90', this.cure >= 0.9, `Das Heilmittel steht kurz vor der Fertigstellung (90 %)!`, 'react');
+    mile('spread50', this.countriesInfected() >= 50, `„${name}" hat sich auf über 50 Länder ausgebreitet.`);
+    mile('spreadall', this.countriesInfected() >= this.list.length - 3, `Fast jedes Land der Erde ist von „${name}" betroffen.`);
   }
 
   // ---- Weltreaktionen ----
@@ -552,9 +578,15 @@ export class Engine {
           const bite = Math.min(st.healthy, st.zombies * (0.035 + (sp.zombieBoost || 0) * 0.04));
           st.healthy -= bite; st.infected += bite;
         }
-        if (st.zombies > 0 && this.detected) {
-          const mil = st.zombies * st.ref.wealth * 0.01 * (1 - (sp.zombieArmor || 0));
-          st.zombies = Math.max(0, st.zombies - mil);
+        // Militär baut Festungen in betroffenen, wohlhabenden Ländern
+        if (this.detected && (st.zombies > st.pop * 0.004 || st.dead > st.pop * 0.01) && st.healthy > st.pop * 0.02) {
+          st.fortress = Math.min(1, (st.fortress || 0) + 0.006 * (0.4 + st.ref.wealth));
+        }
+        // Festung bekämpft Zombies; Zombies greifen die Festung an
+        if (st.fortress > 0 && st.zombies > 0) {
+          const def = st.zombies * (0.02 + st.fortress * 0.05) * (1 - (sp.zombieArmor || 0));
+          st.zombies = Math.max(0, st.zombies - def);
+          st.fortress = Math.max(0, st.fortress - (st.zombies / Math.max(1, st.pop)) * 0.04);
         }
         z += st.zombies;
       }
@@ -615,15 +647,21 @@ export class Engine {
       sp.vampires = v;
     }
     if (sp.xenoActive) {
-      let x = 0;
+      let x = 0, xm = 0;
       for (const iso in this.countries) {
         const st = this.countries[iso];
-        if (st.infected > st.pop * 0.01 || st.xeno > 0) {
-          st.xeno = Math.min(1, st.xeno + 0.004 * (1 + (sp.xenoBoost || 0)));
+        // Kristalle füllen ein Land langsam, wo Infektion vorhanden ist
+        if (st.infected > st.pop * 0.008 || st.xeno > 0) {
+          st.xeno = Math.min(1, st.xeno + 0.0035 * (1 + (sp.xenoBoost || 0)));
         }
-        x += st.xeno * st.pop;
+        // Wo viele Kristalle sind, verwandeln sich Menschen in Kristallwesen
+        if (st.xeno > 0.15 && st.healthy > 0) {
+          const conv = Math.min(st.healthy, st.pop * st.xeno * 0.004 * (1 + (sp.xenoBoost || 0)));
+          st.healthy -= conv; st.xmon = (st.xmon || 0) + conv;
+        }
+        x += st.xeno * st.pop; xm += st.xmon || 0;
       }
-      sp.xeno = x / this.worldPop;
+      sp.xeno = x / this.worldPop; sp.xmon = xm;
     }
   }
 
@@ -636,19 +674,37 @@ export class Engine {
     this.pushNews(`„${this.opts.name}“ ist mutiert und zeigt ein neues Symptom: ${s.name}.`, 'mutation');
   }
 
-  // Gerichtete Sonderaktion: einen Wirt/Zombie/Vampir in ein Land schicken,
-  // der dort die Infektion auslöst bzw. verstärkt.
-  directSeed(iso, mode) {
+  // Gerichtete Sonderaktion: eine wählbare Anzahl Träger (Wirte/Zombies/Vampire/
+  // Kristallwesen) in ein Land schicken. amount = Anzahl "Reisende".
+  directSeed(iso, mode, amount = 100) {
     const st = this.countries[iso]; if (!st) return false;
-    const seed = Math.max(60, Math.round(st.pop * 0.0002));
+    const seed = Math.max(amount, 20);
     if (st.healthy > 0) { const s = Math.min(st.healthy, seed); st.healthy -= s; st.infected += s; }
-    if (mode === 'control') st.controlled += seed * 0.6;
-    if (mode === 'zombie') st.zombies += Math.max(30, seed * 0.4);
-    if (mode === 'vampire') st.vampires += 8;
+    if (mode === 'control') st.controlled += seed * 0.7;
+    if (mode === 'zombie') { st.zombies += seed * 1.2; st.fortress = Math.max(0, (st.fortress || 0) - 0.15); }
+    if (mode === 'vampire') st.vampires += Math.max(8, seed * 0.05);
+    if (mode === 'crystal') { st.xeno = Math.min(1, (st.xeno || 0) + 0.08); st.xmon = (st.xmon || 0) + seed * 0.5; }
     this.spawnBubble(iso, 'special');
-    const names = { control: 'Ein kontrollierter Wirt', zombie: 'Eine Zombie-Horde', vampire: 'Ein Vampir' };
-    this.pushNews(`${names[mode] || 'Ein Träger'} erreicht ${st.ref.name} und verbreitet „${this.opts.name}".`, 'special', iso);
+    const names = {
+      control: `${fmtShort(seed)} kontrollierte Reisende fliegen nach`, zombie: 'Eine Zombie-Horde marschiert nach',
+      vampire: 'Ein Vampir zieht nach', crystal: 'Kristallwesen kriechen nach',
+    };
+    this.pushNews(`${names[mode] || 'Träger reisen nach'} ${st.ref.name} und verbreiten „${this.opts.name}".`, 'special', iso);
     return true;
+  }
+
+  // Neurax: Menschen bekommen den Drang, sich freiwillig anzustecken.
+  willToInfect() {
+    let total = 0;
+    for (const iso in this.countries) {
+      const st = this.countries[iso];
+      if (st.infected > st.pop * 0.005 && st.healthy > 0) {
+        const conv = Math.min(st.healthy, st.healthy * 0.12 + st.infected * 0.05);
+        st.healthy -= conv; st.infected += conv; total += conv;
+      }
+    }
+    if (total > 0) this.pushNews(`Massenbekehrung: Millionen wollen sich plötzlich freiwillig mit „${this.opts.name}" anstecken.`, 'special');
+    return total;
   }
 
   // ---- Aktionen aus Sondermechaniken (Buttons) ----
@@ -673,7 +729,7 @@ export class Engine {
     const infected = this.totalInfected();
 
     // Niederlage: ausgestorben
-    const specialAlive = this.special.zombies + this.special.apes + this.special.vampires + this.special.controlled;
+    const specialAlive = this.special.zombies + this.special.apes + this.special.vampires + this.special.controlled + (this.special.xmon || 0);
     if (infected < 1 && specialAlive < 1 && this.day > 20) {
       this.endGame(false, 'ausgestorben');
       return;
@@ -765,4 +821,12 @@ function geoDist(a, b) {
 function nodeDist(a, b) {
   let dx = Math.abs(a[0] - b[0]); if (dx > 180) dx = 360 - dx;
   return Math.hypot(dx, a[1] - b[1]);
+}
+
+function fmtShort(n) {
+  n = Math.round(n);
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + ' Mrd.';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + ' Mio.';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + ' Tsd.';
+  return String(n);
 }

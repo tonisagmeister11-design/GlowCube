@@ -13,6 +13,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 if (!fs.existsSync(path.join(root, 'src/data/world.json'))) execFileSync(process.execPath, [path.join(root, 'tools/build-data.mjs')], { stdio: 'inherit' });
 if (!fs.existsSync(path.join(root, 'src/generated/models.js'))) execFileSync(process.execPath, [path.join(root, 'tools/gen-assets.mjs')], { stdio: 'inherit' });
 if (!fs.existsSync(path.join(root, 'src/generated/audio.js'))) execFileSync(process.execPath, [path.join(root, 'tools/gen-audio.mjs')], { stdio: 'inherit' });
+if (!fs.existsSync(path.join(root, 'src/generated/mapimg.js'))) execFileSync(process.execPath, [path.join(root, 'tools/gen-map.mjs')], { stdio: 'inherit' });
+if (!fs.existsSync(path.join(root, 'src/generated/vehicles.js'))) execFileSync(process.execPath, [path.join(root, 'tools/gen-vehicles.mjs')], { stdio: 'inherit' });
 
 const threeAddons = {
   name: 'three-addons',
@@ -58,8 +60,8 @@ const html = `<!DOCTYPE html>
 </body>
 </html>`;
 
-const outFile = path.join(root, 'dist', 'index.html');
+const outFile = path.join(root, 'dist', 'PANDEMIA.html');
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, html);
 const kb = (Buffer.byteLength(html) / 1024).toFixed(0);
-console.log(`dist/index.html geschrieben: ${(kb / 1024).toFixed(2)} MB (JS ${(js.length / 1024 / 1024).toFixed(2)} MB)`);
+console.log(`dist/PANDEMIA.html geschrieben: ${(kb / 1024).toFixed(2)} MB (JS ${(js.length / 1024 / 1024).toFixed(2)} MB)`);

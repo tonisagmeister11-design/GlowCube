@@ -302,6 +302,7 @@ export class UI {
     else if (sp.controlled > 1) special = ['Kontrolliert', fmt(sp.controlled)];
     else if (sp.apes > 1) special = ['Affen', fmt(sp.apes)];
     else if (sp.vampires > 1) special = ['Vampire', fmt(sp.vampires)];
+    else if (sp.xmon > 1) special = ['Kristallwesen', fmt(sp.xmon)];
     else if (sp.xeno > 0.001) special = ['Xenoforming', (sp.xeno * 100).toFixed(1) + '%'];
     if (special) {
       this.statSpecial.el.style.display = '';
@@ -342,33 +343,56 @@ export class UI {
 
   updateSpecialBar() {
     const eng = this.game.eng;
-    // aktive gerichtete Aktionen ermitteln
+    const sp = eng.special;
+    // aktive Sonderaktionen je nach Virus
     const actions = [];
     if (eng.evolved.has('spore_burst')) actions.push({ id: 'spore', icon: '💥', label: 'Sporenausbruch', fn: () => { eng.triggerAbility(eng.evolved.has('spore_eruption') ? 'spore_eruption' : 'spore_burst'); this.flashDna(); } });
-    if (eng.special.controlActive) actions.push({ id: 'control', icon: '🧠', label: 'Wirt aussenden', directed: 'control', color: 'rgba(200,120,255,1)' });
-    if (eng.special.vampireActive) actions.push({ id: 'vampire', icon: '🩸', label: 'Die Jagd', directed: 'vampire', color: 'rgba(255,40,120,1)' });
-    if (eng.special.hordeActive) actions.push({ id: 'zombie', icon: '🧟', label: 'Horde lenken', directed: 'zombie', color: 'rgba(120,230,80,1)' });
-    const sig = actions.map((a) => a.id).join(',') + this._specialType;
+    if (sp.controlActive) {
+      actions.push({ id: 'control', icon: '🧠', label: 'Wirte einfliegen', directed: 'control', plane: true, amounts: true, color: 'rgba(200,120,255,1)' });
+      actions.push({ id: 'will', icon: '🌀', label: 'Massenbekehrung', fn: () => { eng.willToInfect(); this.game.map.spawnBubble({ iso: eng.startCountry, type: 'special' }); } });
+    }
+    if (sp.vampireActive) actions.push({ id: 'vampire', icon: '🩸', label: 'Die Jagd', directed: 'vampire', color: 'rgba(255,40,120,1)' });
+    if (sp.zombieActive) actions.push({ id: 'zombie', icon: '🧟', label: 'Zombie-Horde schicken', directed: 'zombie', amounts: true, color: 'rgba(120,230,80,1)' });
+    if (sp.xenoActive) actions.push({ id: 'crystal', icon: '💠', label: 'Kristallwesen aussenden', directed: 'crystal', amounts: true, color: 'rgba(200,140,255,1)' });
+    const sig = actions.map((a) => a.id).join(',') + eng.opts.type;
     if (sig === this._specialSig) return;
-    this._specialSig = sig; this._specialType = eng.opts.type;
+    this._specialSig = sig;
     this.specialBar.innerHTML = '';
     for (const a of actions) {
       this.specialBar.append(h('button', {
-        class: 'sp-ability', title: a.directed ? 'Ziel auf der Karte wählen' : '',
-        onclick: () => {
-          if (!a.directed) { a.fn(); return; }
-          // Ausgangsland = am stärksten infiziertes Land
-          const from = eng.list.slice().sort((x, y) => y.infected - x.infected)[0];
-          this._flashHint(a.icon + ' Ziel auf der Karte wählen …');
-          this.game.map.requestTarget((toIso) => {
-            this.game.map.sendAgent(from ? from.ref.iso : eng.startCountry, toIso, a.color, () => {
-              eng.directSeed(toIso, a.directed);
-              this.game.map.spawnBubble({ iso: toIso, type: 'special' });
-            });
-          });
-        },
+        class: 'sp-ability', title: a.directed ? 'Ziel auf der Karte wählen' : (a.fn ? 'Sofort auslösen' : ''),
+        onclick: () => { if (a.directed) this._startDirected(a); else a.fn(); },
       }, a.icon + ' ' + a.label));
     }
+  }
+
+  _startDirected(a) {
+    const eng = this.game.eng;
+    const go = (amount) => {
+      const from = eng.list.slice().sort((x, y) => y.infected - x.infected)[0];
+      this._flashHint(a.icon + ' Zielland auf der Karte wählen …');
+      this.game.map.requestTarget((toIso) => {
+        const seed = amount || 200;
+        const fromIso = from ? from.ref.iso : eng.startCountry;
+        const done = () => { eng.directSeed(toIso, a.directed, seed); this.game.map.spawnBubble({ iso: toIso, type: 'special' }); };
+        if (a.plane) this.game.map.sendPlane(fromIso, toIso, a.color, done);
+        else this.game.map.sendAgent(fromIso, toIso, a.color, done);
+      });
+    };
+    if (a.amounts) {
+      // Mengenauswahl (narrativ: wie viele Reisende/Wirte)
+      this._amountChooser(a, [['20 Reisende', 2e5], ['100 Reisende', 1e6], ['500 Reisende', 5e6]], go);
+    } else go();
+  }
+
+  _amountChooser(a, opts, cb) {
+    if (this._chooserEl) this._chooserEl.remove();
+    this._chooserEl = h('div', { class: 'chooser' },
+      h('div', { class: 'chooser-title' }, a.icon + ' ' + a.label + ' – wie viele?'),
+      h('div', { class: 'chooser-btns' },
+        ...opts.map(([label, val]) => h('button', { class: 'btn', onclick: () => { this._chooserEl.remove(); this._chooserEl = null; cb(val); } }, label)),
+        h('button', { class: 'btn back', onclick: () => { this._chooserEl.remove(); this._chooserEl = null; } }, 'Abbrechen')));
+    this.layers.game.append(this._chooserEl);
   }
 
   _flashHint(text) {
@@ -417,8 +441,12 @@ export class UI {
         stat('Hafen', c.port ? (st.portOpen ? 'offen' : 'geschlossen') : '–'),
         stat('Grenzen', st.bordersOpen ? 'offen' : 'geschlossen'),
         ...(st.zombies > 1 ? [stat('Zombies', fmt(st.zombies))] : []),
+        ...(st.fortress > 0.15 ? [stat('Militärfestung', Math.round(st.fortress * 100) + '%')] : []),
         ...(st.apes > 1 ? [stat('Affen', fmt(st.apes))] : []),
         ...(st.controlled > 1 ? [stat('Kontrolliert', fmt(st.controlled))] : []),
+        ...(st.vampires > 1 ? [stat('Vampire', fmt(st.vampires))] : []),
+        ...(st.xeno > 0.01 ? [stat('Kristallisation', Math.round(st.xeno * 100) + '%')] : []),
+        ...(st.xmon > 1 ? [stat('Kristallwesen', fmt(st.xmon))] : []),
       ));
   }
 

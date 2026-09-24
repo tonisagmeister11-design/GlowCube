@@ -4,6 +4,7 @@
 // erscheinen als wachsende Punktwolken; Flugzeuge und Schiffe sind echte kleine
 // Vektorgrafiken. Eine driftende Wolkenschicht belebt die Karte.
 import { MAP_IMAGE } from '../generated/mapimg.js';
+import { VEHICLES } from '../generated/vehicles.js';
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 // Kalibrierung der Projektion auf das Kartenbild (16:9).
@@ -50,6 +51,8 @@ export class WorldMap {
     this.img = new Image();
     this.img.onload = () => { this.ready = true; };
     this.img.src = MAP_IMAGE;
+    this.planeImg = new Image(); this.planeImg.src = VEHICLES.plane;
+    this.shipImg = new Image(); this.shipImg.src = VEHICLES.ship;
     this._samplePoints();
     this._buildCloudTile();
     this.asteroid = null;
@@ -278,7 +281,8 @@ export class WorldMap {
       const alive = st.pop || 1;
       const infF = st.infected / alive, deadF = st.dead / alive;
       const zF = st.zombies / alive, apF = st.apes / alive, vF = st.vampires / alive, ctF = st.controlled / alive;
-      const any = infF + deadF + zF + apF + vF + ctF + st.xeno;
+      const xmF = (st.xmon || 0) / alive;
+      const any = infF + deadF + zF + apF + vF + ctF + st.xeno + xmF;
       if (any < 1e-4) continue;
       // dezente Einfärbung des Landes
       const sev = clamp(infF * 1.3 + deadF * 2.2 + zF + vF + ctF + st.xeno, 0, 1);
@@ -295,7 +299,8 @@ export class WorldMap {
         const cnt = Math.min(pts.length, Math.ceil(frac * pts.length));
         for (let i = 0; i < cnt; i++) { const [px, py] = this.proj(pts[i][0], pts[i][1]); x.fillStyle = color; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); }
       };
-      if (st.xeno > 0.01) drawDots(st.xeno, 'rgba(180,120,255,0.9)', 1.8);
+      if (st.xeno > 0.01) drawDots(st.xeno, 'rgba(150,90,230,0.85)', 1.8);
+      if (xmF > 0.003) drawDots(xmF, 'rgba(210,150,255,0.98)', 2.1);
       drawDots(infF, 'rgba(255,90,50,0.85)', 1.7);
       if (deadF > 0.005) drawDots(deadF, 'rgba(60,10,12,0.95)', 1.7);
       if (zF > 0.005) drawDots(zF, 'rgba(120,230,80,0.9)', 1.9);
@@ -365,7 +370,12 @@ export class WorldMap {
       this._outlineCountry(ctx, this.selectedIso, '#ffe070', 2.2, 10 + 5 * Math.sin(t * 3), '#ffb020');
     }
 
-    if (this.eng) { this._drawVehicles(ctx, t); this._drawSpecialAgents(ctx, t); }
+    if (this.eng) {
+      this._drawCrater(ctx);
+      this._drawFortresses(ctx);
+      this._drawVehicles(ctx, t);
+      this._drawSpecialAgents(ctx, t);
+    }
     this._drawBubbles(ctx, t);
     if (this.eng && this.eng.startCountry) this._drawStartMarker(ctx);
     if (this.asteroid) this._drawAsteroid(ctx, t);
@@ -457,47 +467,28 @@ export class WorldMap {
   }
 
   _drawPlane(ctx, x, y, ang, infected, t) {
-    const s = clamp(2.6 / this.view.scale, 0.7, 2.6);
+    // Größe in Weltkoordinaten (auf Bildschirm ~konstant), 3D-gerenderter Sprite
+    const px = clamp(26 / this.view.scale, 12, 30);
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2);
-    const bank = Math.sin(t * 3 + x) * 0.12; ctx.scale(1, 1 + bank * 0.1);
-    // Glühen
-    ctx.fillStyle = infected ? 'rgba(255,90,60,0.35)' : 'rgba(180,210,255,0.25)';
-    ctx.beginPath(); ctx.arc(0, 0, s * 2.4, 0, 7); ctx.fill();
-    // Flugzeug (Draufsicht): Rumpf, Deltaflügel, Leitwerk
-    ctx.fillStyle = infected ? '#ff7a55' : '#eaf2ff';
-    ctx.strokeStyle = infected ? '#7a1810' : '#334';
-    ctx.lineWidth = 0.3 * s;
-    ctx.beginPath();
-    ctx.moveTo(0, -s * 2.2);                 // Nase
-    ctx.lineTo(s * 0.5, -s * 0.5);
-    ctx.lineTo(s * 2.4, s * 0.6);            // rechter Flügel
-    ctx.lineTo(s * 0.5, s * 0.5);
-    ctx.lineTo(s * 0.7, s * 1.8);            // rechtes Leitwerk
-    ctx.lineTo(0, s * 1.4);
-    ctx.lineTo(-s * 0.7, s * 1.8);           // linkes Leitwerk
-    ctx.lineTo(-s * 0.5, s * 0.5);
-    ctx.lineTo(-s * 2.4, s * 0.6);           // linker Flügel
-    ctx.lineTo(-s * 0.5, -s * 0.5);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (infected) { ctx.shadowColor = 'rgba(255,70,50,0.9)'; ctx.shadowBlur = 8 / this.view.scale; }
+    if (this.planeImg.complete) ctx.drawImage(this.planeImg, -px / 2, -px / 2, px, px);
+    if (infected) { // roter Infektions-Marker
+      ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,60,40,0.95)';
+      ctx.beginPath(); ctx.arc(0, -px * 0.32, px * 0.09, 0, 7); ctx.fill();
+    }
     ctx.restore();
   }
 
   _drawShip(ctx, x, y, ang, infected, t) {
-    const s = clamp(2.4 / this.view.scale, 0.7, 2.4);
-    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
-    ctx.translate(0, Math.sin(t * 2 + x) * 0.15 * s);       // leichtes Schaukeln
+    const px = clamp(24 / this.view.scale, 11, 28);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2);
+    ctx.translate(0, Math.sin(t * 2 + x) * 0.4 / this.view.scale);
     // Kielwasser
-    ctx.fillStyle = 'rgba(210,235,255,0.25)';
-    ctx.beginPath(); ctx.moveTo(-s * 2, 0); ctx.lineTo(-s * 5, -s * 1.2); ctx.lineTo(-s * 5, s * 1.2); ctx.closePath(); ctx.fill();
-    // Rumpf
-    ctx.fillStyle = infected ? '#ff8a5a' : '#dfe8f5';
-    ctx.strokeStyle = infected ? '#7a1810' : '#2a3340'; ctx.lineWidth = 0.3 * s;
-    ctx.beginPath();
-    ctx.moveTo(s * 2.6, 0); ctx.lineTo(s * 1.2, -s * 1.1); ctx.lineTo(-s * 2, -s * 1.1);
-    ctx.lineTo(-s * 2, s * 1.1); ctx.lineTo(s * 1.2, s * 1.1); ctx.closePath(); ctx.fill(); ctx.stroke();
-    // Aufbau
-    ctx.fillStyle = infected ? '#ffd0b0' : '#9fb0c4';
-    ctx.fillRect(-s * 1.4, -s * 0.6, s * 1.6, s * 1.2);
+    ctx.fillStyle = 'rgba(210,235,255,0.2)';
+    ctx.beginPath(); ctx.moveTo(-px * 0.25, px * 0.4); ctx.lineTo(px * 0.35, px * 0.9); ctx.lineTo(-px * 0.35, px * 0.9); ctx.closePath(); ctx.fill();
+    if (infected) { ctx.shadowColor = 'rgba(255,70,50,0.9)'; ctx.shadowBlur = 7 / this.view.scale; }
+    if (this.shipImg.complete) ctx.drawImage(this.shipImg, -px / 2, -px / 2, px, px);
+    if (infected) { ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,60,40,0.95)'; ctx.beginPath(); ctx.arc(0, 0, px * 0.09, 0, 7); ctx.fill(); }
     ctx.restore();
   }
 
@@ -506,21 +497,74 @@ export class WorldMap {
     for (let i = this.agents.length - 1; i >= 0; i--) {
       const a = this.agents[i];
       a.t += a.speed;
-      const [ax, ay] = this.proj(a.ax, a.ay), [bx, by] = this.proj(a.bx, a.by);
-      const x = ax + (bx - ax) * a.t, y = ay + (by - ay) * a.t - Math.sin(Math.PI * a.t) * 20;
-      const col = a.color;
-      ctx.save(); ctx.translate(x, y);
-      const pulse = 1 + 0.3 * Math.sin(t * 8);
-      ctx.fillStyle = col; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(0, 0, 5 / this.view.scale * pulse, 0, 7); ctx.fill();
-      ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(0, 0, 2.6 / this.view.scale, 0, 7); ctx.fill();
-      ctx.restore();
+      let [ax, ay] = this.proj(a.ax, a.ay); let [bx, by] = this.proj(a.bx, a.by);
+      if (Math.abs(bx - ax) > this.baseW / 2) bx += bx < ax ? this.baseW : -this.baseW;
+      const arc = a.kind === 'plane' ? Math.hypot(bx - ax, by - ay) * 0.16 : 20 / this.view.scale;
+      const mx = (ax + bx) / 2, my = (ay + by) / 2 - arc;
+      const tt = a.t;
+      const x = (1 - tt) * (1 - tt) * ax + 2 * (1 - tt) * tt * mx + tt * tt * bx;
+      const y = (1 - tt) * (1 - tt) * ay + 2 * (1 - tt) * tt * my + tt * tt * by;
+      if (a.kind === 'plane') {
+        const dx = 2 * (1 - tt) * (mx - ax) + 2 * tt * (bx - mx);
+        const dy = 2 * (1 - tt) * (my - ay) + 2 * tt * (by - my);
+        const ang = Math.atan2(dy, dx);
+        // farbige Flugspur
+        ctx.strokeStyle = a.color.replace('1)', '0.5)'); ctx.lineWidth = 1.4 / this.view.scale; ctx.setLineDash([4 / this.view.scale, 4 / this.view.scale]);
+        ctx.beginPath();
+        for (let s = 0; s <= tt; s += 0.06) { const px = (1 - s) * (1 - s) * ax + 2 * (1 - s) * s * mx + s * s * bx; const py = (1 - s) * (1 - s) * ay + 2 * (1 - s) * s * my + s * s * by; s === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+        ctx.stroke(); ctx.setLineDash([]);
+        const px = clamp(30 / this.view.scale, 14, 34);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2);
+        ctx.shadowColor = a.color; ctx.shadowBlur = 12 / this.view.scale;
+        if (this.planeImg.complete) ctx.drawImage(this.planeImg, -px / 2, -px / 2, px, px);
+        ctx.shadowBlur = 0; ctx.fillStyle = a.color; ctx.beginPath(); ctx.arc(0, -px * 0.32, px * 0.11, 0, 7); ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.save(); ctx.translate(x, y);
+        const pulse = 1 + 0.3 * Math.sin(t * 8);
+        ctx.fillStyle = a.color; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(0, 0, 5 / this.view.scale * pulse, 0, 7); ctx.fill();
+        ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(0, 0, 2.6 / this.view.scale, 0, 7); ctx.fill();
+        ctx.restore();
+      }
       if (a.t >= 1) { if (a.cb) a.cb(); this.agents.splice(i, 1); }
     }
   }
 
-  sendAgent(fromIso, toIso, color, cb) {
+  sendAgent(fromIso, toIso, color, cb, kind = 'dot') {
     const a = this.byIso[fromIso], b = this.byIso[toIso]; if (!a || !b) { if (cb) cb(); return; }
-    (this.agents ||= []).push({ ax: a.lon, ay: a.lat, bx: b.lon, by: b.lat, t: 0, speed: 0.03, color, cb });
+    (this.agents ||= []).push({ ax: a.lon, ay: a.lat, bx: b.lon, by: b.lat, t: 0, speed: kind === 'plane' ? 0.018 : 0.03, color, cb, kind });
+  }
+  sendPlane(fromIso, toIso, color, cb) { this.sendAgent(fromIso, toIso, color, cb, 'plane'); }
+
+  _drawFortresses(ctx) {
+    if (!this.eng || this.eng.opts.type !== 'necroa') return;
+    for (const c of this.world.countries) {
+      const st = this.eng.countries[c.iso];
+      if (!st.fortress || st.fortress < 0.15) continue;
+      const [x, y] = this.proj(c.lon, c.lat);
+      const s = clamp(7 / this.view.scale, 3, 8) * (0.6 + st.fortress);
+      ctx.save(); ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(40,60,90,0.9)'; ctx.strokeStyle = '#9fc0ff'; ctx.lineWidth = 1 / this.view.scale;
+      // Festung: Turm mit Zinnen
+      ctx.beginPath(); ctx.rect(-s, -s * 0.6, s * 2, s * 1.2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#9fc0ff';
+      for (let k = -1; k <= 1; k++) ctx.fillRect(k * s * 0.6 - s * 0.18, -s * 0.85, s * 0.36, s * 0.3);
+      ctx.restore();
+    }
+  }
+
+  _drawCrater(ctx) {
+    if (!this.eng || !this.eng.craterIso) return;
+    const c = this.byIso[this.eng.craterIso]; if (!c) return;
+    const [x, y] = this.proj(c.lon, c.lat);
+    const s = clamp(9 / this.view.scale, 4, 11);
+    ctx.save(); ctx.translate(x, y);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, s);
+    g.addColorStop(0, 'rgba(60,30,70,0.9)'); g.addColorStop(0.6, 'rgba(120,70,150,0.5)'); g.addColorStop(1, 'rgba(120,70,150,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, s, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(200,150,255,0.7)'; ctx.lineWidth = 1 / this.view.scale;
+    ctx.beginPath(); ctx.arc(0, 0, s * 0.6, 0, 7); ctx.stroke();
+    ctx.restore();
   }
 
   _alongPoly(poly, t) {

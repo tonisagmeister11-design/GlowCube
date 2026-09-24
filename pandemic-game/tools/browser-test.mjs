@@ -1,4 +1,4 @@
-// Browser-Test mit Playwright (Chromium ist vorinstalliert). Lädt dist/index.html,
+// Browser-Test mit Playwright (Chromium ist vorinstalliert). Lädt dist/PANDEMIA.html,
 // prüft, dass WebGL, alle Blender-Modelle und die UI funktionieren, spielt eine
 // kurze Partie und macht Screenshots der wichtigsten Bildschirme.
 import { chromium } from 'playwright-core';
@@ -10,7 +10,7 @@ import { PATHOGEN_ORDER } from '../src/data/pathogens.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shotDir = path.join(root, 'blender', 'shots');
 fs.mkdirSync(shotDir, { recursive: true });
-const url = 'file://' + path.join(root, 'dist', 'index.html');
+const url = 'file://' + path.join(root, 'dist', 'PANDEMIA.html');
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });

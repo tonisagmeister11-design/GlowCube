@@ -7,7 +7,7 @@ optimiert und als echte GLB-Assets in das Spiel geladen.
 
 ## Spielen
 
-Die fertige Datei ist **`dist/index.html`** – eine einzige Datei ohne externe
+Die fertige Datei ist **`dist/PANDEMIA.html`** – eine einzige Datei ohne externe
 Abhängigkeiten. Einfach im Browser öffnen. Kein Server, kein Blender, keine
 Installation nötig. Alle 3D-Modelle und Weltdaten sind eingebettet.
 
@@ -55,7 +55,7 @@ python blender/scripts/build_all.py   # (bpy) Modelle -> blender/export/*.glb
 node tools/optimize-models.mjs         # gltfpack -> assets/models/*.glb
 node tools/build-data.mjs              # Länder-/Kartendaten -> src/data/world.json
 node tools/gen-assets.mjs              # GLBs als base64 -> src/generated/
-node tools/build-single.mjs            # -> dist/index.html
+node tools/build-single.mjs            # -> dist/PANDEMIA.html
 ```
 
 ## Tests
