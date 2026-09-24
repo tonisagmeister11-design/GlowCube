@@ -220,6 +220,21 @@ jobs:
       # Die Proben oben erzaehlen nur. Hier wird behauptet - und der Lauf
       # faellt um, wenn eine Behauptung nicht stimmt. Sonst faellt ein
       # falscher Mixin-Name erst beim Spielstart auf, und zwar beim Nutzer.
+      - name: Maustasten-Nummern ausleuchten
+        continue-on-error: true
+        run: |
+          CP=$(grep -v '^\s*$' build/classpath.txt | paste -sd:)
+          echo "== MouseButtonInfo / MouseHandler (Signaturen)"
+          javap -p -classpath "$CP" net.minecraft.client.input.MouseButtonInfo 2>&1 | head -30 || true
+          javap -p -classpath "$CP" net.minecraft.client.MouseHandler 2>&1 | grep -i "press\|button\|onButton" | head -30 || true
+          echo "== InputConstants MOUSE-Konstanten"
+          javap -p -constants -classpath "$CP" com.mojang.blaze3d.platform.InputConstants 2>&1 | grep -i "MOUSE" | head -20 || true
+          echo "== Options: Vorbelegung key.attack / key.use / key.pickItem"
+          javap -c -p -classpath "$CP" net.minecraft.client.Options > opt.txt 2>&1 || true
+          grep -n -A6 'String key.attack\|String key.use\|String key.pickItem' opt.txt | head -40 || true
+          echo "== MouseHandler.onButton Bytecode"
+          javap -c -p -classpath "$CP" net.minecraft.client.MouseHandler > mh.txt 2>&1 || true
+          awk '/void onButton\(/{f=1} f{print; n++} n>80{exit}' mh.txt || true
       - name: Namen fuer Freecam, Karte und Co. pruefen
         continue-on-error: true
         run: |
