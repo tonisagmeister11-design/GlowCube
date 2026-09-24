@@ -1,0 +1,21 @@
+{
+  "name": "pandemic-game",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build-single.mjs",
+    "test:sim": "node tools/sim-test.mjs",
+    "test:browser": "node tools/browser-test.mjs"
+  },
+  "devDependencies": {
+    "d3-geo": "^3.1.1",
+    "esbuild": "^0.28.2",
+    "gltfpack": "^1.2.0",
+    "playwright-core": "^1.63.0",
+    "three": "^0.186.1",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2",
+    "world-countries": "^5.1.0"
+  }
+}

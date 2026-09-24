@@ -1,0 +1,4 @@
+node_modules/
+blender/backups/
+blender/export/
+__pycache__/
