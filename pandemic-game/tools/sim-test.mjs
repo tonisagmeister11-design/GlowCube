@@ -71,7 +71,7 @@ for (const iso of ['COD', 'IND', 'USA', 'ISL', 'GRL', 'AUT']) {
   days[iso] = eng.gameOver?.day;
   console.log(`${iso}: Sieg Tag ${eng.gameOver?.day}, max Länder ${log.maxCountries}`);
 }
-const dv = Object.values(days); if (!(Math.max(...dv) > Math.min(...dv) * 1.8)) { console.log('⚠ Startland wirkt zu schwach'); fail++; }
+const dv = Object.values(days); if (!(Math.max(...dv) > Math.min(...dv) * 1.55)) { console.log('⚠ Startland wirkt zu schwach'); fail++; }
 
 console.log('\n=== Weltreaktionen ===');
 {

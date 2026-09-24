@@ -462,7 +462,7 @@ export class Engine {
       const seed = Math.max(1, Math.round(st.pop * 0.000004));
       st.infected += seed; st.healthy -= seed;
       this.spawnBubble(iso, 'country');
-      this.dna += 1; this.totalDnaEarned += 1;
+      this.dna += 3; this.totalDnaEarned += 3;   // Bonus fürs Erreichen eines neuen Landes
       this._spreadNews = (this._spreadNews || 0) + 1;
       if (this._spreadNews <= 45) this.pushNews(`${st.ref.name} meldet die ersten Fälle von „${this.opts.name}“.`, 'spread', iso);
     } else {
@@ -509,10 +509,16 @@ export class Engine {
   }
 
   // ---- DNA ----
+  // Früh einsetzender, stetiger Zuwachs: hängt von der Zahl betroffener Länder
+  // und der Größenordnung der Infizierten ab (nicht vom winzigen Anteil an der
+  // Weltbevölkerung). So bekommt man schon mit wenigen tausend Infizierten in
+  // vernünftigem Abstand Punkte, ohne dass es später ausufert.
   updateDna() {
     const inf = this.totalInfected() + this.totalDead();
+    if (inf < 1) return;
     const rate = (this.def.dnaRate != null ? this.def.dnaRate : 1) * (this.def.dnaSymptomMul || 1);
-    this._dnaAccum = (this._dnaAccum || 0) + inf / this.worldPop * 0.16 * this.diff.dna * rate;
+    const perDay = (0.04 * this.countriesInfected() + 0.2 * Math.log10(inf + 10)) * this.diff.dna * rate;
+    this._dnaAccum = (this._dnaAccum || 0) + perDay;
     while (this._dnaAccum >= 1) { this._dnaAccum -= 1; this.dna += 1; this.totalDnaEarned += 1; }
   }
 
