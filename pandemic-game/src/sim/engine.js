@@ -421,11 +421,28 @@ export class Engine {
     if (!a.portOpen || !b.portOpen) return;
     const infected = a.infected > 0 && this.rng() < this.travelInfectChance(a, 'sea');
     const pts = [a.ref.portPos, ...(fwd ? rt.nodes : [...rt.nodes].reverse()), b.ref.portPos];
+    // Schiffe fahren nur auf Wasser: Route gegen die Wasser-Maske prüfen.
+    if (this.isWaterFn && !this._pathIsWater(pts)) return;
     this.vehicles.push({
       kind: 'sea', from: aIso, to: bIso, t: 0,
       speed: (0.006 + 0.004 * this.rng()) * (this.opts._speed || 1),
       infected, poly: pts,
     });
+  }
+
+  _pathIsWater(pts) {
+    // entlang aller Segmente Zwischenpunkte prüfen; einzelne Ausreißer erlaubt
+    let bad = 0, total = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+      const steps = Math.max(2, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4));
+      for (let s = 0; s <= steps; s++) {
+        const f = s / steps;
+        total++;
+        if (!this.isWaterFn(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)) bad++;
+      }
+    }
+    return bad / Math.max(1, total) < 0.12;
   }
 
   travelInfectChance(a, kind) {

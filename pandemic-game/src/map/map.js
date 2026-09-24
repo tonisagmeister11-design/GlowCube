@@ -49,7 +49,7 @@ export class WorldMap {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.ready = false;
     this.img = new Image();
-    this.img.onload = () => { this.ready = true; };
+    this.img.onload = () => { this.ready = true; this._buildWaterMask(); this._sanitizeSea(); };
     this.img.src = MAP_IMAGE;
     this.planeImg = new Image(); this.planeImg.src = VEHICLES.plane;
     this.shipImg = new Image(); this.shipImg.src = VEHICLES.ship;
@@ -256,7 +256,63 @@ export class WorldMap {
     }
   }
 
-  setEngine(eng) { this.eng = eng; this._infDirty = true; this._lastInfDay = -1; }
+  setEngine(eng) { this.eng = eng; this._infDirty = true; this._lastInfDay = -1; this._sanitizeSea(); }
+
+  // ---------- Wasser-Maske (Schiffe fahren nur auf Wasser) ----------
+  _buildWaterMask() {
+    const MW = 668, MH = 376;
+    const cv = document.createElement('canvas'); cv.width = MW; cv.height = MH;
+    const x = cv.getContext('2d', { willReadFrequently: true });
+    x.drawImage(this.img, 0, 0, MW, MH);
+    let data;
+    try { data = x.getImageData(0, 0, MW, MH).data; } catch (e) { this.water = null; return; }
+    const mask = new Uint8Array(MW * MH);
+    for (let i = 0; i < MW * MH; i++) {
+      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
+      // Wasser = blau ODER türkis (b über Rot, b nicht deutlich unter Grün) und
+      // nicht zu hell. Land ist grün-dominant, sandfarben oder weiß.
+      mask[i] = (b > r && b >= g - 6 && (r + g + b) < 470) ? 1 : 0;
+    }
+    this.water = { mask, MW, MH };
+  }
+
+  isWater(lon, lat) {
+    if (!this.water) return true;
+    // in Bildanteil (0..1) über dieselbe Projektion umrechnen
+    const fx = ((lon + 180) / 360 * CAL.lonScale + CAL.lonOff);
+    const fy = latToFrac(lat);
+    let ix = Math.round(fx * this.water.MW), iy = Math.round(fy * this.water.MH);
+    if (ix < 0 || iy < 0 || ix >= this.water.MW || iy >= this.water.MH) return true;
+    return this.water.mask[iy * this.water.MW + ix] === 1;
+  }
+
+  // Küstenpunkt aufs nächste Wasser schieben (Häfen liegen so am offenen Meer)
+  _snapToWater(lon, lat) {
+    if (this.isWater(lon, lat)) return [lon, lat];
+    for (let r = 1; r <= 8; r++) {
+      for (let a = 0; a < 16; a++) {
+        const ang = a / 16 * Math.PI * 2;
+        const nl = lon + Math.cos(ang) * r * 0.8, nt = lat + Math.sin(ang) * r * 0.8;
+        if (this.isWater(nl, nt)) return [nl, nt];
+      }
+    }
+    return [lon, lat];
+  }
+
+  // Häfen ans Wasser schieben und die Seewege der Engine auf reine Wasserrouten
+  // reduzieren (damit sichtbare Schiffe niemals über Land fahren).
+  _sanitizeSea() {
+    if (!this.water) return;
+    // Häfen nur einmal ans Wasser schieben
+    if (!this._portsSnapped) {
+      this._portsSnapped = true;
+      for (const c of this.world.countries) {
+        if (c.port && c.portPos) c.portPos = this._snapToWater(c.portPos[0], c.portPos[1]);
+      }
+    }
+    // isWaterFn bei jedem (neuen) Spiel setzen, damit Schiffe stets geprüft werden
+    if (this.eng) this.eng.isWaterFn = (lon, lat) => this.isWater(lon, lat);
+  }
 
   focusCountry(iso, scale = 3) {
     const c = this.byIso[iso]; if (!c) return;
@@ -357,9 +413,14 @@ export class WorldMap {
     if (this._infDirty && this._infCanvas) this._renderInfectionLayer();
     if (this._infCanvas && this.eng) { ctx.globalAlpha = 0.95; ctx.drawImage(this._infCanvas, 0, 0, this.baseW, this.baseH); ctx.globalAlpha = 1; }
 
-    // Im Normalzustand keine eigenen Grenzen (nur die des Kartenbildes).
-    // Nur das Land unter der Maus bzw. das ausgewählte Land bekommt einen weichen
-    // Flächen-Glow UND einen nachgezogenen, leuchtenden Grenz-Umriss.
+    // Das Kartenbild hat keine Grenzen – daher zeichnen WIR die Ländergrenzen
+    // (die einzigen Grenzen). Dezent, damit die Karte ruhig bleibt.
+    ctx.lineWidth = 0.6 / this.view.scale;
+    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 1.2 / this.view.scale;
+    for (const c of this.world.countries) ctx.stroke(this.paths[c.iso]);
+    ctx.shadowBlur = 0;
+    // Land unter der Maus / ausgewähltes Land zusätzlich hervorheben.
     if (this.hoverIso && this.hoverIso !== this.selectedIso) {
       this._glowCountry(ctx, this.hoverIso, 'rgba(255,255,255,0.12)');
       this._outlineCountry(ctx, this.hoverIso, 'rgba(255,255,255,0.95)', 1.6, 6, 'rgba(255,255,255,0.7)');
