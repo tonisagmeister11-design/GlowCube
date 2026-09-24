@@ -215,6 +215,7 @@ export class UI {
     this.viewer.spin = true;
     this.viewer.setPathogen(this.sel.type);
     this.pushNewsInit();
+    if (this.audio) this.audio.playGame();   // Spielmusik von vorne
   }
 
   _mountMap(target, small) {
@@ -651,6 +652,7 @@ export class UI {
     this.layers.end = el;
     this.show('end');
     this.game.setSpeed(0);
+    if (this.audio) this.audio.playMenu();   // Runde gestoppt -> wieder Investigative
   }
 
   returnToMenu(endEl) {

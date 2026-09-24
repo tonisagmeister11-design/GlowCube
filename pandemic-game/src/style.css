@@ -237,3 +237,10 @@ h1,h2,h3 { font-weight: 700; letter-spacing: 0.02em; }
   .hud-bars { width: 160px; }
 }
 #loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); z-index: 100; color: var(--muted); }
+
+/* Ton-Knopf */
+#mute-btn { position: fixed; top: 12px; right: 14px; z-index: 50; width: 40px; height: 40px;
+  border-radius: 50%; background: var(--panel); border: 1px solid var(--line); font-size: 18px;
+  display: grid; place-items: center; opacity: .75; transition: .15s; }
+#mute-btn:hover { opacity: 1; border-color: var(--red2); }
+.hud-speed { margin-right: 46px; }  /* Platz für den Ton-Knopf */

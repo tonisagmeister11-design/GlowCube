@@ -4,4 +4,5 @@ blender/export/
 blender/previews/
 blender/shots/
 node_modules/
+src/generated/audio.js
 src/generated/models.js

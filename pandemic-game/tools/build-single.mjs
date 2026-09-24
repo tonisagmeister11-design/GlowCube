@@ -12,6 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // 1) sicherstellen, dass Daten + eingebettete Modelle aktuell sind
 if (!fs.existsSync(path.join(root, 'src/data/world.json'))) execFileSync(process.execPath, [path.join(root, 'tools/build-data.mjs')], { stdio: 'inherit' });
 if (!fs.existsSync(path.join(root, 'src/generated/models.js'))) execFileSync(process.execPath, [path.join(root, 'tools/gen-assets.mjs')], { stdio: 'inherit' });
+if (!fs.existsSync(path.join(root, 'src/generated/audio.js'))) execFileSync(process.execPath, [path.join(root, 'tools/gen-audio.mjs')], { stdio: 'inherit' });
 
 const threeAddons = {
   name: 'three-addons',
