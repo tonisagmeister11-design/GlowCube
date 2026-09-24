@@ -1,35 +1,15 @@
-// Weltkarte auf Canvas 2D. Hintergrund ist das eingebettete Satellitenbild; die
-// Länder-Polygone (auf das Bild kalibrierte equirektangulare Projektion) dienen
-// zur Auswahl, für dezente Grenzen und die Infektionsdarstellung. Infektionen
-// erscheinen als wachsende Punktwolken; Flugzeuge und Schiffe sind echte kleine
-// Vektorgrafiken. Eine driftende Wolkenschicht belebt die Karte.
-import { MAP_IMAGE } from '../generated/mapimg.js';
+// Weltkarte auf Canvas 2D – komplett selbst gerendert aus den eigenen Länder-
+// Polygonen (kein Foto). Landflächen und Grenzen stammen aus derselben Geometrie,
+// daher gibt es keinerlei Versatz. Länder werden nach Klima eingefärbt
+// (grün/gelb/hell). Wasser ist alles außerhalb der Länder – Schiffe fahren daher
+// garantiert nur auf Wasser, Flugzeuge überall. Driftende Wolken beleben die Karte.
 import { VEHICLES } from '../generated/vehicles.js';
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-// Kalibrierung der Projektion auf das Kartenbild (16:9).
-// Längengrad linear; Breitengrad stückweise (die KI-Karte verteilt die Breiten
-// nicht ganz gleichmäßig – v.a. die mittleren Nordbreiten liegen tiefer).
-const CAL = {
-  lonOff: -0.02, lonScale: 0.982, aspect: 1671 / 941,
-  // [Breitengrad, y-Anteil 0..1 von oben], absteigend
-  latPts: [
-    [90, 0.000], [66, 0.150], [55, 0.225], [45, 0.320], [35, 0.405],
-    [23, 0.487], [10, 0.545], [0, 0.588], [-15, 0.665], [-34, 0.792], [-55, 0.930], [-66, 1.000],
-  ],
-};
-function latToFrac(lat) {
-  const p = CAL.latPts;
-  if (lat >= p[0][0]) return p[0][1];
-  if (lat <= p[p.length - 1][0]) return p[p.length - 1][1];
-  for (let i = 0; i < p.length - 1; i++) {
-    if (lat <= p[i][0] && lat >= p[i + 1][0]) {
-      const t = (p[i][0] - lat) / (p[i][0] - p[i + 1][0]);
-      return p[i][1] + (p[i + 1][1] - p[i][1]) * t;
-    }
-  }
-  return 0.5;
-}
+// Saubere equirektangulare Projektion (2:1). Voller Bereich mit etwas Rand oben/
+// unten, damit Grönland/Südspitzen Platz haben.
+const CAL = { aspect: 2.0, latTop: 84, latBot: -60 };
+function latToFrac(lat) { return (CAL.latTop - lat) / (CAL.latTop - CAL.latBot); }
 
 export class WorldMap {
   constructor(canvas, world) {
@@ -47,12 +27,11 @@ export class WorldMap {
     this.eng = null;
     this.bubbles = [];
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.ready = false;
-    this.img = new Image();
-    this.img.onload = () => { this.ready = true; this._buildWaterMask(); this._sanitizeSea(); };
-    this.img.src = MAP_IMAGE;
+    this.ready = true;
     this.planeImg = new Image(); this.planeImg.src = VEHICLES.plane;
     this.shipImg = new Image(); this.shipImg.src = VEHICLES.ship;
+    this._landColors = {};
+    for (const c of world.countries) this._landColors[c.iso] = this._climateColor(c);
     this._samplePoints();
     this._buildCloudTile();
     this.asteroid = null;
@@ -64,9 +43,7 @@ export class WorldMap {
 
   // ---------- Projektion ----------
   proj(lon, lat) {
-    const px = ((lon + 180) / 360 * CAL.lonScale + CAL.lonOff) * this.baseW;
-    const py = latToFrac(lat) * this.baseH;
-    return [px, py];
+    return [(lon + 180) / 360 * this.baseW, latToFrac(lat) * this.baseH];
   }
 
   // ---------- Infektions-Stichprobenpunkte je Land ----------
@@ -224,6 +201,81 @@ export class WorldMap {
     this._infCanvas.width = Math.round(this.baseW * this._infRes);
     this._infCanvas.height = Math.round(this.baseH * this._infRes);
     this._infDirty = true;
+    this._renderBase();
+    this._buildLandMask();
+    this._sanitizeSea();
+  }
+
+  // ---------- Eigene Kartengrafik (aus den Länder-Polygonen) ----------
+  _climateColor(c) {
+    // Basisfarbe nach Klima + leichte länderspezifische Variation
+    let h, s, l;
+    if (c.temp < -4 || c.iso === 'GRL') { h = 190; s = 12; l = 82; }        // Eis/sehr kalt: fast weiß
+    else if (c.climate === 'kalt') { h = 120; s = 16; l = 55; }              // kühl: blasses Grün
+    else if (c.climate === 'arid') { h = 46; s = 55; l = 62; }               // Wüste: sandgelb
+    else if (c.climate === 'heiß') { h = 52; s = 45; l = 55; }               // heiß-trocken: goldbraun
+    else if (c.climate === 'tropisch') { h = 108; s = 45; l = 38; }          // tropisch: sattes Grün
+    else { h = 100, s = 38, l = 46; }                                        // gemäßigt: Grün
+    const j = (hashStr(c.iso) % 1000) / 1000 - 0.5;
+    h += j * 12; l += j * 8; s += j * 8;
+    return { h, s, l };
+  }
+
+  _hsl(o, dl = 0, ds = 0) { return `hsl(${o.h.toFixed(0)},${clamp(o.s + ds, 0, 100).toFixed(0)}%,${clamp(o.l + dl, 0, 100).toFixed(0)}%)`; }
+
+  _renderBase() {
+    const resB = 1.6;
+    const bc = this._baseCanvas = document.createElement('canvas');
+    bc.width = Math.round(this.baseW * resB); bc.height = Math.round(this.baseH * resB);
+    const x = bc.getContext('2d');
+    x.setTransform(resB, 0, 0, resB, 0, 0);
+    // Ozean-Verlauf
+    const g = x.createLinearGradient(0, 0, 0, this.baseH);
+    g.addColorStop(0, '#0b2036'); g.addColorStop(0.5, '#0c2f4e'); g.addColorStop(1, '#08182b');
+    x.fillStyle = g; x.fillRect(0, 0, this.baseW, this.baseH);
+    // subtile Ozean-Struktur
+    if (this.cloudTile) { x.globalAlpha = 0.05; for (let ox = 0; ox < this.baseW; ox += 1024) x.drawImage(this.cloudTile, ox, this.baseH * 0.1, 1024, this.baseH * 0.8); x.globalAlpha = 1; }
+    // Länder füllen
+    for (const c of this.world.countries) {
+      const col = this._landColors[c.iso];
+      const path = this.paths[c.iso];
+      // sanfter Küstenglanz
+      x.save();
+      x.shadowColor = 'rgba(120,180,220,0.5)'; x.shadowBlur = 4;
+      x.fillStyle = this._hsl(col); x.fill(path);
+      x.restore();
+    }
+    // Terrain-Schattierung (oben heller) + Grenzen
+    for (const c of this.world.countries) {
+      const col = this._landColors[c.iso];
+      const path = this.paths[c.iso];
+      const [, cy] = this.proj(c.lon, c.lat);
+      x.save(); x.clip(path);
+      const lg = x.createLinearGradient(0, cy - 60, 0, cy + 60);
+      lg.addColorStop(0, this._hsl(col, 10)); lg.addColorStop(1, this._hsl(col, -10));
+      x.globalAlpha = 0.5; x.fillStyle = lg; x.fillRect(0, 0, this.baseW, this.baseH); x.globalAlpha = 1;
+      x.restore();
+    }
+    // Ländergrenzen (dünn)
+    x.lineJoin = 'round';
+    for (const c of this.world.countries) {
+      x.lineWidth = 0.6; x.strokeStyle = 'rgba(20,30,25,0.55)'; x.stroke(this.paths[c.iso]);
+    }
+  }
+
+  _buildLandMask() {
+    const MW = 700, MH = Math.round(700 / CAL.aspect);
+    const cv = document.createElement('canvas'); cv.width = MW; cv.height = MH;
+    const x = cv.getContext('2d', { willReadFrequently: true });
+    x.fillStyle = '#000'; x.fillRect(0, 0, MW, MH);
+    x.save(); x.scale(MW / this.baseW, MH / this.baseH);
+    x.fillStyle = '#fff';
+    for (const c of this.world.countries) x.fill(this.paths[c.iso]);
+    x.restore();
+    let data; try { data = x.getImageData(0, 0, MW, MH).data; } catch (e) { this.water = null; return; }
+    const mask = new Uint8Array(MW * MH);
+    for (let i = 0; i < MW * MH; i++) mask[i] = data[i * 4] < 128 ? 1 : 0; // Wasser = schwarz
+    this.water = { mask, MW, MH };
   }
 
   // Ring in Bildschirmpunkte projizieren; Längengrad "entrollen", damit Länder,
@@ -258,30 +310,11 @@ export class WorldMap {
 
   setEngine(eng) { this.eng = eng; this._infDirty = true; this._lastInfDay = -1; this._sanitizeSea(); }
 
-  // ---------- Wasser-Maske (Schiffe fahren nur auf Wasser) ----------
-  _buildWaterMask() {
-    const MW = 668, MH = 376;
-    const cv = document.createElement('canvas'); cv.width = MW; cv.height = MH;
-    const x = cv.getContext('2d', { willReadFrequently: true });
-    x.drawImage(this.img, 0, 0, MW, MH);
-    let data;
-    try { data = x.getImageData(0, 0, MW, MH).data; } catch (e) { this.water = null; return; }
-    const mask = new Uint8Array(MW * MH);
-    for (let i = 0; i < MW * MH; i++) {
-      const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2];
-      // Wasser = blau ODER türkis (b über Rot, b nicht deutlich unter Grün) und
-      // nicht zu hell. Land ist grün-dominant, sandfarben oder weiß.
-      mask[i] = (b > r && b >= g - 6 && (r + g + b) < 470) ? 1 : 0;
-    }
-    this.water = { mask, MW, MH };
-  }
-
+  // ---------- Wasser (alles außerhalb der Länder) ----------
   isWater(lon, lat) {
     if (!this.water) return true;
-    // in Bildanteil (0..1) über dieselbe Projektion umrechnen
-    const fx = ((lon + 180) / 360 * CAL.lonScale + CAL.lonOff);
-    const fy = latToFrac(lat);
-    let ix = Math.round(fx * this.water.MW), iy = Math.round(fy * this.water.MH);
+    const fx = (lon + 180) / 360, fy = latToFrac(lat);
+    const ix = Math.round(fx * this.water.MW), iy = Math.round(fy * this.water.MH);
     if (ix < 0 || iy < 0 || ix >= this.water.MW || iy >= this.water.MH) return true;
     return this.water.mask[iy * this.water.MW + ix] === 1;
   }
@@ -404,7 +437,8 @@ export class WorldMap {
     ctx.scale(this.view.scale, this.view.scale);
 
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    if (this.ready) ctx.drawImage(this.img, 0, 0, this.baseW, this.baseH);
+    // Selbst gerenderte Karte (Ozean + Länder + Grenzen) aus dem Basis-Canvas
+    if (this._baseCanvas) ctx.drawImage(this._baseCanvas, 0, 0, this.baseW, this.baseH);
 
     // driftende Wolken (zwei Ebenen)
     this._drawClouds(ctx, t);
@@ -413,14 +447,7 @@ export class WorldMap {
     if (this._infDirty && this._infCanvas) this._renderInfectionLayer();
     if (this._infCanvas && this.eng) { ctx.globalAlpha = 0.95; ctx.drawImage(this._infCanvas, 0, 0, this.baseW, this.baseH); ctx.globalAlpha = 1; }
 
-    // Das Kartenbild hat keine Grenzen – daher zeichnen WIR die Ländergrenzen
-    // (die einzigen Grenzen). Dezent, damit die Karte ruhig bleibt.
-    ctx.lineWidth = 0.6 / this.view.scale;
-    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
-    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 1.2 / this.view.scale;
-    for (const c of this.world.countries) ctx.stroke(this.paths[c.iso]);
-    ctx.shadowBlur = 0;
-    // Land unter der Maus / ausgewähltes Land zusätzlich hervorheben.
+    // Land unter der Maus / ausgewähltes Land hervorheben (Grenzen sind bereits im Basis-Canvas)
     if (this.hoverIso && this.hoverIso !== this.selectedIso) {
       this._glowCountry(ctx, this.hoverIso, 'rgba(255,255,255,0.12)');
       this._outlineCountry(ctx, this.hoverIso, 'rgba(255,255,255,0.95)', 1.6, 6, 'rgba(255,255,255,0.7)');
