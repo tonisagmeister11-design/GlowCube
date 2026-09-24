@@ -5,4 +5,5 @@ blender/previews/
 blender/shots/
 node_modules/
 src/generated/audio.js
+src/generated/mapimg.js
 src/generated/models.js

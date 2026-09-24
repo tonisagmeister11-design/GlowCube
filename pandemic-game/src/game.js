@@ -52,14 +52,15 @@ export class Game {
     dt = Math.min(dt, 0.1);
     const eng = this.eng;
     if (eng && !eng.gameOver && this.speed > 0) {
-      // Ein Spieltag pro (0.9s / speed)
-      const tickDur = 0.9;
+      // Stufe 1 ist bewusst langsam: ein Spieltag dauert ~2,4 s bei 1×.
+      // Eine typische Runde (~400–750 Tage) läuft damit ~20–30 min bei 1×,
+      // höhere Stufen (2×/4×/8×/16×) beschleunigen entsprechend.
+      const tickDur = 2.4;
       this._acc += dt * this.speed;
       let ticks = 0;
-      eng.opts._speed = 1; // Fahrzeug-Geschwindigkeit unabhängig; Ticks steuern Tempo
-      while (this._acc >= tickDur && ticks < 40) {
+      eng.opts._speed = 1;
+      while (this._acc >= tickDur && ticks < 60) {
         this._acc -= tickDur;
-        // Fahrzeuge feiner bewegen: pro Tag mehrere Sub-Updates passieren in engine.updateVehicles
         eng.tick();
         ticks++;
         for (const b of eng.collectBubbles()) this.map.spawnBubble(b);
@@ -68,10 +69,9 @@ export class Game {
       this.dayFraction = this._acc / tickDur;
       if (ticks) this.emit('tick', eng);
     }
-    // Karte animieren (Fahrzeuge visuell weiterbewegen zwischen Ticks)
+    // Fahrzeuge flüssig zwischen den Ticks bewegen (unabhängig vom Tagestakt)
     if (eng && this.speed > 0) {
-      const vdt = dt * this.speed;
-      for (const v of eng.vehicles) v.t = Math.min(1, v.t + v.speed * this.speed * 0.4);
+      for (const v of eng.vehicles) v.t = Math.min(1, v.t + v.speed * (0.6 + this.speed * 0.25));
     }
     this.map.update(dt);
     this.map.render(now / 1000);

@@ -64,7 +64,7 @@ export class Engine {
     this.list = Object.values(this.countries);
     // Start-Infektion
     const s = this.countries[opts.startIso];
-    const seed = Math.max(1, Math.round(s.pop * 0.00002));
+    const seed = Math.max(1, Math.round(s.pop * 0.000003));
     s.infected = seed; s.healthy -= seed;
     this.startCountry = opts.startIso;
 
@@ -117,7 +117,7 @@ export class Engine {
   // Echte internationale Übertragung pro Tick über die Routen.
   // Flughafen-/Hafen-/Grenzschließungen kappen die jeweiligen Wege direkt.
   spreadInternational() {
-    const infM = 0.5 + this.infectivity * 0.06;
+    const infM = (0.4 + this.infectivity * 0.05) * 0.5;
     for (const iso in this.countries) {
       const st = this.countries[iso];
       if (st.infected < 20) continue;
@@ -291,8 +291,8 @@ export class Engine {
 
     // Bio-Waffe: instabile Letalität steigt
     if (d.instability) {
-      if (this.instabilityStabilised) this._instab = Math.max(0, this._instab - 0.15);
-      else this._instab += 0.06;
+      if (this.instabilityStabilised) this._instab = Math.max(0, this._instab - 0.25);
+      else this._instab = Math.min(6, this._instab + 0.025);
       this.recompute();
     }
     // Virus: zufällige Mutation
@@ -300,7 +300,7 @@ export class Engine {
       this.randomMutation();
     }
 
-    const globalInf = Math.max(0.05, this.infectivity) * 0.016;
+    const globalInf = Math.max(0.05, this.infectivity) * 0.0075;
     let anyInfected = false;
 
     for (const iso in this.countries) {
@@ -325,13 +325,13 @@ export class Engine {
       // Tod / Genesung
       if (st.infected > 0) {
         const treat = this.detected ? c.medical * (1 - (this.mods.rich || 0) * 0.7) * (1 - this.cure * 0.3) : 0;
-        const lethRate = clamp(this.lethality * 0.0009 * (1 - treat * 0.6), 0, 0.25);
+        const lethRate = clamp(this.lethality * 0.00042 * (1 - treat * 0.6), 0, 0.22);
         let deaths = st.infected * lethRate;
         deaths = Math.min(deaths, st.infected);
         st.infected -= deaths; st.dead += deaths;
         // Heilung, sobald Cure fortgeschritten
         if (this.cure > 0.15) {
-          const heal = st.infected * this.cure * 0.02 * c.medical;
+          const heal = st.infected * this.cure * (0.02 * c.medical + this.cure * 0.03);
           st.infected -= heal; st.healthy += heal;
         }
       }
@@ -479,8 +479,8 @@ export class Engine {
     const globalKnowledge = clamp(this.totalInfected() / this.worldPop + this.totalDead() / this.worldPop * 1.5, 0, 1);
     const req = 100 * this.cureReqMul * (1 + this.cureReqBonus);
     // Sobald entdeckt, forschen die Labore stetig; Ausbreitung/Tote beschleunigen.
-    const research = (contrib / Math.max(1, weight)) * (0.1 + globalKnowledge * 0.09) * this.baseCureMul;
-    const floor = 0.00022 * this.baseCureMul; // Grundfortschritt: passive Erreger werden geheilt
+    const research = (contrib / Math.max(1, weight)) * (0.045 + globalKnowledge * 0.05) * this.baseCureMul;
+    const floor = 0.0003 * this.baseCureMul; // Grundfortschritt: passive Erreger werden geheilt
     this.cure = clamp(this.cure + Math.max(floor, (research / req) * this.severityUrgency()), 0, 1);
   }
 
@@ -491,7 +491,7 @@ export class Engine {
   // ---- DNA ----
   updateDna() {
     const inf = this.totalInfected() + this.totalDead();
-    this._dnaAccum = (this._dnaAccum || 0) + inf / this.worldPop * 0.35 * this.diff.dna * (this.def.dnaSymptomMul || 1);
+    this._dnaAccum = (this._dnaAccum || 0) + inf / this.worldPop * 0.16 * this.diff.dna * (this.def.dnaSymptomMul || 1);
     while (this._dnaAccum >= 1) { this._dnaAccum -= 1; this.dna += 1; this.totalDnaEarned += 1; }
   }
 
@@ -534,7 +534,7 @@ export class Engine {
       let ctrl = 0;
       for (const iso in this.countries) {
         const st = this.countries[iso];
-        const conv = st.infected * (0.01 + (sp.controlBoost || 0) * 0.02);
+        const conv = st.infected * (0.02 + (sp.controlBoost || 0) * 0.03);
         const c2 = Math.min(st.infected, conv);
         st.controlled += c2; ctrl += st.controlled;
       }
@@ -549,7 +549,7 @@ export class Engine {
           st.dead -= rise; st.zombies += rise;
         }
         if (st.zombies > 0 && st.healthy > 0) {
-          const bite = Math.min(st.healthy, st.zombies * (0.02 + (sp.zombieBoost || 0) * 0.03));
+          const bite = Math.min(st.healthy, st.zombies * (0.035 + (sp.zombieBoost || 0) * 0.04));
           st.healthy -= bite; st.infected += bite;
         }
         if (st.zombies > 0 && this.detected) {
@@ -575,10 +575,13 @@ export class Engine {
       let a = 0;
       for (const iso in this.countries) {
         const st = this.countries[iso];
-        if (st.infected > st.pop * 0.005 || st.apes > 0) {
-          if (st.apes < 1) st.apes = 100;
-          st.apes += st.apes * (0.02 + (sp.apeBoost || 0) * 0.03);
-          st.apes = Math.min(st.apes, st.pop * 0.5);
+        if (st.infected > st.pop * 0.003 || st.apes > 0) {
+          if (st.apes < 1) st.apes = Math.max(50, st.pop * 0.0008);
+          st.apes += st.apes * (0.05 + (sp.apeBoost || 0) * 0.05);
+          st.apes = Math.min(st.apes, st.pop);
+          // intelligente Affen verdrängen Menschen
+          const push = Math.min(st.healthy, st.apes * 0.015);
+          st.healthy -= push;
         }
         a += st.apes;
       }
@@ -599,9 +602,9 @@ export class Engine {
         const st = this.countries[iso];
         if (st.infected > 0 && st.vampires < 1) st.vampires = 1;
         if (st.vampires > 0 && st.healthy > 0) {
-          const feed = Math.min(st.healthy, st.vampires * (0.05 + (sp.vampireBoost || 0) * 0.05));
+          const feed = Math.min(st.healthy, st.vampires * (0.12 + (sp.vampireBoost || 0) * 0.08));
           st.healthy -= feed; st.infected += feed;
-          st.vampires += feed * 0.02;
+          st.vampires += feed * 0.05 + 1;
         }
         if (st.vampires > 0 && this.detected && this.cure > 0.2) {
           const templar = st.vampires * st.ref.wealth * 0.02 * (1 - (sp.templarArmor || 0));
@@ -631,6 +634,21 @@ export class Engine {
     this.evolved.add(s.id); this.evoOrder.push(s.id);
     this.recompute();
     this.pushNews(`„${this.opts.name}“ ist mutiert und zeigt ein neues Symptom: ${s.name}.`, 'mutation');
+  }
+
+  // Gerichtete Sonderaktion: einen Wirt/Zombie/Vampir in ein Land schicken,
+  // der dort die Infektion auslöst bzw. verstärkt.
+  directSeed(iso, mode) {
+    const st = this.countries[iso]; if (!st) return false;
+    const seed = Math.max(60, Math.round(st.pop * 0.0002));
+    if (st.healthy > 0) { const s = Math.min(st.healthy, seed); st.healthy -= s; st.infected += s; }
+    if (mode === 'control') st.controlled += seed * 0.6;
+    if (mode === 'zombie') st.zombies += Math.max(30, seed * 0.4);
+    if (mode === 'vampire') st.vampires += 8;
+    this.spawnBubble(iso, 'special');
+    const names = { control: 'Ein kontrollierter Wirt', zombie: 'Eine Zombie-Horde', vampire: 'Ein Vampir' };
+    this.pushNews(`${names[mode] || 'Ein Träger'} erreicht ${st.ref.name} und verbreitet „${this.opts.name}".`, 'special', iso);
+    return true;
   }
 
   // ---- Aktionen aus Sondermechaniken (Buttons) ----
@@ -667,13 +685,8 @@ export class Engine {
     }
     // Sieg: Sondermodi
     if (this.checkSpecialWin(false)) return;
-    // Standard-Sieg: gesamte Menschheit besiegt
-    if (this.def.winMode == null || !this.hasSpecialActive()) {
-      if (healthy < 1 && this.day > 10) {
-        this.endGame(true, 'extinction');
-        return;
-      }
-    }
+    // Standard-Sieg: gesamte Menschheit besiegt (gilt auch bei Sonderklassen)
+    if (healthy < 1 && this.day > 10) { this.endGame(true, 'extinction'); return; }
   }
 
   hasSpecialActive() {
@@ -685,18 +698,18 @@ export class Engine {
     const healthy = this.totalHealthy();
     const d = this.def;
     if (d.winMode === 'control' && this.special.controlActive) {
-      if (this.special.controlled >= (healthy + this.special.controlled) * 0.98 && this.special.controlled > this.worldPop * 0.5) {
+      if (this.special.controlled >= (healthy + this.special.controlled) * 0.95 && this.special.controlled > this.worldPop * 0.4) {
         this.endGame(true, 'control'); return true;
       }
     }
     if (d.winMode === 'zombie' && this.special.zombieActive) {
-      if (healthy < 1 && this.special.zombies > this.worldPop * 0.05) { this.endGame(true, 'zombie'); return true; }
+      if (healthy < this.worldPop * 0.02 && this.special.zombies > this.worldPop * 0.03) { this.endGame(true, 'zombie'); return true; }
     }
     if (d.winMode === 'apes' && this.special.apesActive) {
-      if (this.special.apes >= this.worldPop * 0.5 && healthy < this.worldPop * 0.05) { this.endGame(true, 'apes'); return true; }
+      if (this.special.apes >= this.worldPop * 0.4 && healthy < this.worldPop * 0.1) { this.endGame(true, 'apes'); return true; }
     }
     if (d.winMode === 'vampire' && this.special.vampireActive) {
-      if (healthy < 1 && this.special.vampires > 1000) { this.endGame(true, 'vampire'); return true; }
+      if (healthy < this.worldPop * 0.02 && this.special.vampires > 1000) { this.endGame(true, 'vampire'); return true; }
     }
     if (d.winMode === 'xeno' && this.special.xenoActive) {
       if (this.special.xeno >= 0.98) { this.endGame(true, 'xeno'); return true; }

@@ -63,7 +63,7 @@ export class UI {
     const cont = h('div', { class: 'menu-sub' }, 'Ein globales Krankheits-Strategiespiel');
     const wrap = h('div', { class: 'screen menu' },
       h('div', { class: 'menu-bg' }),
-      h('div', { class: 'menu-title' }, h('span', { class: 'plague-word' }, 'PANDEMIC'), h('div', { class: 'menu-tag' }, 'GLOWCUBE')),
+      h('div', { class: 'menu-title' }, h('span', { class: 'plague-word' }, 'PANDEMIA'), h('div', { class: 'menu-tag' }, 'GLOBAL OUTBREAK')),
       cont,
       h('div', { class: 'menu-buttons' }, play),
       h('div', { class: 'menu-foot' }, '3D-Erregermodelle in Blender erstellt · Klicke „Neues Spiel", um zu beginnen'),
@@ -216,6 +216,14 @@ export class UI {
     this.viewer.setPathogen(this.sel.type);
     this.pushNewsInit();
     if (this.audio) this.audio.playGame();   // Spielmusik von vorne
+    // Xenolith: kleiner Asteroid schlägt am Startland ein
+    if (this.sel.type === 'xenolith') {
+      this.game.setSpeed(0);
+      this.game.map.playAsteroidIntro(this.sel.startIso, () => {
+        this.game.setSpeed(2);
+        this.game.eng.pushNews(`Ein Meteorit schlägt in ${this.game.world.countries.find((c) => c.iso === this.sel.startIso).name} ein – fremdartige Kristalle breiten sich aus.`, 'special', this.sel.startIso);
+      });
+    }
   }
 
   _mountMap(target, small) {
@@ -241,7 +249,9 @@ export class UI {
     this.statDead = statBig('Tote', '#ff4a4a');
     this.statHealthy = statBig('Gesund', '#5ada6a');
     this.statCountries = statBig('Länder', '#8ab0ff');
-    const leftStats = h('div', { class: 'hud-stats' }, this.statInfected.el, this.statDead.el, this.statHealthy.el, this.statCountries.el);
+    this.statSpecial = statBig('—', '#c890ff');
+    this.statSpecial.el.style.display = 'none';
+    const leftStats = h('div', { class: 'hud-stats' }, this.statInfected.el, this.statDead.el, this.statHealthy.el, this.statCountries.el, this.statSpecial.el);
 
     // Balken
     this.barInf = bar('Übertragbarkeit', '#e050c0');
@@ -285,6 +295,19 @@ export class UI {
     this.statDead.set(fmt(eng.totalDead()));
     this.statHealthy.set(fmt(eng.totalHealthy()));
     this.statCountries.set(eng.countriesInfected() + '/' + this.game.world.countries.length);
+    // Sonderzustand anzeigen (Zombies/Kontrolliert/Affen/Vampire/Xeno)
+    const sp = eng.special;
+    let special = null;
+    if (sp.zombies > 1) special = ['Zombies', fmt(sp.zombies)];
+    else if (sp.controlled > 1) special = ['Kontrolliert', fmt(sp.controlled)];
+    else if (sp.apes > 1) special = ['Affen', fmt(sp.apes)];
+    else if (sp.vampires > 1) special = ['Vampire', fmt(sp.vampires)];
+    else if (sp.xeno > 0.001) special = ['Xenoforming', (sp.xeno * 100).toFixed(1) + '%'];
+    if (special) {
+      this.statSpecial.el.style.display = '';
+      this.statSpecial.el.querySelector('.sb-label').textContent = special[0];
+      this.statSpecial.set(special[1]);
+    } else this.statSpecial.el.style.display = 'none';
     this.barInf.set(clampBar(eng.infectivity / 40));
     this.barSev.set(clampBar(eng.severity / 40));
     this.barLeth.set(clampBar(eng.lethality / 60));
@@ -319,14 +342,39 @@ export class UI {
 
   updateSpecialBar() {
     const eng = this.game.eng;
-    const abilities = eng.def.abilities || [];
-    const triggerable = abilities.filter((a) => ['spore_burst', 'spore_eruption'].includes(a.id) && eng.evolved.has(a.id));
-    if (triggerable.length === this._specialCount && this._specialType === eng.opts.type) return;
-    this._specialCount = triggerable.length; this._specialType = eng.opts.type;
+    // aktive gerichtete Aktionen ermitteln
+    const actions = [];
+    if (eng.evolved.has('spore_burst')) actions.push({ id: 'spore', icon: '💥', label: 'Sporenausbruch', fn: () => { eng.triggerAbility(eng.evolved.has('spore_eruption') ? 'spore_eruption' : 'spore_burst'); this.flashDna(); } });
+    if (eng.special.controlActive) actions.push({ id: 'control', icon: '🧠', label: 'Wirt aussenden', directed: 'control', color: 'rgba(200,120,255,1)' });
+    if (eng.special.vampireActive) actions.push({ id: 'vampire', icon: '🩸', label: 'Die Jagd', directed: 'vampire', color: 'rgba(255,40,120,1)' });
+    if (eng.special.hordeActive) actions.push({ id: 'zombie', icon: '🧟', label: 'Horde lenken', directed: 'zombie', color: 'rgba(120,230,80,1)' });
+    const sig = actions.map((a) => a.id).join(',') + this._specialType;
+    if (sig === this._specialSig) return;
+    this._specialSig = sig; this._specialType = eng.opts.type;
     this.specialBar.innerHTML = '';
-    for (const a of triggerable) {
-      this.specialBar.append(h('button', { class: 'sp-ability', title: a.desc, onclick: () => { eng.triggerAbility(a.id); this.flashDna(0); } }, a.icon + ' ' + a.name));
+    for (const a of actions) {
+      this.specialBar.append(h('button', {
+        class: 'sp-ability', title: a.directed ? 'Ziel auf der Karte wählen' : '',
+        onclick: () => {
+          if (!a.directed) { a.fn(); return; }
+          // Ausgangsland = am stärksten infiziertes Land
+          const from = eng.list.slice().sort((x, y) => y.infected - x.infected)[0];
+          this._flashHint(a.icon + ' Ziel auf der Karte wählen …');
+          this.game.map.requestTarget((toIso) => {
+            this.game.map.sendAgent(from ? from.ref.iso : eng.startCountry, toIso, a.color, () => {
+              eng.directSeed(toIso, a.directed);
+              this.game.map.spawnBubble({ iso: toIso, type: 'special' });
+            });
+          });
+        },
+      }, a.icon + ' ' + a.label));
     }
+  }
+
+  _flashHint(text) {
+    if (!this._hintEl) { this._hintEl = h('div', { class: 'map-hint' }); this.layers.game.append(this._hintEl); }
+    this._hintEl.textContent = text; this._hintEl.style.opacity = '1';
+    clearTimeout(this._hintT); this._hintT = setTimeout(() => { if (this._hintEl) this._hintEl.style.opacity = '0'; }, 2600);
   }
 
   flashDna() {

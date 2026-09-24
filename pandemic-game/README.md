@@ -1,4 +1,4 @@
-# PANDEMIC · GlowCube
+# PANDEMIA — Global Outbreak
 
 Ein globales Krankheits-Strategiespiel im Browser. Der Spieler entwickelt einen
 Erreger und versucht, die Menschheit zu besiegen, bevor ein Heilmittel fertig

@@ -244,3 +244,8 @@ h1,h2,h3 { font-weight: 700; letter-spacing: 0.02em; }
   display: grid; place-items: center; opacity: .75; transition: .15s; }
 #mute-btn:hover { opacity: 1; border-color: var(--red2); }
 .hud-speed { margin-right: 46px; }  /* Platz für den Ton-Knopf */
+
+/* Karten-Hinweis für Zielauswahl */
+.map-hint { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); z-index: 9;
+  background: rgba(30,8,40,0.92); border: 1px solid #b060c0; color: #f0d0ff; padding: 8px 18px;
+  border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; }
