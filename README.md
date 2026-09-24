@@ -1,8 +1,12 @@
 # AdminField – Mob-Verkleidung
 
-> **Neu: Claude als Mitspielerin.** `claude-bot/` ist eine KI-Spielerin, mit der du im
-> Chat redest und die alles macht, was ein Spieler kann. `dist/ClaudeSpawn.jar` holt sie
-> mit `/spawn claude` neben dich. Anleitung: [`claude-bot/README.md`](claude-bot/README.md).
+> **Neu: Claude als Mitspielerin – zwei Varianten.**
+> * `dist/ClaudeAI.jar` – eigenständiges Plugin mit eigener KI, **ohne API-Schlüssel**.
+>   Einfach in `plugins/` legen, `/spawn claude`. Anleitung: [`claude-ai/README.md`](claude-ai/README.md).
+> * `claude-bot/` + `dist/ClaudeSpawn.jar` – externer Bot mit der Claude-API (braucht
+>   API-Schlüssel und Node.js). Anleitung: [`claude-bot/README.md`](claude-bot/README.md).
+>
+> Nur eine der beiden Varianten installieren.
 
 Erweitert das bestehende AdminField-Plugin um eine **Mob-Verkleidung**: Du oder ein
 beliebiger anderer Spieler wird für alle anderen zu einem echten Mob – nicht nur ein
@@ -168,11 +172,15 @@ unangetastet.
 
 ## Claude-Mitspielerin
 
-Unabhängig von AdminField: `claude-bot/` (Node.js) und das kleine Plugin
-`claude-plugin/` → `dist/ClaudeSpawn.jar`. Alles dazu in
-[`claude-bot/README.md`](claude-bot/README.md).
+Unabhängig von AdminField, jeweils eigene Projekte:
+
+* `claude-ai/` → `dist/ClaudeAI.jar`: Plugin mit eigener KI, kein API-Schlüssel.
+  Alles dazu in [`claude-ai/README.md`](claude-ai/README.md).
+* `claude-bot/` (Node.js) + `claude-plugin/` → `dist/ClaudeSpawn.jar`: Bot mit der
+  Claude-API. Alles dazu in [`claude-bot/README.md`](claude-bot/README.md).
 
 ```bash
-cd claude-plugin && ./build.sh     # -> dist/ClaudeSpawn.jar (JDK 21+)
+cd claude-ai && ./build.sh && ./test.sh   # -> dist/ClaudeAI.jar (JDK 21+)
+cd claude-plugin && ./build.sh            # -> dist/ClaudeSpawn.jar
 cd claude-bot && npm install && npm run check
 ```

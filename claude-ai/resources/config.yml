@@ -1,0 +1,60 @@
+# ============================================================
+#  ClaudeAI - Einstellungen
+# ============================================================
+
+# Name ueber dem Kopf und im Chat
+name: Claude
+
+# Aussehen: steve, alex, ari, efe, kai, makena, noor, sunny, zuri
+# oder der Skin eines echten Spielers:  player:Spielername
+skin: steve
+
+# Wie Claudes Nachrichten im Chat aussehen (& fuer Farben)
+chat-format: "<%name%> %msg%"
+
+# Wer darf Claude Befehle geben? Leer = alle. Beispiel: [Toni, Max]
+owners: []
+
+# true = Claude reagiert nur, wenn ihr Name in der Nachricht steht
+require-name: false
+
+# So lange (Sekunden) hoert Claude nach einem Gespraech auch ohne Namen zu
+listen-seconds: 90
+
+# Nach /spawn claude automatisch dem Rufenden folgen
+follow-after-spawn: true
+
+# Claude kann nicht sterben
+invulnerable: true
+
+# Darf Claude auf Befehl Spieler angreifen?
+allow-pvp: false
+
+# Verteidigt Claude ihren Schuetzling auch gegen Spieler, die ihn angreifen?
+defend-against-players: true
+
+build:
+  # false = Claude baut Haeuser auch ohne Material (wie im Kreativmodus)
+  # true  = sie braucht die Bloecke wirklich im Inventar
+  needs-materials: false
+  # Wie viele Bloecke pro Tick gesetzt werden (20 Ticks = 1 Sekunde)
+  blocks-per-tick: 2
+
+# Fragt Schutz-Plugins (WorldGuard, GriefPrevention, ...) im Namen des Auftraggebers,
+# bevor Claude etwas abbaut
+respect-protection: true
+
+# Ab und zu von sich aus etwas sagen (z.B. nachts Fackeln anbieten)
+idle-talk: true
+
+# Laufgeschwindigkeit in Bloecken pro Tick (Spieler: ca. 0.22)
+walk-speed: 0.23
+
+# Wie weit Claude nach Holz, Erzen usw. sucht
+search-radius: 40
+
+# Ticks pro geschmolzenem Item (Vanilla-Ofen: 200)
+smelt-ticks-per-item: 20
+
+# true = fuer Erze braucht Claude die richtige Spitzhacke (und craftet sie sich selbst)
+realistic-tools: true

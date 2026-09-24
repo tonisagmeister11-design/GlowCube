@@ -1,0 +1,20 @@
+name: ClaudeAI
+version: 1.0.0
+main: de.glowcube.claudeai.ClaudeAIPlugin
+api-version: '26.3'
+description: Claude - eine KI-Mitspielerin, die komplett im Server laeuft. Kein API-Schluessel noetig.
+authors: [GlowCube]
+commands:
+  claude:
+    description: Claude rufen, wegschicken, Inventar, Status
+    usage: /claude [spawn|despawn|status|inventar|stop|reload]
+permissions:
+  claudeai.use:
+    description: Claude Auftraege geben und ihr Inventar oeffnen
+    default: true
+  claudeai.spawn:
+    description: Claude mit /spawn claude rufen und wegschicken
+    default: true
+  claudeai.admin:
+    description: /claude reload
+    default: op
