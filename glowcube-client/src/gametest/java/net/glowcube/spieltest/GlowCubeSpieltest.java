@@ -495,16 +495,21 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         server.runCommand("item replace entity @a weapon.offhand with minecraft:totem_of_undying");
         k.waitTicks(10);
         server.runCommand("damage @a 100 minecraft:generic");
-        k.waitTicks(30);
-        int pops = k.computeOnClient(mc -> net.glowcube.client.module.hud.TotemPops.anzahl(
-                mc.player.getName().getString()));
+        int pops = 0;
+        for (int i = 0; i < 20 && pops == 0; i++) {
+            k.waitTicks(10);
+            pops = k.computeOnClient(mc -> net.glowcube.client.module.hud.TotemPops.anzahl(
+                    mc.player.getName().getString()));
+        }
+        String zustand = k.computeOnClient(mc -> "Nebenhand=" + net.glowcube.client.util.Ids.item(
+                mc.player.getOffhandItem()) + ", Leben=" + mc.player.getHealth());
         k.runOnClient(mc -> m.setEnabled(false));
         server.runCommand("gamemode creative @a");
         server.runCommand("effect clear @a");
         if (pops == 1) {
             ok("Totem-Pop-Zaehler zaehlt den Pop");
         } else {
-            kaputt("Totem-Pop-Zaehler steht bei " + pops + " statt 1");
+            kaputt("Totem-Pop-Zaehler steht bei " + pops + " statt 1 (" + zustand + ")");
         }
     }
 
