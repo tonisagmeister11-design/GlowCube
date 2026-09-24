@@ -150,7 +150,7 @@ final class Agent implements AgentArbeiter {
             // Bausteine zum Abdichten von Lava und Wasser.
             agent.lager.addItem(new ItemStack(Items.COBBLESTONE, 64));
         }
-        BlockPos platz = sichererPlatzBei(welt, start);
+        BlockPos platz = sichererPlatzBei(welt, start, nummer);
         if (!agent.koerperBauen(welt, platz)) {
             return null;
         }
@@ -368,6 +368,31 @@ final class Agent implements AgentArbeiter {
         }
     }
 
+    /**
+     * Laufen mehrere Agenten derselben Art, teilt sich die Umgebung wie eine
+     * Torte um die Heimat: jeder nimmt zuerst die Ziele in seinem Stueck.
+     * Ohne das griffen alle nach derselben Erzader und liefen denselben Weg -
+     * dann sieht es aus, als waere nur einer unterwegs. Ist das eigene Stueck
+     * leer, hilft er bei den anderen aus.
+     */
+    private List<BlockPos> eigenerSektor(List<BlockPos> kandidaten) {
+        int[] rang = AgentWelt.rang(this);
+        if (rang[1] <= 1) {
+            return kandidaten;
+        }
+        double breite = 2 * Math.PI / rang[1];
+        double von = rang[0] * breite;
+        List<BlockPos> meine = new ArrayList<>();
+        for (BlockPos p : kandidaten) {
+            double winkel = Math.atan2(p.getZ() + 0.5 - (heimat.getZ() + 0.5), p.getX() + 0.5 - (heimat.getX() + 0.5));
+            winkel = (winkel + 2 * Math.PI) % (2 * Math.PI);
+            if (winkel >= von && winkel < von + breite) {
+                meine.add(p);
+            }
+        }
+        return meine.isEmpty() ? kandidaten : meine;
+    }
+
     /** Die naechsten Zielbloecke im Umkreis anpeilen - der erste, zu dem ein Weg fuehrt, gewinnt. */
     private boolean zielPlanen() {
         if (werte.xray()) {
@@ -400,6 +425,7 @@ final class Agent implements AgentArbeiter {
         if (kandidaten.isEmpty()) {
             return false;
         }
+        kandidaten = eigenerSektor(kandidaten);
         kandidaten.sort((a, b) -> Double.compare(a.distSqr(fuesse), b.distSqr(fuesse)));
         AgentPfad suche = feld ? new AgentPfad(welt, false, false) : new AgentPfad(welt, bausteine() > 0);
         for (int i = 0; i < Math.min(4, kandidaten.size()); i++) {
@@ -432,6 +458,7 @@ final class Agent implements AgentArbeiter {
         if (kandidaten.isEmpty()) {
             return false;
         }
+        kandidaten = eigenerSektor(kandidaten);
         AgentPfad suche = new AgentPfad(welt, bausteine() > 0);
         for (int i = 0; i < Math.min(3, kandidaten.size()); i++) {
             BlockPos ziel = kandidaten.get(i);
@@ -1068,7 +1095,7 @@ final class Agent implements AgentArbeiter {
     }
 
     private void teleportierenNach(ServerLevel zielWelt, BlockPos um) {
-        BlockPos platz = sichererPlatzBei(zielWelt, um);
+        BlockPos platz = sichererPlatzBei(zielWelt, um, nummer);
         effekt(ParticleTypes.PORTAL, 40);
         welt.playSound(null, koerper.getX(), koerper.getY(), koerper.getZ(),
                 SoundEvents.ENDERMAN_TELEPORT, SoundSource.NEUTRAL, 1f, 1f);
@@ -1087,7 +1114,21 @@ final class Agent implements AgentArbeiter {
 
     /** Frei, zwei Bloecke hoch und mit Boden - moeglichst nah beim Spieler, aber nicht in ihm. */
     static BlockPos sichererPlatzBei(ServerLevel welt, BlockPos mitte) {
-        int[][] versuche = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}, {2, 2}, {-2, -2}};
+        return sichererPlatzBei(welt, mitte, 1);
+    }
+
+    /**
+     * Wie oben, aber jede Nummer faengt an einer anderen Stelle des Rings an.
+     * Sonst erscheinen mehrere Agenten derselben Art exakt uebereinander - und
+     * sehen aus wie einer.
+     */
+    static BlockPos sichererPlatzBei(ServerLevel welt, BlockPos mitte, int nummer) {
+        int[][] ring = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {2, 2}, {-2, -2}, {2, -2}, {-2, 2}, {1, 1}, {-1, -1}};
+        int[][] versuche = new int[ring.length][];
+        int start = Math.floorMod(nummer - 1, ring.length);
+        for (int i = 0; i < ring.length; i++) {
+            versuche[i] = ring[(start + i) % ring.length];
+        }
         for (int[] v : versuche) {
             for (int dy = 0; dy >= -2; dy--) {
                 BlockPos p = mitte.offset(v[0], dy, v[1]);

@@ -104,7 +104,7 @@ final class AgentWaechter implements AgentArbeiter {
     static AgentWaechter erschaffen(ServerPlayer spieler, Auftrag auftrag, int nummer, String art, AgentWerte werte) {
         AgentWaechter w = new AgentWaechter(spieler.getUUID(), auftrag, nummer, art, werte);
         ServerLevel welt = (ServerLevel) spieler.level();
-        if (!w.koerperBauen(welt, Agent.sichererPlatzBei(welt, spieler.blockPosition()))) {
+        if (!w.koerperBauen(welt, Agent.sichererPlatzBei(welt, spieler.blockPosition(), nummer))) {
             return null;
         }
         w.effekt(ParticleTypes.PORTAL, 40);
@@ -555,9 +555,27 @@ final class AgentWaechter implements AgentArbeiter {
         angriffPause = ANGRIFF_PAUSE;
     }
 
+    /**
+     * Wo dieser Waechter neben dem Spieler steht. Einer allein direkt beim
+     * Spieler; mehrere im Kreis um ihn, jeder an seinem Platz - sonst standen
+     * alle uebereinander und sahen aus wie einer.
+     */
+    private BlockPos platzBei(ServerPlayer spieler) {
+        int[] rang = AgentWelt.rang(this);
+        if (rang[1] <= 1) {
+            return spieler.blockPosition();
+        }
+        double winkel = 2 * Math.PI * rang[0] / rang[1];
+        int r = schuetzen ? 2 : 3;
+        return spieler.blockPosition().offset((int) Math.round(Math.cos(winkel) * r), 0,
+                (int) Math.round(Math.sin(winkel) * r));
+    }
+
     private void folgen(ServerPlayer spieler) {
-        double abstand = Math.sqrt(fuesse.distSqr(spieler.blockPosition()));
-        if (abstand <= (schuetzen ? 1.5 : 3)) {
+        boolean formation = AgentWelt.rang(this)[1] > 1;
+        BlockPos platz = platzBei(spieler);
+        double abstand = Math.sqrt(fuesse.distSqr(platz));
+        if (abstand <= (formation ? 1.2 : schuetzen ? 1.5 : 3)) {
             pfad = null;
             if (bewegNach == null) {
                 anschauen(spieler.getEyePosition());
@@ -565,7 +583,7 @@ final class AgentWaechter implements AgentArbeiter {
             return;
         }
         if (bewegNach == null) {
-            laufenZu(spieler.blockPosition(), schuetzen ? 1 : 2);
+            laufenZu(platz, formation ? 1 : schuetzen ? 1 : 2);
         }
     }
 
@@ -615,7 +633,7 @@ final class AgentWaechter implements AgentArbeiter {
 
     private void teleportieren(ServerPlayer spieler) {
         ServerLevel zielWelt = (ServerLevel) spieler.level();
-        BlockPos platz = Agent.sichererPlatzBei(zielWelt, spieler.blockPosition());
+        BlockPos platz = Agent.sichererPlatzBei(zielWelt, spieler.blockPosition(), nummer);
         effekt(ParticleTypes.PORTAL, 30);
         ziel = null;
         if (zielWelt == welt) {

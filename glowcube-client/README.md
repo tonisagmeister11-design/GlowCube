@@ -215,7 +215,7 @@ siehe `glowcube-plugin/README.md`).
 | Stein-Agent | Baut Stein ab |
 | Holz-Agent | Faellt Baeume |
 | Guardian-Agent | Leibwaechter in Eisen-, Diamant- oder Netherite-Ruestung: folgt dir und bekaempft alles Feindliche um dich |
-| Builder-Agent | Baut ein Schematic genau auf deiner Hoehe direkt vor dir - mehrere Builder nebeneinander |
+| Builder-Agent | Baut ein Schematic genau auf deiner Hoehe direkt vor dir - mehrere Builder nebeneinander. Eingebaut: Starter-Haus, Japanischer Tempel, Orbital-Strike-Cannon, Portal Protegido, Arc de Triomphe, PvP-Arena Nether, PvP-Arena Wald, Azalit City Arena |
 | Farm-Agent | Erntet reifes Getreide, Karotten, Kartoffeln, Rote Bete und Netherwarzen im einstellbaren Radius, pflanzt sofort neu |
 | Tunnel-Agent | Graebt einen Tunnel (1x2, 2x2 oder 3x3) in deine Blickrichtung, bis 512 Bloecke, mit Fackeln alle 8 Bloecke; dichtet Lava und Wasser ab und nimmt Erze aus den Waenden mit |
 | Jaeger-Agent | Jagt Tiere in deiner Naehe (alle oder Kuh/Schwein/Schaf/Huhn/Kaninchen), laesst je Sorte einstellbar viele uebrig, nie Jungtiere oder benannte Tiere, und bringt dir die Beute |
@@ -226,8 +226,10 @@ siehe `glowcube-plugin/README.md`).
 losgeschickt werden. Unter **Einstellen fuer** waehlst du Agent 1 bis 5 -
 darunter stehen dann nur dessen Einstellungen (Erzart, Tempo, Schematic,
 Radius ...). So sucht etwa Erz-Agent 1 Diamanten und Erz-Agent 2 Eisen.
-Mehrere Agenten schwaermen in verschiedene Richtungen aus und nehmen sich nie
-denselben Block vor. Anzahl waehrend der Arbeit hochdrehen schickt weitere
+Mehrere Agenten erscheinen an getrennten Plaetzen und teilen sich die Umgebung
+wie eine Torte: jeder arbeitet zuerst in seinem Stueck (Erz, Stein, Holz, das
+Farmfeld) und hilft erst aus, wenn dort nichts mehr ist. Mehrere Guardians
+und Jaeger stellen sich im Kreis um dich. Anzahl waehrend der Arbeit hochdrehen schickt weitere
 los, runterdrehen ruft die ueberzaehligen zurueck. **Leuchten** laesst alle
 Agenten der Art durch Waende leuchten.
 

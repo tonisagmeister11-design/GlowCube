@@ -174,6 +174,22 @@ public final class GlowCubeAgentPlugin extends JavaPlugin implements PluginMessa
         return kisten.get(spieler);
     }
 
+    /** {Platz ab 0, Anzahl} unter den laufenden Agenten derselben Art desselben Spielers. */
+    int[] rang(AgentArbeiter ich) {
+        int platz = 0;
+        int anzahl = 0;
+        for (AgentArbeiter agent : agenten) {
+            if (agent.besitzer().equals(ich.besitzer()) && agent.auftrag() == ich.auftrag()
+                    && !agent.beimZurueckkehren()) {
+                anzahl++;
+                if (agent.nummer() < ich.nummer()) {
+                    platz++;
+                }
+            }
+        }
+        return new int[] {platz, Math.max(1, anzahl)};
+    }
+
     /** Die Bloecke, die sich andere Agenten schon vorgenommen haben. */
     java.util.Set<Long> reserviertVonAnderen(AgentArbeiter ich) {
         java.util.Set<Long> belegt = new java.util.HashSet<>();

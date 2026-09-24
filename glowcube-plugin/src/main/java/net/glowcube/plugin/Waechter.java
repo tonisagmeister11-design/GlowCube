@@ -90,7 +90,7 @@ final class Waechter implements AgentArbeiter {
     static Waechter erschaffen(GlowCubeAgentPlugin plugin, Player spieler, Auftrag auftrag, int nummer, String art,
                                Werte werte) {
         Waechter w = new Waechter(plugin, spieler.getUniqueId(), auftrag, nummer, art, werte);
-        if (!w.koerperBauen(spieler.getWorld(), Agent.sichererPlatzBei(spieler.getWorld(), Pos.von(spieler.getLocation())))) {
+        if (!w.koerperBauen(spieler.getWorld(), Agent.sichererPlatzBei(spieler.getWorld(), Pos.von(spieler.getLocation()), nummer))) {
             return null;
         }
         w.effekt(Particle.PORTAL, 40);
@@ -493,9 +493,23 @@ final class Waechter implements AgentArbeiter {
         }
     }
 
+    /** Mehrere Waechter stehen im Kreis um den Spieler, jeder an seinem Platz. */
+    private Pos platzBei(Player spieler) {
+        Pos mitte = Pos.von(spieler.getLocation());
+        int[] rang = plugin.rang(this);
+        if (rang[1] <= 1) {
+            return mitte;
+        }
+        double winkel = 2 * Math.PI * rang[0] / rang[1];
+        int r = schuetzen ? 2 : 3;
+        return mitte.plus((int) Math.round(Math.cos(winkel) * r), 0, (int) Math.round(Math.sin(winkel) * r));
+    }
+
     private void folgen(Player spieler) {
-        double abstand = Math.sqrt(fuesse.abstandQ(Pos.von(spieler.getLocation())));
-        if (abstand <= (schuetzen ? 1.5 : 3)) {
+        boolean formation = plugin.rang(this)[1] > 1;
+        Pos platz = platzBei(spieler);
+        double abstand = Math.sqrt(fuesse.abstandQ(platz));
+        if (abstand <= (formation ? 1.2 : schuetzen ? 1.5 : 3)) {
             pfad = null;
             if (bewegNach == null) {
                 anschauen(spieler.getEyeLocation());
@@ -503,7 +517,7 @@ final class Waechter implements AgentArbeiter {
             return;
         }
         if (bewegNach == null) {
-            laufenZu(Pos.von(spieler.getLocation()), schuetzen ? 1 : 2);
+            laufenZu(platz, formation ? 1 : schuetzen ? 1 : 2);
         }
     }
 
@@ -554,7 +568,7 @@ final class Waechter implements AgentArbeiter {
 
     private void teleportieren(Player spieler) {
         World zielWelt = spieler.getWorld();
-        Pos platz = Agent.sichererPlatzBei(zielWelt, Pos.von(spieler.getLocation()));
+        Pos platz = Agent.sichererPlatzBei(zielWelt, Pos.von(spieler.getLocation()), nummer);
         effekt(Particle.PORTAL, 30);
         ziel = null;
         if (zielWelt.equals(welt)) {

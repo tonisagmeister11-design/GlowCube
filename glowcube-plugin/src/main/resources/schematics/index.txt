@@ -6,3 +6,6 @@ Japanischer-Tempel.litematic
 Orbital-Strike-Cannon.litematic
 Portal-Protegido.litematic
 Arc-de-Triomphe.litematic
+PvP-Arena-Nether.litematic
+PvP-Arena-Wald.litematic
+Azalit-City-Arena.litematic

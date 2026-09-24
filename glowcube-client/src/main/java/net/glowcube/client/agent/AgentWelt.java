@@ -130,6 +130,25 @@ final class AgentWelt {
     }
 
     /** Die Bloecke, die sich andere Agenten schon vorgenommen haben. */
+    /**
+     * {Platz, Anzahl}: der wievielte (ab 0) unter den laufenden Agenten
+     * derselben Art desselben Spielers dieser ist, und wie viele es sind.
+     */
+    static int[] rang(AgentArbeiter ich) {
+        int platz = 0;
+        int anzahl = 0;
+        for (AgentArbeiter agent : AGENTEN) {
+            if (agent.besitzer().equals(ich.besitzer()) && agent.auftrag() == ich.auftrag()
+                    && !agent.beimZurueckkehren()) {
+                anzahl++;
+                if (agent.nummer() < ich.nummer()) {
+                    platz++;
+                }
+            }
+        }
+        return new int[] {platz, Math.max(1, anzahl)};
+    }
+
     static Set<Long> reserviertVonAnderen(AgentArbeiter ich) {
         Set<Long> belegt = new HashSet<>();
         for (AgentArbeiter agent : AGENTEN) {

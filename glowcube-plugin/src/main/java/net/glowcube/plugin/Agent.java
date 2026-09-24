@@ -139,7 +139,7 @@ final class Agent implements AgentArbeiter {
             // Bausteine zum Abdichten von Lava und Wasser.
             agent.lager.addItem(new ItemStack(Material.COBBLESTONE, 64));
         }
-        Pos platz = sichererPlatzBei(welt, start);
+        Pos platz = sichererPlatzBei(welt, start, nummer);
         if (!agent.koerperBauen(welt, platz)) {
             return null;
         }
@@ -365,6 +365,29 @@ final class Agent implements AgentArbeiter {
         erkunden();
     }
 
+    /**
+     * Mehrere Agenten derselben Art teilen sich die Umgebung wie eine Torte
+     * um die Heimat; jeder nimmt zuerst die Ziele in seinem Stueck. Ist es
+     * leer, hilft er bei den anderen aus.
+     */
+    private List<Pos> eigenerSektor(List<Pos> kandidaten) {
+        int[] rang = plugin.rang(this);
+        if (rang[1] <= 1) {
+            return kandidaten;
+        }
+        double breite = 2 * Math.PI / rang[1];
+        double von = rang[0] * breite;
+        List<Pos> meine = new ArrayList<>();
+        for (Pos p : kandidaten) {
+            double winkel = Math.atan2(p.z() - heimat.z(), p.x() - heimat.x());
+            winkel = (winkel + 2 * Math.PI) % (2 * Math.PI);
+            if (winkel >= von && winkel < von + breite) {
+                meine.add(p);
+            }
+        }
+        return meine.isEmpty() ? kandidaten : meine;
+    }
+
     private boolean nahPlanen() {
         List<Pos> kandidaten = new ArrayList<>();
         Set<Long> belegt = plugin.reserviertVonAnderen(this);
@@ -388,6 +411,7 @@ final class Agent implements AgentArbeiter {
                 }
             }
         }
+        kandidaten = eigenerSektor(kandidaten);
         kandidaten.sort((a, b) -> Double.compare(a.abstandQ(fuesse), b.abstandQ(fuesse)));
         return aufZiele(kandidaten, 4, 6000, 48);
     }
@@ -420,7 +444,7 @@ final class Agent implements AgentArbeiter {
         if (xrayTreffer.isEmpty()) {
             return false;
         }
-        List<Pos> sortiert = new ArrayList<>(xrayTreffer);
+        List<Pos> sortiert = eigenerSektor(new ArrayList<>(xrayTreffer));
         sortiert.sort((a, b) -> Double.compare(a.abstandQ(fuesse), b.abstandQ(fuesse)));
         if (aufZiele(sortiert, 3, 10000, 64)) {
             return true;
@@ -1053,7 +1077,7 @@ final class Agent implements AgentArbeiter {
     }
 
     private void teleportierenNach(World zielWelt, Pos um) {
-        Pos platz = sichererPlatzBei(zielWelt, um);
+        Pos platz = sichererPlatzBei(zielWelt, um, nummer);
         effekt(Particle.PORTAL, 40);
         welt.playSound(koerper.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
         pfad = null;
@@ -1072,7 +1096,17 @@ final class Agent implements AgentArbeiter {
     }
 
     static Pos sichererPlatzBei(World welt, Pos mitte) {
-        int[][] versuche = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}, {2, 2}, {-2, -2}};
+        return sichererPlatzBei(welt, mitte, 1);
+    }
+
+    /** Jede Nummer faengt an einer anderen Stelle des Rings an - sonst stehen mehrere Agenten uebereinander. */
+    static Pos sichererPlatzBei(World welt, Pos mitte, int nummer) {
+        int[][] ring = {{2, 0}, {-2, 0}, {0, 2}, {0, -2}, {2, 2}, {-2, -2}, {2, -2}, {-2, 2}, {1, 1}, {-1, -1}};
+        int[][] versuche = new int[ring.length][];
+        int start = Math.floorMod(nummer - 1, ring.length);
+        for (int i = 0; i < ring.length; i++) {
+            versuche[i] = ring[(start + i) % ring.length];
+        }
         for (int[] v : versuche) {
             for (int dy = 0; dy >= -2; dy--) {
                 Pos p = mitte.plus(v[0], dy, v[1]);

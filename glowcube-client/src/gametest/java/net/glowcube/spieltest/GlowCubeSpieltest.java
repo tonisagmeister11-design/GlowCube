@@ -95,6 +95,8 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             pruefe("ESP und Tracer", () -> esp(kontext, welt));
             pruefe("KillAura", () -> killAura(kontext, server));
             pruefe("Agenten", () -> agenten(kontext, server));
+            pruefe("Arenen-Bauplaene", () -> arenen(kontext));
+            pruefe("Mehrere Agenten", () -> mehrereAgenten(kontext));
             pruefe("ClickGUI mit der Maus", () -> klickGui(kontext));
             pruefe("Freecam", () -> freecam(kontext));
             pruefe("Karte und HUD", () -> karte(kontext, welt));
@@ -319,6 +321,84 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         }
         k.runOnClient(mc -> AgentSteuerung.zurueck(Auftrag.JAEGER, 0));
         k.waitTicks(100);
+    }
+
+    // ------------------------------------------- Baupläne, mehrere Agenten
+
+    private void arenen(ClientGameTestContext k) throws Exception {
+        for (String name : new String[] {"PvP-Arena-Nether", "PvP-Arena-Wald", "Azalit-City-Arena"}) {
+            String ergebnis = k.computeOnClient(mc -> {
+                net.glowcube.client.bauplan.Bauplan plan = net.glowcube.client.bauplan.Bauplaene.laden(name);
+                if (plan == null) {
+                    return "nicht ladbar";
+                }
+                int fest = 0;
+                java.util.Set<String> unbekannt = new java.util.TreeSet<>();
+                for (net.glowcube.client.bauplan.Bauplan.Block b : plan.bloecke) {
+                    String z = b.zustand();
+                    String id = z.contains("[") ? z.substring(0, z.indexOf('[')) : z;
+                    if (!id.contains(":")) {
+                        id = "minecraft:" + id;
+                    }
+                    String ns = id.substring(0, id.indexOf(':'));
+                    String pfad = id.substring(id.indexOf(':') + 1);
+                    if (!BuiltInRegistries.BLOCK.containsKey(net.minecraft.resources.Identifier.fromNamespaceAndPath(ns, pfad))) {
+                        unbekannt.add(id);
+                    } else if (!id.equals("minecraft:air")) {
+                        fest++;
+                    }
+                }
+                if (!unbekannt.isEmpty()) {
+                    return "unbekannte Bloecke " + unbekannt;
+                }
+                return fest < 1000 ? "nur " + fest + " Bloecke" : null;
+            });
+            if (ergebnis == null) {
+                ok("Bauplan " + name + " laedt, alle Bloecke bekannt");
+            } else {
+                kaputt("Bauplan " + name + ": " + ergebnis);
+            }
+        }
+    }
+
+    /**
+     * Genau wie im Menue: Anzahl auf 3, Modul an. Es muessen drei Agenten
+     * laufen, und sie duerfen nicht uebereinander stehen.
+     */
+    private void mehrereAgenten(ClientGameTestContext k) throws Exception {
+        String[][] arten = {{"Guardian-Agent", "WAECHTER"}, {"Stein-Agent", "STEIN"}};
+        for (String[] art : arten) {
+            Module m = modul(art[0]);
+            k.runOnClient(mc -> {
+                einstellen(m, "Anzahl", 3);
+                m.setEnabled(true);
+            });
+            k.waitTicks(120);
+            List<AgentStatus> laufend = k.computeOnClient(mc -> AgentStatus.aktuell().stream()
+                    .filter(s -> s.auftrag().equals(art[1])).toList());
+            double naechster = Double.MAX_VALUE;
+            for (int i = 0; i < laufend.size(); i++) {
+                for (int j = i + 1; j < laufend.size(); j++) {
+                    AgentStatus a = laufend.get(i);
+                    AgentStatus b = laufend.get(j);
+                    double d = Math.sqrt((a.x() - b.x()) * (a.x() - b.x()) + (a.z() - b.z()) * (a.z() - b.z()));
+                    naechster = Math.min(naechster, d);
+                }
+            }
+            k.runOnClient(mc -> {
+                m.setEnabled(false);
+                einstellen(m, "Anzahl", 1);
+            });
+            k.waitTicks(200);
+            String abstand = String.format(java.util.Locale.ROOT, "%.1f", naechster);
+            if (laufend.size() != 3) {
+                kaputt(art[0] + " x3: es laufen " + laufend.size() + " statt 3");
+            } else if (naechster < 0.9) {
+                kaputt(art[0] + " x3: zwei stehen uebereinander (Abstand " + abstand + ")");
+            } else {
+                ok(art[0] + " x3: drei laufen getrennt (kleinster Abstand " + abstand + " Bloecke)");
+            }
+        }
     }
 
     // ------------------------------------------------ ClickGUI per Maus
