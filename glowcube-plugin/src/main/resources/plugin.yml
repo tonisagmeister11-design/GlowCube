@@ -1,8 +1,8 @@
 name: GlowCubeAgent
 version: '${version}'
 main: net.glowcube.plugin.GlowCubeAgentPlugin
-api-version: '1.21'
-description: Agenten fuer Spieler mit dem GlowCube-Client - NPCs, die Erz, Stein oder Holz abbauen.
+api-version: '${apiFassung}'
+description: Agenten fuer Spieler mit dem GlowCube-Client (Paper ${fassung}) - Abbau, Farm, Tunnel, Guardian, Jaeger, Builder.
 author: GlowCube
 permissions:
   glowcube.agent:

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "glowcube-spieltest",
+  "version": "1.0.0",
+  "name": "GlowCube Spieltest",
+  "description": "Startet das echte Spiel in der CI und prueft GlowCube-Funktionen.",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["net.glowcube.spieltest.GlowCubeSpieltest"]
+  },
+  "depends": {
+    "glowcube": "*"
+  }
+}

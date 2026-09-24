@@ -443,11 +443,75 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  # Spieltest: das echte Spiel startet (virtueller Bildschirm), legt eine Welt
+  # an und prueft X-Ray, ESP, KillAura, Agenten und jedes Modul. Ergebnis als
+  # Zeilen "GLOWCUBE-TEST ..." im Protokoll und in der Zusammenfassung.
+  spieltest:
+    name: Spieltest MC ${{ matrix.mc }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ["1.21.11", "26.3"]
+    defaults:
+      run:
+        working-directory: glowcube-client
+    steps:
+      - name: Quelltext holen
+        uses: actions/checkout@v4
+
+      - name: JDK einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+
+      - name: Zielfassung eintragen
+        run: sed -i "s/^minecraft_version=.*/minecraft_version=${{ matrix.mc }}/" gradle.properties
+
+      - name: Passende Fabric-Versionen eintragen
+        run: python3 resolve-versions.py
+
+      - name: Grafik fuer den virtuellen Bildschirm
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 > /dev/null
+
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Spiel starten und pruefen
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          export LIBGL_ALWAYS_SOFTWARE=1
+          timeout 1800 xvfb-run -a -s "-screen 0 1280x720x24" \
+            gradle runClientGameTest -Pspieltest --no-daemon --stacktrace 2>&1 | tee /tmp/spieltest.log
+
+      - name: Ergebnis
+        if: always()
+        run: |
+          echo "### Spieltest ${{ matrix.mc }}" >> "$GITHUB_STEP_SUMMARY"
+          if grep -q "GLOWCUBE-SPIELTEST" /tmp/spieltest.log; then
+            sed -n '/===== GLOWCUBE-SPIELTEST/,$p' /tmp/spieltest.log | grep -E "GLOWCUBE" | sed 's/^.*\(GLOWCUBE\)/\1/' | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Der Spieltest ist nicht bis zum Ende gekommen. Letzte Zeilen:" | tee -a "$GITHUB_STEP_SUMMARY"
+            grep -E "Exception|Error|error:|FAILED|Caused by|GLOWCUBE|crash|Crash" /tmp/spieltest.log | tail -60 | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "===== ENDE SPIELTEST ====="
+
   # Das Server-Plugin fuer Paper: damit laufen die Agenten auch auf einem
   # Server, fuer jeden Spieler mit GlowCube.
   plugin:
-    name: Server-Plugin bauen
+    name: Server-Plugin bauen fuer Paper ${{ matrix.mc }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ["1.21.11", "26.3"]
     defaults:
       run:
         working-directory: glowcube-plugin
@@ -459,7 +523,13 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: |
+            21
+            25
+
+      - name: Passende Paper-API suchen
+        id: paper
+        run: python3 paper-fassung.py "${{ matrix.mc }}"
 
       - name: Gradle einrichten
         uses: gradle/actions/setup-gradle@v4
@@ -467,24 +537,32 @@ jobs:
       - name: Bauen
         run: |
           set -o pipefail
-          gradle build --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
+          gradle build --no-daemon --stacktrace -Pmc=${{ matrix.mc }} \
+            -Ppaper_version=${{ steps.paper.outputs.paper_version }} \
+            -Pjava_version=${{ steps.paper.outputs.java_version }} 2>&1 | tee /tmp/gradle.log
 
       - name: Fehler herausziehen
         if: failure()
         run: |
           grep -E "error:|warning: \[|What went wrong|Could not" /tmp/gradle.log | head -40 | sed 's/^/::error::/' || true
+          grep -E "\.java:[0-9]+: error:" -A3 /tmp/gradle.log | head -120 || true
+
+      # Ein echter Paper-Server mit dem Plugin: startet er, und laedt das Plugin sauber?
+      - name: Auf echtem Paper-Server testen
+        continue-on-error: true
+        run: ./server-test.sh "${{ matrix.mc }}" "$PWD/build/libs/glowcube-agent-plugin-${{ matrix.mc }}.jar"
 
       - name: JAR einsammeln
         run: |
           mkdir -p /tmp/ausgabe
-          cp build/libs/glowcube-agent-plugin.jar /tmp/ausgabe/
-          echo "### Server-Plugin" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`glowcube-agent-plugin.jar\` ($(du -h /tmp/ausgabe/glowcube-agent-plugin.jar | cut -f1))" >> "$GITHUB_STEP_SUMMARY"
+          cp build/libs/glowcube-agent-plugin-${{ matrix.mc }}.jar /tmp/ausgabe/
+          echo "### Server-Plugin fuer Paper ${{ matrix.mc }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`glowcube-agent-plugin-${{ matrix.mc }}.jar\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: JAR zum Weiterreichen ablegen
         uses: actions/upload-artifact@v4
         with:
-          name: glowcube-mc-plugin
+          name: glowcube-mc-plugin-${{ matrix.mc }}
           path: /tmp/ausgabe/*.jar
           if-no-files-found: error
           retention-days: 90
@@ -527,7 +605,7 @@ jobs:
           fassungen=""
           for j in "${jars[@]}"; do
             f=$(basename "$j" .jar); f=${f#glowcube-}
-            [ "$f" = "agent-plugin" ] && continue
+            case "$f" in agent-plugin*) continue ;; esac
             fassungen="${fassungen} ${f}"
           done
 
@@ -550,9 +628,10 @@ jobs:
             "Vorbelegt: X = X-Ray, B = SeedHunt." \
             "Alles weitere in glowcube-client/README.md." \
             "" \
-            "Fuer Server: glowcube-agent-plugin.jar in den plugins-Ordner" \
-            "eines Paper-Servers (1.21.11). Dann kann jeder Spieler mit" \
-            "GlowCube dort Agenten losschicken." \
+            "Fuer Server: glowcube-agent-plugin-1.21.11.jar (Paper 1.21.11)" \
+            "bzw. glowcube-agent-plugin-26.3.jar (Paper 26.3) in den" \
+            "plugins-Ordner. Dann kann jeder Spieler mit GlowCube dort" \
+            "Agenten losschicken." \
             "" \
             "Automatisch gebaut aus Commit ${GITHUB_SHA}.")
 

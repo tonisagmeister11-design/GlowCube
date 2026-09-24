@@ -308,7 +308,14 @@ public final class ModuleManager {
         BlockUtils.tickBeginn();
         for (Module module : modules) {
             if (module.isEnabled()) {
-                module.onTick();
+                try {
+                    module.onTick();
+                } catch (Throwable fehler) {
+                    // Ein kaputtes Modul (etwa nach einem Fassungswechsel) darf nie
+                    // das Spiel abstuerzen lassen: abschalten, einmal melden.
+                    fehlerMelden(module, "Tick", fehler);
+                    module.setEnabledSilently(false);
+                }
             }
         }
         BlockUtils.tickEnde();
@@ -327,6 +334,16 @@ public final class ModuleManager {
         }
     }
 
+    /** Welche Module wegen eines Fehlers abgeschaltet wurden (fuer die Spieltests). */
+    public static final java.util.List<String> FEHLER = java.util.Collections.synchronizedList(new ArrayList<>());
+
+    public static void fehlerMelden(Module module, String wo, Throwable fehler) {
+        String text = module.name() + " (" + wo + "): " + fehler;
+        FEHLER.add(text);
+        net.glowcube.client.GlowCubeClient.LOGGER.error("GlowCube: Fehler in {} ({}) - Modul wird abgeschaltet",
+                module.name(), wo, fehler);
+    }
+
     public void onWorldRender(net.glowcube.client.render.WeltRender render) {
         for (Module module : modules) {
             if (module.isEnabled()) {
@@ -336,9 +353,8 @@ public final class ModuleManager {
                     // Ein Zeichenfehler darf niemals das ganze Spiel abschiessen.
                     // Das Modul wird abgeschaltet und der Grund einmal ins
                     // Protokoll geschrieben - so kommt der Spieler weiter rein.
-                    net.glowcube.client.GlowCubeClient.LOGGER.error(
-                            "Renderfehler in {} - Modul wird abgeschaltet", module.name(), fehler);
-                    module.setEnabled(false);
+                    fehlerMelden(module, "Render", fehler);
+                    module.setEnabledSilently(false);
                 }
             }
         }

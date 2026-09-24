@@ -1,5 +1,6 @@
-// Das GlowCube-Agent-Plugin fuer Paper-Server. Gebaut gegen die Paper-API
-// der Fassung, fuer die auch der Client gebaut wird (1.21.11).
+// Das GlowCube-Agent-Plugin fuer Paper-Server. Gebaut je Spielfassung gegen
+// deren Paper-API: -Pmc=1.21.11 bzw. -Pmc=26.3 (paper_version und
+// java_version setzt die CI passend dazu).
 plugins {
     id 'java'
 }
@@ -16,24 +17,30 @@ dependencies {
     compileOnly "io.papermc.paper:paper-api:${project.findProperty('paper_version') ?: '1.21.11-R0.1-SNAPSHOT'}"
 }
 
+def javaZiel = Integer.parseInt((project.findProperty('java_version') ?: '21').toString())
+def fassung = (project.findProperty('mc') ?: '1.21.11').toString()
+// Paper will die API-Fassung ohne Patch-Nummer bei 1.x ("1.21"), ab 26.x die Fassung selbst.
+def apiFassung = fassung.startsWith('1.') ? fassung.split('\\.').take(2).join('.') : fassung
+
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(javaZiel)
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 21
+    options.release = javaZiel
 }
 
 processResources {
     inputs.property 'version', project.version
+    inputs.property 'fassung', fassung
     filesMatching('plugin.yml') {
-        expand version: project.version
+        expand version: project.version, fassung: fassung, apiFassung: apiFassung
     }
 }
 
 jar {
-    archiveFileName = 'glowcube-agent-plugin.jar'
+    archiveFileName = "glowcube-agent-plugin-${fassung}.jar"
 }

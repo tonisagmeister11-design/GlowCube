@@ -149,3 +149,18 @@ tasks.register('classpathReport') {
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['-Xmaxerrs', '2000']
 }
+
+// Spieltest: startet das echte Spiel und prueft GlowCube (Fabric Client-Gametests,
+// Quelltext in src/gametest). Nur mit -Pspieltest - normale Builds bleiben unberuehrt.
+// In der CI: xvfb-run gradle runClientGameTest -Pspieltest
+if (project.hasProperty('spieltest')) {
+    fabricApi {
+        configureTests {
+            createSourceSet = true
+            modId = 'glowcube-spieltest'
+            enableGameTests = false
+            enableClientGameTests = true
+            eula = true
+        }
+    }
+}
