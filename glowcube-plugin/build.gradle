@@ -9,8 +9,10 @@ group = 'net.glowcube'
 version = '1.0.0'
 
 repositories {
-    mavenCentral()
+    // PaperMC zuerst: dort liegt die Paper-API samt allem, was sie braucht.
+    // Maven Central antwortet in der CI sonst gelegentlich mit 429.
     maven { name = 'papermc'; url = 'https://repo.papermc.io/repository/maven-public/' }
+    mavenCentral()
 }
 
 dependencies {
