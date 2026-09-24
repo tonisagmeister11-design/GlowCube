@@ -57,24 +57,25 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         kontext.runOnClient(mc -> {
             mc.options.renderDistance().set(3);
             mc.options.simulationDistance().set(5);
-            // Ohne Grafikkarte frisst jedes Bild CPU, die der Welt-Server braucht.
-            mc.options.framerateLimit().set(10);
-            // Die Menue-Unschaerfe ist ohne Grafikkarte so teuer, dass der
-            // Ladebildschirm kaum Ticks schafft - und der Test-Server laeuft
-            // im Gleichschritt mit dem Client.
-            try {
-                Object blur = mc.options.getClass().getMethod("menuBackgroundBlurriness").invoke(mc.options);
-                blur.getClass().getMethod("set", Object.class).invoke(blur, 0);
-                System.out.println("GLOWCUBE-TEST Menue-Unschaerfe aus");
-            } catch (ReflectiveOperationException e) {
-                System.out.println("GLOWCUBE-TEST Menue-Unschaerfe nicht gefunden: " + e);
-            }
+            // Der Test-Server laeuft im Gleichschritt mit dem Client: jede
+            // Bildbremse bremst auch ihn. Stattdessen alles Teure abschalten,
+            // was ohne Grafikkarte Bilder kostet. Die Namen der Optionen
+            // unterscheiden sich je Fassung - darum ueber Spiegelung.
+            mc.options.framerateLimit().set(30);
+            option(mc.options, "menuBackgroundBlurriness", 0);
+            option(mc.options, "cloudStatus", "OFF");
+            option(mc.options, "entityShadows", false);
+            option(mc.options, "mipmapLevels", 0);
+            option(mc.options, "ambientOcclusion", false);
+            option(mc.options, "biomeBlendRadius", 0);
+            option(mc.options, "particles", "MINIMAL");
+            option(mc.options, "graphicsMode", "FAST");
+            option(mc.options, "enableVsync", false);
         });
         var bauer = kontext.worldBuilder();
         flachwelt(bauer);
         Thread waechter = threadWaechter();
         try (var welt = bauer.create()) {
-            waechter.interrupt();
             var server = welt.getServer();
             chunksAbwarten(welt);
             server.runCommand("time set noon");
@@ -96,11 +97,36 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             pruefe("Agenten", () -> agenten(kontext, server));
             pruefe("Alle Module an/aus", () -> rundlauf(kontext));
         } catch (Throwable t) {
-            waechter.interrupt();
             kaputt("Test selbst abgebrochen: " + t);
             t.printStackTrace();
         }
+        waechter.interrupt();
         zusammenfassung();
+    }
+
+    /** Setzt eine Option, wenn es sie in dieser Fassung gibt; Aufzaehlungen per Name. */
+    private static void option(Object optionen, String name, Object wert) {
+        try {
+            Object opt = optionen.getClass().getMethod(name).invoke(optionen);
+            Object alt = opt.getClass().getMethod("get").invoke(opt);
+            Object neu = wert;
+            if (wert instanceof String konstante && alt instanceof Enum<?> e) {
+                neu = null;
+                for (Object c : e.getDeclaringClass().getEnumConstants()) {
+                    if (((Enum<?>) c).name().equals(konstante)) {
+                        neu = c;
+                    }
+                }
+                if (neu == null) {
+                    System.out.println("GLOWCUBE-TEST Option " + name + ": kein Wert " + konstante);
+                    return;
+                }
+            }
+            opt.getClass().getMethod("set", Object.class).invoke(opt, neu);
+            System.out.println("GLOWCUBE-TEST Option " + name + " = " + neu);
+        } catch (Throwable t) {
+            System.out.println("GLOWCUBE-TEST Option " + name + " nicht gesetzt: " + t);
+        }
     }
 
     private interface Pruefung {
@@ -342,34 +368,37 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
     // -------------------------------------------------------- Hilfen
 
     /**
-     * Haengt das Anlegen der Welt, schreibt dieser Waechter nach 60 Sekunden
-     * alle Threads mit CPU-Zeit und Stapel ins Protokoll - damit man sieht,
-     * wer den Rechner belegt oder worauf der Server wartet.
+     * Ein Stichproben-Profiler fuer die CI: alle 10 Sekunden die Stapel von
+     * Render- und Server-Thread mit CPU-Zeit, jede sechste Probe alle Threads.
+     * Damit sieht man, wo die Zeit hingeht, wenn ein Schritt haengt.
      */
     private static Thread threadWaechter() {
         Thread t = new Thread(() -> {
             try {
-                for (int runde = 0; runde < 3; runde++) {
-                    Thread.sleep(runde == 0 ? 60_000 : 30_000);
-                    var mx = java.lang.management.ManagementFactory.getThreadMXBean();
-                    StringBuilder sb = new StringBuilder("GLOWCUBE-TEST Threads beim Weltladen (Runde " + runde + "):\n");
-                    for (var info : mx.dumpAllThreads(true, true)) {
-                        long cpu = mx.getThreadCpuTime(info.getThreadId());
-                        sb.append("  [").append(info.getThreadName()).append("] ").append(info.getThreadState())
-                                .append(" cpu=").append(cpu / 1_000_000).append("ms");
-                        if (info.getLockName() != null) {
-                            sb.append(" wartet auf ").append(info.getLockName()).append(" von ").append(info.getLockOwnerName());
+                var mx = java.lang.management.ManagementFactory.getThreadMXBean();
+                for (int probe = 0; probe < 40; probe++) {
+                    Thread.sleep(10_000);
+                    StringBuilder sb = new StringBuilder("GLOWCUBE-TEST Probe " + probe + ":\n");
+                    for (var info : mx.dumpAllThreads(false, false)) {
+                        String n = info.getThreadName();
+                        boolean wichtig = n.equals("Render thread") || n.equals("Server thread");
+                        if (!wichtig && probe % 6 != 5) {
+                            continue;
                         }
-                        sb.append('\n');
-                        var stapel = info.getStackTrace();
-                        for (int i = 0; i < Math.min(12, stapel.length); i++) {
-                            sb.append("      at ").append(stapel[i]).append('\n');
+                        long cpu = mx.getThreadCpuTime(info.getThreadId());
+                        sb.append("  [").append(n).append("] ").append(info.getThreadState())
+                                .append(" cpu=").append(cpu / 1_000_000).append("ms\n");
+                        if (wichtig) {
+                            var stapel = info.getStackTrace();
+                            for (int i = 0; i < Math.min(25, stapel.length); i++) {
+                                sb.append("      at ").append(stapel[i]).append('\n');
+                            }
                         }
                     }
                     System.out.println(sb);
                 }
             } catch (InterruptedException ende) {
-                // Welt ist da.
+                // Test ist fertig.
             }
         }, "GlowCube-Waechter");
         t.setDaemon(true);
