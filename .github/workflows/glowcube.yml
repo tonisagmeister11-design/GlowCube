@@ -97,6 +97,16 @@ jobs:
 
       # 26.3 hat die Render-/GUI-Schicht neu gebaut. Dieser Schritt leuchtet
       # die Nachfolger aus - reines Erzaehlen, bricht nie ab.
+      - name: Bewegungspruefung des Servers ausleuchten
+        continue-on-error: true
+        run: |
+          CP=$(grep -v '^\s*$' build/classpath.txt | paste -sd:)
+          javap -c -p -classpath "$CP" net.minecraft.server.network.ServerGamePacketListenerImpl > sgpl.txt 2>&1 || true
+          javap -c -p -classpath "$CP" net.minecraft.network.protocol.game.ServerboundMovePlayerPacket > smpp.txt 2>&1 || true
+          wc -l sgpl.txt smpp.txt
+          awk '/containsInvalidValues\(/{f=1} f{print; n++} n>40{f=0;n=0}' sgpl.txt | head -60 || true
+          awk '/void handleMovePlayer\(/{f=1} f{print; n++} n>140{exit}' sgpl.txt || true
+          grep -n "Pos(\|isFinite\|3.0E7\|INVALID" smpp.txt | head -30 || true
       - name: 26.3-Render-Namen ausleuchten
         continue-on-error: true
         run: |

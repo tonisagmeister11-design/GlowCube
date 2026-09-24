@@ -59,6 +59,16 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             mc.options.simulationDistance().set(5);
             // Ohne Grafikkarte frisst jedes Bild CPU, die der Welt-Server braucht.
             mc.options.framerateLimit().set(10);
+            // Die Menue-Unschaerfe ist ohne Grafikkarte so teuer, dass der
+            // Ladebildschirm kaum Ticks schafft - und der Test-Server laeuft
+            // im Gleichschritt mit dem Client.
+            try {
+                Object blur = mc.options.getClass().getMethod("menuBackgroundBlurriness").invoke(mc.options);
+                blur.getClass().getMethod("set", Object.class).invoke(blur, 0);
+                System.out.println("GLOWCUBE-TEST Menue-Unschaerfe aus");
+            } catch (ReflectiveOperationException e) {
+                System.out.println("GLOWCUBE-TEST Menue-Unschaerfe nicht gefunden: " + e);
+            }
         });
         var bauer = kontext.worldBuilder();
         flachwelt(bauer);
