@@ -1,7 +1,7 @@
 name: AdminField
-version: 2.9.0
+version: 2.10.0
 main: de.adminfield.AdminFieldPlugin
-api-version: '26.2'
+api-version: '26.3'
 author: AdminField
 description: Admin-Kontrollzentrum mit automatischer Bauerkennung, Spielerverwaltung und Live-Serverstatus.
 commands:
