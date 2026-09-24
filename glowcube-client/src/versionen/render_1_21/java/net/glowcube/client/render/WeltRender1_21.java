@@ -114,10 +114,21 @@ public final class WeltRender1_21 implements WeltRender {
         int g = ColorUtil.green(farbe);
         int b = ColorUtil.blue(farbe);
 
-        // Ohne setNormal: der Linientyp in 1.21.11 fuehrt kein Normalen-Element,
-        // ein setNormal darauf laesst den BufferBuilder abstuerzen. Position und
-        // Farbe genuegen fuer duenne Linien.
-        buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a);
-        buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a);
+        // Der Linientyp in 1.21.11 will je Punkt Farbe, Normale (die Richtung
+        // der Linie) und Linienbreite - fehlt eins davon, bricht der Puffer beim
+        // Zeichnen ab ("Missing elements in vertex: Normal, LineWidth"). Das hat
+        // der Spieltest aufgedeckt.
+        float nx = x2 - x1;
+        float ny = y2 - y1;
+        float nz = z2 - z1;
+        float laenge = (float) Math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (laenge < 1.0e-6f) {
+            return;
+        }
+        nx /= laenge;
+        ny /= laenge;
+        nz /= laenge;
+        buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a).setNormal(pose, nx, ny, nz).setLineWidth(2.0f);
+        buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a).setNormal(pose, nx, ny, nz).setLineWidth(2.0f);
     }
 }

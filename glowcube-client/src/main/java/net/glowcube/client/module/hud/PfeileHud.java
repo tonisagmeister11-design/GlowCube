@@ -18,7 +18,8 @@ public final class PfeileHud extends HudModul {
     private final BooleanSetting nurMitBogen = register(
             new BooleanSetting("Nur mit Bogen", "Nur zeigen, wenn Bogen oder Armbrust in der Hand ist", false));
 
-    private static final ItemStack SYMBOL = new ItemStack(Items.ARROW);
+    /** Erst beim ersten Zeichnen anlegen - ab 26.x sind die Item-Daten beim Mod-Start noch nicht gebunden. */
+    private static ItemStack symbol;
     private int anzahl;
     private boolean sichtbar;
 
@@ -59,7 +60,10 @@ public final class PfeileHud extends HudModul {
     @Override
     public void zeichnen(HudZeichner z, float x, float y) {
         z.rundRect(x, y, breite(z), 20, 3, 0x99101420);
-        z.gegenstand(SYMBOL, Math.round(x) + 2, Math.round(y) + 2);
+        if (symbol == null) {
+            symbol = new ItemStack(Items.ARROW);
+        }
+        z.gegenstand(symbol, Math.round(x) + 2, Math.round(y) + 2);
         z.text(String.valueOf(anzahl), x + 20, y + 6, anzahl > 0 ? Theme.TEXT : 0xFFFF5F6D, true);
     }
 }
