@@ -1,0 +1,25 @@
+{
+  "name": "claude-minecraft-bot",
+  "version": "1.0.0",
+  "description": "Claude als Mitspieler in Minecraft - laeuft, baut ab, baut, craftet, kaempft und redet im Chat.",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "claude-bot": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "check": "node --check src/index.js && node test/offline.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "minecraft-protocol": "^1.68.0",
+    "mineflayer": "^4.39.0",
+    "mineflayer-pathfinder": "^2.4.5",
+    "vec3": "^0.1.10"
+  }
+}

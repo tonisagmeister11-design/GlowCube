@@ -1,0 +1,13 @@
+# Name, mit dem sich der Bot verbindet (MC_USERNAME in claude-bot/.env)
+bot-name: Claude
+
+# Spielmodus, wenn Claude gerufen wird: SURVIVAL, CREATIVE, ADVENTURE
+gamemode: SURVIVAL
+
+# Nachricht an alle, wenn Claude erscheint oder verschwindet
+announce: true
+
+messages:
+  spawned: "&e%bot% ist da!"
+  gone: "&e%bot% ist verschwunden."
+  offline: "&c%bot% ist nicht verbunden. Starte zuerst das Bot-Programm (claude-bot)."

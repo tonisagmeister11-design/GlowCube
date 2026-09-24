@@ -1,0 +1,17 @@
+name: ClaudeSpawn
+version: 1.0.0
+main: de.glowcube.claude.ClaudeSpawnPlugin
+api-version: '1.21'
+description: Holt Claude (claude-bot) per /spawn claude neben dich.
+authors: [GlowCube]
+commands:
+  claude:
+    description: Claude rufen, wegschicken oder Status ansehen
+    usage: /claude [spawn|despawn|status|reload]
+permissions:
+  claudebot.summon:
+    description: Claude mit /spawn claude rufen und mit /despawn claude wegschicken
+    default: true
+  claudebot.admin:
+    description: /claude reload
+    default: op
