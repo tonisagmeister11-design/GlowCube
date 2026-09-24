@@ -83,7 +83,7 @@ Die Anordnung bleibt ueber den Neustart hinweg erhalten - sie steht in
 | `O` | OreSim | | `M` | AntiAFK |
 | `H` | Fullbright | | `B` | SeedHunt |
 | `C` | Zoom | | `N` | NoFall |
-| `Linke Alt` | Freelook (halten) | | | |
+| `Linke Alt` | Freelook (halten) | | `U` | Weltkarte |
 | `F` | Flight | | `J` | AutoSprint |
 | `G` | Speed | | `L` | Search |
 | `V` | Step | | | |
@@ -108,6 +108,10 @@ erkannt.
 | `/strike [x y z]` | Ziel fuer den Orbital Strike |
 | `/agentort [x y z \| weg]` | Einsatzort der Agenten (ohne Zahlen: wo du stehst) |
 | `/agentkiste [weg]` | Die Kiste, auf die du schaust, wird Sammelkiste |
+| `/wp` (`/wegpunkt`) | Alle Wegpunkte dieser Welt mit Entfernung |
+| `/wp add <name> [x y z]` | Wegpunkt anlegen (ohne Zahlen: wo du stehst) |
+| `/wp del <name>` | Wegpunkt loeschen |
+| `/wp tp <name>` | Zum Wegpunkt teleportieren (Einzelspieler mit Cheats oder OP) |
 
 Die ersten vier sind rein clientseitig - der Server sieht davon nichts.
 
@@ -119,6 +123,10 @@ Die ersten vier sind rein clientseitig - der Server sieht davon nichts.
 | KillAura | Greift Ziele in Reichweite an - 16 Einstellungen, getrennte Reichweite durch Waende, Waffenwechsel mit Ruecktausch |
 | Criticals | Erzwingt kritische Treffer - fuenf Betriebsarten, plus Schmetterschlag mit der Keule |
 | AutoTotem | Haelt ein Totem in der Zweithand, sobald es rechnerisch eng wird |
+| AutoBlock | Hebt das Schild, sobald ein Gegner ausholt oder ein Pfeil anfliegt, und senkt es danach wieder |
+| CrystalAura | Legt End-Kristalle auf Obsidian neben das Ziel und zuendet sie - rechnet vorher Schaden am Ziel und an dir aus |
+| BedAura | Im Nether und End: legt ein Bett neben das Ziel (richtig gedreht) und sprengt es |
+| Surround | Mauert deine Fuesse mit Obsidian ein - gegen Kristall-Explosionen |
 
 **PvP Pro** (Combat) kaempft fuer dich gegen einen Spieler oder Mob: Ziel ist
 das erste Lebewesen, das du schlaegst - Spieler oder Mob (oder der naechste
@@ -144,6 +152,9 @@ Berechtigung `glowcube.pvppro`). Sonst schaltet es sich selbst ab.
 | AutoWalk | Laeuft von allein weiter, in vier Richtungen |
 | Scaffold | Baut den Boden unter dir mit, samt Schnellturm |
 | PacketFly | Fliegt ueber Pakete statt ueber die Physik |
+| InventoryMove | Laufen, springen und umsehen (Pfeiltasten), waehrend Inventar oder Kiste offen sind |
+| AntiVoid | Setzt einen Block unter dich, wenn du ins Leere faellst (oder, einstellbar, bei jedem tiefen Sturz) |
+| ElytraFly | Elytra frei steuern und schweben, oder Schub in Blickrichtung; oeffnet sich auf Wunsch von selbst |
 
 ### Render
 | Modul | Was es tut |
@@ -157,6 +168,7 @@ Berechtigung `glowcube.pvppro`). Sonst schaltet es sich selbst ab.
 | Search | Markiert gesuchte Bloecke, ohne die Sicht zu veraendern |
 | HoleESP | Zeigt Loecher, die Explosionen standhalten - getrennt nach Bedrock, Obsidian und gemischt |
 | Trajectories | Zeigt, wo Pfeil, Perle oder Trank landen |
+| Freecam | Die Kamera fliegt frei (WASD, Springen/Schleichen), dein Koerper bleibt stehen - du siehst dich selbst von aussen |
 
 ### Player
 | Modul | Was es tut |
@@ -165,6 +177,8 @@ Berechtigung `glowcube.pvppro`). Sonst schaltet es sich selbst ab.
 | AutoRespawn | Sofort wieder einsteigen |
 | AntiAFK | Haelt dich auf dem Server |
 | NoInteract | Sperrt einzelne Arten von Klicks und Schlaegen - gegen Betten im Nether |
+| AutoArmor | Zieht die beste Ruestung aus dem Inventar an (Elytra bleibt auf Wunsch) |
+| FastPlace | Rechtsklick ohne die Vanilla-Pause von 4 Ticks |
 
 ### World
 | Modul | Was es tut |
@@ -339,6 +353,32 @@ Links stapelt sie unter das Wasserzeichen, Rechts unter die Modulliste.
 | Aufgesammelt | Was gerade ins Inventar kam oder es verliess |
 | Mausbewegung | Wie du die Maus gerade bewegst |
 | Ressourcenpakete | Die aktiven Ressourcenpakete |
+| Item-Zaehler | Wie viel du von wichtigen Items hast (Liste frei einstellbar), mit Symbol |
+| Session-Statistik | Spielzeit, abgebaute Bloecke, Kills, Tode und Strecke seit dem Einschalten |
+| Haltbarkeit (PvP-HUD) | Warnt, bevor Werkzeug oder Ruestung zerbricht; schuetzt auf Wunsch die Spitzhacke vor dem letzten Schlag |
+| Totem-Pops (PvP-HUD) | Zaehlt die verbrauchten Totems jedes Spielers in der Naehe |
+
+### Karte (Bereich "Kein Hack")
+
+Alles rein im Client - kein Plugin noetig, geht auf jedem Server.
+
+| Modul | Was es tut |
+| --- | --- |
+| Minimap | Karte in der Ecke: Gelaende in Kartenfarben, Spieler, Monster, Tiere, Wegpunkte, Koordinaten. In Hoehlen und im Nether zeigt sie die Ebene, auf der du stehst |
+| Weltkarte | Taste `U`: grosse Karte ueber den ganzen Bildschirm mit Wegpunkten und Spielernamen |
+| Wegpunkte | Benannte Orte je Server/Welt und Dimension: Lichtsaeule in der Welt, Richtungspfeil und Entfernung im HUD, Punkt auf den Karten. Befehle `/wp` |
+| Todespunkt | Stirbst du, wird die Stelle als Wegpunkt `Tod-hh.mm.ss` gespeichert und steht im Chat |
+| Klick-Teleport | Mittlere Maustaste teleportiert dich auf den Block, auf den du schaust (ueber `/tp`, also mit Cheats oder OP) |
+
+Die Karte zeigt nur, was dein Client geladen hat - also so weit, wie deine
+Sichtweite reicht.
+
+### Werkzeuge (Bereich "Kein Hack")
+
+| Modul | Was es tut |
+| --- | --- |
+| Benachrichtigungen | Meldungen oben in der Mitte: Spieler kommt oder geht, wenig Leben, Totem-Pops, Todespunkt, Haltbarkeit, Teleport - mit leisem Ton |
+| Makros | Eine Taste - ein Befehl: `F6: /home`, `G: gg`, `H: modul Freecam`. Tasten A-Z, 0-9, F1-F12, NUM0-NUM9 |
 
 ### Optik (Bereich "Kein Hack")
 
