@@ -335,7 +335,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         k.setScreen(() -> new net.glowcube.client.gui.ClickGuiScreen());
         k.waitTicks(10);
         if (!linksKlicken(k, "WAHL_HACKS", null)) {
-            kaputt("ClickGUI: Knopf \\"Hacks\\" nicht gefunden");
+            kaputt("ClickGUI: Knopf Hacks nicht gefunden");
             k.setScreen(() -> null);
             return;
         }
