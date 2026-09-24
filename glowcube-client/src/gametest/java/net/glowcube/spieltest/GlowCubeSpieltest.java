@@ -62,7 +62,9 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         });
         var bauer = kontext.worldBuilder();
         flachwelt(bauer);
+        Thread waechter = threadWaechter();
         try (var welt = bauer.create()) {
+            waechter.interrupt();
             var server = welt.getServer();
             chunksAbwarten(welt);
             server.runCommand("time set noon");
@@ -84,6 +86,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             pruefe("Agenten", () -> agenten(kontext, server));
             pruefe("Alle Module an/aus", () -> rundlauf(kontext));
         } catch (Throwable t) {
+            waechter.interrupt();
             kaputt("Test selbst abgebrochen: " + t);
             t.printStackTrace();
         }
@@ -250,6 +253,7 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             if (AUSLASSEN.contains(m.name())) {
                 continue;
             }
+            System.out.println("GLOWCUBE-TEST Rundlauf: " + m.name());
             int fehlerVorher = ModuleManager.FEHLER.size();
             String ausnahme = k.computeOnClient(mc -> {
                 try {
@@ -277,6 +281,10 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
             } else {
                 ohneFehler++;
             }
+            if (k.computeOnClient(mc -> mc.getConnection() == null || mc.level == null)) {
+                kaputt("Modul " + m.name() + " hat die Verbindung zur Welt verloren (siehe Protokoll)");
+                throw new IllegalStateException("Rundlauf abgebrochen nach " + m.name());
+            }
             // Nicht aus der Szene laufen/fliegen.
             k.runOnClient(mc -> {
                 if (mc.player != null) {
@@ -288,6 +296,42 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
     }
 
     // -------------------------------------------------------- Hilfen
+
+    /**
+     * Haengt das Anlegen der Welt, schreibt dieser Waechter nach 60 Sekunden
+     * alle Threads mit CPU-Zeit und Stapel ins Protokoll - damit man sieht,
+     * wer den Rechner belegt oder worauf der Server wartet.
+     */
+    private static Thread threadWaechter() {
+        Thread t = new Thread(() -> {
+            try {
+                for (int runde = 0; runde < 3; runde++) {
+                    Thread.sleep(runde == 0 ? 60_000 : 30_000);
+                    var mx = java.lang.management.ManagementFactory.getThreadMXBean();
+                    StringBuilder sb = new StringBuilder("GLOWCUBE-TEST Threads beim Weltladen (Runde " + runde + "):\n");
+                    for (var info : mx.dumpAllThreads(true, true)) {
+                        long cpu = mx.getThreadCpuTime(info.getThreadId());
+                        sb.append("  [").append(info.getThreadName()).append("] ").append(info.getThreadState())
+                                .append(" cpu=").append(cpu / 1_000_000).append("ms");
+                        if (info.getLockName() != null) {
+                            sb.append(" wartet auf ").append(info.getLockName()).append(" von ").append(info.getLockOwnerName());
+                        }
+                        sb.append('\n');
+                        var stapel = info.getStackTrace();
+                        for (int i = 0; i < Math.min(12, stapel.length); i++) {
+                            sb.append("      at ").append(stapel[i]).append('\n');
+                        }
+                    }
+                    System.out.println(sb);
+                }
+            } catch (InterruptedException ende) {
+                // Welt ist da.
+            }
+        }, "GlowCube-Waechter");
+        t.setDaemon(true);
+        t.start();
+        return t;
+    }
 
     /**
      * Wartet, bis alle Chunks gezeichnet sind. Die Methode heisst je nach
