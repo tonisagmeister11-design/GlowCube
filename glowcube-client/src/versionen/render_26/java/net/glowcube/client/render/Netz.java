@@ -17,6 +17,46 @@ import net.minecraft.world.phys.Vec3;
  * 26.x-Namen.
  */
 public final class Netz {
+    private static java.lang.reflect.Field schwungFeld;
+
+    /**
+     * Holt das Wesen gerade zum Schlag aus? Ab 26.x steckt das in einem
+     * eigenen SwingState statt im Feld {@code swinging}. Dessen Innenleben
+     * ist nicht zugesichert - darum wird jedes boolesche Feld mit "swing"
+     * im Namen oder ein Zaehler groesser null als "holt aus" gelesen.
+     */
+    public static boolean holtAus(net.minecraft.world.entity.LivingEntity wesen) {
+        try {
+            if (schwungFeld == null) {
+                schwungFeld = net.minecraft.world.entity.LivingEntity.class.getDeclaredField("swingState");
+                schwungFeld.setAccessible(true);
+            }
+            Object zustand = schwungFeld.get(wesen);
+            if (zustand == null) {
+                return false;
+            }
+            for (java.lang.reflect.Field f : zustand.getClass().getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
+                    continue;
+                }
+                f.setAccessible(true);
+                String name = f.getName().toLowerCase(java.util.Locale.ROOT);
+                if (f.getType() == boolean.class && name.contains("swing")) {
+                    if (f.getBoolean(zustand)) {
+                        return true;
+                    }
+                } else if (f.getType() == int.class && (name.contains("time") || name.contains("tick"))) {
+                    if (f.getInt(zustand) > 0) {
+                        return true;
+                    }
+                }
+            }
+        } catch (ReflectiveOperationException | RuntimeException fehler) {
+            return false;
+        }
+        return false;
+    }
+
     private Netz() {
     }
 

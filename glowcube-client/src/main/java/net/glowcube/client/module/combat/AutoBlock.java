@@ -71,7 +71,7 @@ public final class AutoBlock extends Module {
             }
             if (Ziele.taugt(wesen, spieler.get(), monster.get())) {
                 LivingEntity lebend = (LivingEntity) wesen;
-                if (lebend.swinging && lebend.distanceTo(player()) <= r) {
+                if (net.glowcube.client.render.Netz.holtAus(lebend) && lebend.distanceTo(player()) <= r) {
                     return true;
                 }
                 continue;

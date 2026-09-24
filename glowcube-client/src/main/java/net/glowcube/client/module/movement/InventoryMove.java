@@ -77,7 +77,8 @@ public final class InventoryMove extends Module {
     private static boolean unten(KeyMapping taste) {
         try {
             InputConstants.Key key = InputConstants.getKey(taste.saveString());
-            return key.getType() == InputConstants.Type.KEYSYM && Netz.tasteUnten(key.getValue());
+            // Nur Tastaturtasten - Maustasten fragt isKeyDown nicht ab.
+            return !key.getType().name().contains("MOUSE") && Netz.tasteUnten(key.getValue());
         } catch (Exception unbekannt) {
             return false;
         }

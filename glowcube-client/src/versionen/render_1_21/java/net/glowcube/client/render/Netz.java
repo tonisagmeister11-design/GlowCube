@@ -18,6 +18,11 @@ import net.minecraft.world.phys.Vec3;
  * bleiben die Module fassungsneutral - sie rufen nur {@code Netz.*}.
  */
 public final class Netz {
+    /** Holt das Wesen gerade zum Schlag aus? */
+    public static boolean holtAus(net.minecraft.world.entity.LivingEntity wesen) {
+        return wesen.swinging;
+    }
+
     private Netz() {
     }
 

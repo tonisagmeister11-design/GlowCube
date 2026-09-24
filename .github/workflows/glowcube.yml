@@ -231,13 +231,13 @@ jobs:
             "net.minecraft.client.player.ClientInput#" \
             "net.minecraft.client.player.RemotePlayer#" \
             "net.minecraft.world.entity.player.Player#tryToStartFallFlying" \
-            "net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket$Action#START_FALL_FLYING" \
+            'net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket$Action#START_FALL_FLYING' \
             "net.minecraft.world.entity.Entity#noPhysics" \
             "net.minecraft.world.entity.Entity#setYHeadRot" \
-            "net.minecraft.world.level.Level#getMinY" \
+            "net.minecraft.world.level.LevelHeightAccessor#getMinY" \
             "net.minecraft.world.level.material.MapColor#col" \
             "net.minecraft.world.level.material.MapColor#NONE" \
-            "net.minecraft.world.level.levelgen.Heightmap$Types#WORLD_SURFACE" \
+            'net.minecraft.world.level.levelgen.Heightmap$Types#WORLD_SURFACE' \
             "net.minecraft.client.KeyMapping#saveString" \
             "com.mojang.blaze3d.platform.InputConstants#getKey" \
             "net.minecraft.sounds.SoundEvents#NOTE_BLOCK_PLING" \
