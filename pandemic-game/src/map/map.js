@@ -213,8 +213,9 @@ export class WorldMap {
 
   spawnBubble(b) {
     const c = this.byIso[b.iso]; if (!c) return;
-    // leichte Streuung um das Land
-    this.bubbles.push({ iso: b.iso, x: c.lon + (Math.random() - 0.5) * 3, y: c.lat + (Math.random() - 0.5) * 3, age: 0, life: 8, type: b.type, ref: b });
+    // Anzahl begrenzen (älteste zuerst entfernen), damit die Karte übersichtlich bleibt
+    if (this.bubbles.length > 16) this.bubbles.shift();
+    this.bubbles.push({ iso: b.iso, x: c.lon + (Math.random() - 0.5) * 3, y: c.lat + (Math.random() - 0.5) * 3, age: 0, life: 9, type: b.type, ref: b });
   }
 
   update(dt) {
