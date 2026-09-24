@@ -55,8 +55,10 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext kontext) {
         // Kleine Sichtweite - der CI-Rechner zeichnet ohne Grafikkarte.
         kontext.runOnClient(mc -> {
-            mc.options.renderDistance().set(4);
+            mc.options.renderDistance().set(3);
             mc.options.simulationDistance().set(5);
+            // Ohne Grafikkarte frisst jedes Bild CPU, die der Welt-Server braucht.
+            mc.options.framerateLimit().set(10);
         });
         var bauer = kontext.worldBuilder();
         flachwelt(bauer);

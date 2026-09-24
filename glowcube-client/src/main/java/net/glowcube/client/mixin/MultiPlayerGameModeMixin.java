@@ -52,11 +52,6 @@ public abstract class MultiPlayerGameModeMixin {
         }
     }
 
-    @Inject(method = "interact", at = @At("HEAD"), cancellable = true)
-    private void glowcube$wesenKlicken(Player spieler, Entity ziel, InteractionHand hand,
-                                       CallbackInfoReturnable<InteractionResult> info) {
-        if (Interactions.entityUse(ziel, hand)) {
-            info.setReturnValue(InteractionResult.FAIL);
-        }
-    }
+    // "interact" (Wesen anklicken) hat in 26.x einen Parameter mehr und liegt
+    // deshalb je Fassung in MultiPlayerGameModeInteractMixin.
 }

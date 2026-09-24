@@ -20,10 +20,16 @@ ORDNER = WURZEL / "src/main/java/net/glowcube/client/mixin"
 def main():
     konfig = json.loads(KONFIG.read_text(encoding="utf-8"))
     eingetragen = set(konfig.get("client", [])) | set(konfig.get("mixins", []))
-    vorhanden = {p.stem for p in ORDNER.glob("*.java")}
-
-    fehlt_datei = sorted(eingetragen - vorhanden)
-    fehlt_eintrag = sorted(vorhanden - eingetragen)
+    gemeinsame = {p.stem for p in ORDNER.glob("*.java")}
+    fehlt_datei = []
+    fehlt_eintrag = []
+    # Einige Mixins liegen je Fassung unter src/versionen/<render>/ - jede
+    # Fassung muss dann alle eingetragenen haben.
+    for fassung in ("render_1_21", "render_26"):
+        eigen = {p.stem for p in (WURZEL / "src/versionen" / fassung / "java/net/glowcube/client/mixin").glob("*.java")}
+        vorhanden = gemeinsame | eigen
+        fehlt_datei += [f"{n} ({fassung})" for n in sorted(eingetragen - vorhanden)]
+        fehlt_eintrag += [f"{n} ({fassung})" for n in sorted(vorhanden - eingetragen)]
 
     if fehlt_datei:
         print("::error title=Mixin ohne Datei::" + ", ".join(fehlt_datei))

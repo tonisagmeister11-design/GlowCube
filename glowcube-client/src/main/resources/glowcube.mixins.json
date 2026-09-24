@@ -13,6 +13,7 @@
     "ConnectionMixin",
     "LocalPlayerMixin",
     "MultiPlayerGameModeMixin",
+    "MultiPlayerGameModeInteractMixin",
     "FriendlyByteBufMixin",
     "CompressionDecoderMixin",
     "MultiPlayerGameModeAccessor",
