@@ -197,7 +197,9 @@ export class WorldMap {
     this._clampView();
     this._buildPaths();
     this._infCanvas = document.createElement('canvas');
-    this._infCanvas.width = Math.round(this.baseW); this._infCanvas.height = Math.round(this.baseH);
+    this._infRes = 2; // doppelte Auflösung für scharfe Infektionspunkte beim Zoom
+    this._infCanvas.width = Math.round(this.baseW * this._infRes);
+    this._infCanvas.height = Math.round(this.baseH * this._infRes);
     this._infDirty = true;
   }
 
@@ -229,7 +231,9 @@ export class WorldMap {
   // ---------- Infektionsschicht (gedrosselt neu gezeichnet) ----------
   _renderInfectionLayer() {
     const x = this._infCanvas.getContext('2d');
+    x.setTransform(1, 0, 0, 1, 0, 0);
     x.clearRect(0, 0, this._infCanvas.width, this._infCanvas.height);
+    x.setTransform(this._infRes, 0, 0, this._infRes, 0, 0); // proj liefert baseW-Koordinaten
     if (!this.eng) return;
     for (const c of this.world.countries) {
       const st = this.eng.countries[c.iso];
@@ -302,24 +306,22 @@ export class WorldMap {
     ctx.translate(this.view.x, this.view.y);
     ctx.scale(this.view.scale, this.view.scale);
 
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     if (this.ready) ctx.drawImage(this.img, 0, 0, this.baseW, this.baseH);
 
     // driftende Wolken (zwei Ebenen)
     this._drawClouds(ctx, t);
 
-    // Infektionsschicht
+    // Infektionsschicht (hochauflösend, auf Kartengröße skaliert)
     if (this._infDirty && this._infCanvas) this._renderInfectionLayer();
-    if (this._infCanvas && this.eng) { ctx.globalAlpha = 0.95; ctx.drawImage(this._infCanvas, 0, 0); ctx.globalAlpha = 1; }
+    if (this._infCanvas && this.eng) { ctx.globalAlpha = 0.95; ctx.drawImage(this._infCanvas, 0, 0, this.baseW, this.baseH); ctx.globalAlpha = 1; }
 
-    // Grenzen: dezent immer, hervorgehoben bei Hover/Auswahl
-    ctx.lineWidth = 0.5 / this.view.scale;
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    for (const c of this.world.countries) ctx.stroke(this.paths[c.iso]);
-    for (const iso of [this.selectedIso, this.hoverIso]) {
-      if (!iso || !this.paths[iso]) continue;
-      ctx.lineWidth = (iso === this.selectedIso ? 2 : 1.3) / this.view.scale;
-      ctx.strokeStyle = iso === this.selectedIso ? '#ffe98a' : '#ffffff';
-      ctx.stroke(this.paths[iso]);
+    // KEINE eigenen Grenzen mehr zeichnen – die Grenzen des Kartenbildes gelten.
+    // Auswahl/Hover werden als weicher Flächen-Glow gezeigt (kein konkurrierender Umriss).
+    if (this.hoverIso && this.hoverIso !== this.selectedIso) this._glowCountry(ctx, this.hoverIso, 'rgba(255,255,255,0.14)');
+    if (this.selectedIso) {
+      const pulse = 0.16 + 0.08 * Math.sin(t * 3);
+      this._glowCountry(ctx, this.selectedIso, `rgba(255,225,120,${pulse})`);
     }
 
     if (this.eng) { this._drawVehicles(ctx, t); this._drawSpecialAgents(ctx, t); }
@@ -328,6 +330,29 @@ export class WorldMap {
     if (this.asteroid) this._drawAsteroid(ctx, t);
 
     ctx.restore();
+
+    // Ländername als Tooltip beim Überfahren (Bildschirmkoordinaten)
+    if (this.hoverIso && this.mouse) {
+      const name = this.byIso[this.hoverIso] ? this.byIso[this.hoverIso].name : '';
+      if (name) {
+        ctx.save(); ctx.scale(this.dpr, this.dpr);
+        ctx.font = '600 13px system-ui, sans-serif';
+        const w = ctx.measureText(name).width + 16;
+        let tx = this.mouse.x + 14, ty = this.mouse.y - 6;
+        if (tx + w > this.cw) tx = this.cw - w - 4;
+        ctx.fillStyle = 'rgba(12,4,6,0.85)'; ctx.strokeStyle = 'rgba(255,90,70,0.5)'; ctx.lineWidth = 1;
+        roundRect(ctx, tx, ty - 18, w, 22, 5); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ffe0d0'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        ctx.fillText(name, tx + 8, ty - 7);
+        ctx.restore();
+      }
+    }
+  }
+
+  _glowCountry(ctx, iso, style) {
+    const path = this.paths[iso]; if (!path) return;
+    const c = this.byIso[iso]; const [bx, by] = this.proj(c.lon, c.lat);
+    ctx.save(); ctx.clip(path); ctx.fillStyle = style; ctx.fillRect(bx - 300, by - 300, 600, 600); ctx.restore();
   }
 
   _drawClouds(ctx, t) {
@@ -509,3 +534,9 @@ export class WorldMap {
 
 function mulberry(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
