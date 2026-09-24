@@ -107,6 +107,10 @@ jobs:
           awk '/containsInvalidValues\(/{f=1} f{print; n++} n>40{f=0;n=0}' sgpl.txt | head -60 || true
           awk '/void handleMovePlayer\(/{f=1} f{print; n++} n>140{exit}' sgpl.txt || true
           grep -n "Pos(\|isFinite\|3.0E7\|INVALID" smpp.txt | head -30 || true
+          echo "== Wer setzt receivedPositionThisTick =="
+          awk '/^  [a-z].*\(/{m=$0} /receivedPositionThisTick/{print m " :: " $0}' sgpl.txt || true
+          echo "== handleClientTickEnd =="
+          awk '/void handleClientTickEnd\(/{f=1} f{print; n++} n>40{exit}' sgpl.txt || true
       - name: 26.3-Render-Namen ausleuchten
         continue-on-error: true
         run: |

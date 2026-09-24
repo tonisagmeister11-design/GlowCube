@@ -3,6 +3,7 @@ package net.glowcube.client.mixin;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import net.glowcube.client.core.Packets;
+import net.glowcube.client.util.Positionstakt;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,7 +30,9 @@ public abstract class ConnectionMixin {
     private void glowcube$senden(Packet<?> packet, ChannelFutureListener listener, CallbackInfo info) {
         if (Packets.send(packet)) {
             info.cancel();
+            return;
         }
+        Positionstakt.vorSenden(packet);
     }
 
     @Inject(

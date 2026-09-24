@@ -194,6 +194,40 @@ public final class GlowCubeSpieltest implements FabricClientGameTest {
         } else {
             kaputt("KillAura hat den Zombie nicht besiegt (" + vorher + " -> " + nachher + ")");
         }
+
+        // Dasselbe mit Criticals: dabei gehen mehrere Positionspakete in einem
+        // Tick hinaus - 26.x wirft dafuer hinaus, wenn der Positionstakt fehlt.
+        Module crit = modulOderNull("Criticals");
+        if (crit == null) {
+            kaputt("Modul Criticals nicht gefunden");
+            return;
+        }
+        server.runCommand("gamemode survival @a");
+        server.runCommand("execute as @a at @s run summon minecraft:husk ~ ~ ~2 {NoAI:1b,Silent:1b,Health:10f}");
+        k.waitTicks(10);
+        int vorher2 = zaehle(server, "husk");
+        k.runOnClient(mc -> {
+            crit.setEnabled(true);
+            aura.setEnabled(true);
+        });
+        k.waitTicks(120);
+        k.runOnClient(mc -> {
+            aura.setEnabled(false);
+            crit.setEnabled(false);
+        });
+        boolean verbunden = k.computeOnClient(mc -> mc.getConnection() != null && mc.level != null);
+        if (!verbunden) {
+            kaputt("KillAura mit Criticals: vom Server geworfen");
+            throw new IllegalStateException("Verbindung verloren");
+        }
+        int nachher2 = zaehle(server, "husk");
+        server.runCommand("gamemode creative @a");
+        server.runCommand("kill @e[type=minecraft:husk]");
+        if (vorher2 > 0 && nachher2 < vorher2) {
+            ok("KillAura mit Criticals trifft und bleibt verbunden (" + vorher2 + " -> " + nachher2 + ")");
+        } else {
+            kaputt("KillAura mit Criticals hat den Zombie nicht besiegt (" + vorher2 + " -> " + nachher2 + ")");
+        }
     }
 
     // ----------------------------------------------------------- Agenten
