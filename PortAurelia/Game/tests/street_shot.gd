@@ -16,6 +16,13 @@ func _ready() -> void:
 	await Events.world_ready
 	if world.day_night and args.has("hour"):
 		world.day_night.call("set_hour", float(args["hour"]))
+	if world.weather and args.has("weather"):
+		world.weather.call("set_weather", args["weather"], true)
+	if args.has("waypoint"):
+		var poi := world.data.nearest_poi(args["waypoint"], world.player.global_position)
+		Events.waypoint_set.emit(poi.get("entrance_v", Vector3.ZERO))
+	if args.has("wanted"):
+		world.police.call("set_wanted", int(args["wanted"]))
 	var out: String = args.get("out", "user://")
 	var p := world.player as Player
 	var home := world.data.nearest_poi("safehouse", p.global_position)

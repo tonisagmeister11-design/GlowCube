@@ -61,6 +61,19 @@ const CIVIL_COLORS := [Color(0.62, 0.05, 0.05), Color(0.08, 0.09, 0.1), Color(0.
 static var _meta := {}
 
 
+## Fictional make/model names shown in the HUD, garage and dealer.
+const NAMES := {
+	"compact": "Vireo Pico", "sedan": "Aster Linea", "luxury": "Marquis Regent", "sports": "Falco GT",
+	"supercar": "Stratos Vento", "suv": "Brava Ridge", "pickup": "Hauler 1500", "van": "Porter Cargo",
+	"truck": "Titan Box", "bus": "Metro Liner", "taxi": "Aster Cab", "police": "Interceptor PD",
+	"ambulance": "Medic Unit", "fire_truck": "Blaze Engine", "delivery": "Parcel Runner", "motorcycle": "Nitro 600",
+}
+
+
+static func display_name(id: String) -> String:
+	return NAMES.get(id, id.capitalize())
+
+
 static func get_def(id: String) -> Dictionary:
 	return DEFS.get(id, DEFS["sedan"])
 

@@ -25,3 +25,4 @@ __pycache__/
 *.pyc
 *.tmp
 Game/Audio/SFX/manifest.json
+Game/assets/ui/generated/
