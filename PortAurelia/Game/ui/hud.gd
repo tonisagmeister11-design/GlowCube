@@ -43,6 +43,7 @@ var _money_shown := 0
 var _money_delta_timer := 0.0
 var _radar_radius := 110.0
 var _t := 0.0
+var _timer_label: Label
 
 
 func _ready() -> void:
@@ -190,6 +191,12 @@ func _build() -> void:
 	_prompt.offset_top = -170
 	_prompt.visible = false
 	_root.add_child(_prompt)
+	# ---- mission timer
+	_timer_label = _label(34, HORIZONTAL_ALIGNMENT_CENTER, Color(1, 0.9, 0.5))
+	_timer_label.anchor_left = 0.4
+	_timer_label.anchor_right = 0.6
+	_timer_label.offset_top = 20
+	_root.add_child(_timer_label)
 	# ---- notifications
 	_notify_box = VBoxContainer.new()
 	_notify_box.position = Vector2(28, 24)
@@ -356,6 +363,13 @@ func _process(delta: float) -> void:
 	# crosshair
 	_crosshair.visible = p.aiming or (p.is_in_vehicle() and Input.is_action_pressed("aim"))
 	_crosshair.queue_redraw()
+	# mission countdown
+	var tl: float = world.missions.call("current_time_left") if world.missions else -1.0
+	if tl >= 0.0:
+		_timer_label.text = "%d:%02d" % [int(tl) / 60, int(tl) % 60]
+		_timer_label.add_theme_color_override("font_color", Color(1, 0.3, 0.25) if tl < 10.0 else Color(1, 0.9, 0.5))
+	else:
+		_timer_label.text = ""
 	# radar
 	_update_radar(delta, p, lvl, searching)
 
