@@ -7,10 +7,13 @@ const ALL_TRAITS = {};
 for (const t of [...TRANSMISSION, ...ABILITIES, ...SYMPTOMS]) ALL_TRAITS[t.id] = t;
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+// cure = Forschungstempo (höher = schnelleres Heilmittel), react = wie heftig
+// die Welt auf Tote/Symptome reagiert, detect = Anteil Infizierter, ab dem ein
+// Land den Erreger auch ohne Symptome im Labor entdeckt.
 export const DIFFICULTIES = {
-  leicht: { label: 'Leicht', cureReq: 0.85, react: 0.75, dna: 1.2 },
-  normal: { label: 'Normal', cureReq: 1.0, react: 1.0, dna: 1.0 },
-  brutal: { label: 'Brutal', cureReq: 1.3, react: 1.35, dna: 0.85 },
+  leicht: { label: 'Leicht', cure: 0.85, react: 0.75, dna: 1.2, detect: 0.03 },
+  normal: { label: 'Normal', cure: 1.3, react: 1.0, dna: 1.0, detect: 0.02 },
+  brutal: { label: 'Brutal', cure: 1.4, react: 1.35, dna: 0.85, detect: 0.008 },
 };
 
 export class Engine {
@@ -25,7 +28,9 @@ export class Engine {
     this.totalDnaEarned = 8;
     this.cure = 0;            // 0..1
     this.cureActive = false;
-    this.cureReqMul = this.diff.cureReq;
+    this.cureRate = 0;        // Forschungsfortschritt pro Tag (Anzeige)
+    this.priority = 0;        // globale Alarmstufe: 0 ruhig … ~1.6 weltweite Panik
+    this._deadPrev = 0;
     this.evolved = new Set();
     this.evoOrder = [];
     this.devolveCount = 0;
@@ -59,9 +64,13 @@ export class Engine {
         controlled: 0, zombies: 0, apes: 0, vampires: 0, xeno: 0,
         detected: false, airportOpen: c.airport, portOpen: c.port, bordersOpen: true,
         cureContribution: 0, lastDnaDay: -99, closedAir: false, closedPort: false, closedBorder: false,
+        measures: 0,   // Quarantäne/Lockdown 0..0.8 – bremst Ansteckung Gesunder
+        collapse: 0,   // Zusammenbruch von Staat & Gesundheitssystem 0..1
+        researchW: c.medical * c.wealth * (0.6 + 0.4 * Math.min(1, Math.sqrt(c.pop / 1e8))),
       };
     }
     this.list = Object.values(this.countries);
+    this.researchTotal = this.list.reduce((a, st) => a + st.researchW, 0);
     // Start-Infektion
     const s = this.countries[opts.startIso];
     const seed = Math.max(1, Math.round(s.pop * 0.000003));
@@ -116,40 +125,44 @@ export class Engine {
   }
 
   // Echte internationale Übertragung pro Tick über die Routen.
-  // Flughafen-/Hafen-/Grenzschließungen kappen die jeweiligen Wege direkt.
+  // Geschlossene Flughäfen/Häfen/Grenzen kappen die Wege fast vollständig – aber
+  // nicht ganz (Schmuggel, Heimkehrer). Tiere & Insekten kennen keine Grenzen.
   spreadInternational() {
     const infM = (0.4 + this.infectivity * 0.05) * 0.5;
+    const m = this.mods;
+    const leakAir = 0.02 + (m.air || 0) * 0.03;
+    const leakSea = 0.025 + (m.sea || 0) * 0.03;
+    const leakLand = 0.04 + (m.land || 0) * 0.4;
     for (const iso in this.countries) {
       const st = this.countries[iso];
       if (st.infected < 20) continue;
-      const frac = st.infected / Math.max(1, st.pop);
+      const frac = st.infected / Math.max(1, st.pop) * (1 - st.measures * 0.5);
       const travel = st.ref.travel;
       // Luft
-      if (st.airportOpen && this.airAdj[iso]) {
-        const p = clamp(frac * (0.6 + (this.mods.air || 0) * 3) * travel * infM, 0, 0.95);
+      if (st.ref.airport && this.airAdj[iso]) {
+        const p = clamp(frac * (0.6 + (m.air || 0) * 3) * travel * infM, 0, 0.95) * (st.airportOpen ? 1 : leakAir);
         for (const { iso: to, w } of this.airAdj[iso]) {
           const dst = this.countries[to];
-          if (!dst.airportOpen || dst.healthy < 1) continue;
-          if (this.rng() < p * Math.min(1, w * 1.5)) this.tryInfect(to, 'air');
+          if (dst.healthy < 1) continue;
+          if (this.rng() < p * Math.min(1, w * 1.5) * (dst.airportOpen ? 1 : leakAir)) this.tryInfect(to, 'air');
         }
       }
       // See
-      if (st.portOpen && this.seaAdj[iso]) {
-        const p = clamp(frac * (0.5 + (this.mods.sea || 0) * 3) * travel * infM, 0, 0.9);
+      if (st.ref.port && this.seaAdj[iso]) {
+        const p = clamp(frac * (0.5 + (m.sea || 0) * 3) * travel * infM, 0, 0.9) * (st.portOpen ? 1 : leakSea);
         for (const { iso: to } of this.seaAdj[iso]) {
           const dst = this.countries[to];
-          if (!dst.portOpen || dst.healthy < 1) continue;
-          if (this.rng() < p) this.tryInfect(to, 'sea');
+          if (dst.healthy < 1) continue;
+          if (this.rng() < p * (dst.portOpen ? 1 : leakSea)) this.tryInfect(to, 'sea');
         }
       }
       // Land
-      if (st.bordersOpen) {
-        const p = clamp(frac * (0.35 + (this.mods.land || 0) * 3) * infM, 0, 0.85);
-        for (const nIso of st.ref.neighbors) {
-          const n = this.countries[nIso];
-          if (!n || !n.bordersOpen || n.healthy < 1) continue;
-          if (this.rng() < p) this.tryInfect(nIso, 'land');
-        }
+      const pl = clamp(frac * (0.35 + (m.land || 0) * 3) * infM, 0, 0.85);
+      for (const nIso of st.ref.neighbors) {
+        const n = this.countries[nIso];
+        if (!n || n.healthy < 1) continue;
+        const open = st.bordersOpen && n.bordersOpen;
+        if (this.rng() < pl * (open ? 1 : leakLand)) this.tryInfect(nIso, 'land');
       }
     }
   }
@@ -303,57 +316,67 @@ export class Engine {
 
     const globalInf = Math.max(0.05, this.infectivity) * 0.0075;
     let anyInfected = false;
+    this._bubbleScale = Math.min(1, 12 / Math.max(1, this.countriesInfected()));
 
     for (const iso in this.countries) {
       const st = this.countries[iso];
       const c = st.ref;
       if (st.infected > 0.5) anyInfected = true;
       const alive = st.healthy + st.infected;
-      if (alive < 1) continue;
+      if (alive < 1) {   // weniger als ein Mensch übrig → Land ist ausgestorben
+        if (alive > 0) { st.dead += alive; st.healthy = 0; st.infected = 0; }
+        continue;
+      }
 
-      // interne Ausbreitung (logistisch)
+      // interne Ausbreitung (logistisch); Quarantäne schützt noch Gesunde
       if (st.infected >= 0.5 && st.healthy > 0) {
         const envM = this.envMultiplier(c);
         const densM = 0.6 + Math.min(1.4, c.density / 200) + c.urban * 0.5;
         const frac = st.infected / alive;
-        let rate = globalInf * envM * densM * (1 - frac);
+        let rate = globalInf * envM * densM * (1 - frac) * (1 - st.measures * 0.75);
         let newInf = st.infected * rate;
+        // Land überrannt: die letzten Überlebenden finden keinen Schutz mehr
+        if (st.healthy < st.pop * 0.01 && st.infected + st.dead > st.healthy * 20) {
+          newInf = Math.max(newInf, st.healthy * (st.healthy < 50 ? 1 : 0.25));
+        }
         newInf = Math.min(newInf, st.healthy);
         if (st.healthy > 0 && newInf < 1 && this.rng() < st.infected * rate) newInf = 1;
         st.infected += newInf; st.healthy -= newInf;
       }
+      if (st.healthy < 0.5) { st.infected += st.healthy > 0 && st.infected > 0 ? st.healthy : 0; st.healthy = 0; }
 
-      // Tod / Genesung
+      // Tod / Genesung. Zusammengebrochene Länder können niemanden mehr behandeln.
       if (st.infected > 0) {
-        const treat = this.detected ? c.medical * (1 - (this.mods.rich || 0) * 0.7) * (1 - this.cure * 0.3) : 0;
-        const lethRate = clamp(this.lethality * 0.00042 * (1 - treat * 0.6), 0, 0.22);
+        const treat = this.detected ? c.medical * (1 - (this.mods.rich || 0) * 0.7) * (1 - this.cure * 0.3) * (1 - st.collapse) : 0;
+        const lethRate = clamp(this.lethality * 0.0006 * (1 - treat * 0.6) * (1 + st.collapse * 2), 0, 0.3);
         let deaths = st.infected * lethRate;
+        // letzte Überlebende in einem ausgebluteten Land
+        if (lethRate > 0 && st.healthy < 1 && st.infected < 400) deaths = Math.max(deaths, st.infected * 0.35, 1);
         deaths = Math.min(deaths, st.infected);
         st.infected -= deaths; st.dead += deaths;
+        if (st.infected < 0.5 && (lethRate > 0 || st.healthy >= 1)) { st.dead += st.infected; st.infected = 0; }
         if (!this.firstDeathIso && st.dead >= 1) this.firstDeathIso = iso;
         // Heilung, sobald Cure fortgeschritten
         if (this.cure > 0.15) {
-          const heal = st.infected * this.cure * (0.02 * c.medical + this.cure * 0.03);
+          const heal = st.infected * this.cure * (0.02 * c.medical + this.cure * 0.03) * (1 - st.collapse);
           st.infected -= heal; st.healthy += heal;
         }
       }
+      // gute Gesundheitssysteme halten länger durch
+      st.collapse = clamp((st.dead / Math.max(1, st.pop) - (0.25 + 0.3 * c.medical)) / 0.35, 0, 1);
 
-      // Entdeckung
+      // Entdeckung: sichtbare Symptome – oder Labor-Überwachung bei großer Verbreitung
       if (!st.detected && st.infected > Math.max(80, alive * 0.0006)) {
-        if (d.instantDetect || this.visibility > 0.12 + (this.mods_stealth || 0) || st.infected > alive * 0.02) {
+        const labFrac = this.diff.detect / (0.5 + c.medical);
+        if (d.instantDetect || this.visibility > 0.12 + (this.mods_stealth || 0) || st.infected > alive * labFrac) {
           st.detected = true;
         }
       }
 
-      // DNA-Blase gelegentlich in infizierten Ländern
-      if (st.infected > 100 && this.day - st.lastDnaDay > 6 && this.rng() < 0.18) {
+      // DNA-Blase gelegentlich in infizierten Ländern (seltener, je mehr Länder)
+      if (st.infected > 100 && this.day - st.lastDnaDay > 6 && this.rng() < 0.18 * this._bubbleScale) {
         st.lastDnaDay = this.day;
         this.spawnBubble(iso, 'infect');
-      }
-
-      // Cure-Beitrag
-      if (this.detected) {
-        st.cureContribution = c.medical * c.wealth * (st.infected > 0 || st.dead > 0 ? 1 : 0.15);
       }
     }
 
@@ -361,6 +384,8 @@ export class Engine {
     this.updateSpecial();
     this.updateVisibility();
     this.updateVehicles();
+    this.updatePriority();
+    this.updateMeasures();
     this.updateCure();
     this.worldReactions();
     this.updateDna();
@@ -455,14 +480,15 @@ export class Engine {
   tryInfect(iso, kind) {
     const st = this.countries[iso];
     if (!st || st.healthy < 1) return;
-    if (kind === 'air' && !st.airportOpen) return;
-    if (kind === 'sea' && !st.portOpen) return;
-    if (kind === 'land' && !st.bordersOpen) return;
+    if (kind !== 'spore' && st.measures > 0 && this.rng() < st.measures * 0.6) return;   // Einreisekontrollen
     if (st.infected < 1) {
       const seed = Math.max(1, Math.round(st.pop * 0.000004));
       st.infected += seed; st.healthy -= seed;
-      this.spawnBubble(iso, 'country');
-      this.dna += 3; this.totalDnaEarned += 3;   // Bonus fürs Erreichen eines neuen Landes
+      // Bonus fürs Erreichen eines neuen Landes – groß am Anfang, später klein
+      const nC = this.countriesInfected();
+      if (nC <= 25 || this.rng() < 0.3) this.spawnBubble(iso, 'country');
+      const bonus = nC <= 12 ? 3 : 1;
+      this.dna += bonus; this.totalDnaEarned += bonus;
       this._spreadNews = (this._spreadNews || 0) + 1;
       if (this._spreadNews <= 45) this.pushNews(`${st.ref.name} meldet die ersten Fälle von „${this.opts.name}“.`, 'spread', iso);
     } else {
@@ -487,25 +513,63 @@ export class Engine {
     }
   }
 
-  // ---- Cure ----
-  updateCure() {
-    if (!this.cureActive) return;
-    let contrib = 0, weight = 0;
-    for (const iso in this.countries) {
-      const st = this.countries[iso];
-      contrib += st.cureContribution;
-      weight += st.ref.wealth;
-    }
-    const globalKnowledge = clamp(this.totalInfected() / this.worldPop + this.totalDead() / this.worldPop * 1.5, 0, 1);
-    const req = 100 * this.cureReqMul * (1 + this.cureReqBonus);
-    // Sobald entdeckt, forschen die Labore stetig; Ausbreitung/Tote beschleunigen.
-    const research = (contrib / Math.max(1, weight)) * (0.045 + globalKnowledge * 0.05) * this.baseCureMul;
-    const floor = 0.0003 * this.baseCureMul; // Grundfortschritt: passive Erreger werden geheilt
-    this.cure = clamp(this.cure + Math.max(floor, (research / req) * this.severityUrgency()), 0, 1);
+  // ---- Globale Alarmstufe ----
+  // Steigt mit sichtbaren Symptomen, Verbreitung und vor allem mit Toten – ein
+  // plötzliches Massensterben löst weltweite Panik aus. Sinkt kaum wieder.
+  updatePriority() {
+    const pop = this.worldPop;
+    const dead = this.totalDead();
+    const deadToday = Math.max(0, dead - this._deadPrev);
+    this._deadPrev = dead;
+    if (!this.detected) return;
+    const infFrac = this.totalInfected() / pop;
+    let target = 0.1 + Math.min(0.5, this.severity * 0.008) + infFrac * 0.6 +
+      Math.min(0.6, (dead / pop) * 4) + Math.min(0.8, (deadToday / pop) * 300);
+    target = Math.min(1.6, target) * this.diff.react;
+    const k = target > this.priority ? 0.06 : 0.004;
+    this.priority += (target - this.priority) * k;
+    const P = (this._pms ||= new Set());
+    const say = (key, cond, text) => { if (cond && !P.has(key)) { P.add(key); this.pushNews(text, 'react'); } };
+    say('p05', this.priority >= 0.5, `Die WHO ruft wegen „${this.opts.name}" den globalen Gesundheitsnotstand aus. Forschungsgelder werden massiv aufgestockt.`);
+    say('p10', this.priority >= 1.0, `Weltweite Panik: Regierungen stellen sämtliche Ressourcen für ein Heilmittel bereit.`);
   }
 
-  severityUrgency() {
-    return 1 + clamp(this.severity * 0.02 + this.totalDead() / this.worldPop * 2, 0, 1.5);
+  // ---- Quarantäne & Lockdown je Land ----
+  updateMeasures() {
+    let announced = this._measureNews || 0;
+    for (const st of this.list) {
+      const c = st.ref;
+      const active = st.detected || this.priority > 0.8;
+      const target = active && st.collapse < 0.9
+        ? clamp(this.priority * (0.25 + 0.5 * c.medical + 0.15 * c.wealth), 0, 0.8) * (1 - st.collapse) : 0;
+      st.measures += (target - st.measures) * 0.05;
+      if (st.measures > 0.45 && !st._lockNews && st.healthy > st.pop * 0.05) {
+        st._lockNews = true;
+        if (announced++ < 20) this.pushNews(`${c.name} verhängt strenge Quarantäne und Ausgangssperren.`, 'react', c.iso);
+      }
+      if (st.collapse > 0.8 && !st._collapseNews && st.researchW > 0.12) {
+        st._collapseNews = true;
+        this.pushNews(`Staatszerfall in ${c.name}: Regierung und Labore haben die Arbeit eingestellt.`, 'lose', c.iso);
+      }
+    }
+    this._measureNews = announced;
+  }
+
+  // ---- Cure ----
+  // Forschung = funktionierende Laborkapazität × Finanzierung (Alarmstufe).
+  // Kollabierte Länder forschen nicht mehr; Länder ohne Fälle nur eingeschränkt.
+  updateCure() {
+    if (!this.cureActive) { this.cureRate = 0; return; }
+    let cap = 0;
+    for (const st of this.list) {
+      const involved = st.infected > 0 || st.dead > 0;
+      cap += st.researchW * (1 - st.collapse * 0.85) * (involved ? 1 : 0.6);
+    }
+    const functional = cap / Math.max(1e-9, this.researchTotal);
+    const funding = 0.3 + this.priority * 1.6;
+    const rate = 0.009 * functional * funding * this.baseCureMul * this.diff.cure / (1 + this.cureReqBonus);
+    this.cureRate = rate;
+    this.cure = clamp(this.cure + rate, 0, 1);
   }
 
   // ---- DNA ----
@@ -517,7 +581,8 @@ export class Engine {
     const inf = this.totalInfected() + this.totalDead();
     if (inf < 1) return;
     const rate = (this.def.dnaRate != null ? this.def.dnaRate : 1) * (this.def.dnaSymptomMul || 1);
-    const perDay = (0.04 * this.countriesInfected() + 0.2 * Math.log10(inf + 10)) * this.diff.dna * rate;
+    const n = this.countriesInfected();
+    const perDay = (0.04 * Math.min(n, 15) + 0.006 * Math.max(0, n - 15) + 0.2 * Math.min(6, Math.log10(inf + 10))) * this.diff.dna * rate;
     this._dnaAccum = (this._dnaAccum || 0) + perDay;
     while (this._dnaAccum >= 1) { this._dnaAccum -= 1; this.dna += 1; this.totalDnaEarned += 1; }
   }
@@ -556,6 +621,17 @@ export class Engine {
     if (!this.detected) return;
     if (this.day % 2 !== 0) return;
     const react = this.diff.react;
+    // Bei hoher Alarmstufe schotten sich noch kaum betroffene Länder vorsorglich ab
+    if (this.priority > 0.6) {
+      const pClose = (this.priority - 0.6) * 0.06 * react;
+      for (const st of this.list) {
+        if (st.infected / Math.max(1, st.pop) > 0.02 || st.dead > st.pop * 0.01) continue;
+        const c = st.ref, guard = pClose * (0.5 + c.medical);
+        if (st.airportOpen && c.airport && this.rng() < guard) { st.airportOpen = false; st.closedAir = true; this._newsClose(`${c.name} stoppt vorsorglich alle Flüge.`, c.iso); }
+        if (st.portOpen && c.port && this.rng() < guard) { st.portOpen = false; st.closedPort = true; this._newsClose(`${c.name} schließt vorsorglich seine Häfen.`, c.iso); }
+        if (st.bordersOpen && this.rng() < guard * 0.8) { st.bordersOpen = false; st.closedBorder = true; this._newsClose(`${c.name} riegelt seine Grenzen ab.`, c.iso); }
+      }
+    }
     const severe = this.list
       .filter((s) => s.infected / Math.max(1, s.pop) > 0.02 || s.dead / Math.max(1, s.pop) > 0.005);
     for (const st of severe) {
@@ -574,6 +650,11 @@ export class Engine {
         this.pushNews(`${c.name} schließt seine Landesgrenzen.`, 'react', c.iso);
       }
     }
+  }
+
+  _newsClose(text, iso) {
+    this._closeNews = (this._closeNews || 0) + 1;
+    if (this._closeNews <= 25) this.pushNews(text, 'react', iso);
   }
 
   // ---- Sondermechaniken ----
@@ -737,7 +818,7 @@ export class Engine {
       const n = id === 'spore_eruption' ? 3 : 1;
       for (let i = 0; i < n && uninfected.length; i++) {
         const c = uninfected.splice((this.rng() * uninfected.length) | 0, 1)[0];
-        this.tryInfect(c.iso, 'air');
+        this.tryInfect(c.iso, 'spore');
         this.pushNews(`Sporenausbruch: „${this.opts.name}“ erreicht ${c.name}.`, 'special', c.iso);
       }
       return true;
@@ -751,6 +832,12 @@ export class Engine {
     const healthy = this.totalHealthy();
     const infected = this.totalInfected();
 
+    // Sieg zuerst: ist die gesamte Menschheit tot, hat die Krankheit gewonnen –
+    // auch wenn die letzten Infizierten am selben Tag sterben (nur infizieren reicht nicht)
+    if (healthy + infected < 1 && this.day > 10) {
+      if (!this.checkSpecialWin(false)) this.endGame(true, 'extinction');
+      return;
+    }
     // Niederlage: ausgestorben
     const specialAlive = this.special.zombies + this.special.apes + this.special.vampires + this.special.controlled + (this.special.xmon || 0);
     if (infected < 1 && specialAlive < 1 && this.day > 20) {
@@ -763,9 +850,7 @@ export class Engine {
       return;
     }
     // Sieg: Sondermodi
-    if (this.checkSpecialWin(false)) return;
-    // Standard-Sieg: gesamte Menschheit besiegt (gilt auch bei Sonderklassen)
-    if (healthy < 1 && this.day > 10) { this.endGame(true, 'extinction'); return; }
+    this.checkSpecialWin(false);
   }
 
   hasSpecialActive() {
@@ -793,7 +878,7 @@ export class Engine {
     if (d.winMode === 'xeno' && this.special.xenoActive) {
       if (this.special.xeno >= 0.98) { this.endGame(true, 'xeno'); return true; }
     }
-    if (force && healthy < 1) { this.endGame(true, 'extinction'); return true; }
+    if (force && healthy + this.totalInfected() < 1) { this.endGame(true, 'extinction'); return true; }
     return false;
   }
 

@@ -34,7 +34,7 @@ export const ABILITIES = [
   { id: 'drug2', name: 'Medikamentenresistenz 2', icon: '🧪', cost: 20, req: ['drug1'], mods: { rich: 0.45 }, desc: 'Moderne Medizin verliert an Wirkung.' },
   { id: 'gene1', name: 'Genetische Resistenz 1', icon: '🧬', cost: 16, cureReq: 0.1, desc: 'Erschwert die Heilmittelforschung: Anforderung +10 %.' },
   { id: 'gene2', name: 'Genetische Resistenz 2', icon: '🧬', cost: 26, req: ['gene1'], cureReq: 0.18, desc: 'Erschwert die Heilmittelforschung weiter: Anforderung +18 %.' },
-  { id: 'shuffle1', name: 'Genetische Neuordnung 1', icon: '🔀', cost: 18, cureSet: 0.1, desc: 'Wirft die Heilmittelforschung zurück (−10 % Fortschritt beim Entwickeln).' },
+  { id: 'shuffle1', name: 'Genetische Neuordnung 1', icon: '🔀', cost: 18, cureSet: 0.1, desc: 'Wirft die Heilmittelforschung zurück (−10 % Fortschritt beim Entwickeln). Am wirksamsten, wenn die Forschung schon läuft.' },
   { id: 'shuffle2', name: 'Genetische Neuordnung 2', icon: '🔀', cost: 26, req: ['shuffle1'], cureSet: 0.12, desc: 'Wirft die Forschung erneut zurück (−12 %).' },
   { id: 'shuffle3', name: 'Genetische Neuordnung 3', icon: '🔀', cost: 34, req: ['shuffle2'], cureSet: 0.15, desc: 'Massiver Rückschlag für die Forschung (−15 %).' },
 ];

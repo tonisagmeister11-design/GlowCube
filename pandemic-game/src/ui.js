@@ -258,7 +258,8 @@ export class UI {
     this.barSev = bar('Schweregrad', '#e0e050');
     this.barLeth = bar('Letalität', '#a050e0');
     this.barCure = bar('Heilmittel', '#40a0ff');
-    const bars_ = h('div', { class: 'hud-bars' }, this.barInf.el, this.barSev.el, this.barLeth.el, this.barCure.el);
+    this.barAlarm = bar('Alarmstufe', '#ff8030');
+    const bars_ = h('div', { class: 'hud-bars' }, this.barInf.el, this.barSev.el, this.barLeth.el, this.barCure.el, this.barAlarm.el);
 
     // DNA + Krankheit-Button
     this.dnaEl = h('div', { class: 'dna-counter' }, h('span', { class: 'dna-icon' }, '🧬'), h('span', { class: 'dna-val' }, '0'));
@@ -312,7 +313,8 @@ export class UI {
     this.barInf.set(clampBar(eng.infectivity / 40));
     this.barSev.set(clampBar(eng.severity / 40));
     this.barLeth.set(clampBar(eng.lethality / 60));
-    this.barCure.set(eng.cure, (eng.cure * 100).toFixed(0) + '%');
+    this.barCure.set(eng.cure, cureText(eng));
+    this.barAlarm.set(eng.priority / 1.6, alarmText(eng));
     this.dnaEl.querySelector('.dna-val').textContent = Math.floor(eng.dna);
     this.updateNews();
     this.updateSpecialBar();
@@ -440,6 +442,8 @@ export class UI {
         stat('Flughafen', st.airportOpen ? 'offen' : 'geschlossen'),
         stat('Hafen', c.port ? (st.portOpen ? 'offen' : 'geschlossen') : '–'),
         stat('Grenzen', st.bordersOpen ? 'offen' : 'geschlossen'),
+        stat('Quarantäne', st.measures > 0.05 ? bars(st.measures / 0.8) : 'keine'),
+        stat('Staat', st.collapse > 0.8 ? 'zerfallen' : st.collapse > 0.05 ? 'bricht zusammen' : 'stabil'),
         ...(st.zombies > 1 ? [stat('Zombies', fmt(st.zombies))] : []),
         ...(st.fortress > 0.15 ? [stat('Militärfestung', Math.round(st.fortress * 100) + '%')] : []),
         ...(st.apes > 1 ? [stat('Affen', fmt(st.apes))] : []),
@@ -671,7 +675,7 @@ export class UI {
       this.mBarInf.set(clampBar(eng.infectivity / 40));
       this.mBarSev.set(clampBar(eng.severity / 40));
       this.mBarLeth.set(clampBar(eng.lethality / 60));
-      this.mBarCure.set(eng.cure, (eng.cure * 100).toFixed(0) + '%');
+      this.mBarCure.set(eng.cure, cureText(eng));
     }
     this._highlightTraits();
     // Hologramm-Organe nach entwickelten Symptomen
@@ -759,3 +763,12 @@ function bars(v) {
   return '▮'.repeat(n) + '▯'.repeat(5 - n);
 }
 function clampBar(x) { return Math.max(0, Math.min(1, x)); }
+function cureText(eng) {
+  const pct = (eng.cure * 100).toFixed(0) + '%';
+  return eng.cureRate > 0.00005 && eng.cure < 1 ? `${pct} · +${(eng.cureRate * 100).toFixed(2)}%/Tag` : pct;
+}
+function alarmText(eng) {
+  const p = eng.priority;
+  if (!eng.detected) return 'unbemerkt';
+  return p < 0.25 ? 'Beobachtung' : p < 0.5 ? 'erhöht' : p < 1 ? 'Notstand' : 'Panik';
+}
