@@ -70,6 +70,9 @@ var _smoke_timer := 0.0
 var _glass_broken := false
 var _last_collision_time := 0.0
 var _flat := [false, false, false, false]
+## Mechanic upgrades: engine/brakes/armor levels 0-3, bulletproof tyres (0/1)
+var upgrades := {"engine": 0, "brakes": 0, "armor": 0, "tires": 0}
+var owned_id := ""              # id in PlayerData.owned_vehicles when this is a personal vehicle
 
 
 static func create(id: String, color := Color(-1, 0, 0)) -> Vehicle:
@@ -371,7 +374,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var is_driven: bool = drive_mode == "awd" or (drive_mode == "fwd" and w["front"]) or (drive_mode == "rwd" and not w["front"])
 		if is_driven and not destroyed and not in_water:
 			var n_driven := 4 if drive_mode == "awd" else 2
-			var power := float(def["power"]) * (0.45 if engine_health < 150.0 else 1.0)
+			var power := float(def["power"]) * (0.45 if engine_health < 150.0 else 1.0) * (1.0 + 0.12 * int(upgrades["engine"]))
 			var top := float(def["top"])
 			var eng := 0.0
 			if throttle > 0.0:
@@ -381,7 +384,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 				eng = throttle * mass * 3.5 * clampf(1.0 + v_long_body / 8.0, 0.0, 1.0)
 			f_long += eng / n_driven
 		if brake_input > 0.0:
-			f_long -= signf(v_long) * float(def["brake"]) * brake_input / 4.0 * clampf(absf(v_long) * 2.0, 0.0, 1.0)
+			f_long -= signf(v_long) * float(def["brake"]) * (1.0 + 0.15 * int(upgrades["brakes"])) * brake_input / 4.0 * clampf(absf(v_long) * 2.0, 0.0, 1.0)
 		if handbrake and not w["front"]:
 			f_long -= signf(v_long) * float(def["brake"]) * 0.35 * clampf(absf(v_long), 0.0, 1.0)
 		f_long -= v_long * 12.0  # rolling resistance
@@ -641,7 +644,7 @@ func _collision_damage(impulse: float, local_pos: Vector3, other: Object) -> voi
 		return
 	_last_collision_time = now
 	var sev := impulse / mass
-	var dmg := sev * 18.0
+	var dmg := sev * 18.0 * (1.0 - 0.2 * int(upgrades["armor"]))
 	body_health = maxf(0.0, body_health - dmg)
 	engine_health = maxf(0.0, engine_health - dmg * (0.9 if local_pos.z < 0.0 else 0.35))
 	AudioManager.play_3d("crash_%d" % (randi() % 3), global_transform * local_pos, clampf(sev - 6.0, -12.0, 6.0))
@@ -732,12 +735,13 @@ func on_hit(damage: float, source: Node, pos: Vector3, dir: Vector3) -> void:
 	# tyres
 	for i in mini(4, _wheels.size()):
 		var w: Dictionary = _wheels[i]
-		if (w["pos"] as Vector3).distance_to(local) < float(w["radius"]) + 0.1 and not _flat[i]:
+		if (w["pos"] as Vector3).distance_to(local) < float(w["radius"]) + 0.1 and not _flat[i] and int(upgrades["tires"]) == 0:
 			_flat[i] = true
 			if w["node"]:
 				(w["node"] as Node3D).scale = Vector3(1.0, 0.85, 0.85)
 			AudioManager.play_3d("impact_0", pos, 2.0)
 			return
+	damage *= 1.0 - 0.2 * int(upgrades["armor"])
 	engine_health = maxf(0.0, engine_health - damage * (2.2 if local.z < -0.5 else 0.8))
 	body_health = maxf(0.0, body_health - damage)
 	if local.y > float(meta.get("hood", 1.0)) and randf() < 0.3:
