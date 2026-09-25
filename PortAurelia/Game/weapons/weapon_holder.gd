@@ -82,8 +82,12 @@ func current_is_ranged() -> bool:
 	return WeaponData.is_ranged(current)
 
 
+## True if any owned weapon is a firearm (not necessarily the equipped one).
 func has_ranged() -> bool:
-	return current_is_ranged()
+	for id in owned:
+		if WeaponData.is_ranged(id):
+			return true
+	return false
 
 
 func upper_anim() -> String:

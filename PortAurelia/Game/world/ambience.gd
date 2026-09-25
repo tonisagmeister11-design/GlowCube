@@ -50,6 +50,10 @@ func _process(delta: float) -> void:
 		"rain_loop": clampf(rain * 1.6, 0.0, 1.0) * (1.0 if rain < 0.7 else 0.6),
 		"rain_heavy_loop": clampf((rain - 0.6) * 2.5, 0.0, 1.0),
 	}
+	if w.get_meta("in_interior", false):
+		for k in levels:
+			levels[k] = 0.0
+		levels["city_loop"] = 0.12
 	var p := w.player as Player
 	if p and p.is_in_vehicle():
 		for k in levels:

@@ -17,6 +17,8 @@ GAME = os.path.join(PROJECT, "Game")
 GEN = os.path.join(GAME, "assets", "generated")
 if LIB not in sys.path:
     sys.path.insert(0, LIB)
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
 
 import bpy  # noqa: E402
 import bmesh  # noqa: E402
@@ -53,47 +55,32 @@ def clear_objects():
 
 
 # ------------------------------------------------------------------ materials
-# preview colours only; Godot replaces materials by name on import
-MATERIAL_PREVIEW = {
-    "road_asphalt": (0.12, 0.12, 0.13), "road_marking": (0.9, 0.9, 0.85), "sidewalk": (0.6, 0.58, 0.55),
-    "curb": (0.65, 0.64, 0.6), "concrete": (0.55, 0.55, 0.53), "parking": (0.15, 0.15, 0.16),
-    "terrain": (0.35, 0.45, 0.2), "grass": (0.3, 0.45, 0.15), "sand": (0.85, 0.77, 0.58),
-    "dirt": (0.45, 0.36, 0.25), "rock": (0.5, 0.48, 0.44), "bridge_concrete": (0.6, 0.6, 0.58),
-    "metal": (0.6, 0.62, 0.64), "barrier": (0.72, 0.71, 0.68), "tunnel_wall": (0.75, 0.75, 0.72),
-    "light_emissive": (1.0, 0.95, 0.8), "roof_flat": (0.45, 0.45, 0.44), "roof_tiles": (0.6, 0.3, 0.2),
-    "roof_shingles": (0.3, 0.3, 0.32), "roof_metal": (0.6, 0.62, 0.64), "trim": (0.85, 0.83, 0.78),
-    "window_glass": (0.2, 0.3, 0.4), "shopfront": (0.2, 0.25, 0.3), "awning": (0.7, 0.2, 0.2),
-    "sign_emissive": (1.0, 0.3, 0.6), "sign_panel": (0.2, 0.2, 0.22), "metal_dark": (0.12, 0.12, 0.13),
-    "door": (0.3, 0.22, 0.16), "wood": (0.5, 0.38, 0.26), "plastic": (0.8, 0.8, 0.8),
-    "metal_painted": (0.4, 0.45, 0.5), "rubber": (0.05, 0.05, 0.05), "fabric": (0.6, 0.6, 0.6),
-    "bark": (0.35, 0.27, 0.2), "leaves": (0.25, 0.4, 0.12), "palm_frond": (0.3, 0.45, 0.15),
-    "palm_bark": (0.5, 0.42, 0.3), "pine": (0.15, 0.28, 0.12), "glass_clear": (0.7, 0.8, 0.85),
-    "signal_lens": (0.2, 0.2, 0.2), "container": (0.6, 0.3, 0.2), "water_deco": (0.2, 0.4, 0.5),
-    "wood_planks": (0.5, 0.38, 0.26), "interior_wall": (0.9, 0.88, 0.84), "interior_floor": (0.5, 0.45, 0.4),
-    "crop": (0.45, 0.5, 0.2), "chrome": (0.9, 0.9, 0.92),
-}
-FACADES = ["glass_blue", "glass_green", "glass_silver", "glass_bronze", "glass_dark", "concrete_panel",
-           "stone", "brick_red", "brick_brown", "plaster", "stucco_white", "metal_siding", "wood_siding"]
-for _f in FACADES:
-    MATERIAL_PREVIEW["facade_" + _f] = (0.6, 0.62, 0.66) if _f.startswith("glass") else (0.8, 0.76, 0.7)
-
-
-def get_material(name):
-    m = bpy.data.materials.get(name)
-    if m is not None:
-        return m
-    m = bpy.data.materials.new(name)
-    col = MATERIAL_PREVIEW.get(name, (0.8, 0.8, 0.8))
-    m.diffuse_color = (col[0], col[1], col[2], 1.0)
-    m.use_nodes = True
-    bsdf = m.node_tree.nodes.get("Principled BSDF")
-    if bsdf:
-        bsdf.inputs["Base Color"].default_value = (col[0], col[1], col[2], 1.0)
-        bsdf.inputs["Roughness"].default_value = 0.8
-    return m
+from setup_materials import MATERIAL_PREVIEW, FACADES, get_material  # noqa: E402,F401
+from setup_uvs import gltf_to_blender_v  # noqa: E402
 
 
 # ------------------------------------------------------------------ mesh builder
+FACADE_FLOOR_H = 3.2
+
+
+def _facade_uvs(pts):
+    """Facade convention for faces built without explicit facade UVs:
+    UV = (metres along the wall, metres above the face base), UV2 = (wall length, floor height)."""
+    n = newell(pts)
+    ln = math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]) or 1.0
+    y0 = min(p[1] for p in pts)
+    if abs(n[1] / ln) < 0.7:
+        tx, tz = -n[2], n[0]
+        tl = math.sqrt(tx * tx + tz * tz) or 1.0
+        tx, tz = tx / tl, tz / tl
+        us = [(p[0] - pts[0][0]) * tx + (p[2] - pts[0][2]) * tz for p in pts]
+        u0 = min(us)
+        uvs = [(u - u0, p[1] - y0) for u, p in zip(us, pts)]
+        return uvs, (max(max(us) - u0, 0.5), FACADE_FLOOR_H)
+    xs = [p[0] for p in pts]
+    return [(p[0] - min(xs), p[2]) for p in pts], (max(max(xs) - min(xs), 0.5), FACADE_FLOOR_H)
+
+
 class MeshBuilder:
     """Accumulates polygons in Godot space with per-corner UV / colour and a material per face."""
 
@@ -134,6 +121,8 @@ class MeshBuilder:
                     nrm = list(reversed(nrm))
                 if cols is not None:
                     cols = list(reversed(cols))
+        if uv2 is None and mat.startswith("facade_"):
+            uvs, uv2 = _facade_uvs(pts)
         base = len(self.verts)
         self.verts.extend(pts)
         self.faces.append(list(range(base, base + len(pts))))
@@ -201,12 +190,12 @@ class MeshBuilder:
         for fi, f in enumerate(self.faces):
             for u in self.uvs[fi]:
                 flat_uv.append(u[0])
-                flat_uv.append(1.0 - u[1])
+                flat_uv.append(gltf_to_blender_v(u[1]))
             if has_uv2:
                 u2 = self.uv2[fi] or (0.0, 0.0)
                 for _ in f:
                     flat_uv2.append(u2[0])
-                    flat_uv2.append(1.0 - u2[1])
+                    flat_uv2.append(gltf_to_blender_v(u2[1]))
             for c in self.cols[fi]:
                 flat_col.extend((srgb_to_linear(c[0]), srgb_to_linear(c[1]), srgb_to_linear(c[2]), c[3]))
         nloops = len(me.loops)
@@ -476,47 +465,8 @@ def _norm3(a):
 
 
 # ------------------------------------------------------------------ export
-def export_glb(path, objects=None, with_anim=False, collection_name=None):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    if objects is not None:
-        bpy.ops.object.select_all(action="DESELECT")
-        for o in objects:
-            o.select_set(True)
-            for c in o.children_recursive:
-                c.select_set(True)
-    kw = dict(filepath=path, export_format="GLB", use_selection=objects is not None,
-              export_apply=True, export_vertex_color="ACTIVE", export_all_vertex_colors=False,
-              export_animations=with_anim, export_skins=with_anim, export_materials="EXPORT",
-              export_image_format="NONE", export_extras=True, export_yup=True,
-              export_tangents=False, export_normals=True)
-    if with_anim:
-        kw.update(export_animation_mode="ACTIONS", export_force_sampling=True,
-                  export_optimize_animation_size=True, export_anim_single_armature=True)
-    try:
-        bpy.ops.export_scene.gltf(**kw)
-    except TypeError:
-        kw.pop("export_all_vertex_colors", None)
-        bpy.ops.export_scene.gltf(**kw)
-    return path
-
-
-def lod_decimate(obj, ratio):
-    """Collapse-decimate a copy of obj (returns new object)."""
-    new = obj.copy()
-    new.data = obj.data.copy()
-    bpy.context.scene.collection.objects.link(new)
-    mod = new.modifiers.new("dec", "DECIMATE")
-    mod.ratio = ratio
-    mod.use_collapse_triangulate = True
-    bpy.context.view_layer.objects.active = new
-    dg = bpy.context.evaluated_depsgraph_get()
-    ev = new.evaluated_get(dg)
-    me = bpy.data.meshes.new_from_object(ev)
-    new.modifiers.clear()
-    old = new.data
-    new.data = me
-    bpy.data.meshes.remove(old)
-    return new
+from export_glb import export_glb  # noqa: E402,F401
+from generate_lods import lod_decimate  # noqa: E402,F401
 
 
 # ====================================================================== signs (3D text)

@@ -62,9 +62,11 @@ func _create_marker(p: Dictionary) -> void:
 	var col := Color(1.0, 0.8, 0.2)
 	match t:
 		"shop_convenience", "shop_supermarket", "gas_station", "diner", "electronics", "jewelry":
-			handler = _open_store.bind(p)
+			handler = _enter_or.bind(p, _open_store)
+			prompt = "E: %s betreten" % p["name"]
 		"shop_weapons":
-			handler = _open_weapons.bind(p)
+			handler = _enter_or.bind(p, _open_weapons)
+			prompt = "E: %s betreten" % p["name"]
 			col = Color(0.95, 0.3, 0.3)
 		"shop_clothing":
 			handler = _open_clothing.bind(p)
@@ -199,6 +201,15 @@ func _owns(p: Dictionary) -> bool:
 	return Game.player_data.properties.has(_prop_key(p))
 
 
+## Enter the building's interior if one exists, otherwise open the menu directly.
+func _enter_or(pl: Player, p: Dictionary, fallback: Callable) -> void:
+	var im := InteriorManager.get_manager()
+	if im and im.has_interior(p["type"]):
+		im.enter(p)
+	else:
+		fallback.call(pl, p)
+
+
 # ------------------------------------------------------------------ stores & robbery
 func _open_store(_pl: Player, p: Dictionary) -> void:
 	var items := []
@@ -240,7 +251,8 @@ func _last_vehicle() -> Vehicle:
 
 func _start_robbery(p: Dictionary) -> void:
 	var r: Array = ROBBABLE[p["type"]]
-	_robbery = {"poi": p, "time": 0.0, "total": rng.randi_range(r[0], r[1]), "level": r[2], "paid": 0}
+	_robbery = {"poi": p, "time": 0.0, "total": rng.randi_range(r[0], r[1]), "level": r[2], "paid": 0,
+		"anchor": world.player.global_position}
 	Events.big_message.emit("ÜBERFALL", "Bleib in der Nähe der Kasse!", 2.5)
 	Events.crime_committed.emit("robbery", (p["entrance_v"] as Vector3), 3, world.player)
 	if world.police:
@@ -249,7 +261,7 @@ func _start_robbery(p: Dictionary) -> void:
 
 func _update_robbery(pl: Player, delta: float) -> void:
 	var p: Dictionary = _robbery["poi"]
-	var d := pl.global_position.distance_to(p["entrance_v"])
+	var d := pl.global_position.distance_to(_robbery["anchor"])
 	if d > 9.0 or pl.state == Player.State.DEAD:
 		var got: int = _robbery["paid"]
 		Events.notify.emit("Überfall abgebrochen. Beute: $%d" % got, 3.0)
@@ -472,11 +484,15 @@ func _open_property(pl: Player, p: Dictionary) -> void:
 
 
 func _open_safehouse(_pl: Player, p: Dictionary) -> void:
-	var items := [
+	var im := InteriorManager.get_manager()
+	var items := []
+	if im and im.has_interior(p["type"]):
+		items.append({"label": "Wohnung betreten", "action": func(): im.enter(p)})
+	items.append_array([
 		{"label": "Spiel speichern", "action": _open_save_menu},
 		{"label": "Schlafen (6 Stunden)", "desc": "Heilt vollständig und speichert automatisch.", "action": _sleep},
 		{"label": "Garderobe", "action": _open_wardrobe},
-	]
+	])
 	if not Game.player_data.owned_vehicles.is_empty():
 		items.append({"label": "Garage: Fahrzeug holen", "action": _open_garage.bind(p)})
 	MenuPanel.open(p["name"], items)

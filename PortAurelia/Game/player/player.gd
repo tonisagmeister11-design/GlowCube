@@ -130,7 +130,7 @@ func _move_on_foot(delta: float) -> void:
 			_enter_cover()
 	if in_cover:
 		dir = _cover_move(dir)
-	aiming = input_enabled and Input.is_action_pressed("aim") and weapons.has_ranged()
+	aiming = input_enabled and Input.is_action_pressed("aim") and weapons.current_is_ranged()
 	sprinting = input_enabled and Input.is_action_pressed("sprint") and dir.length() > 0.3 and not aiming and not crouching \
 		and stamina > 0.05
 	if input_enabled and Input.is_action_just_pressed("crouch") and on_floor:
@@ -201,7 +201,7 @@ func _move_on_foot(delta: float) -> void:
 		cam.sprinting = sprinting
 	_footsteps(delta)
 	# water
-	if global_position.y < GameWorld.instance.sea_level() - 1.05 if GameWorld.instance else false:
+	if _in_water():
 		_enter_swim()
 	if input_enabled:
 		weapons.handle_input(aiming)
@@ -321,6 +321,13 @@ func _move_climb(delta: float) -> void:
 
 
 # ------------------------------------------------------------------ swimming
+func _in_water() -> bool:
+	var w := GameWorld.instance
+	if w == null or w.get_meta("in_interior", false):
+		return false
+	return global_position.y < w.sea_level() - 1.05
+
+
 func _enter_swim() -> void:
 	state = State.SWIM
 	_set_crouch(false)

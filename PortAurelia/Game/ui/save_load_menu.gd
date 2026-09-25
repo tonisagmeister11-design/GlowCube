@@ -16,22 +16,18 @@ func _ready() -> void:
 	dim.color = Color(0, 0, 0, 0.75)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
 	var panel := PanelContainer.new()
-	panel.anchor_left = 0.5
-	panel.anchor_right = 0.5
-	panel.anchor_top = 0.5
-	panel.anchor_bottom = 0.5
-	panel.offset_left = -420
-	panel.offset_right = 420
-	panel.offset_top = -300
-	panel.offset_bottom = 300
+	panel.custom_minimum_size = Vector2(840, 600)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.05, 0.06, 0.08, 0.96)
 	sb.border_color = Color(0.95, 0.75, 0.25)
 	sb.border_width_top = 5
 	sb.set_content_margin_all(24)
 	panel.add_theme_stylebox_override("panel", sb)
-	add_child(panel)
+	center.add_child(panel)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	panel.add_child(v)

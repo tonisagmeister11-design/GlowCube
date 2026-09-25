@@ -23,6 +23,8 @@ from _common import (G, GEN, BUILD, GAME, MeshBuilder, reset_scene, clear_object
 import generate_roads as R  # noqa: E402
 import generate_buildings as B  # noqa: E402
 import generate_towers  # noqa: E402,F401
+from generate_lods import build_far as build_far_hlod, chunk_center  # noqa: E402
+from generate_colliders import new_collision_builders, collision_objects  # noqa: E402
 
 import bpy  # noqa: E402
 
@@ -247,7 +249,7 @@ def build_chunk(plan, cx, cz, pad_mask, assign, far_mbs, rng):
     detail = MeshBuilder()
     far = MeshBuilder()
     terr1 = MeshBuilder()
-    cols = {k: MeshBuilder() for k in ("road", "sidewalk", "grass", "sand", "concrete", "wood", "building")}
+    cols = new_collision_builders()
     terrain = plan.height
     key = (cx, cz)
     build_terrain(plan, cx, cz, pad_mask, 1, ground, cols)
@@ -280,14 +282,12 @@ def build_chunk(plan, cx, cz, pad_mask, assign, far_mbs, rng):
     # far representation of structures (decks) = include struct lightly? keep only buildings/terrain
     objs = []
     # pivot at the chunk centre: Godot measures visibility ranges (LOD) from the node origin
-    center = (plan.wmin + (cx + 0.5) * plan.chunk, 0.0, plan.wmin + (cz + 0.5) * plan.chunk)
+    center = chunk_center(plan.wmin, plan.chunk, cx, cz)
     for mb, name in ((ground, "Ground"), (marks, "Markings_LOD0"), (struct, "Structures"), (bl0, "Buildings_LOD0"),
                      (bl1, "Buildings_LOD1"), (detail, "Detail_LOD0")):
         if not mb.empty():
             objs.append(mb.to_object(name, origin=center))
-    for surf, mb in cols.items():
-        if not mb.empty():
-            objs.append(mb.to_object(f"Col_{surf}-colonly", merge_dist=0.01))
+    objs.extend(collision_objects(cols))
     tri = sum(m.tri_count() for m in (ground, marks, struct, bl0, detail))
     path = os.path.join(OUT, f"chunk_{cx}_{cz}.glb")
     if objs:
@@ -387,14 +387,7 @@ def _split_area(a):
 
 
 def build_far(far_mbs, plan):
-    objs = []
-    for (cx, cz), mb in sorted(far_mbs.items()):
-        if not mb.empty():
-            objs.append(mb.to_object(f"Far_{cx}_{cz}", merge_dist=0.0, origin=(plan.wmin + (cx + 0.5) * plan.chunk, 0.0,
-                                                                                   plan.wmin + (cz + 0.5) * plan.chunk)))
-    if objs:
-        export_glb(os.path.join(OUT, "city_far.glb"), objs)
-    clear_objects()
+    build_far_hlod(far_mbs, plan.wmin, plan.chunk, os.path.join(OUT, "city_far.glb"))
 
 
 def main():

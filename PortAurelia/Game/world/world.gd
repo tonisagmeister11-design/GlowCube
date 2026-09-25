@@ -13,7 +13,7 @@ static var instance: GameWorld
 const SYSTEMS := [
 	"res://world/day_night.gd", "res://world/weather.gd", "res://ai/traffic_manager.gd", "res://npc/ped_manager.gd",
 	"res://police/police_manager.gd", "res://missions/mission_manager.gd", "res://world/random_events.gd",
-	"res://economy/poi_manager.gd", "res://world/ambience.gd", "res://ui/hud.gd", "res://ui/pause_menu.gd",
+	"res://world/interiors.gd", "res://economy/poi_manager.gd", "res://world/ambience.gd", "res://ui/hud.gd", "res://ui/pause_menu.gd",
 	"res://ui/phone.gd", "res://ui/map_screen.gd", "res://debug/debug_tools.gd",
 ]
 
