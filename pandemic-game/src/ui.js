@@ -7,6 +7,7 @@ import { LORE } from './data/lore.js';
 import { TRANSMISSION, ABILITIES, SYMPTOMS, HEX_NEIGHBORS } from './data/traits.js';
 import { SPEEDS } from './game.js';
 import { HologramViewer } from './three/hologram.js';
+import { device } from './device.js';
 
 const h = (tag, props = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -36,6 +37,7 @@ const LS = 'pandemic_speedrun';
 export class UI {
   constructor(root, game, viewer) {
     this.root = root;
+    this.mobile = device.mobile;
     this.game = game;
     this.viewer = viewer;
     this.sel = { type: 'virus', name: '', startIso: null, difficulty: 'normal' };
@@ -72,6 +74,7 @@ export class UI {
       h('div', { class: 'menu-title' }, h('span', { class: 'plague-word' }, 'PANDEMIA'), h('div', { class: 'menu-tag' }, 'GLOBAL OUTBREAK')),
       cont,
       h('div', { class: 'menu-buttons' }, play),
+      h('div', { class: 'device-chip' }, device.phone ? '📱 Handy erkannt · Querformat' : device.mobile ? '📱 Tablet erkannt' : '💻 Laptop/PC erkannt'),
       h('div', { class: 'menu-foot' }, '3D-Erregermodelle in Blender erstellt · Starte mit „Neues Spiel"'),
     );
     this.layers.menu = wrap;

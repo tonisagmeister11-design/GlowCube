@@ -5,30 +5,14 @@ import { PathogenViewer } from './three/viewer.js';
 import { Game } from './game.js';
 import { UI } from './ui.js';
 import { AudioManager } from './audio.js';
-
-// Handy/Tablet automatisch erkennen: grober Zeiger (Finger) oder Touch-Gerät
-// mit kleinem Bildschirm. Setzt CSS-Klassen für das mobile Layout.
-function detectMobile() {
-  const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
-  const touch = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window;
-  const small = Math.min(window.innerWidth, window.innerHeight) < 600;
-  return !!(coarse || (touch && small));
-}
-function applyDeviceClasses() {
-  const root = document.documentElement;
-  const mobile = detectMobile();
-  root.classList.toggle('mobile', mobile);
-  root.classList.toggle('portrait', window.innerHeight > window.innerWidth);
-  root.classList.toggle('landscape', window.innerHeight <= window.innerWidth);
-  root.classList.toggle('compact', Math.min(window.innerWidth, window.innerHeight) < 520);
-  return mobile;
-}
+import { device, applyDevice, lockLandscapeOnFirstTap } from './device.js';
 
 function boot() {
   const app = document.getElementById('app');
-  const mobile = applyDeviceClasses();
-  window.addEventListener('resize', applyDeviceClasses);
-  window.addEventListener('orientationchange', () => setTimeout(applyDeviceClasses, 150));
+  // Handy oder Laptop/PC? Handys laufen immer im Querformat.
+  applyDevice();
+  const mobile = device.mobile;
+  lockLandscapeOnFirstTap();
 
   // Persistenter 3D-Viewer (Menü-Mittelpunkt / Krankheitsecke)
   const viewerHome = document.createElement('div');
@@ -80,10 +64,33 @@ function boot() {
     app.append(fsBtn);
   }
 
+  // Drehen / Größe ändern: Geräteklassen neu setzen, dann Karte und 3D-Ansicht anpassen
+  let rT = null;
+  const onResize = () => {
+    applyDevice();
+    clearTimeout(rT);
+    rT = setTimeout(() => {
+      applyDevice();
+      const m = game.map;
+      if (m.canvas.parentElement && (m.canvas.parentElement.clientWidth !== m.cw || m.canvas.parentElement.clientHeight !== m.ch)) {
+        const c = m._toWorld(m.cw / 2, m.ch / 2), oldW = m.baseW;
+        m.resize();
+        // gleiche Kartenmitte beibehalten
+        const k = m.baseW / oldW;
+        m.view.x = m.cw / 2 - c.x * k * m.view.scale; m.view.y = m.ch / 2 - c.y * k * m.view.scale; m._clampView();
+      }
+      viewer.resize();
+    }, 220);
+  };
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+  document.addEventListener('fullscreenchange', onResize);
+
   // Test-/Debug-Hooks (für den Browser-Test)
   window.__game = game;
   window.__ui = ui;
   window.__assets = viewer.assets;
+  window.__device = device;
 
   // Tastatur: Leertaste = Pause, 1-5 = Geschwindigkeit
   window.addEventListener('keydown', (e) => {

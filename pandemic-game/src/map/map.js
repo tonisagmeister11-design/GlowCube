@@ -4,6 +4,7 @@
 // (grün/gelb/hell). Wasser ist alles außerhalb der Länder – Schiffe fahren daher
 // garantiert nur auf Wasser, Flugzeuge überall. Driftende Wolken beleben die Karte.
 import { VEHICLES } from '../generated/vehicles.js';
+import { toLocal } from '../device.js';
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 // Saubere equirektangulare Projektion (2:1). Voller Bereich mit etwas Rand oben/
@@ -204,7 +205,7 @@ export class WorldMap {
     cv.style.touchAction = 'none';
     const ptrs = new Map();
     let g = null;
-    const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const pos = (e) => toLocal(cv, e.clientX, e.clientY);   // berücksichtigt gedrehte Oberfläche
     const startPinch = () => {
       const [a, b] = [...ptrs.values()];
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -279,8 +280,8 @@ export class WorldMap {
     cv.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !ptrs.size) this.hoverIso = null; });
     cv.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const r = cv.getBoundingClientRect();
-      this.zoomAt(e.clientX - r.left, e.clientY - r.top, this.view.scale * (e.deltaY < 0 ? 1.15 : 0.87), false);
+      const p = pos(e);
+      this.zoomAt(p.x, p.y, this.view.scale * (e.deltaY < 0 ? 1.15 : 0.87), false);
     }, { passive: false });
     // iOS Safari: Seiten-Zoom-Gesten unterdrücken, die Karte zoomt selbst
     for (const ev of ['gesturestart', 'gesturechange']) cv.addEventListener(ev, (e) => e.preventDefault());
@@ -390,14 +391,16 @@ export class WorldMap {
       if (w.x < bb[0] || w.x > bb[2] || w.y < bb[1] || w.y > bb[3]) continue;
       if (this._inCountry(c.iso, w.x, w.y)) return c.iso;
     }
-    // winzige Inseln: großzügiger Fangradius (in Bildschirm-Pixeln)
-    const tol = 10 / this.view.scale;
+    // Länder, die auf dem Bildschirm winzig erscheinen (Inseln): großzügiger
+    // Fangradius – gemessen in Bildschirm-Pixeln, damit es bei jeder Größe passt
+    const sc = this.view.scale, tol = 10 / sc;
     let ni = null, nd = 1e9;
     for (const c of this.world.countries) {
       const bb = this.bbox[c.iso];
+      if (Math.max(bb[2] - bb[0], bb[3] - bb[1]) * sc > 16) continue;
       const dx = Math.max(bb[0] - w.x, 0, w.x - bb[2]), dy = Math.max(bb[1] - w.y, 0, w.y - bb[3]);
       const d = Math.hypot(dx, dy);
-      if (d < nd && (bb[2] - bb[0]) * (bb[3] - bb[1]) < 400) { nd = d; ni = c.iso; }
+      if (d < nd) { nd = d; ni = c.iso; }
     }
     return nd < tol ? ni : null;
   }
@@ -417,8 +420,8 @@ export class WorldMap {
   // ---------- Resize / Pfade ----------
   resize() {
     const parent = this.canvas.parentElement;
-    const r = parent ? parent.getBoundingClientRect() : { width: 0, height: 0 };
-    this.cw = r.width || 1280; this.ch = r.height || 720;
+    // Layout-Größe (nicht die gedrehte Bildschirmbox)
+    this.cw = (parent && parent.clientWidth) || 1280; this.ch = (parent && parent.clientHeight) || 720;
     this.canvas.width = this.cw * this.dpr; this.canvas.height = this.ch * this.dpr;
     this.canvas.style.width = this.cw + 'px'; this.canvas.style.height = this.ch + 'px';
     // Bild füllt die Ansicht, Seitenverhältnis 16:9 beibehalten

@@ -195,8 +195,8 @@ export class PathogenViewer {
   }
 
   resize() {
-    const r = this.canvas.getBoundingClientRect();
-    const w = Math.max(2, r.width), h = Math.max(2, r.height);
+    // Layout-Größe (auch korrekt, wenn die Oberfläche gedreht ist)
+    const w = Math.max(2, this.canvas.clientWidth), h = Math.max(2, this.canvas.clientHeight);
     this.renderer.setPixelRatio(this.dpr);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
