@@ -1,0 +1,12 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/glass.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="2"]
+
+[resource]
+resource_name = "glass_clear"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/tint = Color(0.6, 0.7, 0.75, 1)
+shader_parameter/opacity = 0.25
+shader_parameter/noise_tex = ExtResource("2")

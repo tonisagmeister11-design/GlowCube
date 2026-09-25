@@ -1,0 +1,16 @@
+[gd_resource type="ShaderMaterial" load_steps=4 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/surface.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/wood_siding_col.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="3"]
+
+[resource]
+resource_name = "awning"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/albedo_tex = ExtResource("2")
+shader_parameter/macro_noise = ExtResource("3")
+shader_parameter/uv_scale = 1.2
+shader_parameter/use_vertex_tint = true
+shader_parameter/rough_mul = 1.1
+shader_parameter/puddles = 0.0

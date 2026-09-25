@@ -1,0 +1,26 @@
+[gd_resource type="ShaderMaterial" load_steps=11 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/terrain.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/grass_col.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/textures/grass_nrm.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/textures/dirt_col.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/textures/dirt_nrm.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/textures/sand_col.png" id="6"]
+[ext_resource type="Texture2D" path="res://assets/textures/sand_nrm.png" id="7"]
+[ext_resource type="Texture2D" path="res://assets/textures/rock_col.png" id="8"]
+[ext_resource type="Texture2D" path="res://assets/textures/rock_nrm.png" id="9"]
+[ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="10"]
+
+[resource]
+resource_name = "terrain"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/grass_col = ExtResource("2")
+shader_parameter/grass_nrm = ExtResource("3")
+shader_parameter/dirt_col = ExtResource("4")
+shader_parameter/dirt_nrm = ExtResource("5")
+shader_parameter/sand_col = ExtResource("6")
+shader_parameter/sand_nrm = ExtResource("7")
+shader_parameter/rock_col = ExtResource("8")
+shader_parameter/rock_nrm = ExtResource("9")
+shader_parameter/macro_noise = ExtResource("10")

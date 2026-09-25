@@ -1,0 +1,21 @@
+[gd_resource type="ShaderMaterial" load_steps=5 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/facade.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/concrete_col.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/textures/concrete_nrm.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="4"]
+
+[resource]
+resource_name = "facade_glass_blue"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/style = 2
+shader_parameter/wall_tex = ExtResource("2")
+shader_parameter/wall_nrm = ExtResource("3")
+shader_parameter/detail_noise = ExtResource("4")
+shader_parameter/wall_scale = Vector2(0.25, 0.25)
+shader_parameter/glass_color = Color(0.1, 0.2, 0.32, 1)
+shader_parameter/spandrel_color = Color(0.12, 0.18, 0.26, 1)
+shader_parameter/win_spacing = 1.6
+shader_parameter/glass_metal = 0.65
+shader_parameter/lit_ratio = 0.45

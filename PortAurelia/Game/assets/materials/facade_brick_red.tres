@@ -1,0 +1,21 @@
+[gd_resource type="ShaderMaterial" load_steps=5 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/facade.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/brick_col.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/textures/brick_nrm.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="4"]
+
+[resource]
+resource_name = "facade_brick_red"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/style = 0
+shader_parameter/wall_tex = ExtResource("2")
+shader_parameter/wall_nrm = ExtResource("3")
+shader_parameter/detail_noise = ExtResource("4")
+shader_parameter/wall_scale = Vector2(0.5, 1.0)
+shader_parameter/win_spacing = 2.8
+shader_parameter/win_width = 0.42
+shader_parameter/win_height = 0.55
+shader_parameter/frame_color = Color(0.85, 0.83, 0.78, 1)
+shader_parameter/tint_strength = 0.0

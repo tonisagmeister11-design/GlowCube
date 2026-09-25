@@ -1,0 +1,11 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/emissive.gdshader" id="1"]
+
+[resource]
+resource_name = "light_emissive"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/mode = 1
+shader_parameter/energy = 6.0
+shader_parameter/color = Color(1.0, 0.9, 0.72, 1)

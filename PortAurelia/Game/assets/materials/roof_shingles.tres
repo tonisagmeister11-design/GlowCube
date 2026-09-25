@@ -1,0 +1,19 @@
+[gd_resource type="ShaderMaterial" load_steps=5 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/surface.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/shingles_col.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/textures/shingles_nrm.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="4"]
+
+[resource]
+resource_name = "roof_shingles"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/albedo_tex = ExtResource("2")
+shader_parameter/normal_tex = ExtResource("3")
+shader_parameter/macro_noise = ExtResource("4")
+shader_parameter/uv_scale = 0.3
+shader_parameter/world_uv = false
+shader_parameter/use_vertex_tint = true
+shader_parameter/color = Color(2.0, 2.0, 2.0, 1)
+shader_parameter/puddles = 0.0
