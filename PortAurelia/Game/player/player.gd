@@ -435,6 +435,34 @@ func _on_died(source: Node) -> void:
 	Events.player_died.emit()
 
 
+## Hit by a moving vehicle: damage and, for harder hits, a short ragdoll knock-down.
+func on_vehicle_impact(v: Node3D, rel_speed: float) -> void:
+	if state in [State.DEAD, State.BUSTED, State.VEHICLE] or model.ragdolled:
+		return
+	var dir := ((v as RigidBody3D).linear_velocity if v is RigidBody3D else global_position - v.global_position).normalized()
+	health.take_damage(maxf(0.0, (rel_speed - 3.0) * 6.0), v, global_position + Vector3.UP, dir)
+	if health.dead:
+		return
+	if rel_speed > 6.0:
+		state = State.LOCKED
+		input_enabled = false
+		_col.disabled = true
+		model.start_ragdoll(dir * rel_speed * 12.0 + Vector3.UP * rel_speed * 5.0, "Hips")
+		await get_tree().create_timer(2.6).timeout
+		if not is_instance_valid(self) or state != State.LOCKED or health.dead:
+			return
+		var c := model.ragdoll_center()
+		model.stop_ragdoll()
+		_col.disabled = false
+		global_position = Vector3(c.x, maxf(c.y - 0.2, global_position.y), c.z)
+		velocity = Vector3.ZERO
+		state = State.GROUND
+		input_enabled = true
+	else:
+		velocity += dir * rel_speed * 0.8 + Vector3.UP * 2.0
+		model.play_oneshot("hit_react")
+
+
 func arrest() -> void:
 	if state == State.DEAD or state == State.BUSTED:
 		return
@@ -449,6 +477,7 @@ func arrest() -> void:
 
 func respawn(pos: Vector3, yaw := 0.0) -> void:
 	model.stop_ragdoll()
+	_col.disabled = false
 	if vehicle:
 		exit_vehicle()
 	global_position = pos

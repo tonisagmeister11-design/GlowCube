@@ -47,6 +47,10 @@ var _grid := {}
 var _spawn_timer := 0.0
 var _despawn_queue: Array = []
 var rng := RandomNumberGenerator.new()
+var _driver_models := {}            # Vehicle -> CharacterModel (visible driver, near cars only)
+var _model_pool: Array = []
+var _model_timer := 0.0
+const DRIVER_VISIBLE := 65.0
 
 
 func _ready() -> void:
@@ -128,6 +132,10 @@ func _physics_process(delta: float) -> void:
 				if drivers.has(o):
 					(drivers[o] as TrafficDriver).on_siren((v as Node3D).global_position)
 	_process_despawns(pp)
+	_model_timer -= delta
+	if _model_timer <= 0.0:
+		_model_timer = 0.25
+		_update_driver_models(pp)
 	_spawn_timer -= delta
 	if _spawn_timer <= 0.0 and enabled:
 		_spawn_timer = 0.35
@@ -207,7 +215,7 @@ func _spawn_moving(pp: Vector3) -> void:
 		world.add_child(v)
 		var drv := TrafficDriver.new()
 		v.add_child(drv)
-		drv.npc_outfit = {}
+		drv.npc_outfit = Outfits.random("business" if type_id in ["luxury", "supercar"] and rng.randf() < 0.5 else "civilian", rng)
 		drv.setup(v, self, id, s)
 		v.set_kinematic(true)
 		drv._kin_speed = lane.speed * 0.7
@@ -287,6 +295,7 @@ func _process_despawns(pp: Vector3) -> void:
 func _despawn(v: Node) -> void:
 	if (v as Vehicle).driver != null or v == _player_vehicle():
 		return
+	_release_model(v)
 	if parked.has(v):
 		world.data.parking[parked[v]]["occupied"] = false
 	drivers.erase(v)
@@ -312,6 +321,7 @@ func request_despawn(v: Node) -> void:
 
 ## Stop controlling a vehicle (driver abandoned it). It becomes a normal physics object.
 func release_vehicle(v: Node) -> void:
+	_release_model(v)
 	drivers.erase(v)
 	if is_instance_valid(v):
 		(v as Vehicle).set_kinematic(false)
@@ -332,3 +342,52 @@ func set_enabled(on: bool) -> void:
 
 func count_moving() -> int:
 	return drivers.size()
+
+
+# ------------------------------------------------------------------ visible drivers
+func _update_driver_models(pp: Vector3) -> void:
+	for v in _driver_models.keys():
+		if not is_instance_valid(v) or not drivers.has(v) or (v as Node3D).global_position.distance_to(pp) > DRIVER_VISIBLE + 10.0:
+			_release_model(v)
+	for v in drivers:
+		if _driver_models.has(v) or not is_instance_valid(v):
+			continue
+		var drv: TrafficDriver = drivers[v]
+		if drv.mode == TrafficDriver.Mode.ABANDONED or (v as Vehicle).destroyed:
+			continue
+		if (v as Node3D).global_position.distance_to(pp) < DRIVER_VISIBLE:
+			var m: CharacterModel
+			if _model_pool.is_empty():
+				m = CharacterModel.new()
+				m.outfit = drv.npc_outfit
+				v.add_child(m)
+			else:
+				m = _model_pool.pop_back()
+				v.add_child(m)
+				m.apply_outfit(drv.npc_outfit)
+				m.visible = true
+			m.transform = (v as Vehicle).driver_seat_transform()
+			m.set_mode("drive")
+			_driver_models[v] = m
+
+
+func _release_model(v) -> void:
+	if not _driver_models.has(v):
+		return
+	var m: CharacterModel = _driver_models[v]
+	_driver_models.erase(v)
+	if not is_instance_valid(m):
+		return
+	if _model_pool.size() < 10:
+		m.get_parent().remove_child(m)
+		m.visible = false
+		_model_pool.append(m)
+	else:
+		m.queue_free()
+
+
+func _exit_tree() -> void:
+	for m in _model_pool:
+		if is_instance_valid(m):
+			m.free()
+	_model_pool.clear()

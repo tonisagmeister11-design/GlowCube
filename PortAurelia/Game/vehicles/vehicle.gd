@@ -90,7 +90,8 @@ func _ready() -> void:
 	camera_distance = float(def.get("cam", 6.0))
 	mass = float(def["mass"])
 	collision_layer = 1 << 2
-	collision_mask = 1 | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5)
+	# characters are not solid for vehicles: impacts are resolved in _check_pedestrian_hits
+	collision_mask = 1 | (1 << 2) | (1 << 4) | (1 << 5)
 	contact_monitor = true
 	max_contacts_reported = 4
 	continuous_cd = true
@@ -234,7 +235,39 @@ func _physics_process(delta: float) -> void:
 		steer_input = 0.0
 		brake_input = 0.0 if linear_velocity.length() < 0.5 else 0.4
 		handbrake = linear_velocity.length() < 2.0
+	if linear_velocity.length() > 2.5:
+		_check_pedestrian_hits()
 	_update_effects(delta)
+
+
+var _ped_query: PhysicsShapeQueryParameters3D
+var _recent_hits := {}
+
+
+## Characters (player layer 2, NPC layer 4) touched by the moving body get knocked over.
+func _check_pedestrian_hits() -> void:
+	if _ped_query == null:
+		_ped_query = PhysicsShapeQueryParameters3D.new()
+		var b := BoxShape3D.new()
+		b.size = Vector3(float(meta.get("width", 1.8)) + 0.2, float(meta.get("height", 1.4)) * 0.8,
+			float(meta.get("length", 4.5)) + 0.3)
+		_ped_query.shape = b
+		_ped_query.collision_mask = (1 << 1) | (1 << 3)
+	_ped_query.transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(0, float(meta.get("height", 1.4)) * 0.45, 0))
+	var hits := get_world_3d().direct_space_state.intersect_shape(_ped_query, 6)
+	var now := Time.get_ticks_msec()
+	for h in hits:
+		var c: Object = h["collider"]
+		if c == driver or not c.has_method("on_vehicle_impact"):
+			continue
+		if _recent_hits.get(c.get_instance_id(), 0) > now:
+			continue
+		_recent_hits[c.get_instance_id()] = now + 1500
+		var rel := linear_velocity.length()
+		c.call("on_vehicle_impact", self, rel)
+		linear_velocity *= 0.94
+		if rel > 6.0:
+			AudioManager.play_3d("punch_hit", (c as Node3D).global_position + Vector3.UP, 2.0)
 
 
 func _player_input(delta: float) -> void:

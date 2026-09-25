@@ -187,6 +187,8 @@ func _build_tree() -> void:
 	root.connect_node("output", 0, "oneshot")
 	tree.tree_root = root
 	tree.active = true
+	# the transition has no active input until the first request
+	tree.set("parameters/mode/transition_request", mode if mode in MODES else "ground")
 	tree.animation_finished.connect(_on_anim_finished)
 
 
