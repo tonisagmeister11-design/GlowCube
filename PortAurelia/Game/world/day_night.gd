@@ -19,6 +19,7 @@ func _ready() -> void:
 	w.day_night = self
 	if Game.player_data:
 		hour = Game.player_data.hour
+		day = int(Game.player_data.world_state.get("day", 1))
 	_apply()
 
 

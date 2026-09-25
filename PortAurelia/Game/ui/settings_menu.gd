@@ -162,7 +162,7 @@ func _graphics_tab() -> Control:
 	_check(g, "V-Sync", "graphics", "vsync")
 	_option(g, "Grafikqualität", "graphics", "quality", ["Niedrig", "Mittel", "Hoch", "Ultra"])
 	_option(g, "Texturqualität", "graphics", "texture_quality", ["Niedrig", "Mittel", "Hoch"])
-	_option(g, "Schatten", "graphics", "shadow_quality", ["Niedrig", "Mittel", "Hoch", "Ultra"])
+	_option(g, "Schatten", "graphics", "shadow_quality", ["Aus", "Niedrig", "Hoch", "Ultra"])
 	_option(g, "Sichtweite (nach Neustart der Welt)", "graphics", "view_distance", ["Nah", "Normal", "Weit"])
 	_option(g, "Effekte (SSAO, Reflexionen)", "graphics", "effects", ["Niedrig", "Mittel", "Hoch"])
 	_option(g, "Kantenglättung", "graphics", "anti_aliasing", ["Aus", "FXAA", "TAA", "MSAA 4x"])

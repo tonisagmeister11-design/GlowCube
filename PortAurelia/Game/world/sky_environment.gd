@@ -23,6 +23,7 @@ var _sun_dir := Vector3.UP
 func _ready() -> void:
 	world_env = WorldEnvironment.new()
 	world_env.add_to_group("world_environment")
+	add_to_group("sky_environment")
 	env = Environment.new()
 	var sky := Sky.new()
 	sky_mat = ShaderMaterial.new()
@@ -68,8 +69,7 @@ func _ready() -> void:
 	sun = DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.shadow_enabled = true
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-	sun.directional_shadow_max_distance = 320.0
+	apply_quality(Settings.quality() if Settings else 2)
 	sun.directional_shadow_split_1 = 0.06
 	sun.directional_shadow_split_2 = 0.18
 	sun.directional_shadow_split_3 = 0.45
@@ -87,6 +87,16 @@ func _ready() -> void:
 	moon.light_energy = 0.0
 	add_child(moon)
 	apply()
+
+
+## Shadow range / cascades per graphics quality (0 low .. 3 ultra).
+func apply_quality(q: int) -> void:
+	if sun == null:
+		return
+	q = clampi(q, 0, 3)
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if q <= 1 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	sun.directional_shadow_max_distance = [110.0, 180.0, 280.0, 420.0][q]
+	sun.shadow_enabled = int(Settings.get_value("graphics", "shadow_quality")) > 0 if Settings else true
 
 
 func set_time(h: float) -> void:

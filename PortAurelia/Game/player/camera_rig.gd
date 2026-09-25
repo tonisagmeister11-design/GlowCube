@@ -17,6 +17,8 @@ var first_person := false
 var look_behind := false
 var locked := false
 var shake := 0.0
+var scoped := false                 # sniper scope: first-person zoom
+var scope_fov := 20.0
 
 var camera: Camera3D
 var arm: SpringArm3D
@@ -68,6 +70,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion:
 		_mouse_delta += (event as InputEventMouseMotion).relative
+	elif scoped and event is InputEventMouseButton and event.pressed:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			scope_fov = maxf(6.0, scope_fov * 0.85)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			scope_fov = minf(35.0, scope_fov / 0.85)
 
 
 func add_shake(amount: float) -> void:
@@ -87,7 +95,7 @@ func _process(delta: float) -> void:
 		return
 	var sens: float = Settings.get_value("controls", "mouse_sensitivity") if Settings else 1.0
 	var inv := -1.0 if (Settings and Settings.get_value("controls", "invert_y")) else 1.0
-	var md := _mouse_delta * 0.0025 * sens * (0.6 if aiming else 1.0)
+	var md := _mouse_delta * 0.0025 * sens * (0.6 if aiming else 1.0) * (scope_fov / 70.0 if scoped else 1.0)
 	_mouse_delta = Vector2.ZERO
 	var pad := Vector2(Input.get_axis("look_left", "look_right"), Input.get_axis("look_up", "look_down"))
 	var pad_sens: float = Settings.get_value("controls", "controller_sensitivity") if Settings else 1.0
@@ -128,12 +136,17 @@ func _process(delta: float) -> void:
 	elif sprinting:
 		arm_len = 3.9
 		fov += 6.0
-	if first_person and not vehicle:
+	if scoped and not vehicle:
+		arm_len = 0.0
+		side = 0.0
+		height = 1.62
+		fov = scope_fov
+	elif first_person and not vehicle:
 		arm_len = 0.0
 		side = 0.0
 		height = 1.68
 	_arm_len = lerpf(_arm_len, arm_len, clampf(delta * 6.0, 0.0, 1.0))
-	_fov = lerpf(_fov, fov, clampf(delta * 5.0, 0.0, 1.0))
+	_fov = lerpf(_fov, fov, clampf(delta * (14.0 if scoped else 5.0), 0.0, 1.0))
 	camera.fov = _fov
 	arm.spring_length = _arm_len
 	var y := yaw + (PI if look_behind else 0.0)

@@ -172,9 +172,11 @@ func handle_input(aiming: bool) -> void:
 				if int(WeaponData.get_def(id)["slot"]) == i:
 					equip(id)
 					break
-	if Input.is_action_just_pressed("weapon_next"):
+	# while looking through a scope the mouse wheel zooms instead of switching weapons
+	var scoped := aiming and bool(WeaponData.get_def(current).get("scope", false))
+	if Input.is_action_just_pressed("weapon_next") and not scoped:
 		cycle(1)
-	elif Input.is_action_just_pressed("weapon_prev"):
+	elif Input.is_action_just_pressed("weapon_prev") and not scoped:
 		cycle(-1)
 	if Input.is_action_just_pressed("reload"):
 		reload()

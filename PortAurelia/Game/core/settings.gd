@@ -144,6 +144,9 @@ func _apply_rendering() -> void:
 	var tq: int = get_value("graphics", "texture_quality")
 	vp.anisotropic_filtering_level = [Viewport.ANISOTROPY_2X, Viewport.ANISOTROPY_4X, Viewport.ANISOTROPY_16X][clampi(tq, 0, 2)]
 	apply_effects()
+	if is_inside_tree():
+		for sky in get_tree().get_nodes_in_group("sky_environment"):
+			sky.call("apply_quality", q)
 
 
 ## Screen-space effects on the world environment (called again when the world loads).

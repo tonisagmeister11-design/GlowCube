@@ -38,6 +38,8 @@ var _bus_timer := 0.0
 var _robbery := {}             # active robbery {poi, time, total}
 var _last_income_day := -1
 var rng := RandomNumberGenerator.new()
+var _pending_parked := {}      # owned vehicle id -> [x, y, z, yaw] waiting to be respawned
+var _parked_timer := 0.0
 
 
 func _ready() -> void:
@@ -48,6 +50,7 @@ func _ready() -> void:
 	for p in world.data.pois:
 		_create_marker(p)
 	Events.time_changed.connect(_on_time)
+	_pending_parked = (Game.player_data.world_state.get("vehicles_parked", {}) as Dictionary).duplicate()
 
 
 # ------------------------------------------------------------------ markers
@@ -156,6 +159,25 @@ func _process(delta: float) -> void:
 		_update_bus_markers(p.global_position)
 	if not _robbery.is_empty():
 		_update_robbery(p, delta)
+	_parked_timer -= delta
+	if _parked_timer <= 0.0 and not _pending_parked.is_empty():
+		_parked_timer = 2.0
+		_restore_parked(p.global_position)
+
+
+## Personal vehicles reappear where they were parked once the area is streamed in.
+func _restore_parked(pp: Vector3) -> void:
+	for id in _pending_parked.keys():
+		var a: Array = _pending_parked[id]
+		var pos := Vector3(a[0], a[1], a[2])
+		if pos.distance_to(pp) > 250.0 or not world.streaming.is_loaded_at(pos):
+			continue
+		for e in Game.player_data.owned_vehicles:
+			if e["id"] == id:
+				var v := spawn_owned_vehicle(e, pos, Vector3.ZERO)
+				v.global_rotation.y = float(a[3])
+				break
+		_pending_parked.erase(id)
 
 
 func _update_vehicle_markers(p: Player, delta: float) -> void:
@@ -456,7 +478,10 @@ func spawn_owned_vehicle(entry: Dictionary, pos: Vector3, facing: Vector3) -> Ve
 	var v := Vehicle.create(entry["type"], Color.html(entry["color"]))
 	v.player_owned = true
 	v.owned_id = entry["id"]
+	_pending_parked.erase(entry["id"])
 	var side := facing.cross(Vector3.UP).normalized()
+	if side.length() < 0.01:
+		side = Vector3.FORWARD
 	v.transform = Transform3D(Basis.looking_at(side, Vector3.UP), pos + Vector3.UP * 0.6)
 	world.add_child(v)
 	for k in entry.get("upgrades", {}):

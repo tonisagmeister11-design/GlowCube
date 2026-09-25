@@ -32,7 +32,11 @@ func _ready() -> void:
 	for i in 3:
 		await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png(out.path_join("street_%d.png" % i))
-		print("shot ", i, " peds ", world.peds.call("count") if world.peds else 0, " cars ", world.traffic.drivers.size() if world.traffic else 0)
+		print("shot ", i, " peds ", world.peds.call("count") if world.peds else 0, " cars ", world.traffic.drivers.size() if world.traffic else 0,
+			" draws ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+			" objects ", Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			" prims ", Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+			" vram ", int(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0), "MB")
 		p.cam.yaw += PI * 0.5
 		await get_tree().create_timer(4.0).timeout
 	get_tree().quit()

@@ -199,6 +199,10 @@ func _move_on_foot(delta: float) -> void:
 	if cam:
 		cam.aiming = aiming
 		cam.sprinting = sprinting
+		var scope := aiming and bool(WeaponData.get_def(weapons.current_id()).get("scope", false))
+		if scope != cam.scoped:
+			cam.scoped = scope
+			model.visible = not scope
 	_footsteps(delta)
 	# water
 	if _in_water():

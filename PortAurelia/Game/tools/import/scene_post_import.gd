@@ -11,10 +11,10 @@ extends EditorScenePostImport
 const MAT_DIR := "res://assets/materials/"
 
 const RANGES := {
-	"Markings_LOD0": Vector2(0.0, 240.0),
-	"Detail_LOD0": Vector2(0.0, 210.0),
-	"Buildings_LOD0": Vector2(0.0, 260.0),
-	"Buildings_LOD1": Vector2(260.0, 0.0),
+	"Markings_LOD0": Vector2(0.0, 200.0),
+	"Detail_LOD0": Vector2(0.0, 170.0),
+	"Buildings_LOD0": Vector2(0.0, 220.0),
+	"Buildings_LOD1": Vector2(220.0, 0.0),
 }
 
 const LOOPING := ["idle", "walk", "run", "sprint", "crouch_walk", "crouch_idle", "fall", "swim", "swim_idle",
@@ -81,9 +81,7 @@ func _setup_mesh(mi: MeshInstance3D) -> void:
 			mi.visibility_range_begin_margin = 12.0 if r.x > 0.0 else 0.0
 			mi.visibility_range_end_margin = 12.0 if r.y > 0.0 else 0.0
 			mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-	if nm.begins_with("Markings"):
+	# shadow casting only where it is visible: flat ground, markings and small details
+	# don't cast (performance), buildings and structures do
+	if nm.begins_with("Markings") or nm.begins_with("Far_") or nm.begins_with("Ground") or nm.begins_with("Detail"):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	elif nm.begins_with("Far_"):
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	elif nm.begins_with("Ground"):
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON

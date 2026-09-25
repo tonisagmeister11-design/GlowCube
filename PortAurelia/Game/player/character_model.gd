@@ -53,6 +53,11 @@ func _ready() -> void:
 	for mi in model.find_children("*", "MeshInstance3D", true, false):
 		meshes[String(mi.name)] = mi
 		mi.visible = false
+		var mn := String(mi.name)
+		(mi as MeshInstance3D).visibility_range_end = 220.0
+		if mn.begins_with("Eyes") or mn.begins_with("Brows") or mn.begins_with("Glasses"):
+			(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			(mi as MeshInstance3D).visibility_range_end = 40.0
 	var sks := model.find_children("*", "Skeleton3D", true, false)
 	skeleton = sks[0] if sks.size() > 0 else null
 	var aps := model.find_children("*", "AnimationPlayer", true, false)

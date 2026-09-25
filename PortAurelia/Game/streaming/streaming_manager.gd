@@ -257,9 +257,12 @@ func _build_props(st: ChunkState) -> void:
 			var basis := Basis(Vector3.UP, float(pr[4]))
 			lights.append(Vector3(pr[1], pr[2], pr[3]) + basis * Vector3(lp[0], lp[1], lp[2]))
 	lamp_lights[st.coord] = lights
+	# holder at the chunk centre: visibility ranges are measured from the node origin
+	var center := world.chunk_center(st.coord)
 	var holder := Node3D.new()
 	holder.name = "Props"
 	st.root.add_child(holder)
+	holder.position = center   # chunk root sits at the world origin
 	for gkey in groups:
 		var parts := String(gkey).split("#")
 		var t := parts[0]
@@ -283,7 +286,7 @@ func _build_props(st: ChunkState) -> void:
 				if cat == PropLibrary.CATEGORY["tree"]:
 					sc = 0.8 + 0.12 * float(int(pr[5]) % 4)
 				var b := Basis(Vector3.UP, float(pr[4])).scaled(Vector3(sc, sc, sc))
-				mm.set_instance_transform(i, Transform3D(b, Vector3(pr[1], pr[2], pr[3])))
+				mm.set_instance_transform(i, Transform3D(b, Vector3(pr[1], pr[2], pr[3]) - center))
 				if mm.use_colors:
 					mm.set_instance_color(i, PropLibrary.CONTAINER_COLORS[int(pr[5]) % PropLibrary.CONTAINER_COLORS.size()])
 			var mmi := MultiMeshInstance3D.new()
@@ -326,9 +329,10 @@ func _build_traffic_lights(st: ChunkState) -> void:
 	mm_arm.mesh = arm
 	mm_arm.instance_count = sigs.size()
 	var heads := []
+	var center := world.chunk_center(st.coord)
 	for i in sigs.size():
 		var sg: Dictionary = sigs[i]
-		var pos := Vector3(sg["pos"][0], sg["pos"][1], sg["pos"][2])
+		var pos := Vector3(sg["pos"][0], sg["pos"][1], sg["pos"][2]) - center
 		var b := Basis(Vector3.UP, float(sg["rot"]))
 		mm_pole.set_instance_transform(i, Transform3D(b, pos))
 		var armlen: float = sg["arm"]
@@ -350,6 +354,7 @@ func _build_traffic_lights(st: ChunkState) -> void:
 	var holder := Node3D.new()
 	holder.name = "TrafficLights"
 	st.root.add_child(holder)
+	holder.position = center   # chunk root sits at the world origin
 	for mm in [mm_pole, mm_arm]:
 		var mi := MultiMeshInstance3D.new()
 		mi.multimesh = mm

@@ -61,7 +61,7 @@ func _ready() -> void:
 	rng.randomize()
 	var q: int = Settings.quality() if Settings else 2
 	target_moving = [12, 20, 28, 38][clampi(q, 0, 3)]
-	target_parked = [10, 16, 24, 32][clampi(q, 0, 3)]
+	target_parked = [8, 12, 18, 26][clampi(q, 0, 3)]
 	Events.gunshot.connect(_on_gunshot)
 	Events.explosion.connect(func(p, r, s): _on_gunshot(p, s, 2.0))
 	get_tree().node_added.connect(_on_node_added)

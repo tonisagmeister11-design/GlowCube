@@ -124,6 +124,18 @@ func _build_visual() -> void:
 	add_child(visual)
 	for mi in visual.find_children("*", "MeshInstance3D", true, false):
 		var n := String(mi.name)
+		# distance culling / no shadows for small parts (performance)
+		if n == "Interior":
+			mi.visibility_range_end = 40.0
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		elif n == "Detail" or n.begins_with("Wheel"):
+			mi.visibility_range_end = 150.0
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		elif n.begins_with("Bumper"):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		elif n.begins_with("Light") or n == "Glass" or n == "Siren":
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mi.visibility_range_end = 350.0
 		if n == "Body":
 			body_mesh = mi
 			_paint_meshes.append(mi)

@@ -67,6 +67,15 @@ func _gather(pd: PlayerData) -> void:
 	if p:
 		pd.position = p.global_position
 		pd.yaw = p.rotation.y
+		# inside an interior the player stands below the city: save the door instead
+		var im := InteriorManager.get_manager()
+		if im and im.is_inside():
+			var poi: Dictionary = im.current_poi
+			pd.position = (poi["entrance_v"] as Vector3) + (poi["facing_v"] as Vector3) * 2.5 + Vector3.UP * 0.2
+			var f: Vector3 = poi["facing_v"]
+			pd.yaw = atan2(-f.x, -f.z)
+		elif p.is_in_vehicle() and p.vehicle:
+			pd.position = (p.vehicle as Vehicle).get_exit_point()
 		pd.health = p.health.health
 		pd.armor = p.health.armor
 		pd.weapons = p.weapons.serialize()
@@ -75,8 +84,16 @@ func _gather(pd: PlayerData) -> void:
 		pd.hour = float(w.day_night.get("hour"))
 	if w.weather:
 		pd.weather = String(w.weather.get("state"))
-	if w.missions and w.missions.has_method("serialize"):
-		pd.missions = w.missions.call("serialize")
+	# world state: game day and where the personal vehicles are parked
+	if w.day_night:
+		pd.world_state["day"] = int(w.day_night.get("day"))
+	var parked := {}
+	for v in w.get_tree().get_nodes_in_group("vehicles"):
+		var veh := v as Vehicle
+		if veh.owned_id != "" and not veh.destroyed:
+			var t := veh.global_transform
+			parked[veh.owned_id] = [t.origin.x, t.origin.y, t.origin.z, veh.global_rotation.y]
+	pd.world_state["vehicles_parked"] = parked
 
 
 func _district_name() -> String:

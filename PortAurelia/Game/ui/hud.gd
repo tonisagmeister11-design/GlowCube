@@ -44,6 +44,7 @@ var _money_delta_timer := 0.0
 var _radar_radius := 110.0
 var _t := 0.0
 var _timer_label: Label
+var _scope: Control
 
 
 func _ready() -> void:
@@ -164,6 +165,14 @@ func _build() -> void:
 	_crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_crosshair.draw.connect(_draw_crosshair)
 	_root.add_child(_crosshair)
+	# ---- sniper scope overlay
+	_scope = Control.new()
+	_scope.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_scope.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scope.visible = false
+	_scope.draw.connect(_draw_scope)
+	_root.add_child(_scope)
+	_root.move_child(_scope, 0)
 	# ---- big message
 	var center := VBoxContainer.new()
 	center.set_anchors_preset(Control.PRESET_CENTER)
@@ -366,8 +375,12 @@ func _process(delta: float) -> void:
 			else "%d km/h" % int(kmh)
 	else:
 		_speed.text = ""
-	# crosshair
-	_crosshair.visible = p.aiming or (p.is_in_vehicle() and Input.is_action_pressed("aim"))
+	# crosshair / sniper scope
+	var scoped: bool = p.cam != null and p.cam.scoped
+	_scope.visible = scoped
+	if scoped:
+		_scope.queue_redraw()
+	_crosshair.visible = not scoped and (p.aiming or (p.is_in_vehicle() and Input.is_action_pressed("aim")))
 	_crosshair.queue_redraw()
 	# mission countdown
 	var tl: float = world.missions.call("current_time_left") if world.missions else -1.0
@@ -529,6 +542,29 @@ func _collect_blips() -> Array:
 			if npc.hostile and npc.target == world.player and npc.role != "cop":
 				out.append({"pos": npc.global_position, "icon": "", "color": Color(0.95, 0.2, 0.2), "size": 6.0})
 	return out
+
+
+func _draw_scope() -> void:
+	var sz := _scope.size
+	var c := sz * 0.5
+	var r := sz.y * 0.46
+	var black := Color(0, 0, 0, 1)
+	# mask outside the lens with a thick ring and side bars
+	_scope.draw_arc(c, r + sz.x * 0.5, 0, TAU, 96, black, sz.x, true)
+	_scope.draw_rect(Rect2(0, 0, c.x - r + 1, sz.y), black)
+	_scope.draw_rect(Rect2(c.x + r - 1, 0, sz.x - (c.x + r) + 1, sz.y), black)
+	_scope.draw_arc(c, r, 0, TAU, 96, Color(0.05, 0.05, 0.05), 6.0, true)
+	var line := Color(0, 0, 0, 0.9)
+	_scope.draw_line(Vector2(c.x - r, c.y), Vector2(c.x - 8, c.y), line, 2.0)
+	_scope.draw_line(Vector2(c.x + 8, c.y), Vector2(c.x + r, c.y), line, 2.0)
+	_scope.draw_line(Vector2(c.x, c.y - r), Vector2(c.x, c.y - 8), line, 2.0)
+	_scope.draw_line(Vector2(c.x, c.y + 8), Vector2(c.x, c.y + r), line, 2.0)
+	for i in range(1, 5):
+		var o := i * r * 0.12
+		_scope.draw_line(Vector2(c.x + o, c.y - 6), Vector2(c.x + o, c.y + 6), line, 2.0)
+		_scope.draw_line(Vector2(c.x - o, c.y - 6), Vector2(c.x - o, c.y + 6), line, 2.0)
+		_scope.draw_line(Vector2(c.x - 6, c.y + o), Vector2(c.x + 6, c.y + o), line, 2.0)
+	_scope.draw_circle(c, 2.0, Color(0.9, 0.1, 0.1))
 
 
 func _draw_crosshair() -> void:
