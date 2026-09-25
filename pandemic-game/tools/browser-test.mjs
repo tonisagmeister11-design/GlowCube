@@ -74,6 +74,19 @@ await page.evaluate(() => window.__game.setSpeed(4));
 await page.waitForTimeout(1500);
 await page.screenshot({ path: path.join(shotDir, '04-game.png') });
 
+// Jeder Landesteil muss antippbar sein – auch weit vom Landesmittelpunkt entfernte
+// (früher waren z.B. Alaska und Französisch-Guayana nicht anklickbar)
+const hits = await page.evaluate(() => {
+  const m = window.__game.map; m.view.scale = 1; m._clampView();
+  const at = (lon, lat) => { const [x, y] = m.proj(lon, lat); return m._hit(x + m.view.x, y + m.view.y); };
+  return { USA_Alaska: at(-150, 64), FRA_Guayana: at(-53, 4), RUS_Kaliningrad: at(21, 54.7), USA_Hawaii: at(-155.5, 19.6), RUS_Tschukotka: at(175, 66) };
+});
+for (const [k, v] of Object.entries(hits)) {
+  const ok = v === k.slice(0, 3);
+  console.log(`${ok ? 'OK ' : 'ERR'} Antippen ${k}: ${v}`);
+  if (!ok) fail++;
+}
+
 // Evolution öffnen
 await page.click('.disease-btn');
 await page.waitForTimeout(800);

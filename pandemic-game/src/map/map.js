@@ -11,6 +11,24 @@ const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const CAL = { aspect: 2.0, latTop: 84, latBot: -60 };
 function latToFrac(lat) { return (CAL.latTop - lat) / (CAL.latTop - CAL.latBot); }
 
+// Infektionspunkte: jede Bevölkerungsgruppe hat ihre eigene Punktfarbe.
+// Code 0 = kein Punkt. Reihenfolge = Zeichenpriorität innerhalb eines Landes.
+export const DOT_TYPES = [
+  null,
+  { key: 'xeno', label: 'Kristallisiert', rgb: [110, 215, 255] },
+  { key: 'dead', label: 'Tot', rgb: [72, 8, 12] },
+  { key: 'zombie', label: 'Zombies', rgb: [95, 225, 60] },
+  { key: 'xmon', label: 'Kristallwesen', rgb: [175, 245, 255] },
+  { key: 'vampire', label: 'Vampire', rgb: [255, 45, 150] },
+  { key: 'ape', label: 'Affen', rgb: [255, 150, 30] },
+  { key: 'control', label: 'Kontrolliert', rgb: [175, 95, 255] },
+  { key: 'inf', label: 'Infiziert', rgb: [236, 30, 26] },
+];
+const DOT_CODE = Object.fromEntries(DOT_TYPES.map((d, i) => [d ? d.key : 'none', i]));
+export const DOT_RGBA = (key, a = 1) => { const d = DOT_TYPES[DOT_CODE[key]]; return `rgba(${d.rgb.join(',')},${a})`; };
+const DOT_SPACING = 3;          // Abstand der Punkte in Basis-Pixeln
+const DOT_R = DOT_SPACING * 0.95; // Radius: Punkte überlappen -> volles Land wirkt komplett gefärbt
+
 export class WorldMap {
   constructor(canvas, world) {
     this.canvas = canvas;
@@ -33,7 +51,9 @@ export class WorldMap {
     this.astImg = new Image(); if (VEHICLES.asteroid) this.astImg.src = VEHICLES.asteroid;
     this._landColors = {};
     for (const c of world.countries) this._landColors[c.iso] = this._climateColor(c);
-    this._samplePoints();
+    this.popDots = [];      // gerade erscheinende Punkte (Animation)
+    this._time = 0;
+    this._buildDotSprites();
     this._buildCloudTile();
     this.asteroid = null;
     this._infDirty = true;
@@ -47,28 +67,83 @@ export class WorldMap {
     return [(lon + 180) / 360 * this.baseW, latToFrac(lat) * this.baseH];
   }
 
-  // ---------- Infektions-Stichprobenpunkte je Land ----------
-  _samplePoints() {
-    this.samples = {};
+  // ---------- Infektionspunkte: Positionen je Land ----------
+  // Dichtes, leicht verwackeltes Raster über ALLE Landesteile (auch Alaska,
+  // Französisch-Guayana, Kaliningrad …). Reihenfolge: von einem Ausbruchsherd
+  // nach außen, mit Streuung – so wächst die Infektion sichtbar.
+  _buildDots() {
+    const S = DOT_SPACING;
+    this.dots = {};
+    const mask = document.createElement('canvas');
+    const mx = mask.getContext('2d', { willReadFrequently: true });
     for (const c of this.world.countries) {
-      const rings = this.world.geo[c.iso];
-      if (!rings || !rings.length) { this.samples[c.iso] = [[c.lon, c.lat]]; continue; }
-      let minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
-      for (const r of rings) for (const [x, y] of r) { minx = Math.min(minx, x); miny = Math.min(miny, y); maxx = Math.max(maxx, x); maxy = Math.max(maxy, y); }
-      const n = clamp(Math.round(Math.sqrt(c.area) / 45), 5, 44);
-      const pts = [];
-      let tries = 0;
-      const rng = mulberry(hashStr(c.iso));
-      while (pts.length < n && tries < n * 40) {
-        tries++;
-        const x = minx + rng() * (maxx - minx), y = miny + rng() * (maxy - miny);
-        if (this._inRings(rings, x, y)) pts.push([x, y]);
+      const bb = this.bbox[c.iso];
+      const w = Math.max(1, Math.ceil((bb[2] - bb[0]) / S) + 1), h = Math.max(1, Math.ceil((bb[3] - bb[1]) / S) + 1);
+      mask.width = w; mask.height = h;
+      mx.setTransform(1 / S, 0, 0, 1 / S, -bb[0] / S, -bb[1] / S);
+      mx.fillStyle = '#fff'; mx.fill(this.paths[c.iso]);
+      const data = mx.getImageData(0, 0, w, h).data;
+      const rng = mulberry(hashStr(c.iso + 'dots'));
+      const xs = [], ys = [];
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+        if (data[(j * w + i) * 4 + 3] < 90) continue;
+        xs.push(bb[0] + (i + 0.5 + (rng() - 0.5) * 0.7) * S);
+        ys.push(bb[1] + (j + 0.5 + (rng() - 0.5) * 0.7) * S);
       }
-      if (!pts.length) pts.push([c.lon, c.lat]);
-      // von der Landesmitte nach außen sortieren -> Infektion breitet sich sichtbar aus
-      pts.sort((a, b) => ((a[0] - c.lon) ** 2 + (a[1] - c.lat) ** 2) - ((b[0] - c.lon) ** 2 + (b[1] - c.lat) ** 2));
-      this.samples[c.iso] = pts;
+      // Kleinststaaten/Inseln: ein paar Punkte direkt im Polygon
+      for (let k = 0; xs.length < 3 && k < 400; k++) {
+        const x = bb[0] + rng() * (bb[2] - bb[0]), y = bb[1] + rng() * (bb[3] - bb[1]);
+        if (this._inCountry(c.iso, x, y)) { xs.push(x); ys.push(y); }
+      }
+      if (!xs.length) { const [x, y] = this.proj(c.lon, c.lat); xs.push(x); ys.push(y); }
+      const d = { n: xs.length, x: new Float32Array(xs), y: new Float32Array(ys), state: new Uint8Array(xs.length) };
+      this.dots[c.iso] = d;
+      const seed = (rng() * d.n) | 0;
+      this._orderDots(c.iso, d.x[seed], d.y[seed]);
     }
+    this._dotsReset = true;
+  }
+
+  _orderDots(iso, sx, sy) {
+    const d = this.dots[iso]; if (!d) return;
+    const rng = mulberry(hashStr(iso + 'order'));
+    // zweiter, schwächerer Herd bei großen Ländern
+    const k2 = d.n > 300 ? (rng() * d.n) | 0 : -1;
+    const idx = Array.from({ length: d.n }, (_, i) => i);
+    let maxD = 1;
+    const dist = new Float32Array(d.n);
+    for (let i = 0; i < d.n; i++) {
+      let v = Math.hypot(d.x[i] - sx, d.y[i] - sy);
+      if (k2 >= 0) v = Math.min(v, Math.hypot(d.x[i] - d.x[k2], d.y[i] - d.y[k2]) * 1.35);
+      dist[i] = v; if (v > maxD) maxD = v;
+    }
+    const key = new Float32Array(d.n);
+    for (let i = 0; i < d.n; i++) key[i] = dist[i] / maxD * 0.62 + rng() * 0.38;
+    idx.sort((a, b) => key[a] - key[b]);
+    d.x = Float32Array.from(idx, (i) => d.x[i]);
+    d.y = Float32Array.from(idx, (i) => d.y[i]);
+    // Erster Punkt exakt am Herd
+    let best = 0, bd = 1e9;
+    for (let i = 0; i < d.n; i++) { const v = Math.hypot(d.x[i] - sx, d.y[i] - sy); if (v < bd) { bd = v; best = i; } }
+    [d.x[0], d.x[best]] = [d.x[best], d.x[0]]; [d.y[0], d.y[best]] = [d.y[best], d.y[0]];
+  }
+
+  _buildDotSprites() {
+    this.dotSprites = DOT_TYPES.map((t) => {
+      if (!t) return null;
+      const S = 24, c = S / 2;
+      const cv = document.createElement('canvas'); cv.width = cv.height = S;
+      const x = cv.getContext('2d');
+      const [r, g, b] = t.rgb;
+      const lite = (v) => Math.min(255, v + 38), dark = (v) => Math.round(v * 0.8);
+      const gr = x.createRadialGradient(c * 0.9, c * 0.88, 0, c, c, c);
+      gr.addColorStop(0, `rgba(${lite(r)},${lite(g)},${lite(b)},1)`);
+      gr.addColorStop(0.35, `rgba(${r},${g},${b},1)`);
+      gr.addColorStop(0.78, `rgba(${dark(r)},${dark(g)},${dark(b)},1)`);
+      gr.addColorStop(1, `rgba(${dark(r)},${dark(g)},${dark(b)},0)`);
+      x.fillStyle = gr; x.beginPath(); x.arc(c, c, c, 0, 7); x.fill();
+      return cv;
+    });
   }
 
   _inRings(rings, x, y) {
@@ -175,25 +250,34 @@ export class WorldMap {
     if (iso && this.onPick) { this.selectedIso = iso; this.onPick(iso); }
   }
 
+  // Treffertest über die echte Landesform (alle Landesteile, egal wie weit
+  // sie vom Mittelpunkt entfernt sind – z.B. Alaska oder Französisch-Guayana)
   _hit(sx, sy) {
     const w = this._toWorld(sx, sy);
     for (const c of this.world.countries) {
-      const [cx, cy] = this.proj(c.lon, c.lat);
-      if ((cx - w.x) ** 2 + (cy - w.y) ** 2 < 160 ** 2 && this._inCountry(c.iso, w.x, w.y)) return c.iso;
+      const bb = this.bbox[c.iso];
+      if (w.x < bb[0] || w.x > bb[2] || w.y < bb[1] || w.y > bb[3]) continue;
+      if (this._inCountry(c.iso, w.x, w.y)) return c.iso;
     }
+    // winzige Inseln: großzügiger Fangradius (in Bildschirm-Pixeln)
+    const tol = 10 / this.view.scale;
     let ni = null, nd = 1e9;
-    for (const c of this.world.countries) { const [cx, cy] = this.proj(c.lon, c.lat); const d = Math.hypot(cx - w.x, cy - w.y); if (d < nd) { nd = d; ni = c.iso; } }
-    return nd < 12 ? ni : null;
+    for (const c of this.world.countries) {
+      const bb = this.bbox[c.iso];
+      const dx = Math.max(bb[0] - w.x, 0, w.x - bb[2]), dy = Math.max(bb[1] - w.y, 0, w.y - bb[3]);
+      const d = Math.hypot(dx, dy);
+      if (d < nd && (bb[2] - bb[0]) * (bb[3] - bb[1]) < 400) { nd = d; ni = c.iso; }
+    }
+    return nd < tol ? ni : null;
   }
 
   _inCountry(iso, x, y) {
-    const rings = this.world.geo[iso]; if (!rings) return false;
+    const rings = this.projRings && this.projRings[iso]; if (!rings) return false;
     let inside = false;
     for (const ring of rings) {
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        const [xi0, yi0] = this.proj(ring[i][0], ring[i][1]);
-        const [xj0, yj0] = this.proj(ring[j][0], ring[j][1]);
-        if (((yi0 > y) !== (yj0 > y)) && (x < (xj0 - xi0) * (y - yi0) / (yj0 - yi0) + xi0)) inside = !inside;
+        const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+        if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
       }
     }
     return inside;
@@ -212,10 +296,16 @@ export class WorldMap {
     if (this.baseH < this.ch) { this.baseH = this.ch; this.baseW = this.baseH * CAL.aspect; }
     this._clampView();
     this._buildPaths();
+    this._buildDots();
+    if (this.eng) { const c = this.byIso[this.eng.startCountry]; if (c) { const [x, y] = this.proj(c.lon, c.lat); this._orderDots(c.iso, x, y); } }
+    this.popDots = [];
     this._infCanvas = document.createElement('canvas');
     this._infRes = 2; // doppelte Auflösung für scharfe Infektionspunkte beim Zoom
     this._infCanvas.width = Math.round(this.baseW * this._infRes);
     this._infCanvas.height = Math.round(this.baseH * this._infRes);
+    this._ovCanvas = document.createElement('canvas');
+    this._ovCanvas.width = this._infCanvas.width; this._ovCanvas.height = this._infCanvas.height;
+    this._dotsReset = true;
     this._infDirty = true;
     this._renderBase();
     this._buildLandMask();
@@ -327,18 +417,38 @@ export class WorldMap {
 
   _buildPaths() {
     this.paths = {};
+    this.projRings = {};   // projizierte Ringe (für Treffertest, identisch zur Zeichnung)
+    this.bbox = {};
     for (const c of this.world.countries) {
       const p = new Path2D();
+      const rings = [];
+      const bb = [1e9, 1e9, -1e9, -1e9];
       for (const ring of this.world.geo[c.iso]) {
         const pts = this._ringPoints(ring);
-        for (let i = 0; i < pts.length; i++) { if (i === 0) p.moveTo(pts[i][0], pts[i][1]); else p.lineTo(pts[i][0], pts[i][1]); }
+        for (let i = 0; i < pts.length; i++) {
+          if (i === 0) p.moveTo(pts[i][0], pts[i][1]); else p.lineTo(pts[i][0], pts[i][1]);
+          bb[0] = Math.min(bb[0], pts[i][0]); bb[1] = Math.min(bb[1], pts[i][1]);
+          bb[2] = Math.max(bb[2], pts[i][0]); bb[3] = Math.max(bb[3], pts[i][1]);
+        }
         p.closePath();
+        rings.push(pts);
       }
       this.paths[c.iso] = p;
+      this.projRings[c.iso] = rings;
+      this.bbox[c.iso] = bb;
     }
   }
 
-  setEngine(eng) { this.eng = eng; this._infDirty = true; this._lastInfDay = -1; this._sanitizeSea(); }
+  setEngine(eng) {
+    this.eng = eng; this._infDirty = true; this._lastInfDay = -1; this._sanitizeSea();
+    this.popDots = []; this.agents = [];
+    // Ausbruch im Startland beginnt am Startmarker
+    if (eng && this.dots) {
+      const c = this.byIso[eng.startCountry];
+      if (c) { const [x, y] = this.proj(c.lon, c.lat); this._orderDots(c.iso, x, y); }
+    }
+    this._dotsReset = true;
+  }
 
   // ---------- Wasser (alles außerhalb der Länder) ----------
   isWater(lon, lat) {
@@ -388,46 +498,171 @@ export class WorldMap {
   // Zielauswahl für gerichtete Sonderfähigkeiten (z.B. Neurax-Kontrolle)
   requestTarget(cb) { this.targetMode = cb; this.canvas.style.cursor = 'crosshair'; }
 
-  // ---------- Infektionsschicht (gedrosselt neu gezeichnet) ----------
-  _renderInfectionLayer() {
-    const x = this._infCanvas.getContext('2d');
-    x.setTransform(1, 0, 0, 1, 0, 0);
-    x.clearRect(0, 0, this._infCanvas.width, this._infCanvas.height);
-    x.setTransform(this._infRes, 0, 0, this._infRes, 0, 0); // proj liefert baseW-Koordinaten
-    if (!this.eng) return;
-    for (const c of this.world.countries) {
-      const st = this.eng.countries[c.iso];
-      const alive = st.pop || 1;
-      const infF = st.infected / alive, deadF = st.dead / alive;
-      const zF = st.zombies / alive, apF = st.apes / alive, vF = st.vampires / alive, ctF = st.controlled / alive;
-      const xmF = (st.xmon || 0) / alive;
-      const any = infF + deadF + zF + apF + vF + ctF + st.xeno + xmF;
-      if (any < 1e-4) continue;
-      // dezente Einfärbung des Landes
-      const sev = clamp(infF * 1.3 + deadF * 2.2 + zF + vF + ctF + st.xeno, 0, 1);
-      x.save();
-      x.clip(this.paths[c.iso]);
-      const g = `rgba(${Math.round(150 + sev * 100)},${Math.round(40 - sev * 20)},${Math.round(30)},${0.18 + sev * 0.4})`;
-      x.fillStyle = g;
-      const [bx, by] = this.proj(c.lon, c.lat);
-      x.fillRect(bx - 200, by - 200, 400, 400);
-      x.restore();
-      // Punktwolke
-      const pts = this.samples[c.iso];
-      const drawDots = (frac, color, r) => {
-        const cnt = Math.min(pts.length, Math.ceil(frac * pts.length));
-        for (let i = 0; i < cnt; i++) { const [px, py] = this.proj(pts[i][0], pts[i][1]); x.fillStyle = color; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); }
-      };
-      if (st.xeno > 0.01) drawDots(st.xeno, 'rgba(150,90,230,0.85)', 1.8);
-      if (xmF > 0.003) drawDots(xmF, 'rgba(210,150,255,0.98)', 2.1);
-      drawDots(infF, 'rgba(255,90,50,0.85)', 1.7);
-      if (deadF > 0.005) drawDots(deadF, 'rgba(60,10,12,0.95)', 1.7);
-      if (zF > 0.005) drawDots(zF, 'rgba(120,230,80,0.9)', 1.9);
-      if (apF > 0.005) drawDots(apF, 'rgba(220,180,60,0.95)', 1.9);
-      if (vF > 0.005) drawDots(vF, 'rgba(255,40,120,0.95)', 1.9);
-      if (ctF > 0.005) drawDots(ctF, 'rgba(200,120,255,0.95)', 1.9);
+  // ---------- Infektionsschicht: Punkte ----------
+  // Pro Land wird aus der Simulation berechnet, welcher Punkt welche Farbe hat.
+  // Anteil sichtbarer Punkte = Wurzel des betroffenen Bevölkerungsanteils: schon
+  // der erste Infizierte zeigt einen Punkt, bei 100 % ist das Land voll.
+  // Neue Punkte "ploppen" animiert auf; nur Änderungen werden gezeichnet.
+  _desiredCodes(st, d, out) {
+    const pop = Math.max(1, st.pop);
+    const ctrl = Math.min(st.controlled || 0, st.infected);
+    // Reihenfolge = DOT_TYPES-Codes 2..8 (Tote zuerst: dort begann der Ausbruch)
+    const w = [0, 0, st.dead, st.zombies || 0, st.xmon || 0, st.vampires || 0, st.apes || 0, ctrl, st.infected - ctrl];
+    let A = 0; for (let k = 2; k < w.length; k++) { w[k] = Math.max(0, w[k]); A += w[k]; }
+    // Vampire sind nur wenige – trotzdem sichtbar machen (Anteil wächst logarithmisch)
+    const v = w[5];
+    if (v >= 1) { const add = Math.max(0, A * Math.min(0.25, 0.025 * Math.log10(1 + v)) - v); w[5] += add; A += add; }
+    const nX = Math.min(d.n, Math.round(d.n * (st.xeno || 0)));
+    const rest = d.n - nX;
+    const nP = A >= 0.5 ? Math.min(rest, Math.max(1, Math.round(rest * Math.sqrt(Math.min(1, A / pop))))) : 0;
+    // Zielanzahl je Gruppe; kleine Rückgänge werden ignoriert ("klebrig"), damit
+    // Grenzen zwischen den Farben nicht täglich hin- und herspringen
+    const cnt = (d.cnt ||= new Int32Array(DOT_TYPES.length));
+    const tol = Math.max(2, d.n * 0.04);
+    let acc = 0, prev = 0, sum = 0;
+    for (let k = 2; k < w.length; k++) {
+      acc += w[k];
+      const cum = A > 0 ? Math.round(nP * acc / A) : 0;
+      let t = cum - prev; prev = cum;
+      if (nP > 0 && t < cnt[k] && cnt[k] - t <= tol) t = cnt[k];
+      if (nP === 0) t = 0;
+      cnt[k] = t; sum += t;
     }
+    // zu viele durch Klebrigkeit -> zuerst bei den Infizierten kürzen
+    for (let k = w.length - 1; sum > rest && k >= 2; k--) { const cut = Math.min(cnt[k], sum - rest); cnt[k] -= cut; sum -= cut; }
+    out.fill(0);
+    for (let i = 0; i < nX; i++) out[i] = DOT_CODE.xeno;
+    let from = nX;
+    for (let k = 2; k < w.length; k++) { const to = from + cnt[k]; for (let i = from; i < to; i++) out[i] = k; from = to; }
+  }
+
+  // Rot (Infizierte) und Kristallboden liegen unten, alle besonderen Gruppen
+  // (Tote, Zombies, Kontrollierte, Affen, Vampire, Kristallwesen) darüber
+  _layerOf(code) { return code === DOT_CODE.inf || code === DOT_CODE.xeno ? this._infCanvas : this._ovCanvas; }
+
+  _updateDots() {
+    if (!this.eng || !this.dots || !this._infCanvas) return;
+    const L = [this._infCanvas.getContext('2d'), this._ovCanvas.getContext('2d')];
+    const ctxOf = (code) => (this._layerOf(code) === this._infCanvas ? L[0] : L[1]);
+    const reset = this._dotsReset;
+    if (reset) {
+      for (const x of L) { x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, this._infCanvas.width, this._infCanvas.height); }
+      for (const iso in this.dots) { const d = this.dots[iso]; d.state.fill(0); if (d.cnt) d.cnt.fill(0); }
+      this.popDots = [];
+    }
+    for (const x of L) x.setTransform(this._infRes, 0, 0, this._infRes, 0, 0);
+    const animated = new Set(this.popDots.map((p) => p.iso + ':' + p.i));
+    let budget = reset ? 0 : 450 - this.popDots.length;   // max. gleichzeitige Plopp-Animationen
+    const now = this._time;
+    for (const c of this.world.countries) {
+      const d = this.dots[c.iso];
+      const st = this.eng.countries[c.iso];
+      if (!this._want || this._want.length < d.n) this._want = new Uint8Array(Math.max(d.n, 8192));
+      const want = this._want.subarray(0, d.n);
+      this._desiredCodes(st, d, want);
+      // Punkte verschwinden (z.B. Heilung) oder wandern von der oberen in die
+      // untere Ebene -> Land muss neu gezeichnet werden. Das passiert höchstens
+      // alle paar Tage je Land; neue Punkte erscheinen dagegen sofort.
+      // je Land versetzt (Phase aus dem Ländercode), damit nie alle gleichzeitig dran sind
+      const allowFull = reset || (this.eng.day + (d.phase ??= hashStr(c.iso) % 6)) % 6 === 0;
+      let full = false; const changed = [];
+      for (let i = 0; i < d.n; i++) {
+        const a = d.state[i], b = want[i];
+        if (a === b) continue;
+        if (b === 0 || (a !== 0 && ctxOf(a) !== ctxOf(b))) {
+          if (allowFull) { full = true; break; }
+          want[i] = a; continue;
+        }
+        changed.push(i);
+      }
+      if (!full && !changed.length) continue;
+      for (const x of L) { x.save(); x.clip(this.paths[c.iso]); }
+      if (full) {
+        const bb = this.bbox[c.iso];
+        for (const x of L) x.clearRect(bb[0] - 3, bb[1] - 3, bb[2] - bb[0] + 6, bb[3] - bb[1] + 6);
+        for (let i = 0; i < d.n; i++) if (want[i]) this._blitDot(ctxOf(want[i]), d.x[i], d.y[i], want[i]);
+        this.popDots = this.popDots.filter((p) => p.iso !== c.iso);
+      } else {
+        for (const i of changed) {
+          const isNew = d.state[i] === 0;
+          if (isNew && animated.has(c.iso + ':' + i)) continue;
+          if (isNew && budget > 0) {
+            // gestaffeltes Aufploppen über den Tag verteilt
+            this.popDots.push({ iso: c.iso, i, t0: now + Math.random() * 0.35 });
+            budget--;
+          } else this._blitDot(ctxOf(want[i]), d.x[i], d.y[i], want[i]);
+        }
+      }
+      for (const x of L) x.restore();
+      d.state.set(want);
+    }
+    this._dotsReset = false;
     this._infDirty = false;
+  }
+
+  _blitDot(ctx, px, py, code, scale = 1) {
+    const r = DOT_R * scale;
+    ctx.drawImage(this.dotSprites[code], px - r, py - r, r * 2, r * 2);
+  }
+
+  // Animation: Punkt wächst mit Überschwinger und Leuchten, dann fest eingebrannt
+  _drawPopDots(ctx) {
+    if (!this.popDots.length) return;
+    const now = this._time, DUR = 0.55;
+    const done = {};
+    ctx.save();
+    for (const p of this.popDots) {
+      const a = (now - p.t0) / DUR;
+      if (a < 0) continue;
+      const d = this.dots[p.iso]; const code = d.state[p.i];
+      if (a >= 1 || !code) { (done[p.iso] ||= []).push(p); continue; }
+      const sc = a < 0.6 ? (a / 0.6) * 1.9 : 1.9 - (a - 0.6) / 0.4 * 0.9;
+      ctx.globalAlpha = Math.min(1, a * 3);
+      this._blitDot(ctx, d.x[p.i], d.y[p.i], code, sc);
+    }
+    ctx.restore();
+    const isos = Object.keys(done);
+    if (!isos.length) return;
+    const L = [this._infCanvas.getContext('2d'), this._ovCanvas.getContext('2d')];
+    for (const x of L) x.setTransform(this._infRes, 0, 0, this._infRes, 0, 0);
+    for (const iso of isos) {
+      const d = this.dots[iso];
+      for (const x of L) { x.save(); x.clip(this.paths[iso]); }
+      for (const p of done[iso]) {
+        const code = d.state[p.i];
+        if (code) this._blitDot(this._layerOf(code) === this._infCanvas ? L[0] : L[1], d.x[p.i], d.y[p.i], code);
+      }
+      for (const x of L) x.restore();
+    }
+    const fin = new Set(isos.flatMap((iso) => done[iso]));
+    this.popDots = this.popDots.filter((p) => !fin.has(p));
+  }
+
+  // kleine Legende der Punktfarben (nur Gruppen, die es in dieser Partie gibt)
+  _drawLegend(ctx) {
+    if (!this.eng) return;
+    const sp = this.eng.special, type = this.eng.opts.type;
+    const keys = ['inf', 'dead'];
+    if (sp.zombieActive || type === 'necroa') keys.push('zombie');
+    if (sp.controlActive || type === 'neurax') keys.push('control');
+    if (sp.apesActive || type === 'simian') keys.push('ape');
+    if (sp.vampireActive || type === 'shadow') keys.push('vampire');
+    if (sp.xenoActive || type === 'xenolith') keys.push('xeno', 'xmon');
+    ctx.save(); ctx.scale(this.dpr, this.dpr);
+    ctx.font = '600 11px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+    let w = 12;
+    for (const k of keys) w += ctx.measureText(DOT_TYPES[DOT_CODE[k]].label).width + 26;
+    const x0 = 16, y0 = this.ch - 34;
+    ctx.fillStyle = 'rgba(8,4,8,0.62)'; roundRect(ctx, x0, y0, w, 22, 6); ctx.fill();
+    let x = x0 + 10;
+    for (const k of keys) {
+      const t = DOT_TYPES[DOT_CODE[k]];
+      ctx.drawImage(this.dotSprites[DOT_CODE[k]], x, y0 + 5, 12, 12);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + 6, y0 + 11, 5.5, 0, 7); ctx.stroke();
+      ctx.fillStyle = '#f0e4e0'; ctx.fillText(t.label, x + 16, y0 + 11.5);
+      x += ctx.measureText(t.label).width + 26;
+    }
+    ctx.restore();
   }
 
   spawnBubble(b) {
@@ -445,6 +680,7 @@ export class WorldMap {
   }
 
   update(dt) {
+    this._time += dt;
     for (let i = this.bubbles.length - 1; i >= 0; i--) { const b = this.bubbles[i]; b.age += dt; b.y += dt * 0.15; if (b.age > b.life) this.bubbles.splice(i, 1); }
     if (this.asteroid) {
       const a = this.asteroid;
@@ -475,9 +711,13 @@ export class WorldMap {
     // driftende Wolken (zwei Ebenen)
     this._drawClouds(ctx, t);
 
-    // Infektionsschicht (hochauflösend, auf Kartengröße skaliert)
-    if (this._infDirty && this._infCanvas) this._renderInfectionLayer();
-    if (this._infCanvas && this.eng) { ctx.globalAlpha = 0.95; ctx.drawImage(this._infCanvas, 0, 0, this.baseW, this.baseH); ctx.globalAlpha = 1; }
+    // Infektionspunkte (hochauflösend vorgerendert) + gerade aufploppende Punkte
+    if ((this._infDirty || this._dotsReset) && this._infCanvas) this._updateDots();
+    if (this._infCanvas && this.eng) {
+      ctx.drawImage(this._infCanvas, 0, 0, this.baseW, this.baseH);
+      ctx.drawImage(this._ovCanvas, 0, 0, this.baseW, this.baseH);
+    }
+    if (this.eng) this._drawPopDots(ctx);
 
     // Land unter der Maus / ausgewähltes Land hervorheben (Grenzen sind bereits im Basis-Canvas)
     if (this.hoverIso && this.hoverIso !== this.selectedIso) {
@@ -501,6 +741,7 @@ export class WorldMap {
     if (this.asteroid) this._drawAsteroid(ctx, t);
 
     ctx.restore();
+    this._drawLegend(ctx);
 
     // Ländername als Tooltip beim Überfahren (Bildschirmkoordinaten)
     if (this.hoverIso && this.mouse) {
@@ -522,8 +763,8 @@ export class WorldMap {
 
   _glowCountry(ctx, iso, style) {
     const path = this.paths[iso]; if (!path) return;
-    const c = this.byIso[iso]; const [bx, by] = this.proj(c.lon, c.lat);
-    ctx.save(); ctx.clip(path); ctx.fillStyle = style; ctx.fillRect(bx - 300, by - 300, 600, 600); ctx.restore();
+    const bb = this.bbox[iso];
+    ctx.save(); ctx.clip(path); ctx.fillStyle = style; ctx.fillRect(bb[0] - 2, bb[1] - 2, bb[2] - bb[0] + 4, bb[3] - bb[1] + 4); ctx.restore();
   }
 
   // Nachgezogener, leuchtender Grenz-Umriss um ein Land
@@ -613,46 +854,93 @@ export class WorldMap {
   }
 
   _drawSpecialAgents(ctx, t) {
-    if (!this.agents) return;
+    if (!this.agents || !this.agents.length) return;
+    const now = this._time;
     for (let i = this.agents.length - 1; i >= 0; i--) {
       const a = this.agents[i];
-      a.t += a.speed;
-      let [ax, ay] = this.proj(a.ax, a.ay); let [bx, by] = this.proj(a.bx, a.by);
-      if (Math.abs(bx - ax) > this.baseW / 2) bx += bx < ax ? this.baseW : -this.baseW;
-      const arc = a.kind === 'plane' ? Math.hypot(bx - ax, by - ay) * 0.16 : 20 / this.view.scale;
-      const mx = (ax + bx) / 2, my = (ay + by) / 2 - arc;
-      const tt = a.t;
-      const x = (1 - tt) * (1 - tt) * ax + 2 * (1 - tt) * tt * mx + tt * tt * bx;
-      const y = (1 - tt) * (1 - tt) * ay + 2 * (1 - tt) * tt * my + tt * tt * by;
-      if (a.kind === 'plane') {
-        const dx = 2 * (1 - tt) * (mx - ax) + 2 * tt * (bx - mx);
-        const dy = 2 * (1 - tt) * (my - ay) + 2 * tt * (by - my);
-        const ang = Math.atan2(dy, dx);
-        // farbige Flugspur
-        ctx.strokeStyle = a.color.replace('1)', '0.5)'); ctx.lineWidth = 1.4 / this.view.scale; ctx.setLineDash([4 / this.view.scale, 4 / this.view.scale]);
-        ctx.beginPath();
-        for (let s = 0; s <= tt; s += 0.06) { const px = (1 - s) * (1 - s) * ax + 2 * (1 - s) * s * mx + s * s * bx; const py = (1 - s) * (1 - s) * ay + 2 * (1 - s) * s * my + s * s * by; s === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
-        ctx.stroke(); ctx.setLineDash([]);
-        const px = clamp(30 / this.view.scale, 14, 34);
-        ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2);
-        ctx.shadowColor = a.color; ctx.shadowBlur = 12 / this.view.scale;
-        if (this.planeImg.complete) ctx.drawImage(this.planeImg, -px / 2, -px / 2, px, px);
-        ctx.shadowBlur = 0; ctx.fillStyle = a.color; ctx.beginPath(); ctx.arc(0, -px * 0.32, px * 0.11, 0, 7); ctx.fill();
-        ctx.restore();
-      } else {
-        ctx.save(); ctx.translate(x, y);
-        const pulse = 1 + 0.3 * Math.sin(t * 8);
-        ctx.fillStyle = a.color; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(0, 0, 5 / this.view.scale * pulse, 0, 7); ctx.fill();
-        ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(0, 0, 2.6 / this.view.scale, 0, 7); ctx.fill();
-        ctx.restore();
-      }
-      if (a.t >= 1) { if (a.cb) a.cb(); this.agents.splice(i, 1); }
+      const tt = clamp((now - a.t0) / a.dur, 0, 1);
+      if (a.kind === 'plane') this._drawAgentPlane(ctx, a, tt);
+      else this._drawSwarm(ctx, a, now);
+      if (tt >= 1 && a.cb) { a.cb(); a.cb = null; }
+      if (now - a.t0 > a.dur + (a.kind === 'plane' ? 0 : a.tail + 0.6)) this.agents.splice(i, 1);
     }
   }
 
-  sendAgent(fromIso, toIso, color, cb, kind = 'dot') {
-    const a = this.byIso[fromIso], b = this.byIso[toIso]; if (!a || !b) { if (cb) cb(); return; }
-    (this.agents ||= []).push({ ax: a.lon, ay: a.lat, bx: b.lon, by: b.lat, t: 0, speed: kind === 'plane' ? 0.018 : 0.03, color, cb, kind });
+  _bezier(ax, ay, mx, my, bx, by, s) {
+    const u = 1 - s;
+    return [u * u * ax + 2 * u * s * mx + s * s * bx, u * u * ay + 2 * u * s * my + s * s * by];
+  }
+
+  _drawAgentPlane(ctx, a, tt) {
+    const [ax, ay] = a.a, [bx, by] = a.b;
+    const mx = (ax + bx) / 2, my = (ay + by) / 2 - Math.hypot(bx - ax, by - ay) * 0.16;
+    const [x, y] = this._bezier(ax, ay, mx, my, bx, by, tt);
+    const [x2, y2] = this._bezier(ax, ay, mx, my, bx, by, Math.min(1, tt + 0.01));
+    const ang = Math.atan2(y2 - y, x2 - x);
+    ctx.strokeStyle = a.color.replace('1)', '0.5)'); ctx.lineWidth = 1.4 / this.view.scale; ctx.setLineDash([4 / this.view.scale, 4 / this.view.scale]);
+    ctx.beginPath();
+    for (let s = 0; s <= tt; s += 0.04) { const [px, py] = this._bezier(ax, ay, mx, my, bx, by, s); s === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+    ctx.stroke(); ctx.setLineDash([]);
+    if (tt >= 1) return;
+    const px = clamp(30 / this.view.scale, 14, 34);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2);
+    ctx.shadowColor = a.color; ctx.shadowBlur = 12 / this.view.scale;
+    if (this.planeImg.complete) ctx.drawImage(this.planeImg, -px / 2, -px / 2, px, px);
+    ctx.shadowBlur = 0; ctx.fillStyle = a.color; ctx.beginPath(); ctx.arc(0, -px * 0.32, px * 0.11, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+
+  // Schwarm aus einzelnen Punkten (Zombies, Vampire, Kristallwesen), die über
+  // Land ziehen und sich im Zielland verteilen
+  _drawSwarm(ctx, a, now) {
+    const sprite = this.dotSprites[a.code];
+    for (const p of a.parts) {
+      const s = clamp((now - a.t0 - p.delay) / a.dur, 0, 1);
+      if (now - a.t0 - p.delay < 0) continue;
+      const [ax, ay] = p.a, [bx, by] = p.b;
+      const mx = (ax + bx) / 2 + p.nx, my = (ay + by) / 2 + p.ny;
+      let [x, y] = this._bezier(ax, ay, mx, my, bx, by, s);
+      // leichtes Wanken beim Marschieren
+      const wob = (1 - s) * 1.2;
+      x += Math.sin(now * 7 + p.ph) * wob; y += Math.cos(now * 6 + p.ph) * wob;
+      const fade = s >= 1 ? clamp(1 - (now - a.t0 - p.delay - a.dur) / 0.6, 0, 1) : 1;
+      if (fade <= 0) continue;
+      const r = DOT_R * (1.15 + 0.2 * Math.sin(now * 9 + p.ph));
+      ctx.globalAlpha = fade * 0.35;
+      ctx.drawImage(sprite, x - r * 2.2, y - r * 2.2, r * 4.4, r * 4.4);
+      ctx.globalAlpha = fade;
+      ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // amount steuert die Größe des Schwarms
+  sendAgent(fromIso, toIso, color, cb, kind = 'dot', amount = 1e6, mode = 'zombie') {
+    const A = this.byIso[fromIso], B = this.byIso[toIso]; if (!A || !B) { if (cb) cb(); return; }
+    let [ax, ay] = this.proj(A.lon, A.lat); let [bx, by] = this.proj(B.lon, B.lat);
+    if (Math.abs(bx - ax) > this.baseW / 2) bx += bx < ax ? this.baseW : -this.baseW;
+    const dist = Math.hypot(bx - ax, by - ay);
+    this.agents ||= [];
+    if (kind === 'plane') {
+      this.agents.push({ kind, a: [ax, ay], b: [bx, by], t0: this._time, dur: 1.6 + dist / 260, color, cb });
+      return;
+    }
+    const code = { zombie: DOT_CODE.zombie, vampire: DOT_CODE.vampire, crystal: DOT_CODE.xmon, control: DOT_CODE.control }[mode] || DOT_CODE.inf;
+    const n = clamp(Math.round(6 + Math.log10(Math.max(10, amount)) * 5), 10, 44);
+    const src = this.dots[fromIso], dst = this.dots[toIso];
+    const pick = (d, fx, fy) => {
+      if (!d) return [fx, fy];
+      const i = (Math.random() * Math.min(d.n, 400)) | 0;
+      return [d.x[i], d.y[i]];
+    };
+    const arc = Math.min(40, dist * 0.12);
+    const parts = [];
+    for (let k = 0; k < n; k++) {
+      const pa = pick(src, ax, ay), pb = pick(dst, bx, by);
+      if (Math.abs(pb[0] - pa[0]) > this.baseW / 2) pb[0] += pb[0] < pa[0] ? this.baseW : -this.baseW;
+      parts.push({ a: pa, b: pb, delay: Math.random() * 0.9, ph: Math.random() * 7, nx: (Math.random() - 0.5) * 14, ny: -arc + (Math.random() - 0.5) * 14 });
+    }
+    this.agents.push({ kind: 'swarm', code, parts, t0: this._time, dur: 2.2 + dist / 320, tail: 0.9, cb });
   }
   sendPlane(fromIso, toIso, color, cb) { this.sendAgent(fromIso, toIso, color, cb, 'plane'); }
 

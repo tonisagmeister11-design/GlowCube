@@ -1,6 +1,7 @@
 // Gesamte Benutzeroberfläche: Menü, Erregerauswahl (Speed Run), Benennung,
 // Startlandwahl, Spiel-HUD, Evolutionsbildschirm (Übertragung/Symptome-Hexraster/
 // Fähigkeiten), Länderinfo, Nachrichten, Statistiken und Endscreen.
+import { DOT_RGBA } from './map/map.js';
 import { PATHOGENS, PATHOGEN_ORDER } from './data/pathogens.js';
 import { TRANSMISSION, ABILITIES, SYMPTOMS, HEX_NEIGHBORS } from './data/traits.js';
 import { SPEEDS } from './game.js';
@@ -299,15 +300,16 @@ export class UI {
     // Sonderzustand anzeigen (Zombies/Kontrolliert/Affen/Vampire/Xeno)
     const sp = eng.special;
     let special = null;
-    if (sp.zombies > 1) special = ['Zombies', fmt(sp.zombies)];
-    else if (sp.controlled > 1) special = ['Kontrolliert', fmt(sp.controlled)];
-    else if (sp.apes > 1) special = ['Affen', fmt(sp.apes)];
-    else if (sp.vampires > 1) special = ['Vampire', fmt(sp.vampires)];
-    else if (sp.xmon > 1) special = ['Kristallwesen', fmt(sp.xmon)];
-    else if (sp.xeno > 0.001) special = ['Xenoforming', (sp.xeno * 100).toFixed(1) + '%'];
+    if (sp.zombies > 1) special = ['Zombies', fmt(sp.zombies), 'zombie'];
+    else if (sp.controlled > 1) special = ['Kontrolliert', fmt(sp.controlled), 'control'];
+    else if (sp.apes > 1) special = ['Affen', fmt(sp.apes), 'ape'];
+    else if (sp.vampires > 1) special = ['Vampire', fmt(sp.vampires), 'vampire'];
+    else if (sp.xmon > 1) special = ['Kristallwesen', fmt(sp.xmon), 'xmon'];
+    else if (sp.xeno > 0.001) special = ['Xenoforming', (sp.xeno * 100).toFixed(1) + '%', 'xeno'];
     if (special) {
       this.statSpecial.el.style.display = '';
       this.statSpecial.el.querySelector('.sb-label').textContent = special[0];
+      this.statSpecial.el.querySelector('.sb-val').style.color = DOT_RGBA(special[2]);
       this.statSpecial.set(special[1]);
     } else this.statSpecial.el.style.display = 'none';
     this.barInf.set(clampBar(eng.infectivity / 40));
@@ -350,12 +352,12 @@ export class UI {
     const actions = [];
     if (eng.evolved.has('spore_burst')) actions.push({ id: 'spore', icon: '💥', label: 'Sporenausbruch', fn: () => { eng.triggerAbility(eng.evolved.has('spore_eruption') ? 'spore_eruption' : 'spore_burst'); this.flashDna(); } });
     if (sp.controlActive) {
-      actions.push({ id: 'control', icon: '🧠', label: 'Wirte einfliegen', directed: 'control', plane: true, amounts: true, color: 'rgba(200,120,255,1)' });
+      actions.push({ id: 'control', icon: '🧠', label: 'Wirte einfliegen', directed: 'control', plane: true, amounts: true, color: DOT_RGBA('control') });
       actions.push({ id: 'will', icon: '🌀', label: 'Massenbekehrung', fn: () => { eng.willToInfect(); this.game.map.spawnBubble({ iso: eng.startCountry, type: 'special' }); } });
     }
-    if (sp.vampireActive) actions.push({ id: 'vampire', icon: '🩸', label: 'Die Jagd', directed: 'vampire', color: 'rgba(255,40,120,1)' });
-    if (sp.zombieActive) actions.push({ id: 'zombie', icon: '🧟', label: 'Zombie-Horde schicken', directed: 'zombie', amounts: true, color: 'rgba(120,230,80,1)' });
-    if (sp.xenoActive) actions.push({ id: 'crystal', icon: '💠', label: 'Kristallwesen aussenden', directed: 'crystal', amounts: true, color: 'rgba(200,140,255,1)' });
+    if (sp.vampireActive) actions.push({ id: 'vampire', icon: '🩸', label: 'Die Jagd', directed: 'vampire', color: DOT_RGBA('vampire') });
+    if (sp.zombieActive) actions.push({ id: 'zombie', icon: '🧟', label: 'Zombie-Horde schicken', directed: 'zombie', amounts: true, color: DOT_RGBA('zombie') });
+    if (sp.xenoActive) actions.push({ id: 'crystal', icon: '💠', label: 'Kristallwesen aussenden', directed: 'crystal', amounts: true, color: DOT_RGBA('xmon') });
     const sig = actions.map((a) => a.id).join(',') + eng.opts.type;
     if (sig === this._specialSig) return;
     this._specialSig = sig;
@@ -378,7 +380,7 @@ export class UI {
         const fromIso = from ? from.ref.iso : eng.startCountry;
         const done = () => { eng.directSeed(toIso, a.directed, seed); this.game.map.spawnBubble({ iso: toIso, type: 'special' }); };
         if (a.plane) this.game.map.sendPlane(fromIso, toIso, a.color, done);
-        else this.game.map.sendAgent(fromIso, toIso, a.color, done);
+        else this.game.map.sendAgent(fromIso, toIso, a.color, done, 'dot', seed, a.directed);
       });
     };
     if (a.amounts) {
