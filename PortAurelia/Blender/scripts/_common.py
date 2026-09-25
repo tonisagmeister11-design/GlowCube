@@ -181,9 +181,11 @@ class MeshBuilder:
     def tri_count(self):
         return sum(len(f) - 2 for f in self.faces)
 
-    def to_object(self, name, collection=None, smooth=False, merge_dist=0.0005, auto_smooth=None):
+    def to_object(self, name, collection=None, smooth=False, merge_dist=0.0005, auto_smooth=None, origin=None):
+        """origin: optional Godot-space point that becomes the object's pivot."""
         me = bpy.data.meshes.new(name)
-        bverts = [(v[0], -v[2], v[1]) for v in self.verts]
+        ox, oy, oz = origin if origin is not None else (0.0, 0.0, 0.0)
+        bverts = [(v[0] - ox, -(v[2] - oz), v[1] - oy) for v in self.verts]
         me.from_pydata(bverts, [], self.faces)
         # create every layer first: adding a layer invalidates earlier layer references
         me.uv_layers.new(name="UVMap")
@@ -206,7 +208,7 @@ class MeshBuilder:
                     flat_uv2.append(u2[0])
                     flat_uv2.append(1.0 - u2[1])
             for c in self.cols[fi]:
-                flat_col.extend((c[0], c[1], c[2], c[3]))
+                flat_col.extend((srgb_to_linear(c[0]), srgb_to_linear(c[1]), srgb_to_linear(c[2]), c[3]))
         nloops = len(me.loops)
         if len(flat_uv) == nloops * 2:
             me.uv_layers["UVMap"].data.foreach_set("uv", flat_uv)
@@ -224,6 +226,8 @@ class MeshBuilder:
         me.validate(clean_customdata=False)
         obj = bpy.data.objects.new(name, me)
         (collection or bpy.context.scene.collection).objects.link(obj)
+        if origin is not None:
+            obj.location = (ox, -oz, oy)
         if any(n is not None for n in self.nrm):
             me.polygons.foreach_set("use_smooth", [True] * len(me.polygons))
             cn = []
@@ -249,6 +253,13 @@ class MeshBuilder:
         if auto_smooth is not None:
             _set_auto_smooth(obj, auto_smooth)
         return obj
+
+
+def srgb_to_linear(c):
+    """Vertex colours are authored in sRGB; glTF stores linear values."""
+    if c <= 0.04045:
+        return c / 12.92
+    return ((c + 0.055) / 1.055) ** 2.4
 
 
 def _set_auto_smooth(obj, angle_deg):

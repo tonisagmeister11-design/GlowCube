@@ -24,3 +24,4 @@ Export/Release/
 __pycache__/
 *.pyc
 *.tmp
+Game/Audio/SFX/manifest.json

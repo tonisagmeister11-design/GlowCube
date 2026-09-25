@@ -17,6 +17,9 @@ const RANGES := {
 	"Buildings_LOD1": Vector2(260.0, 0.0),
 }
 
+const LOOPING := ["idle", "walk", "run", "sprint", "crouch_walk", "crouch_idle", "fall", "swim", "swim_idle",
+	"drive", "sit", "phone", "talk", "hands_up", "cower", "panic_run", "aim_pistol", "aim_rifle", "idle_armed"]
+
 var _cache := {}
 
 
@@ -26,6 +29,11 @@ func _post_import(scene: Node) -> Object:
 
 
 func _walk(n: Node) -> void:
+	if n is AnimationPlayer:
+		var ap := n as AnimationPlayer
+		for an in ap.get_animation_list():
+			var a := ap.get_animation(an)
+			a.loop_mode = Animation.LOOP_LINEAR if String(an) in LOOPING else Animation.LOOP_NONE
 	if n is MeshInstance3D:
 		_setup_mesh(n as MeshInstance3D)
 	elif n is StaticBody3D:

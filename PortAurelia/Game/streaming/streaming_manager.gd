@@ -115,6 +115,23 @@ func load_area_blocking(p: Vector3, radius := -1.0, progress: Callable = Callabl
 			progress.call(float(i) / float(want.size()), "Stadtteil %d/%d" % [i, want.size()])
 
 
+## Same as load_area_blocking but yields a frame between chunks (keeps the loading UI alive).
+func load_area_async(p: Vector3, radius := -1.0, progress: Callable = Callable()) -> void:
+	focus = p
+	var r := load_radius if radius < 0.0 else radius
+	var want := _wanted(p, r)
+	var i := 0
+	for c in want:
+		i += 1
+		if _chunks.has(c):
+			continue
+		var s: PackedScene = load(_path(c))
+		_instantiate(c, s)
+		if progress.is_valid():
+			progress.call(float(i) / float(want.size()), "Stadtteil %d/%d" % [i, want.size()])
+		await get_tree().process_frame
+
+
 func _wanted(p: Vector3, r: float) -> Array:
 	var out := []
 	for c in _available:
