@@ -279,10 +279,12 @@ def build_chunk(plan, cx, cz, pad_mask, assign, far_mbs, rng):
         add_signs(detail, ctx.signs)
     # far representation of structures (decks) = include struct lightly? keep only buildings/terrain
     objs = []
+    # pivot at the chunk centre: Godot measures visibility ranges (LOD) from the node origin
+    center = (plan.wmin + (cx + 0.5) * plan.chunk, 0.0, plan.wmin + (cz + 0.5) * plan.chunk)
     for mb, name in ((ground, "Ground"), (marks, "Markings_LOD0"), (struct, "Structures"), (bl0, "Buildings_LOD0"),
                      (bl1, "Buildings_LOD1"), (detail, "Detail_LOD0")):
         if not mb.empty():
-            objs.append(mb.to_object(name))
+            objs.append(mb.to_object(name, origin=center))
     for surf, mb in cols.items():
         if not mb.empty():
             objs.append(mb.to_object(f"Col_{surf}-colonly", merge_dist=0.01))
@@ -384,11 +386,12 @@ def _split_area(a):
     return [a]
 
 
-def build_far(far_mbs):
+def build_far(far_mbs, plan):
     objs = []
     for (cx, cz), mb in sorted(far_mbs.items()):
         if not mb.empty():
-            objs.append(mb.to_object(f"Far_{cx}_{cz}", merge_dist=0.0))
+            objs.append(mb.to_object(f"Far_{cx}_{cz}", merge_dist=0.0, origin=(plan.wmin + (cx + 0.5) * plan.chunk, 0.0,
+                                                                                   plan.wmin + (cz + 0.5) * plan.chunk)))
     if objs:
         export_glb(os.path.join(OUT, "city_far.glb"), objs)
     clear_objects()
@@ -418,7 +421,7 @@ def main():
     for (cx, cz) in chunks:
         total += build_chunk(plan, cx, cz, pad_mask, assign, far_mbs, rng)
     if "--chunks" not in args:
-        build_far(far_mbs)
+        build_far(far_mbs, plan)
     # manifest for the streaming system
     manifest = dict(chunks=[f"{cx}_{cz}" for (cx, cz) in chunks], chunk=plan.chunk, world_min=plan.wmin)
     if "--chunks" not in args:

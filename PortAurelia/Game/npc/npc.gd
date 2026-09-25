@@ -11,7 +11,7 @@ extends CharacterBody3D
 ## Near the player the NPC uses physics (move_and_slide) and full-rate animation;
 ## far away it slides along its path without collision and animates at low rate.
 
-enum S { IDLE, WALK, WAIT_CROSS, TALK, PHONE, SIT, WINDOW, WORK, JOG, FLEE, PANIC, HANDS_UP, FIGHT, SEARCH, GOTO, KNOCKED, DEAD }
+enum S { IDLE, WALK, WAIT_CROSS, TALK, PHONE, SIT, WINDOW, WORK, JOG, FLEE, PANIC, HANDS_UP, FIGHT, SEARCH, GOTO, KNOCKED, DEAD, CHASE }
 
 const WALK_SPEED := 1.35
 const RUN_SPEED := 4.2
@@ -68,6 +68,10 @@ var _voice_pitch := 1.0
 var _stuck := 0.0
 var _last_pos := Vector3.ZERO
 var _col: CollisionShape3D
+var _chase: Node3D = null
+var _search_center := Vector3.ZERO
+var _search_radius := 30.0
+var unit = null                 # police unit dictionary (set by the police manager)
 
 
 func _ready() -> void:
@@ -143,6 +147,25 @@ func go_to(p: Vector3, run := false) -> void:
 	_set_state(S.GOTO)
 
 
+## Run after a node without shooting (police arrest attempts). Stops at arm's length.
+func chase(t: Node3D) -> void:
+	if state == S.DEAD or state == S.KNOCKED:
+		return
+	_chase = t
+	target = t
+	_set_state(S.CHASE)
+
+
+## Walk/run around an area looking for someone (police search).
+func search_area(center: Vector3, radius: float) -> void:
+	if state == S.DEAD or state == S.KNOCKED:
+		return
+	_search_center = center
+	_search_radius = radius
+	_timer = 0.0
+	_set_state(S.SEARCH)
+
+
 func engage(t: Node3D) -> void:
 	if state == S.DEAD:
 		return
@@ -199,7 +222,7 @@ func is_dead() -> bool:
 
 
 func is_busy() -> bool:
-	return state in [S.FLEE, S.PANIC, S.HANDS_UP, S.FIGHT, S.KNOCKED, S.DEAD, S.GOTO]
+	return state in [S.FLEE, S.PANIC, S.HANDS_UP, S.FIGHT, S.KNOCKED, S.DEAD, S.GOTO, S.CHASE, S.SEARCH]
 
 
 func is_head_hit(p: Vector3) -> bool:
@@ -280,6 +303,8 @@ func _set_state(s: int) -> void:
 			model.set_mode("ground")
 		S.TALK:
 			model.play_loop("talk")
+		S.KNOCKED, S.DEAD:
+			pass
 		S.PHONE:
 			model.play_loop("phone")
 		S.SIT:
@@ -299,7 +324,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var p := GameWorld.instance.player if GameWorld.instance else null
 	var dist := p.global_position.distance_to(global_position) if p else 0.0
-	near = dist < NEAR_DIST or persistent or state in [S.FIGHT, S.FLEE, S.KNOCKED]
+	near = dist < NEAR_DIST or persistent or state in [S.FIGHT, S.FLEE, S.KNOCKED, S.CHASE]
 	_dodge_cd -= delta
 	_scream_cd -= delta
 	_think -= delta
@@ -343,7 +368,9 @@ func _physics_process(delta: float) -> void:
 			_knocked(delta)
 			return
 		S.SEARCH:
-			_want_speed = 0.0
+			_search(delta)
+		S.CHASE:
+			_chase_update(delta)
 	_avoid_vehicles(p)
 	_move(delta)
 	_animate(delta, dist)
@@ -407,8 +434,10 @@ func _steer_dir() -> Vector3:
 
 
 func _current_target() -> Vector3:
-	if state == S.GOTO:
+	if state == S.GOTO or state == S.SEARCH:
 		return _goal
+	if state == S.CHASE and _chase and is_instance_valid(_chase):
+		return _chase.global_position
 	if state == S.FIGHT and target:
 		return _cover_pos if _cover_pos != Vector3.INF else target.global_position
 	if _path_i < _path.size():
@@ -419,7 +448,7 @@ func _current_target() -> Vector3:
 func _animate(delta: float, dist: float) -> void:
 	if model.tree == null:
 		return
-	if state in [S.WALK, S.JOG, S.FLEE, S.GOTO, S.FIGHT, S.IDLE, S.WAIT_CROSS, S.WINDOW, S.WORK, S.SEARCH]:
+	if state in [S.WALK, S.JOG, S.FLEE, S.GOTO, S.FIGHT, S.IDLE, S.WAIT_CROSS, S.WINDOW, S.WORK, S.SEARCH, S.CHASE]:
 		if not _crouched:
 			model.set_mode("ground")
 		model.set_locomotion(_speed)
@@ -602,6 +631,26 @@ func _goto(_delta: float) -> void:
 		_set_state(S.IDLE)
 		_timer = 2.0
 		arrived.emit()
+
+
+func _chase_update(_delta: float) -> void:
+	if _chase == null or not is_instance_valid(_chase):
+		_set_state(S.IDLE)
+		return
+	var d := _chase.global_position.distance_to(global_position)
+	_want_speed = 0.0 if d < 1.5 else (SPRINT_SPEED * 0.9 if d > 8.0 else RUN_SPEED)
+	if d < 1.5:
+		_face(_chase.global_position)
+
+
+func _search(delta: float) -> void:
+	_timer -= delta
+	var d := Vector2(_goal.x - global_position.x, _goal.z - global_position.z).length()
+	if _timer <= 0.0 or d < 1.0:
+		_timer = randf_range(4.0, 9.0)
+		var a := randf() * TAU
+		_goal = _search_center + Vector3(cos(a), 0, sin(a)) * randf_range(3.0, _search_radius)
+	_want_speed = WALK_SPEED * 1.4 if d > 1.0 else 0.0
 
 
 # ------------------------------------------------------------------ combat

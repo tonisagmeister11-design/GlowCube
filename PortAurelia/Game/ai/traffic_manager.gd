@@ -15,12 +15,12 @@ const NEAR_PHYSICS := 140.0
 const GRID := 25.0
 
 const MIX := {
-	"downtown": {"sedan": 5, "taxi": 4, "luxury": 2, "compact": 3, "suv": 2, "bus": 1, "van": 1, "delivery": 1, "sports": 1},
+	"downtown": {"police": 0.4, "sedan": 5, "taxi": 4, "luxury": 2, "compact": 3, "suv": 2, "bus": 1, "van": 1, "delivery": 1, "sports": 1},
 	"financial": {"sedan": 4, "taxi": 4, "luxury": 4, "suv": 2, "sports": 1, "supercar": 0.4},
-	"shopping": {"sedan": 4, "compact": 4, "taxi": 2, "suv": 2, "delivery": 1, "bus": 0.6},
+	"shopping": {"police": 0.3, "sedan": 4, "compact": 4, "taxi": 2, "suv": 2, "delivery": 1, "bus": 0.6},
 	"entertainment": {"sedan": 3, "sports": 2, "taxi": 3, "compact": 2, "motorcycle": 1},
-	"oldtown": {"compact": 5, "sedan": 3, "van": 1, "motorcycle": 1.5, "taxi": 1},
-	"residential": {"sedan": 4, "compact": 4, "suv": 3, "pickup": 1, "van": 1, "motorcycle": 0.6},
+	"oldtown": {"police": 0.4, "compact": 5, "sedan": 3, "van": 1, "motorcycle": 1.5, "taxi": 1},
+	"residential": {"police": 0.25, "sedan": 4, "compact": 4, "suv": 3, "pickup": 1, "van": 1, "motorcycle": 0.6},
 	"suburbs": {"suv": 4, "pickup": 3, "sedan": 3, "compact": 2, "van": 1},
 	"luxury": {"luxury": 4, "sports": 3, "supercar": 1.5, "suv": 3},
 	"industrial": {"truck": 3, "van": 3, "pickup": 3, "delivery": 2, "sedan": 1},
@@ -40,6 +40,7 @@ var world: GameWorld
 var vehicles: Array = []            # every Vehicle in the world (traffic, parked, player, police)
 var drivers := {}                   # Vehicle -> TrafficDriver
 var parked := {}                    # Vehicle -> parking index
+var keep := {}                      # Vehicle -> true: never despawned by traffic (police units, missions)
 var enabled := true
 var target_moving := 26
 var target_parked := 24
@@ -83,6 +84,7 @@ func _unregister(v: Node) -> void:
 	vehicles.erase(v)
 	drivers.erase(v)
 	parked.erase(v)
+	keep.erase(v)
 
 
 # ------------------------------------------------------------------ queries
@@ -215,7 +217,10 @@ func _spawn_moving(pp: Vector3) -> void:
 		world.add_child(v)
 		var drv := TrafficDriver.new()
 		v.add_child(drv)
-		drv.npc_outfit = Outfits.random("business" if type_id in ["luxury", "supercar"] and rng.randf() < 0.5 else "civilian", rng)
+		var role := "business" if type_id in ["luxury", "supercar"] and rng.randf() < 0.5 else "civilian"
+		if type_id == "police":
+			role = "cop"
+		drv.npc_outfit = Outfits.random(role, rng)
 		drv.setup(v, self, id, s)
 		v.set_kinematic(true)
 		drv._kin_speed = lane.speed * 0.7
@@ -293,7 +298,7 @@ func _process_despawns(pp: Vector3) -> void:
 
 
 func _despawn(v: Node) -> void:
-	if (v as Vehicle).driver != null or v == _player_vehicle():
+	if (v as Vehicle).driver != null or v == _player_vehicle() or keep.has(v):
 		return
 	_release_model(v)
 	if parked.has(v):
@@ -307,6 +312,32 @@ func _despawn(v: Node) -> void:
 func _player_vehicle() -> Node:
 	var p := world.player as Player
 	return p.vehicle if p else null
+
+
+## Register an externally created AI vehicle (police, missions) so it is simulated here.
+func adopt(v: Vehicle, drv: TrafficDriver, protect := true) -> void:
+	_register(v)
+	drivers[v] = drv
+	if protect:
+		keep[v] = true
+
+
+func unprotect(v: Node) -> void:
+	keep.erase(v)
+
+
+## Create an AI driver for vehicle `v` on the nearest lane.
+func make_driver(v: Vehicle, outfit := {}) -> TrafficDriver:
+	var c := world.graph.closest_lane(v.global_position, 80.0, -v.global_basis.z)
+	if c.is_empty():
+		return null
+	var drv := TrafficDriver.new()
+	v.add_child(drv)
+	drv.npc_outfit = outfit if not outfit.is_empty() else Outfits.random("civilian", rng)
+	drv.setup(v, self, c["lane"], c["s"])
+	drivers[v] = drv
+	_register(v)
+	return drv
 
 
 func request_despawn(v: Node) -> void:
