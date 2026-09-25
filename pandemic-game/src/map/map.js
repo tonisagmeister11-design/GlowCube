@@ -30,6 +30,7 @@ export class WorldMap {
     this.ready = true;
     this.planeImg = new Image(); this.planeImg.src = VEHICLES.plane;
     this.shipImg = new Image(); this.shipImg.src = VEHICLES.ship;
+    this.astImg = new Image(); if (VEHICLES.asteroid) this.astImg.src = VEHICLES.asteroid;
     this._landColors = {};
     for (const c of world.countries) this._landColors[c.iso] = this._climateColor(c);
     this._samplePoints();
@@ -81,24 +82,39 @@ export class WorldMap {
     return inside;
   }
 
-  // ---------- Wolken-Kachel ----------
+  // ---------- Wolken-Kachel (kleine, weiche Wölkchen, gut durchsichtig) ----------
   _buildCloudTile() {
     const w = 1024, h = 512;
     const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
     const x = cv.getContext('2d');
     x.clearRect(0, 0, w, h);
     const rng = mulberry(9182);
-    for (let i = 0; i < 90; i++) {
-      const cx = rng() * w, cy = rng() * h * 0.9 + h * 0.05;
-      const r = 30 + rng() * 120;
-      const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
-      const a = 0.05 + rng() * 0.12;
-      g.addColorStop(0, `rgba(235,240,255,${a})`); g.addColorStop(1, 'rgba(235,240,255,0)');
-      x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill();
-      if (cx < 140) { x.beginPath(); x.arc(cx + w, cy, r, 0, 7); x.fill(); }
-      if (cx > w - 140) { x.beginPath(); x.arc(cx - w, cy, r, 0, 7); x.fill(); }
+    // wenige, kleine Wolkencluster aus mehreren weichen Ballen
+    for (let i = 0; i < 26; i++) {
+      const cx = rng() * w, cy = rng() * h;
+      const puffs = 3 + (rng() * 4 | 0);
+      for (let j = 0; j < puffs; j++) {
+        const px = cx + (rng() - 0.5) * 70, py = cy + (rng() - 0.5) * 40;
+        const r = 14 + rng() * 34;
+        const a = 0.05 + rng() * 0.08;
+        for (const ox of [0, cx < 120 ? w : 0, cx > w - 120 ? -w : 0]) {
+          if (ox === 0 && (cx < 120 || cx > w - 120) && false) continue;
+          const g = x.createRadialGradient(px + ox, py, 0, px + ox, py, r);
+          g.addColorStop(0, `rgba(240,244,255,${a})`); g.addColorStop(0.6, `rgba(240,244,255,${a * 0.5})`); g.addColorStop(1, 'rgba(240,244,255,0)');
+          x.fillStyle = g; x.beginPath(); x.arc(px + ox, py, r, 0, 7); x.fill();
+        }
+      }
     }
     this.cloudTile = cv;
+    // Land-Textur (feine Struktur für mehr Realismus)
+    const nt = document.createElement('canvas'); nt.width = 256; nt.height = 256;
+    const nx = nt.getContext('2d'); const rn = mulberry(4711);
+    for (let i = 0; i < 2600; i++) {
+      const v = rn(); const shade = v < 0.5 ? 0 : 255; const al = 0.03 + rn() * 0.05;
+      nx.fillStyle = `rgba(${shade},${shade},${shade},${al})`;
+      const s = 1 + rn() * 2; nx.fillRect(rn() * 256, rn() * 256, s, s);
+    }
+    this.noiseTile = nt;
   }
 
   // ---------- Events (Pan/Zoom/Klick) ----------
@@ -256,10 +272,24 @@ export class WorldMap {
       x.globalAlpha = 0.5; x.fillStyle = lg; x.fillRect(0, 0, this.baseW, this.baseH); x.globalAlpha = 1;
       x.restore();
     }
+    // feine Land-Textur (Relief) über alle Landflächen
+    if (this.noiseTile) {
+      x.save();
+      x.beginPath();
+      for (const c of this.world.countries) for (const ring of this.world.geo[c.iso]) {
+        const pts = this._ringPoints(ring);
+        pts.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.closePath();
+      }
+      x.clip();
+      x.globalAlpha = 0.5;
+      for (let oy = 0; oy < this.baseH; oy += 256) for (let ox = 0; ox < this.baseW; ox += 256) x.drawImage(this.noiseTile, ox, oy, 256, 256);
+      x.globalAlpha = 1;
+      x.restore();
+    }
     // Ländergrenzen (dünn)
     x.lineJoin = 'round';
     for (const c of this.world.countries) {
-      x.lineWidth = 0.6; x.strokeStyle = 'rgba(20,30,25,0.55)'; x.stroke(this.paths[c.iso]);
+      x.lineWidth = 0.6; x.strokeStyle = 'rgba(20,30,25,0.5)'; x.stroke(this.paths[c.iso]);
     }
   }
 
@@ -409,7 +439,9 @@ export class WorldMap {
   playAsteroidIntro(iso, cb) {
     const c = this.byIso[iso] || this.byIso[this.eng?.startCountry];
     const [tx, ty] = this.proj(c ? c.lon : 0, c ? c.lat : 0);
-    this.asteroid = { t: 0, tx, ty, sx: tx - this.baseW * 0.4, sy: ty - this.baseH * 0.6, cb, flash: 0, trail: [] };
+    // Start im sichtbaren Bereich (oben rechts), damit der Anflug klar sichtbar ist
+    const off = 300 / Math.max(1, this.view.scale);
+    this.asteroid = { t: 0, tx, ty, sx: tx + off * 0.7, sy: ty - off, cb, flash: 0, trail: [] };
   }
 
   update(dt) {
@@ -512,7 +544,7 @@ export class WorldMap {
     const W = this.baseW, H = this.baseH;
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
-    const layers = [{ sp: 4, op: 0.5, sc: 1 }, { sp: 9, op: 0.35, sc: 1.4 }];
+    const layers = [{ sp: 3, op: 0.22, sc: 1 }, { sp: 6, op: 0.14, sc: 1.5 }];
     for (const L of layers) {
       const off = ((t * L.sp) % W);
       ctx.globalAlpha = L.op;
@@ -700,20 +732,24 @@ export class WorldMap {
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(tx, ty, r, 0, 7); ctx.fill();
       return;
     }
-    // Schweif
+    // feuriger Schweif
     for (let i = 0; i < a.trail.length; i++) {
       const p = a.trail[i]; const al = i / a.trail.length;
-      ctx.fillStyle = `rgba(255,${120 + al * 100},${60 + al * 120},${al * 0.6})`;
-      ctx.beginPath(); ctx.arc(p[0], p[1], (1 + al * 3) / this.view.scale, 0, 7); ctx.fill();
+      const rr = (2 + al * 10) / this.view.scale;
+      const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], rr);
+      g.addColorStop(0, `rgba(255,${200 + al * 55 | 0},${120 + al * 100 | 0},${al * 0.8})`);
+      g.addColorStop(1, 'rgba(255,120,40,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p[0], p[1], rr, 0, 7); ctx.fill();
     }
-    // Felsen
-    ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(t * 4);
-    ctx.fillStyle = '#5a4a55'; ctx.strokeStyle = '#c89aff'; ctx.lineWidth = 0.4 / this.view.scale;
-    const s = 5 / this.view.scale;
-    ctx.beginPath();
-    for (let i = 0; i < 7; i++) { const ang = i / 7 * Math.PI * 2; const rr = s * (0.7 + 0.4 * Math.sin(i * 2.3)); i ? ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr) : ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = 'rgba(200,150,255,0.8)'; ctx.beginPath(); ctx.arc(0, 0, s * 0.4, 0, 7); ctx.fill();
+    // Asteroid (3D-Sprite), rotiert
+    const s = clamp(34 / this.view.scale, 16, 60);
+    ctx.save(); ctx.translate(a.x, a.y);
+    // Glut-Halo
+    const hg = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 0.8);
+    hg.addColorStop(0, 'rgba(255,150,60,0.5)'); hg.addColorStop(1, 'rgba(255,120,40,0)');
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, 0, s * 0.8, 0, 7); ctx.fill();
+    ctx.rotate(t * 1.5);
+    if (this.astImg && this.astImg.complete) ctx.drawImage(this.astImg, -s / 2, -s / 2, s, s);
     ctx.restore();
   }
 }

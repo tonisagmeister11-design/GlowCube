@@ -2,6 +2,10 @@
 // präsentiert – langsame Rotation, Schweben, Pulsieren, Beleuchtung, Partikel,
 // animierter Modellwechsel mit Auflöse-/Partikeleffekt, Evolutionszustände.
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { PathogenAssetManager } from './assets.js';
 import { PATHOGENS } from '../data/pathogens.js';
 
@@ -29,6 +33,12 @@ export class PathogenViewer {
     this.autoIdle = true;
     this._setupLights();
     if (particles) this._setupParticles();
+    // Postprocessing: Bloom lässt leuchtende Teile (Kerne, Spikes) aller Erreger glühen
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.7, 0.6, 0.85);
+    this.composer.addPass(this.bloom);
+    this.composer.addPass(new OutputPass());
     this._raf = null;
     this._onResize = () => this.resize();
     window.addEventListener('resize', this._onResize);
@@ -191,6 +201,7 @@ export class PathogenViewer {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    if (this.composer) { this.composer.setPixelRatio(this.dpr); this.composer.setSize(w, h); this.bloom.setSize(w, h); }
   }
 
   _loop() {
@@ -232,7 +243,7 @@ export class PathogenViewer {
       this._burst.geometry.attributes.position.needsUpdate = true;
       this._burst.material.opacity = Math.max(0, this._burstT) * 0.9;
     }
-    this.renderer.render(this.scene, this.camera);
+    if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {
