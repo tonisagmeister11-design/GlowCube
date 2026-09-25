@@ -34,9 +34,13 @@ export const ABILITIES = [
   { id: 'drug2', name: 'Medikamentenresistenz 2', icon: '🧪', cost: 20, req: ['drug1'], mods: { rich: 0.45 }, desc: 'Moderne Medizin verliert an Wirkung.' },
   { id: 'gene1', name: 'Genetische Resistenz 1', icon: '🧬', cost: 16, cureReq: 0.1, desc: 'Erschwert die Heilmittelforschung: Anforderung +10 %.' },
   { id: 'gene2', name: 'Genetische Resistenz 2', icon: '🧬', cost: 26, req: ['gene1'], cureReq: 0.18, desc: 'Erschwert die Heilmittelforschung weiter: Anforderung +18 %.' },
-  { id: 'shuffle1', name: 'Genetische Neuordnung 1', icon: '🔀', cost: 18, cureSet: 0.1, desc: 'Wirft die Heilmittelforschung zurück (−10 % Fortschritt beim Entwickeln). Am wirksamsten, wenn die Forschung schon läuft.' },
-  { id: 'shuffle2', name: 'Genetische Neuordnung 2', icon: '🔀', cost: 26, req: ['shuffle1'], cureSet: 0.12, desc: 'Wirft die Forschung erneut zurück (−12 %).' },
-  { id: 'shuffle3', name: 'Genetische Neuordnung 3', icon: '🔀', cost: 34, req: ['shuffle2'], cureSet: 0.15, desc: 'Massiver Rückschlag für die Forschung (−15 %).' },
+  { id: 'shuffle1', name: 'Genetische Neuordnung 1', icon: '🔀', cost: 18, cureSet: 0.1, desc: 'Wirft die Heilmittelforschung zurück (−10 % Fortschritt beim Entwickeln). Am wirksamsten, wenn die Forschung schon läuft – oder wenn das Heilmittel schon fertig ist.' },
+  { id: 'shuffle2', name: 'Genetische Neuordnung 2', icon: '🔀', cost: 26, req: ['shuffle1'], cureSet: 0.12, desc: 'Wirft die Forschung erneut zurück (−12 %). Macht auch ein fertiges Heilmittel wirkungslos.' },
+  { id: 'shuffle3', name: 'Genetische Neuordnung 3', icon: '🔀', cost: 34, req: ['shuffle2'], cureSet: 0.15, desc: 'Massiver Rückschlag für die Forschung (−15 %). Macht auch ein fertiges Heilmittel wirkungslos.' },
+  // Gegenwehr gegen ein fertiges Heilmittel
+  { id: 'cure_res1', name: 'Heilmittelresistenz 1', icon: '💉', cost: 20, cureResist: 0.25, desc: 'Das Heilmittel wirkt schlechter: heilt und impft deutlich weniger und wird langsamer verteilt.' },
+  { id: 'cure_res2', name: 'Heilmittelresistenz 2', icon: '🛡', cost: 32, req: ['cure_res1'], cureResist: 0.25, desc: 'Das Heilmittel verliert noch mehr Wirkung – selbst verteilte Dosen helfen kaum.' },
+  { id: 'immune_escape', name: 'Immunflucht', icon: '🎭', cost: 26, req: ['cure_res1'], leak: 0.4, desc: 'Auch Geimpfte und Geheilte können sich erneut anstecken.' },
 ];
 
 // Symptom-Hexraster (wie im Original-Bildschirm): q/r = Hex-Koordinaten.

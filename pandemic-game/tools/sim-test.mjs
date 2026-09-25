@@ -30,6 +30,9 @@ function smartPlay(type, iso, { passive = false, maxDays = 3500, difficulty = 'n
     if (!passive) {
       const n = eng.countriesInfected(), frac = (eng.totalInfected() + eng.totalDead()) / eng.worldPop;
       if (eng.cure > 0.25) for (const id of ['shuffle1', 'shuffle2', 'shuffle3']) if (eng.canEvolve(id)) { eng.evolve(id); break; }
+      // Gegenwehr: Resistenz, sobald die Forschung ernst wird; DNA-Umbau kurz vor/nach Fertigstellung
+      if (eng.cure > 0.5) for (const id of ['cure_res1', 'immune_escape', 'cure_res2']) if (eng.canEvolve(id)) { eng.evolve(id); break; }
+      if ((eng.cureDone || eng.cure > 0.95) && eng.dna >= eng.rewriteCost()) eng.dnaRewrite();
       if (!lethalOn && ((n >= eng.list.length - 1 && frac > 0.85) || eng.cure > 0.5)) lethalOn = true;
       if (lethalOn) while (li < LETHAL.length) { const id = LETHAL[li]; if (eng.evolved.has(id)) { li++; continue; } if (eng.canEvolve(id)) { eng.evolve(id); li++; } else break; }
       while (si < SPREAD.length) { const id = SPREAD[si]; if (eng.evolved.has(id)) { si++; continue; } if (eng.canEvolve(id)) { eng.evolve(id); si++; } else break; }
@@ -101,6 +104,63 @@ for (const [diff, maxWins] of [['normal', 9], ['brutal', 2]]) {
   const ok = w <= maxWins && maxDna < 250;
   console.log(`${diff.padEnd(6)} Siege ${w}/${t}, max. DNA beim Umschalten auf tödlich: ${maxDna | 0}` + (ok ? '  ✓' : '  ⚠ zu leicht'));
   if (!ok) fail++;
+}
+
+console.log('\n=== Fertiges Heilmittel: man kann sich noch wehren ===');
+{
+  // Spiel, in dem das Heilmittel absichtlich fertig wird (tödlich erst danach)
+  const play = (type, iso, fight) => {
+    const eng = new Engine(world, { type, name: 'Test', startIso: iso, difficulty: 'normal' });
+    let si = 0, li = 0, doneDay = null, endedOnDone = false;
+    for (let day = 0; day < 3000 && !eng.gameOver; day++) {
+      for (const b of eng.collectBubbles()) eng.clickBubble(b);
+      while (si < SPREAD.length) { const id = SPREAD[si]; if (eng.evolved.has(id)) { si++; continue; } if (eng.canEvolve(id)) { eng.evolve(id); si++; } else break; }
+      if (eng.cureDone || eng.cureEverDone) while (li < LETHAL.length) { const id = LETHAL[li]; if (eng.evolved.has(id)) { li++; continue; } if (eng.canEvolve(id)) { eng.evolve(id); li++; } else break; }
+      if (fight) {
+        for (const id of ['cure_res1', 'immune_escape', 'cure_res2']) if (eng.cure > 0.5 && eng.canEvolve(id)) eng.evolve(id);
+        if (eng.cureDone && eng.dna >= eng.rewriteCost()) eng.dnaRewrite();
+      }
+      eng.tick();
+      if (eng.cureDone && doneDay == null) { doneDay = eng.day; endedOnDone = !!eng.gameOver; }
+    }
+    return { eng, doneDay, endedOnDone };
+  };
+  let wins = 0, losses = 0, notInstant = 0, t = 0;
+  for (const iso of ['CHN', 'USA', 'BRA', 'IND']) {
+    const a = play('virus', iso, true), b = play('virus', iso, false);
+    t++;
+    if (a.doneDay != null && !a.endedOnDone) notInstant++;
+    if (a.eng.gameOver?.win) wins++;
+    if (b.eng.gameOver && !b.eng.gameOver.win) losses++;
+    console.log(`${iso}: Heilmittel fertig an Tag ${a.doneDay} → mit Gegenwehr ${a.eng.gameOver?.win ? 'SIEG' : 'NIED.'} (DNA-Umbau ${a.eng.rewrites}×), ohne Gegenwehr ${b.eng.gameOver?.win ? 'SIEG' : 'NIED. (' + b.eng.gameOver?.reason + ')'}`);
+  }
+  const ok = notInstant === t && wins >= 2 && losses >= 3;
+  console.log(`Spiel läuft nach 100 % weiter: ${notInstant}/${t}, Siege mit Gegenwehr: ${wins}/${t}, Niederlagen ohne: ${losses}/${t}` + (ok ? '  ✓' : '  ⚠'));
+  if (!ok) fail++;
+}
+
+console.log('\n=== Jede Partie endet (keine Pattsituation) ===');
+{
+  // früh tödlich + Sonderfähigkeit sofort – erzeugte früher ewige Patts (Zombies vs. Geimpfte)
+  // auch mit endlosem DNA-Umbau (Bot bekommt DNA geschenkt) muss jede Partie enden
+  let stuck = [], longest = 0;
+  for (const difficulty of ['normal', 'brutal']) for (const fight of [false, true]) for (const type of PATHOGEN_ORDER) {
+    const eng = new Engine(world, { type, name: 'Patt', startIso: 'CHN', difficulty });
+    const order = ['air1', 'water1', 'contact1', 'air2', 'water2', ...(eng.def.abilities || []).map((a) => a.id),
+      ...(fight ? ['cure_res1', 'immune_escape', 'cure_res2'] : []), 'organ', 'hemorrhage', 'shock'];
+    let bi = 0;
+    for (let g = 0; g < 4000 && !eng.gameOver; g++) {
+      for (const b of eng.collectBubbles()) eng.clickBubble(b);
+      eng.dna += 3;
+      while (bi < order.length) { const id = order[bi]; if (eng.evolved.has(id)) { bi++; continue; } if (eng.canEvolve(id)) { eng.evolve(id); eng.triggerAbility(id); bi++; } else break; }
+      if (fight && eng.cureDone && eng.dna >= eng.rewriteCost()) eng.dnaRewrite();
+      eng.tick();
+    }
+    if (!eng.gameOver) stuck.push(`${type}/${difficulty}${fight ? '+Umbau' : ''}`);
+    else longest = Math.max(longest, eng.day);
+  }
+  console.log(stuck.length ? `⚠ kein Spielende: ${stuck.join(', ')}` : `alle 12 Typen enden (normal/brutal, mit/ohne Umbau), längste Partie ${longest} Tage  ✓`);
+  if (stuck.length) fail++;
 }
 
 console.log('\n=== Weltreaktionen ===');

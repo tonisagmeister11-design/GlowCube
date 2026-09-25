@@ -114,16 +114,17 @@ await page.waitForTimeout(300);
 const ended = await page.evaluate(async () => {
   const g = window.__game; const eng = g.eng;
   // aggressive Auto-Evolution + Zeitraffer
-  const order = ['air1', 'water1', 'contact1', 'air2', 'water2', 'env1', 'cold1', 'heat1', 'drug1', 'reanimation', 'horde', 'cytopathic', 'organ', 'hemorrhage', 'shock', 'necrosis'];
-  let bi = 0, guard = 0;
+  const order = ['air1', 'water1', 'contact1', 'air2', 'water2', 'env1', 'cold1', 'heat1', 'drug1', 'reanimation', 'horde', 'cure_res1', 'immune_escape', 'cure_res2', 'cytopathic', 'organ', 'hemorrhage', 'shock', 'necrosis'];
+  let bi = 0, guard = 0, rewrites = 0;
   while (!eng.gameOver && guard++ < 4000) {
     for (const b of eng.collectBubbles()) eng.clickBubble(b);
     eng.dna += 3;
     while (bi < order.length) { const id = order[bi]; if (eng.evolved.has(id)) { bi++; continue; } if (eng.canEvolve(id)) { eng.evolve(id); eng.triggerAbility(id); bi++; } else break; }
+    if (eng.cureDone && eng.dna >= eng.rewriteCost()) { eng.dnaRewrite(); rewrites++; }   // Gegenwehr gegen fertiges Heilmittel
     eng.tick();
     for (const b of eng.collectBubbles()) g.map.spawnBubble(b);
   }
-  return eng.gameOver;
+  return eng.gameOver && { ...eng.gameOver, rewrites };
 });
 console.log('Spielende:', JSON.stringify(ended));
 await page.waitForTimeout(500);

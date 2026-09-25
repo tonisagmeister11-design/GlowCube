@@ -442,3 +442,7 @@ html.rotated { --sa-top: env(safe-area-inset-right); --sa-right: env(safe-area-i
   --sa-bottom: env(safe-area-inset-left); --sa-left: env(safe-area-inset-top); }
 .device-chip { position: relative; margin-bottom: calc(var(--vh) * 1.2); font-size: 12px; color: var(--muted);
   background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 20px; padding: 4px 12px; }
+
+/* Gegenwehr gegen das Heilmittel */
+.sp-ability.sp-rewrite { background: linear-gradient(180deg, rgba(20,70,110,0.95), rgba(8,30,55,0.95)); border-color: var(--dna); color: #d8f2ff; }
+.sp-ability.sp-rewrite.poor { opacity: .55; }

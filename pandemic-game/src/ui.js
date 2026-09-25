@@ -8,6 +8,7 @@ import { TRANSMISSION, ABILITIES, SYMPTOMS, HEX_NEIGHBORS } from './data/traits.
 import { SPEEDS } from './game.js';
 import { HologramViewer } from './three/hologram.js';
 import { device } from './device.js';
+import { IDLE_DAYS } from './sim/engine.js';
 
 const h = (tag, props = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -382,6 +383,7 @@ export class UI {
     this.barSev.set(clampBar(eng.severity / 40));
     this.barLeth.set(clampBar(eng.lethality / 60));
     this.barCure.set(eng.cure, cureText(eng));
+    this._cureWarnings(eng);
     this.barAlarm.set(eng.priority / 1.6, alarmText(eng));
     this.dnaEl.querySelector('.dna-val').textContent = Math.floor(eng.dna);
     this.updateNews();
@@ -438,13 +440,21 @@ export class UI {
     if (sp.vampireActive) actions.push({ id: 'vampire', icon: '🩸', label: 'Die Jagd', directed: 'vampire', color: DOT_RGBA('vampire') });
     if (sp.zombieActive) actions.push({ id: 'zombie', icon: '🧟', label: 'Zombie-Horde schicken', directed: 'zombie', amounts: true, color: DOT_RGBA('zombie') });
     if (sp.xenoActive) actions.push({ id: 'crystal', icon: '💠', label: 'Kristallwesen aussenden', directed: 'crystal', amounts: true, color: DOT_RGBA('xmon') });
-    const sig = actions.map((a) => a.id).join(',') + eng.opts.type;
+    // Gegenwehr gegen das Heilmittel: beliebig oft, wird jedes Mal teurer
+    if (eng.cure >= 0.3 || eng.cureDone) {
+      const cost = eng.rewriteCost();
+      actions.push({ id: 'rewrite' + cost, cls: 'sp-rewrite' + (eng.dna >= cost ? '' : ' poor'), icon: '🧬', label: `DNA-Umbau (${cost} DNA)`, fn: () => {
+        if (eng.dnaRewrite()) { this._flashHint('🧬 Erbgut umgebaut – das Heilmittel ist wirkungslos, die Forschung fällt auf die Hälfte zurück!', 4000); this.refreshHud(); }
+        else this._flashHint(`Zu wenig DNA – der DNA-Umbau kostet ${eng.rewriteCost()} DNA.`);
+      } });
+    }
+    const sig = actions.map((a) => a.id + (a.cls || '')).join(',') + eng.opts.type;
     if (sig === this._specialSig) return;
     this._specialSig = sig;
     this.specialBar.innerHTML = '';
     for (const a of actions) {
       this.specialBar.append(h('button', {
-        class: 'sp-ability', title: a.directed ? 'Ziel auf der Karte wählen' : (a.fn ? 'Sofort auslösen' : ''),
+        class: 'sp-ability' + (a.cls ? ' ' + a.cls : ''), title: a.directed ? 'Ziel auf der Karte wählen' : (a.fn ? 'Sofort auslösen' : ''),
         onclick: () => { if (a.directed) this._startDirected(a); else a.fn(); },
       }, a.icon + ' ' + a.label));
     }
@@ -493,10 +503,31 @@ export class UI {
     this._targetEl.style.display = '';
   }
 
-  _flashHint(text) {
+  _flashHint(text, ms = 2600) {
     if (!this._hintEl) { this._hintEl = h('div', { class: 'map-hint' }); this.layers.game.append(this._hintEl); }
     this._hintEl.textContent = text; this._hintEl.style.opacity = '1';
-    clearTimeout(this._hintT); this._hintT = setTimeout(() => { if (this._hintEl) this._hintEl.style.opacity = '0'; }, 2600);
+    clearTimeout(this._hintT); this._hintT = setTimeout(() => { if (this._hintEl) this._hintEl.style.opacity = '0'; }, ms);
+  }
+
+  // Warnungen rund ums Heilmittel – mit Hinweis, wie man sich wehren kann
+  _cureWarnings(eng) {
+    if (eng.cureDone && !this._warnDone) {
+      this._warnDone = true;
+      this._flashHint('💉 Das Heilmittel ist fertig und wird verteilt! Wehr dich: 🧬 DNA-Umbau, Genetische Neuordnung oder Heilmittelresistenz.', 7000);
+    }
+    if (!eng.cureDone) this._warnDone = false;
+    if (eng.cure >= 0.9 && !eng.cureDone && !this._warn90) {
+      this._warn90 = true;
+      this._flashHint('⚠ Das Heilmittel ist fast fertig (90 %)! Denk an 🧬 DNA-Umbau oder Heilmittelresistenz.', 5000);
+    }
+    if (eng.cure < 0.8) this._warn90 = false;
+    // nur noch Sonderwesen, keine Infizierten: rechtzeitig warnen
+    if (eng.idleDays === 30 || eng.idleDays === IDLE_DAYS - 30) {
+      if (this._warnIdle !== eng.idleDays) {
+        this._warnIdle = eng.idleDays;
+        this._flashHint(`⚠ Keine Infizierten mehr! Die letzten Menschen sind abgeschottet – schick Träger zu ihnen (noch ${IDLE_DAYS - eng.idleDays} Tage).`, 6000);
+      }
+    }
   }
 
   flashDna() {
@@ -539,6 +570,7 @@ export class UI {
         stat('Hafen', c.port ? (st.portOpen ? 'offen' : 'geschlossen') : '–'),
         stat('Grenzen', st.bordersOpen ? 'offen' : 'geschlossen'),
         stat('Quarantäne', st.measures > 0.05 ? bars(st.measures / 0.8) : 'keine'),
+        ...(st.vac > 0.005 ? [stat('Heilmittel verteilt', Math.round(st.vac * 100) + ' %'), stat('Geimpft/geheilt', fmt(st.immune))] : []),
         stat('Staat', st.collapse > 0.8 ? 'zerfallen' : st.collapse > 0.05 ? 'bricht zusammen' : 'stabil'),
         ...(st.zombies > 1 ? [stat('Zombies', fmt(st.zombies))] : []),
         ...(st.fortress > 0.15 ? [stat('Militärfestung', Math.round(st.fortress * 100) + '%')] : []),
@@ -860,6 +892,7 @@ function bars(v) {
 }
 function clampBar(x) { return Math.max(0, Math.min(1, x)); }
 function cureText(eng) {
+  if (eng.cureDone) return `fertig · verteilt ${(eng.deployment * 100).toFixed(0)}%`;
   const pct = (eng.cure * 100).toFixed(0) + '%';
   return eng.cureRate > 0.00005 && eng.cure < 1 ? `${pct} · +${(eng.cureRate * 100).toFixed(2)}%/Tag` : pct;
 }

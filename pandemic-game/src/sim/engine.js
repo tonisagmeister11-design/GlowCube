@@ -7,13 +7,14 @@ const ALL_TRAITS = {};
 for (const t of [...TRANSMISSION, ...ABILITIES, ...SYMPTOMS]) ALL_TRAITS[t.id] = t;
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+export const IDLE_DAYS = 180;   // Tage ohne Infizierte, bis abgeschottete Überlebende gewinnen
 // cure = Forschungstempo (höher = schnelleres Heilmittel), react = wie heftig
 // die Welt auf Tote/Symptome reagiert, detect = Anteil Infizierter, ab dem ein
 // Land den Erreger auch ohne Symptome im Labor entdeckt.
 export const DIFFICULTIES = {
-  leicht: { label: 'Leicht', cure: 0.85, react: 0.75, dna: 1.2, detect: 0.03 },
-  normal: { label: 'Normal', cure: 1.45, react: 1.0, dna: 1.0, detect: 0.02 },
-  brutal: { label: 'Brutal', cure: 1.4, react: 1.35, dna: 0.85, detect: 0.008 },
+  leicht: { label: 'Leicht', cure: 0.85, react: 0.75, dna: 1.2, detect: 0.03, deploy: 0.75 },
+  normal: { label: 'Normal', cure: 1.45, react: 1.0, dna: 1.0, detect: 0.02, deploy: 1.0 },
+  brutal: { label: 'Brutal', cure: 1.4, react: 1.35, dna: 0.85, detect: 0.008, deploy: 1.6 },
 };
 
 export class Engine {
@@ -29,6 +30,10 @@ export class Engine {
     this.cure = 0;            // 0..1
     this.cureActive = false;
     this.cureRate = 0;        // Forschungsfortschritt pro Tag (Anzeige)
+    this.cureDone = false;    // Heilmittel fertig -> wird verteilt (Niederlage erst, wenn alle geheilt sind)
+    this.deployment = 0;      // weltweiter Verteilungsgrad 0..1
+    this.rewrites = 0;        // wie oft der Erreger sein Erbgut umgebaut hat (DNA-Umbau)
+    this.rewriteBoost = 1;    // Forscher lernen mit jedem Umbau dazu
     this.priority = 0;        // globale Alarmstufe: 0 ruhig … ~1.6 weltweite Panik
     this._deadPrev = 0;
     this.evolved = new Set();
@@ -65,6 +70,8 @@ export class Engine {
         detected: false, airportOpen: c.airport, portOpen: c.port, bordersOpen: true,
         cureContribution: 0, lastDnaDay: -99, closedAir: false, closedPort: false, closedBorder: false,
         measures: 0,   // Quarantäne/Lockdown 0..0.8 – bremst Ansteckung Gesunder
+        vac: 0,        // Verteilung des fertigen Heilmittels im Land 0..1
+        immune: 0,     // geimpfte/geheilte Gesunde (Teil von healthy), nicht ansteckbar
         collapse: 0,   // Zusammenbruch von Staat & Gesundheitssystem 0..1
         researchW: c.medical * c.wealth * (0.6 + 0.4 * Math.min(1, Math.sqrt(c.pop / 1e8))),
       };
@@ -220,7 +227,11 @@ export class Engine {
     this.dna -= t.cost;
     this.evolved.add(id);
     this.evoOrder.push(id);
-    if (t.cureSet) this.cure = clamp(this.cure - t.cureSet, 0, 1);
+    if (t.cureSet) {
+      this.cure = clamp(this.cure - t.cureSet, 0, 1);
+      // eine neue Variante macht ein bereits verteiltes Heilmittel teilweise wirkungslos
+      if (this.cureDone || this.deployment > 0) for (const st of this.list) { st.immune *= 0.6; st.vac *= 0.5; }
+    }
     if (t.zombie) this.special.zombieActive = true;
     if (t.horde) this.special.hordeActive = true;
     if (t.apes) this.special.apesActive = true;
@@ -260,6 +271,8 @@ export class Engine {
     let inf = d.startInf, sev = d.startSev, leth = d.startLeth;
     this.mods = {};
     this.cureReqBonus = 0;
+    this.cureResist = 0;   // Heilmittelresistenz: Heilung/Impfung wirken schwächer
+    this.leak = 0;         // Immunflucht: Geimpfte/Geheilte können sich wieder anstecken
     let cureMul = 1;
     this.instabilityStabilised = false;
     for (const id of this.evolved) {
@@ -268,6 +281,8 @@ export class Engine {
       inf += t.inf || 0; sev += t.sev || 0; leth += t.leth || 0;
       if (t.lethMul) leth *= t.lethMul;
       if (t.cureReq) this.cureReqBonus += t.cureReq;
+      if (t.cureResist) this.cureResist += t.cureResist;
+      if (t.leak) this.leak += t.leak;
       if (t.cureMul) cureMul *= t.cureMul;
       if (t.mods) for (const k in t.mods) this.mods[k] = (this.mods[k] || 0) + t.mods[k];
       if (t.controlBoost) this.special.controlBoost = t.controlBoost;
@@ -285,6 +300,8 @@ export class Engine {
     this.severity = sev + (d.instability ? this._instab : 0);
     this.lethality = leth + (d.instability ? this._instab : 0);
     this.baseCureMul = cureMul * (d.cureMul || 1);
+    this.cureResist = Math.min(0.8, this.cureResist);
+    this.leak = Math.min(0.7, this.leak);
   }
 
   // ---- DNA-Blasen ----
@@ -329,19 +346,20 @@ export class Engine {
       }
 
       // interne Ausbreitung (logistisch); Quarantäne schützt noch Gesunde
-      if (st.infected >= 0.5 && st.healthy > 0) {
+      const S = this._susceptible(st);
+      if (st.infected >= 0.5 && S > 0) {
         const envM = this.envMultiplier(c);
         const densM = 0.6 + Math.min(1.4, c.density / 200) + c.urban * 0.5;
         const frac = st.infected / alive;
         let rate = globalInf * envM * densM * (1 - frac) * (1 - st.measures * 0.75);
         let newInf = st.infected * rate;
         // Land überrannt: die letzten Überlebenden finden keinen Schutz mehr
-        if (st.healthy < st.pop * 0.01 && st.infected + st.dead > st.healthy * 20) {
-          newInf = Math.max(newInf, st.healthy * (st.healthy < 50 ? 1 : 0.25));
+        if (S < st.pop * 0.01 && st.infected + st.dead > S * 20) {
+          newInf = Math.max(newInf, S * (S < 50 ? 1 : 0.25));
         }
-        newInf = Math.min(newInf, st.healthy);
-        if (st.healthy > 0 && newInf < 1 && this.rng() < st.infected * rate) newInf = 1;
-        st.infected += newInf; st.healthy -= newInf;
+        newInf = Math.min(newInf, S);
+        if (newInf < 1 && this.rng() < st.infected * rate) newInf = Math.min(1, S);
+        this._infectHealthy(st, newInf, S);
       }
       if (st.healthy < 0.5) { st.infected += st.healthy > 0 && st.infected > 0 ? st.healthy : 0; st.healthy = 0; }
 
@@ -361,12 +379,28 @@ export class Engine {
         st.infected -= deaths; st.dead += deaths;
         if (st.infected < 0.5 && (lethRate > 0 || st.healthy >= 1)) { st.dead += st.infected; st.infected = 0; }
         if (!this.firstDeathIso && st.dead >= 1) this.firstDeathIso = iso;
-        // Heilung, sobald Cure fortgeschritten
-        if (this.cure > 0.15) {
+        // Behandlung, sobald die Forschung fortgeschritten ist
+        if (this.cure > 0.15 && !this.cureDone) {
           const heal = st.infected * this.cure * (0.02 * c.medical + this.cure * 0.03) * (1 - st.collapse);
           st.infected -= heal; st.healthy += heal;
         }
       }
+      // Fertiges Heilmittel wird verteilt: heilt Infizierte und impft Gesunde.
+      // Reiche Länder mit guter Versorgung zuerst, zerfallene Staaten gar nicht.
+      if (this.cureDone) {
+        const res = this.cureResist;
+        // auch zerfallene Länder erhalten etwas über internationale Hilfslieferungen
+        const dep = this.diff.deploy || 1;
+        const dv = (0.01 + 0.045 * c.medical) * (0.5 + 0.5 * c.wealth) * (1 - 0.7 * st.collapse) * (1 - res * 0.5) * dep;
+        st.vac = Math.min(1, st.vac + dv);
+        if (st.vac > 0) {
+          const heal = st.infected * st.vac * 0.3 * (1 - res) * Math.min(1.5, dep);
+          st.infected -= heal; st.healthy += heal; st.immune += heal;
+          const free = Math.max(0, st.healthy - st.immune);
+          st.immune += free * st.vac * 0.08 * (1 - res * 0.7);
+        }
+      }
+      if (st.immune > st.healthy) st.immune = st.healthy;
       // gute Gesundheitssysteme halten länger durch
       // verlorene Bevölkerung: Tote, aber auch Zombies und Kristallwesen – ein von
       // Untoten überranntes Land hat keinen funktionierenden Staat mehr
@@ -400,6 +434,20 @@ export class Engine {
     this._milestones();
     this.stats.infectedPeak = Math.max(this.stats.infectedPeak, this.totalInfected());
     this.checkEnd();
+  }
+
+  // Ansteckbare Gesunde: Geimpfte/Geheilte nur bei Immunflucht (teilweise)
+  _susceptible(st) {
+    return Math.max(0, st.healthy - st.immune * (1 - this.leak));
+  }
+
+  // n Gesunde anstecken (anteilig auch Geimpfte, wenn Immunflucht aktiv ist)
+  _infectHealthy(st, n, S = this._susceptible(st)) {
+    if (n <= 0 || S <= 0) return;
+    n = Math.min(n, S);
+    const fromImm = n * (st.immune * this.leak) / S;
+    st.immune = Math.max(0, st.immune - fromImm);
+    st.healthy -= n; st.infected += n;
   }
 
   envMultiplier(c) {
@@ -487,11 +535,11 @@ export class Engine {
 
   tryInfect(iso, kind) {
     const st = this.countries[iso];
-    if (!st || st.healthy < 1) return;
+    if (!st || this._susceptible(st) < 1) return;
     if (kind !== 'spore' && st.measures > 0 && this.rng() < st.measures * 0.6) return;   // Einreisekontrollen
     if (st.infected < 1) {
       const seed = Math.max(1, Math.round(st.pop * 0.000004));
-      st.infected += seed; st.healthy -= seed;
+      this._infectHealthy(st, seed);
       // Bonus fürs Erreichen eines neuen Landes – groß am Anfang, später klein
       const nC = this.countriesInfected();
       if (nC <= 25 || this.rng() < 0.3) this.spawnBubble(iso, 'country');
@@ -500,8 +548,7 @@ export class Engine {
       this._spreadNews = (this._spreadNews || 0) + 1;
       if (this._spreadNews <= 45) this.pushNews(`${st.ref.name} meldet die ersten Fälle von „${this.opts.name}“.`, 'spread', iso);
     } else {
-      const add = Math.min(st.healthy, st.infected * 0.02 + 5);
-      st.infected += add; st.healthy -= add;
+      this._infectHealthy(st, st.infected * 0.02 + 5);
     }
   }
 
@@ -577,9 +624,42 @@ export class Engine {
     }
     const functional = cap / Math.max(1e-9, this.researchTotal);
     const funding = 0.3 + this.priority * 1.6;
-    const rate = 0.009 * functional * funding * this.baseCureMul * this.diff.cure / (1 + this.cureReqBonus);
-    this.cureRate = rate;
-    this.cure = clamp(this.cure + rate, 0, 1);
+    let rate = 0.009 * functional * funding * this.baseCureMul * this.diff.cure * this.rewriteBoost / (1 + this.cureReqBonus);
+    // Gab es schon einmal ein fertiges Heilmittel, muss es nach einem Rückschlag
+    // nur angepasst werden – das geht auch mit wenigen verbliebenen Laboren
+    if (this.cureEverDone && !this.cureDone) rate = Math.max(rate, 0.011 * this.diff.cure * this.rewriteBoost / (1 + this.cureReqBonus));
+    this.cureRate = this.cureDone ? 0 : rate;
+    if (!this.cureDone) this.cure = clamp(this.cure + rate, 0, 1);
+    if (this.cure >= 1 && !this.cureDone) {
+      this.cureDone = true; this.cureDoneDay = this.day; this.cureEverDone = true;
+      this.pushNews(`DURCHBRUCH: Das Heilmittel gegen „${this.opts.name}" ist fertig! Die weltweite Verteilung beginnt.`, 'react');
+    } else if (this.cure < 1 && this.cureDone) {
+      this.cureDone = false;
+      this.pushNews(`Rückschlag: Das Heilmittel wirkt nicht mehr gegen „${this.opts.name}" – die Forschung muss nachbessern.`, 'special');
+    }
+    let vp = 0, tp = 0;
+    for (const st of this.list) { vp += st.vac * st.pop; tp += st.pop; }
+    this.deployment = vp / Math.max(1, tp);
+  }
+
+  // ---- Gegenwehr: DNA-Umbau (beliebig oft, wird jedes Mal teurer) ----
+  // Das Erbgut wird schlagartig umgebaut: Das Heilmittel wirkt nicht mehr, die
+  // Forscher müssen die Hälfte neu entwickeln und der Impfschutz ist weg.
+  // Dafür lernen sie jedes Mal dazu (Forschung danach etwas schneller).
+  rewriteCost() { return 30 + 15 * this.rewrites; }
+
+  dnaRewrite() {
+    const cost = this.rewriteCost();
+    if (this.dna < cost || this.gameOver) return false;
+    this.dna -= cost;
+    this.rewrites++;
+    this.rewriteBoost = 1 + 0.2 * this.rewrites;
+    this.cure = Math.min(this.cure, 1) * 0.5;
+    for (const st of this.list) { st.immune = 0; st.vac = 0; }
+    this.deployment = 0;
+    if (this.cureDone) this.cureDone = false;
+    this.pushNews(`„${this.opts.name}" hat sein Erbgut umgebaut! Das Heilmittel ist wirkungslos – die Forschung fällt auf ${(this.cure * 100).toFixed(0)} % zurück.`, 'special');
+    return true;
   }
 
   // ---- DNA ----
@@ -684,13 +764,19 @@ export class Engine {
       let z = 0;
       for (const iso in this.countries) {
         const st = this.countries[iso];
-        if (st.dead > 0) {
-          const rise = Math.min(st.dead, st.dead * (0.01 + (sp.zombieBoost || 0) * 0.02));
+        // Tote stehen auf – nicht mehr, wo das Heilmittel schon verteilt ist
+        if (st.dead > 0 && st.vac < 0.5) {
+          const rise = Math.min(st.dead, st.dead * (0.01 + (sp.zombieBoost || 0) * 0.02) * (1 - st.vac));
           st.dead -= rise; st.zombies += rise;
         }
         if (st.zombies > 0 && st.healthy > 0) {
-          const bite = Math.min(st.healthy, st.zombies * (0.035 + (sp.zombieBoost || 0) * 0.04));
-          st.healthy -= bite; st.infected += bite;
+          // Geimpfte/Geheilte werden durch Bisse nicht angesteckt (außer bei Immunflucht)
+          this._infectHealthy(st, st.zombies * (0.035 + (sp.zombieBoost || 0) * 0.04));
+        }
+        // Mit dem verteilten Heilmittel (Gegenmittel) räumt das Militär die Horden ab
+        if (st.zombies > 0 && st.vac > 0) {
+          st.zombies = Math.max(0, st.zombies - st.zombies * (0.02 + 0.06 * st.vac) * (1 - (sp.zombieArmor || 0) * 0.5));
+          if (st.zombies < 50 * st.vac) st.zombies = 0;   // letzte versprengte Untote
         }
         // Militär baut Festungen in betroffenen, wohlhabenden Ländern
         if (this.detected && (st.zombies > st.pop * 0.004 || st.dead > st.pop * 0.01) && st.healthy > st.pop * 0.02) {
@@ -748,8 +834,8 @@ export class Engine {
         const st = this.countries[iso];
         if (st.infected > 0 && st.vampires < 1) st.vampires = 1;
         if (st.vampires > 0 && st.healthy > 0) {
-          const feed = Math.min(st.healthy, st.vampires * (0.12 + (sp.vampireBoost || 0) * 0.08));
-          st.healthy -= feed; st.infected += feed;
+          const feed = Math.min(this._susceptible(st), st.vampires * (0.12 + (sp.vampireBoost || 0) * 0.08));
+          this._infectHealthy(st, feed);
           st.vampires += feed * 0.05 + 1;
         }
         if (st.vampires > 0 && this.detected && this.cure > 0.2) {
@@ -793,7 +879,7 @@ export class Engine {
   directSeed(iso, mode, amount = 100) {
     const st = this.countries[iso]; if (!st) return false;
     const seed = Math.max(amount, 20);
-    if (st.healthy > 0) { const s = Math.min(st.healthy, seed); st.healthy -= s; st.infected += s; }
+    this._infectHealthy(st, seed);
     if (mode === 'control') st.controlled += seed * 0.7;
     if (mode === 'zombie') { st.zombies += seed * 1.2; st.fortress = Math.max(0, (st.fortress || 0) - 0.15); }
     if (mode === 'vampire') st.vampires += Math.max(8, seed * 0.05);
@@ -813,8 +899,9 @@ export class Engine {
     for (const iso in this.countries) {
       const st = this.countries[iso];
       if (st.infected > st.pop * 0.005 && st.healthy > 0) {
-        const conv = Math.min(st.healthy, st.healthy * 0.12 + st.infected * 0.05);
-        st.healthy -= conv; st.infected += conv; total += conv;
+        const S = this._susceptible(st);
+        const conv = Math.min(S, S * 0.12 + st.infected * 0.05);
+        this._infectHealthy(st, conv, S); total += conv;
       }
     }
     if (total > 0) this.pushNews(`Massenbekehrung: Millionen wollen sich plötzlich freiwillig mit „${this.opts.name}" anstecken.`, 'special');
@@ -847,11 +934,29 @@ export class Engine {
     // Sieg zuerst: sterben die letzten Menschen und Infizierten am selben Tag, hat
     // die Krankheit gewonnen
     if (healthy + infected < 1 && this.day > 10) { this.endGame(true, this.winReason()); return; }
-    // Niederlage: Erreger ausgestorben (keine Infizierten und keine Sonderwesen mehr)
+    // Niederlage: keine Infizierten und keine Sonderwesen mehr – entweder vom
+    // verteilten Heilmittel geheilt oder von selbst ausgestorben.
+    // (Ein fertiges Heilmittel allein beendet das Spiel nicht: man kann sich wehren.)
     const specialAlive = this.special.zombies + this.special.apes + this.special.vampires + (this.special.xmon || 0);
-    if (infected < 1 && specialAlive < 1 && this.day > 20) { this.endGame(false, 'ausgestorben'); return; }
-    // Niederlage: Heilmittel fertig
-    if (this.cure >= 1) this.endGame(false, 'cure');
+    if (infected < 1 && specialAlive < 1 && this.day > 20) { this.endGame(false, this.cureDone ? 'cure' : 'ausgestorben'); return; }
+    // Sicherheitsnetz gegen endlose Pattsituationen: ist das Heilmittel seit 500
+    // Tagen ununterbrochen weltweit im Einsatz, hat die Menschheit gewonnen
+    if (this.cureDone) { this._cureDays = (this._cureDays || 0) + 1; if (this._cureDays > 500) { this.endGame(false, 'held'); return; } }
+    else this._cureDays = 0;
+    // Abgeschottete Überlebende: keine Infizierten mehr, nur noch Sonderwesen, die
+    // die letzten Menschen nicht erreichen (z.B. Zombies vor versiegelten Inseln).
+    // Nach einer Warnung hat man IDLE_DAYS Tage Zeit, Träger hinzuschicken.
+    this.idleDays = infected < 1 && this.day > 20 ? (this.idleDays || 0) + 1 : 0;
+    if (this.idleDays === 30) this.pushNews('Keine neuen Infektionen mehr – die letzten Menschen haben sich abgeschottet. Schick Träger zu ihnen, sonst überlebt die Menschheit!', 'cure');
+    if (this.idleDays > IDLE_DAYS) { this.endGame(false, 'isolated'); return; }
+    // Nach dem ersten fertigen Heilmittel: sinkt die Zahl der Menschen 300 Tage
+    // lang nicht um mindestens 5 %, hat die Menschheit das Patt für sich
+    // entschieden (sonst könnte man den Umbau endlos wiederholen)
+    if (this.cureEverDone) {
+      const alive = healthy + infected;
+      if (!(alive > (this._bestAlive || Infinity) * 0.95)) { this._bestAlive = alive; this._stallDays = 0; }
+      else if (++this._stallDays > 300) { this.endGame(false, 'held'); return; }
+    }
   }
 
   hasSpecialActive() {
@@ -869,8 +974,10 @@ export class Engine {
     if (this.gameOver) return;
     this.gameOver = { win, reason, day: this.day };
     const reasons = {
-      cure: 'Die Menschheit hat rechtzeitig ein Heilmittel entwickelt.',
+      cure: 'Das Heilmittel wurde weltweit verteilt und hat den letzten Infizierten geheilt.',
       ausgestorben: 'Der Erreger ist ausgestorben, bevor er die Menschheit besiegen konnte.',
+      isolated: 'Die letzten Menschen haben sich abgeschottet – die Seuche hat sie nie erreicht.',
+      held: 'Die Menschheit hat standgehalten – das Heilmittel wird überall verteilt und die Seuche kommt nicht mehr voran.',
       extinction: 'Die gesamte Menschheit wurde infiziert und ausgelöscht.',
       control: 'Gesteuert vom Neurax-Wurm hat sich die Menschheit bis zum letzten Menschen selbst vernichtet.',
       zombie: 'Kein Mensch hat überlebt – die Zombie-Horden beherrschen die Erde.',
