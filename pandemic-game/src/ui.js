@@ -1,8 +1,9 @@
 // Gesamte Benutzeroberfläche: Menü, Erregerauswahl (Speed Run), Benennung,
 // Startlandwahl, Spiel-HUD, Evolutionsbildschirm (Übertragung/Symptome-Hexraster/
 // Fähigkeiten), Länderinfo, Nachrichten, Statistiken und Endscreen.
-import { DOT_RGBA } from './map/map.js';
+import { DOT_RGBA, DOT_TYPES } from './map/map.js';
 import { PATHOGENS, PATHOGEN_ORDER } from './data/pathogens.js';
+import { LORE } from './data/lore.js';
 import { TRANSMISSION, ABILITIES, SYMPTOMS, HEX_NEIGHBORS } from './data/traits.js';
 import { SPEEDS } from './game.js';
 import { HologramViewer } from './three/hologram.js';
@@ -43,6 +44,7 @@ export class UI {
     this._build();
     game.on('gameover', (g) => this.showEnd(g));
     game.on('tick', () => this.refreshHud());
+    game.on('speed', () => { if (this.layers.game) this.refreshHud(); });
     game.on('dna', (g) => this.flashDna(g));
     game.on('frame', () => this.updateBubbleLayer());
   }
@@ -56,6 +58,9 @@ export class UI {
     for (const k in this.layers) this.layers[k].style.display = 'none';
     if (this.layers[name]) this.layers[name].style.display = '';
     this.active = name;
+    // Erregerwahl: 3D-Modell in eigenem Bereich über der Beschreibung
+    if (name === 'type' && this.tsModel) this._mountViewerTo(this.tsModel);
+    else if (this.tsModel && this.viewer.canvas.parentElement === this.tsModel) this._mountViewerTo(null);
   }
 
   // ------------------------------------------------------------- Menü
@@ -67,7 +72,7 @@ export class UI {
       h('div', { class: 'menu-title' }, h('span', { class: 'plague-word' }, 'PANDEMIA'), h('div', { class: 'menu-tag' }, 'GLOBAL OUTBREAK')),
       cont,
       h('div', { class: 'menu-buttons' }, play),
-      h('div', { class: 'menu-foot' }, '3D-Erregermodelle in Blender erstellt · Klicke „Neues Spiel", um zu beginnen'),
+      h('div', { class: 'menu-foot' }, '3D-Erregermodelle in Blender erstellt · Starte mit „Neues Spiel"'),
     );
     this.layers.menu = wrap;
     return wrap;
@@ -110,7 +115,7 @@ export class UI {
       h('div', { class: 'ts-body' },
         h('div', { class: 'ts-viewer-hint' }, 'Speed-Run-Bestzeiten je Typ'),
         this.typeList,
-        h('div', { class: 'ts-right' }, this.typeDetail, diffSel,
+        h('div', { class: 'ts-right' }, (this.tsModel = h('div', { class: 'ts-model' })), this.typeDetail, diffSel,
           h('button', { class: 'btn primary', onclick: () => this.openName() }, 'Weiter ›'))),
     );
     return el;
@@ -124,14 +129,49 @@ export class UI {
   _selectType(key) {
     this.sel.type = key;
     const p = PATHOGENS[key];
+    const L = LORE[key] || {};
     this.layers.type.querySelectorAll('.type-row').forEach((r) => r.classList.toggle('active', r.dataset.key === key));
+    const activeRow = this.layers.type.querySelector(`.type-row[data-key="${key}"]`);
+    if (activeRow && this.mobile) activeRow.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    // Reiter: Herkunft · Was er tut · Stärken & Schwächen
+    const tabs = {
+      origin: ['Herkunft', () => [
+        h('div', { class: 'lore-place' }, '📍 ' + (L.place || '')),
+        h('p', {}, L.origin || p.desc),
+        L.why ? h('div', { class: 'lore-why' }, h('b', {}, 'Warum gerade jetzt? '), L.why) : null,
+      ]],
+      does: ['Was er tut', () => [
+        h('p', {}, L.does || p.desc),
+        h('div', { class: 'lore-sub' }, 'Eigene Fähigkeiten'),
+        h('div', { class: 'lore-abil' }, ...(p.abilities || []).map((a) =>
+          h('div', { class: 'lore-abil-row' }, h('span', { class: 'la-icon' }, a.icon), h('div', {}, h('b', {}, a.name), h('div', { class: 'la-desc' }, a.desc))))),
+      ]],
+      pros: ['Stärken & Schwächen', () => [
+        h('div', { class: 'lore-pc' },
+          h('div', {}, h('div', { class: 'lore-sub good' }, 'Stärken'), h('ul', {}, ...(L.strengths || []).map((x) => h('li', {}, x)))),
+          h('div', {}, h('div', { class: 'lore-sub bad' }, 'Schwächen'), h('ul', {}, ...(L.weaknesses || []).map((x) => h('li', {}, x))))),
+        L.tip ? h('div', { class: 'lore-tip' }, '💡 ' + L.tip) : null,
+      ]],
+    };
+    const body = h('div', { class: 'lore-body' });
+    const tabBtns = {};
+    const setTab = (k) => {
+      this._loreTab = k;
+      for (const t in tabBtns) tabBtns[t].classList.toggle('active', t === k);
+      body.innerHTML = ''; body.scrollTop = 0;
+      body.append(...tabs[k][1]().filter(Boolean));
+    };
     this.typeDetail.innerHTML = '';
     this.typeDetail.append(
-      h('h2', { style: `color:${p.accent}` }, p.name),
-      h('p', {}, p.desc),
-      h('p', { class: 'intro' }, p.intro),
-      h('div', { class: 'stars' }, 'Schwierigkeit: ' + '★'.repeat(p.difficulty) + '☆'.repeat(7 - p.difficulty)),
+      h('div', { class: 'lore-head' },
+        h('h2', { style: `color:${p.accent}` }, p.name),
+        h('div', { class: 'stars', title: 'Schwierigkeit' }, '★'.repeat(p.difficulty) + '☆'.repeat(7 - p.difficulty))),
+      h('div', { class: 'lore-tag' }, p.tagline),
+      h('div', { class: 'lore-tabs' }, ...Object.keys(tabs).map((k) =>
+        (tabBtns[k] = h('button', { class: 'lore-tab', onclick: () => setTab(k) }, tabs[k][0])))),
+      body,
     );
+    setTab(this._loreTab || 'origin');
     this.viewer.setPathogen(key);
     this.viewer.playSpecial('selected');
   }
@@ -164,7 +204,8 @@ export class UI {
   // ------------------------------------------------------------- Startland
   openStartCountry() {
     if (!this.layers.start) {
-      this.startInfo = h('div', { class: 'start-info' }, 'Wähle das Ursprungsland auf der Karte.');
+      this.startInfo = h('div', { class: 'start-info' }, h('div', { class: 'start-hint' },
+        this.mobile ? 'Tippe auf ein Land, um den Ursprung zu wählen. Mit zwei Fingern zoomen, mit einem verschieben.' : 'Wähle das Ursprungsland auf der Karte.'));
       this.startConfirm = h('button', { class: 'btn primary', disabled: '', onclick: () => this.beginGame() }, 'Ausbruch starten');
       this.layers.start = h('div', { class: 'screen startscreen' },
         h('div', { class: 'start-bar' },
@@ -179,6 +220,7 @@ export class UI {
     this.game.map.setEngine(null);
     this.game.map.selectedIso = null;
     this.game.map.onPick = (iso) => this._pickStart(iso);
+    this.game.map.onEmpty = null;
     // Map-Canvas in diesen Screen bewegen
     this._mountMap(this.layers.start, false);
     if (!this.game._raf) this.game._loop();
@@ -209,6 +251,8 @@ export class UI {
   beginGame() {
     if (!this.sel.startIso) return;
     this.game.map.onPick = (iso) => this.showCountry(iso);
+    // Tippen aufs Meer schließt das Länderfenster
+    this.game.map.onEmpty = () => { if (this.countryPanel) { this.countryPanel.style.display = 'none'; this.countryOpen = false; this.game.map.selectedIso = null; } };
     this._mountMap(this.layers.game || this._buildGame(), true);
     this.game.start({ type: this.sel.type, name: this.sel.name, startIso: this.sel.startIso, difficulty: this.sel.difficulty });
     this.show('game');
@@ -216,6 +260,8 @@ export class UI {
     this.viewer.spin = true;
     this.viewer.setPathogen(this.sel.type);
     this.pushNewsInit();
+    // Handy im Hochformat zeigt nur einen Ausschnitt: auf das Startland zentrieren
+    requestAnimationFrame(() => this.game.map.centerOn(this.sel.startIso));
     if (this.audio) this.audio.playGame();   // Spielmusik von vorne
     // Xenolith: kleiner Asteroid schlägt am Startland ein
     if (this.sel.type === 'xenolith') {
@@ -241,9 +287,19 @@ export class UI {
     this.hudDate = h('div', { class: 'hud-date' });
     this.speedBtns = SPEEDS.map((s, i) =>
       h('button', { class: 'sp-btn', 'data-i': i, onclick: () => this.game.setSpeed(i) }, s === 0 ? '❚❚' : s + '×'));
+    // Handy: kompakte Steuerung – Pause/Weiter + Tempo durchschalten
+    this.spToggle = h('button', { class: 'sp-btn sp-m', onclick: () => {
+      if (this.game.speedIndex === 0) this.game.setSpeed(this._lastSpeed || 2); else { this._lastSpeed = this.game.speedIndex; this.game.setSpeed(0); }
+      this.refreshHud();
+    } }, '❚❚');
+    this.spCycle = h('button', { class: 'sp-btn sp-m', onclick: () => {
+      const cur = this.game.speedIndex || this._lastSpeed || 1;
+      this.game.setSpeed(cur >= SPEEDS.length - 1 ? 1 : cur + 1);
+      this.refreshHud();
+    } }, '1×');
     const top = h('div', { class: 'hud-top' },
       h('div', { class: 'hud-left' }, this.hudName, this.hudDate),
-      h('div', { class: 'hud-speed' }, ...this.speedBtns));
+      h('div', { class: 'hud-speed' }, ...this.speedBtns, h('div', { class: 'speed-mobile' }, this.spToggle, this.spCycle)));
 
     // linke Statistik
     this.statInfected = statBig('Infiziert', '#ff8a3a');
@@ -275,10 +331,11 @@ export class UI {
     this.specialBar = h('div', { class: 'special-bar' });
 
     this.bubbleLayer = h('div', { class: 'bubble-layer' });
+    this.legendEl = h('div', { class: 'map-legend' });
 
     const el = h('div', { class: 'screen gamescreen' },
       h('div', { class: 'map-holder' }, this.bubbleLayer),
-      top, newsBar, leftStats, bars_,
+      top, newsBar, leftStats, bars_, this.legendEl,
       h('div', { class: 'hud-bottom' }, this.specialBar, this.dnaEl, diseaseBtn),
     );
     this.layers.game = el;
@@ -293,6 +350,12 @@ export class UI {
     this.hudName.textContent = eng.opts.name;
     this.hudDate.textContent = eng.date.toLocaleDateString('de-DE');
     this.speedBtns.forEach((b, i) => b.classList.toggle('active', i === this.game.speedIndex));
+    const si = this.game.speedIndex;
+    if (si > 0) this._lastSpeed = si;
+    this.spToggle.textContent = si === 0 ? '▶' : '❚❚';
+    this.spToggle.classList.toggle('active', si === 0);
+    this.spCycle.textContent = SPEEDS[si || this._lastSpeed || 1] + '×';
+    this._updateLegend();
     this.statInfected.set(fmt(eng.totalInfected()));
     this.statDead.set(fmt(eng.totalDead()));
     this.statHealthy.set(fmt(eng.totalHealthy()));
@@ -322,6 +385,20 @@ export class UI {
     this.updateSpecialBar();
     if (this.evoOpen) this.refreshEvolution();
     if (this.countryOpen) this.refreshCountry();
+  }
+
+  // Legende der Punktfarben (nur Gruppen, die in dieser Partie vorkommen)
+  _updateLegend() {
+    const keys = this.game.map.legendKeys();
+    const sig = keys.join(',');
+    if (sig === this._legendSig) return;
+    this._legendSig = sig;
+    this.legendEl.innerHTML = '';
+    for (const k of keys) {
+      const t = DOT_TYPES.find((d) => d && d.key === k);
+      this.legendEl.append(h('span', { class: 'lg-item' },
+        h('i', { class: 'lg-dot', style: `background:radial-gradient(circle at 40% 38%, ${DOT_RGBA(k)} 0 45%, ${DOT_RGBA(k, 0.75)} 80%)` }), t.label));
+    }
   }
 
   updateNews() {
@@ -374,8 +451,9 @@ export class UI {
     const eng = this.game.eng;
     const go = (amount) => {
       const from = eng.list.slice().sort((x, y) => y.infected - x.infected)[0];
-      this._flashHint(a.icon + ' Zielland auf der Karte wählen …');
+      this._targetHint(a.icon + (this.mobile ? ' Zielland antippen …' : ' Zielland auf der Karte wählen …'));
       this.game.map.requestTarget((toIso) => {
+        this._targetHint(null);
         const seed = amount || 200;
         const fromIso = from ? from.ref.iso : eng.startCountry;
         const done = () => { eng.directSeed(toIso, a.directed, seed); this.game.map.spawnBubble({ iso: toIso, type: 'special' }); };
@@ -397,6 +475,19 @@ export class UI {
         ...opts.map(([label, val]) => h('button', { class: 'btn', onclick: () => { this._chooserEl.remove(); this._chooserEl = null; cb(val); } }, label)),
         h('button', { class: 'btn back', onclick: () => { this._chooserEl.remove(); this._chooserEl = null; } }, 'Abbrechen')));
     this.layers.game.append(this._chooserEl);
+  }
+
+  // Dauerhafter Hinweis während der Zielauswahl – mit Abbrechen-Knopf
+  _targetHint(text) {
+    if (!this._targetEl) {
+      this._targetText = h('span', {});
+      this._targetEl = h('div', { class: 'target-hint' }, this._targetText,
+        h('button', { class: 'th-cancel', onclick: () => { this.game.map.cancelTarget(); this._targetHint(null); } }, '✕ Abbrechen'));
+      this.layers.game.append(this._targetEl);
+    }
+    if (!text) { this._targetEl.style.display = 'none'; return; }
+    this._targetText.textContent = text;
+    this._targetEl.style.display = '';
   }
 
   _flashHint(text) {
@@ -493,7 +584,7 @@ export class UI {
         h('div', { class: 'evo-title' }),
         tabBar,
         this.evoDnaEl,
-        h('button', { class: 'btn back', onclick: () => this.closeEvolution() }, 'Zurück zur Karte ›')),
+        h('button', { class: 'btn back', onclick: () => this.closeEvolution() }, this.mobile ? '‹ Karte' : 'Zurück zur Karte ›')),
       h('div', { class: 'evo-main' },
         h('div', { class: 'evo-graph' }, this.evoContent, this.evoDetail),
         h('div', { class: 'evo-side' }, this.evoViewerHolder,
@@ -677,7 +768,7 @@ export class UI {
       this.mBarInf.set(clampBar(eng.infectivity / 40));
       this.mBarSev.set(clampBar(eng.severity / 40));
       this.mBarLeth.set(clampBar(eng.lethality / 60));
-      this.mBarCure.set(eng.cure, cureText(eng));
+      this.mBarCure.set(eng.cure, this.mobile ? (eng.cure * 100).toFixed(0) + '%' : cureText(eng));
     }
     this._highlightTraits();
     // Hologramm-Organe nach entwickelten Symptomen

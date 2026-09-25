@@ -26,6 +26,8 @@ export const DOT_TYPES = [
 ];
 const DOT_CODE = Object.fromEntries(DOT_TYPES.map((d, i) => [d ? d.key : 'none', i]));
 export const DOT_RGBA = (key, a = 1) => { const d = DOT_TYPES[DOT_CODE[key]]; return `rgba(${d.rgb.join(',')},${a})`; };
+// Handys: etwas geringere Auflösung der Punkt-Ebenen (Speicher)
+const IS_COARSE = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 const DOT_SPACING = 3;          // Abstand der Punkte in Basis-Pixeln
 const DOT_R = DOT_SPACING * 0.95; // Radius: Punkte überlappen -> volles Land wirkt komplett gefärbt
 
@@ -193,39 +195,156 @@ export class WorldMap {
   }
 
   // ---------- Events (Pan/Zoom/Klick) ----------
+  // ---------- Eingabe: Maus, Touch und Stift über Pointer-Events ----------
+  // 1 Finger: verschieben (mit Schwung) · 2 Finger: Pinch-Zoom um die Finger-
+  // mitte (gleichzeitig verschieben) · Tippen: Land wählen / DNA einsammeln /
+  // Ziel festlegen · Doppeltippen: hineinzoomen · Mausrad: zoomen · Maus: Hover.
   _bindEvents() {
     const cv = this.canvas;
-    let drag = null;
-    cv.addEventListener('mousedown', (e) => { drag = { x: e.clientX, y: e.clientY, vx: this.view.x, vy: this.view.y, moved: 0 }; });
-    window.addEventListener('mousemove', (e) => {
-      const r = cv.getBoundingClientRect();
-      this.mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
-      if (drag) {
-        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-        drag.moved += Math.abs(dx) + Math.abs(dy);
-        this.view.x = drag.vx + dx; this.view.y = drag.vy + dy; this._clampView();
-      } else {
-        this.hoverIso = this._hit(this.mouse.x, this.mouse.y);
-        cv.style.cursor = this.hoverIso ? 'pointer' : 'grab';
+    cv.style.touchAction = 'none';
+    const ptrs = new Map();
+    let g = null;
+    const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const startPinch = () => {
+      const [a, b] = [...ptrs.values()];
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      g.mode = 'pinch'; g.pinched = true;
+      g.d0 = Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)); g.s0 = this.view.scale;
+      g.anchor = this._toWorld(mid.x, mid.y);
+    };
+    cv.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      try { cv.setPointerCapture(e.pointerId); } catch (_) { /* ältere Browser */ }
+      const p = pos(e); ptrs.set(e.pointerId, p);
+      this._inertia = null; this._zoomAnim = null;
+      this.touchMode = e.pointerType !== 'mouse';
+      if (this.touchMode) this.hoverIso = null;
+      if (ptrs.size === 1) g = { mode: 'pan', start: p, last: p, t0: performance.now(), lt: performance.now(), moved: 0, vx: 0, vy: 0, pinched: false, touch: this.touchMode };
+      else if (ptrs.size === 2 && g) startPinch();
+    });
+    cv.addEventListener('pointermove', (e) => {
+      const p = pos(e);
+      if (e.pointerType === 'mouse') this.mouse = p;
+      if (!ptrs.has(e.pointerId)) {
+        // reines Überfahren mit der Maus
+        if (e.pointerType === 'mouse' && !g) { this.hoverIso = this._hit(p.x, p.y); cv.style.cursor = this.targetMode ? 'crosshair' : this.hoverIso ? 'pointer' : 'grab'; }
+        return;
+      }
+      ptrs.set(e.pointerId, p);
+      if (!g) return;
+      if (g.mode === 'pinch' && ptrs.size >= 2) {
+        const [a, b] = [...ptrs.values()];
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        this.view.scale = clamp(g.s0 * d / g.d0, 1, 8);
+        this.view.x = mid.x - g.anchor.x * this.view.scale;
+        this.view.y = mid.y - g.anchor.y * this.view.scale;
+        this._clampView();
+        g.moved += 20;
+        return;
+      }
+      if (g.mode === 'pan') {
+        const dx = p.x - g.last.x, dy = p.y - g.last.y;
+        g.moved += Math.abs(dx) + Math.abs(dy);
+        const now = performance.now(), dt = Math.max(1, now - g.lt) / 1000;
+        g.vx = g.vx * 0.6 + (dx / dt) * 0.4; g.vy = g.vy * 0.6 + (dy / dt) * 0.4;
+        g.last = p; g.lt = now;
+        this.view.x += dx; this.view.y += dy; this._clampView();
+        if (g.moved > 4) cv.style.cursor = 'grabbing';
       }
     });
-    window.addEventListener('mouseup', () => { if (drag && drag.moved < 6) this._click(this.mouse); drag = null; });
+    const end = (e) => {
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.delete(e.pointerId);
+      if (!g) return;
+      if (ptrs.size === 1) {            // ein Finger bleibt nach dem Pinch liegen -> weiter verschieben
+        const p = [...ptrs.values()][0];
+        g.mode = 'pan'; g.last = p; g.lt = performance.now(); g.vx = g.vy = 0;
+        return;
+      }
+      if (ptrs.size > 1) { startPinch(); return; }
+      const up = pos(e);
+      const tol = g.touch ? 12 : 6;
+      // Tippen = Finger kaum bewegt (Dauer egal – das Handy kann kurz ausgelastet sein)
+      const isTap = !g.pinched && g.moved < tol && e.type !== 'pointercancel';
+      if (isTap) this._tap(up, g.touch, e.timeStamp);
+      else if (g.mode === 'pan' && !g.pinched && performance.now() - g.lt < 80 && Math.hypot(g.vx, g.vy) > 120) {
+        this._inertia = { vx: clamp(g.vx, -3000, 3000), vy: clamp(g.vy, -3000, 3000) };
+      }
+      cv.style.cursor = this.targetMode ? 'crosshair' : 'grab';
+      g = null;
+    };
+    cv.addEventListener('pointerup', end);
+    cv.addEventListener('pointercancel', end);
+    cv.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !ptrs.size) this.hoverIso = null; });
     cv.addEventListener('wheel', (e) => {
       e.preventDefault();
       const r = cv.getBoundingClientRect();
-      const mx = e.clientX - r.left, my = e.clientY - r.top;
-      const before = this._toWorld(mx, my);
-      this.view.scale = clamp(this.view.scale * (e.deltaY < 0 ? 1.15 : 0.87), 1, 8);
-      const after = this._toWorld(mx, my);
-      this.view.x += (after.x - before.x) * this.view.scale;
-      this.view.y += (after.y - before.y) * this.view.scale;
-      this._clampView();
+      this.zoomAt(e.clientX - r.left, e.clientY - r.top, this.view.scale * (e.deltaY < 0 ? 1.15 : 0.87), false);
     }, { passive: false });
-    cv.addEventListener('touchstart', (e) => { if (e.touches.length === 1) { const t = e.touches[0]; drag = { x: t.clientX, y: t.clientY, vx: this.view.x, vy: this.view.y, moved: 0 }; } }, { passive: true });
-    cv.addEventListener('touchmove', (e) => {
-      if (drag && e.touches.length === 1) { const t = e.touches[0]; const dx = t.clientX - drag.x, dy = t.clientY - drag.y; drag.moved += Math.abs(dx) + Math.abs(dy); this.view.x = drag.vx + dx; this.view.y = drag.vy + dy; this._clampView(); }
-    }, { passive: true });
-    cv.addEventListener('touchend', () => { if (drag && drag.moved < 8) { const r = cv.getBoundingClientRect(); this._click({ x: drag.x - r.left, y: drag.y - r.top }); } drag = null; });
+    // iOS Safari: Seiten-Zoom-Gesten unterdrücken, die Karte zoomt selbst
+    for (const ev of ['gesturestart', 'gesturechange']) cv.addEventListener(ev, (e) => e.preventDefault());
+  }
+
+  // Tippen/Klicken: Doppeltipp zoomt (Touch), sonst normaler Klick
+  _tap(p, touch, stamp) {
+    const now = stamp || performance.now();
+    const last = this._lastTap;
+    this._lastTap = { t: now, x: p.x, y: p.y };
+    if (!touch || this.targetMode) { this._click(p, touch); return; }
+    if (last && now - last.t < 330 && Math.hypot(p.x - last.x, p.y - last.y) < 40) {
+      // Doppeltipp: zoomen statt auswählen
+      clearTimeout(this._tapTimer); this._tapTimer = null;
+      this._lastTap = null;
+      this.zoomAt(p.x, p.y, this.view.scale >= 7.5 ? 1 : this.view.scale * 2.2, true);
+      return;
+    }
+    // DNA-Blasen sofort einsammeln, Länder erst nach kurzer Wartezeit wählen
+    if (this._collectBubbleAt(p, true)) { this._lastTap = null; return; }
+    clearTimeout(this._tapTimer);
+    this._tapTimer = setTimeout(() => { this._tapTimer = null; this._click(p, true); }, 260);
+  }
+
+  // Zoom um einen Bildschirmpunkt, optional weich animiert
+  zoomAt(sx, sy, scale, animate = true) {
+    scale = clamp(scale, 1, 8);
+    if (!animate) {
+      const before = this._toWorld(sx, sy);
+      this.view.scale = scale;
+      this.view.x = sx - before.x * scale; this.view.y = sy - before.y * scale;
+      this._clampView();
+      return;
+    }
+    this._zoomAnim = { sx, sy, from: this.view.scale, to: scale, anchor: this._toWorld(sx, sy), t: 0 };
+  }
+
+  // Ansicht auf ein Land zentrieren (Zoom bleibt)
+  centerOn(iso) {
+    const c = this.byIso[iso]; if (!c) return;
+    const [x, y] = this.proj(c.lon, c.lat);
+    this.view.x = this.cw / 2 - x * this.view.scale; this.view.y = this.ch / 2 - y * this.view.scale;
+    this._clampView();
+  }
+
+  _updateCamera(dt) {
+    if (this._zoomAnim) {
+      const z = this._zoomAnim;
+      z.t = Math.min(1, z.t + dt / 0.28);
+      const e = 1 - Math.pow(1 - z.t, 3);
+      this.view.scale = z.from + (z.to - z.from) * e;
+      this.view.x = z.sx - z.anchor.x * this.view.scale; this.view.y = z.sy - z.anchor.y * this.view.scale;
+      this._clampView();
+      if (z.t >= 1) this._zoomAnim = null;
+    }
+    if (this._inertia) {
+      const v = this._inertia;
+      const ox = this.view.x, oy = this.view.y;
+      this.view.x += v.vx * dt; this.view.y += v.vy * dt; this._clampView();
+      if (this.view.x === ox) v.vx = 0;
+      if (this.view.y === oy) v.vy = 0;
+      const k = Math.exp(-dt * 4.5); v.vx *= k; v.vy *= k;
+      if (Math.hypot(v.vx, v.vy) < 12) this._inertia = null;
+    }
   }
 
   _toWorld(sx, sy) { return { x: (sx - this.view.x) / this.view.scale, y: (sy - this.view.y) / this.view.scale }; }
@@ -238,16 +357,28 @@ export class WorldMap {
     if (sh <= vh) this.view.y = (vh - sh) / 2;
   }
 
-  _click(m) {
+  // DNA-Blase an einer Bildschirmposition einsammeln (Handy: Fingerkuppen-Radius)
+  _collectBubbleAt(m, touch) {
     const wp = this._toWorld(m.x, m.y);
+    const rad = (touch ? 30 : 16) / this.view.scale;
+    let best = -1, bd = 1e9;
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
       const b = this.bubbles[i];
       const [bx, by] = this.proj(b.x, b.y);
-      if (Math.hypot(bx - wp.x, by - wp.y - (b.age * 2)) < 16 / this.view.scale) { if (this.onBubble) this.onBubble(b); this.bubbles.splice(i, 1); return; }
+      const d = Math.hypot(bx - wp.x, by - wp.y - (b.age * 2));
+      if (d < rad && d < bd) { bd = d; best = i; }
     }
+    if (best < 0) return false;
+    const b = this.bubbles[best]; if (this.onBubble) this.onBubble(b); this.bubbles.splice(best, 1);
+    return true;
+  }
+
+  _click(m, touch = false) {
+    if (this._collectBubbleAt(m, touch)) return;
     const iso = this._hit(m.x, m.y);
     if (this.targetMode && iso) { const cb = this.targetMode; this.targetMode = null; this.canvas.style.cursor = 'grab'; cb(iso); return; }
     if (iso && this.onPick) { this.selectedIso = iso; this.onPick(iso); }
+    else if (!iso && this.onEmpty) this.onEmpty();
   }
 
   // Treffertest über die echte Landesform (alle Landesteile, egal wie weit
@@ -300,7 +431,7 @@ export class WorldMap {
     if (this.eng) { const c = this.byIso[this.eng.startCountry]; if (c) { const [x, y] = this.proj(c.lon, c.lat); this._orderDots(c.iso, x, y); } }
     this.popDots = [];
     this._infCanvas = document.createElement('canvas');
-    this._infRes = 2; // doppelte Auflösung für scharfe Infektionspunkte beim Zoom
+    this._infRes = IS_COARSE ? 1.5 : 2; // höhere Auflösung für scharfe Infektionspunkte beim Zoom
     this._infCanvas.width = Math.round(this.baseW * this._infRes);
     this._infCanvas.height = Math.round(this.baseH * this._infRes);
     this._ovCanvas = document.createElement('canvas');
@@ -497,6 +628,7 @@ export class WorldMap {
 
   // Zielauswahl für gerichtete Sonderfähigkeiten (z.B. Neurax-Kontrolle)
   requestTarget(cb) { this.targetMode = cb; this.canvas.style.cursor = 'crosshair'; }
+  cancelTarget() { this.targetMode = null; this.canvas.style.cursor = 'grab'; }
 
   // ---------- Infektionsschicht: Punkte ----------
   // Pro Land wird aus der Simulation berechnet, welcher Punkt welche Farbe hat.
@@ -638,9 +770,9 @@ export class WorldMap {
     this.popDots = this.popDots.filter((p) => !fin.has(p));
   }
 
-  // kleine Legende der Punktfarben (nur Gruppen, die es in dieser Partie gibt)
-  _drawLegend(ctx) {
-    if (!this.eng) return;
+  // Punktfarben, die in dieser Partie vorkommen (für die Legende der UI)
+  legendKeys() {
+    if (!this.eng) return [];
     const sp = this.eng.special, type = this.eng.opts.type;
     const keys = ['inf', 'dead'];
     if (sp.zombieActive || type === 'necroa') keys.push('zombie');
@@ -648,21 +780,7 @@ export class WorldMap {
     if (sp.apesActive || type === 'simian') keys.push('ape');
     if (sp.vampireActive || type === 'shadow') keys.push('vampire');
     if (sp.xenoActive || type === 'xenolith') keys.push('xeno', 'xmon');
-    ctx.save(); ctx.scale(this.dpr, this.dpr);
-    ctx.font = '600 11px system-ui, sans-serif'; ctx.textBaseline = 'middle';
-    let w = 12;
-    for (const k of keys) w += ctx.measureText(DOT_TYPES[DOT_CODE[k]].label).width + 26;
-    const x0 = 16, y0 = this.ch - 34;
-    ctx.fillStyle = 'rgba(8,4,8,0.62)'; roundRect(ctx, x0, y0, w, 22, 6); ctx.fill();
-    let x = x0 + 10;
-    for (const k of keys) {
-      const t = DOT_TYPES[DOT_CODE[k]];
-      ctx.drawImage(this.dotSprites[DOT_CODE[k]], x, y0 + 5, 12, 12);
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + 6, y0 + 11, 5.5, 0, 7); ctx.stroke();
-      ctx.fillStyle = '#f0e4e0'; ctx.fillText(t.label, x + 16, y0 + 11.5);
-      x += ctx.measureText(t.label).width + 26;
-    }
-    ctx.restore();
+    return keys;
   }
 
   spawnBubble(b) {
@@ -681,6 +799,7 @@ export class WorldMap {
 
   update(dt) {
     this._time += dt;
+    this._updateCamera(dt);
     for (let i = this.bubbles.length - 1; i >= 0; i--) { const b = this.bubbles[i]; b.age += dt; b.y += dt * 0.15; if (b.age > b.life) this.bubbles.splice(i, 1); }
     if (this.asteroid) {
       const a = this.asteroid;
@@ -741,10 +860,9 @@ export class WorldMap {
     if (this.asteroid) this._drawAsteroid(ctx, t);
 
     ctx.restore();
-    this._drawLegend(ctx);
 
     // Ländername als Tooltip beim Überfahren (Bildschirmkoordinaten)
-    if (this.hoverIso && this.mouse) {
+    if (this.hoverIso && this.mouse && !this.touchMode) {
       const name = this.byIso[this.hoverIso] ? this.byIso[this.hoverIso].name : '';
       if (name) {
         ctx.save(); ctx.scale(this.dpr, this.dpr);
