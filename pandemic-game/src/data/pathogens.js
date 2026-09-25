@@ -94,16 +94,16 @@ export const PATHOGENS = {
   neurax: {
     key: 'neurax', name: 'Neurax-Wurm', model: 'neurax', color: '#e0a030', accent: '#ffd060',
     tagline: 'Manipuliert das Gehirn seiner Wirte.',
-    desc: 'Der Neurax-Wurm kann die Menschheit nicht nur töten, sondern auch versklaven. Ein eigener Kontroll-Pfad führt zum Sieg.',
+    desc: 'Der Neurax-Wurm versklavt seine Wirte. Kontrollierte Menschen tragen ihn gezielt in jedes Land – am Ende muss aber jeder Mensch sterben.',
     difficulty: 5, startInf: 1.0, startSev: 0, startLeth: 0, dnaRate: 0.85, stealth: 0.2,
     special: 'control',
     abilities: [
-      { id: 'transcendence', name: 'Transzendenz', icon: '🧠', cost: 30, control: true, cureMul: 1.1, desc: 'Beginnt die geistige Kontrolle. Kontrollierte Bevölkerung zählt als Sieg – erhöht aber die Aufmerksamkeit.' },
+      { id: 'transcendence', name: 'Transzendenz', icon: '🧠', cost: 30, control: true, cureMul: 1.1, desc: 'Beginnt die geistige Kontrolle. Kontrollierte Wirte gehorchen dir und lassen sich in andere Länder fliegen – erhöht aber die Aufmerksamkeit.' },
       { id: 'mind_control', name: 'Geistige Kontrolle', icon: '👁', cost: 20, req: ['transcendence'], controlBoost: 0.5, desc: 'Beschleunigt die Übernahme der Wirte deutlich.' },
       { id: 'euphoria', name: 'Euphorie', icon: '🌸', cost: 16, req: ['transcendence'], stealth: 0.15, desc: 'Kontrollierte Menschen bemerken die Gefahr kaum – senkt die Sichtbarkeit.' },
     ],
     winMode: 'control',
-    intro: 'Dein Neurax-Wurm kann die Menschheit kontrollieren statt töten. Aktiviere die Transzendenz für den Kontroll-Sieg.',
+    intro: 'Dein Neurax-Wurm kontrolliert seine Wirte. Nutze sie, um die ganze Welt zu erreichen – und lösche dann die Menschheit aus.',
   },
   necroa: {
     key: 'necroa', name: 'Necroa-Virus', model: 'necroa', color: '#4a8a3a', accent: '#7aff5a',
@@ -123,7 +123,7 @@ export const PATHOGENS = {
   simian: {
     key: 'simian', name: 'Simian Flu', model: 'simian', color: '#c89a3a', accent: '#ffd870',
     tagline: 'Macht Affen intelligent – und die Menschen zum Ziel.',
-    desc: 'Der Simian Flu befällt Menschen und Affen. Eine wachsende, intelligente Affenpopulation eröffnet einen eigenen Siegpfad.',
+    desc: 'Der Simian Flu befällt Menschen und Affen. Eine wachsende, intelligente Affenpopulation bekämpft die Menschen und hilft, sie auszulöschen.',
     difficulty: 5, startInf: 1.0, startSev: 0, startLeth: 0, dnaRate: 0.95,
     special: 'simian',
     abilities: [
@@ -155,7 +155,7 @@ export const PATHOGENS = {
     difficulty: 7, startInf: 0.8, startSev: 0, startLeth: 0, dnaRate: 0.72, cureMul: 0.5,
     special: 'xeno',
     abilities: [
-      { id: 'xenoforming', name: 'Xenoforming', icon: '🔮', cost: 30, xeno: true, desc: 'Beginnt die Umwandlung des Planeten in Kristall. Xenoforming zählt als Sieg.' },
+      { id: 'xenoforming', name: 'Xenoforming', icon: '🔮', cost: 30, xeno: true, desc: 'Beginnt die Umwandlung des Planeten in Kristall. Kristallisierte Menschen werden zu Kristallwesen.' },
       { id: 'crystal_growth', name: 'Kristallwachstum', icon: '💎', cost: 24, req: ['xenoforming'], xenoBoost: 0.5, desc: 'Beschleunigt die Kristallausbreitung.' },
       { id: 'resonance', name: 'Resonanz', icon: '📡', cost: 22, req: ['xenoforming'], cureMul: 0.85, desc: 'Kristallresonanz stört menschliche Technik und Forschung.' },
     ],

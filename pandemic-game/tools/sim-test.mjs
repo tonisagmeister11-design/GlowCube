@@ -56,6 +56,7 @@ for (const type of PATHOGEN_ORDER) {
   const problems = [];
   if (!g) problems.push('kein Ende');
   else if (!g.win) problems.push('verloren trotz guter Strategie: ' + g.reason);
+  else if (eng.totalHealthy() + eng.totalInfected() >= 1) problems.push('Sieg, obwohl noch Menschen leben');
   if (log.maxCountries < 150) problems.push('zu wenig Ausbreitung (' + log.maxCountries + ')');
   if (log.detectedDay == null) problems.push('nie entdeckt');
   console.log(`${type.padEnd(10)} ${g ? (g.win ? 'SIEG ' : 'NIED.') : '??? '} Tag ${String(g?.day).padStart(4)} ${(g?.reason || '-').padEnd(11)} ` +

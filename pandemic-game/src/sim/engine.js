@@ -12,7 +12,7 @@ const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 // Land den Erreger auch ohne Symptome im Labor entdeckt.
 export const DIFFICULTIES = {
   leicht: { label: 'Leicht', cure: 0.85, react: 0.75, dna: 1.2, detect: 0.03 },
-  normal: { label: 'Normal', cure: 1.3, react: 1.0, dna: 1.0, detect: 0.02 },
+  normal: { label: 'Normal', cure: 1.45, react: 1.0, dna: 1.0, detect: 0.02 },
   brutal: { label: 'Brutal', cure: 1.4, react: 1.35, dna: 0.85, detect: 0.008 },
 };
 
@@ -347,8 +347,13 @@ export class Engine {
 
       // Tod / Genesung. Zusammengebrochene Länder können niemanden mehr behandeln.
       if (st.infected > 0) {
-        const treat = this.detected ? c.medical * (1 - (this.mods.rich || 0) * 0.7) * (1 - this.cure * 0.3) * (1 - st.collapse) : 0;
-        const lethRate = clamp(this.lethality * 0.0006 * (1 - treat * 0.6) * (1 + st.collapse * 2), 0, 0.3);
+        // Kontrollierte (Neurax) lassen sich nicht behandeln
+        const ctrlShare = st.controlled > 0 ? Math.min(1, st.controlled / Math.max(1, st.infected)) : 0;
+        const treat = this.detected ? c.medical * (1 - (this.mods.rich || 0) * 0.7) * (1 - this.cure * 0.3) * (1 - st.collapse) * (1 - ctrlShare * 0.8) : 0;
+        let lethRate = clamp(this.lethality * 0.0006 * (1 - treat * 0.6) * (1 + st.collapse * 2), 0, 0.3);
+        // völlig zusammengebrochenes Land ohne Gesunde: keine Pflege, kein Essen,
+        // kein Wasser – die letzten Infizierten sterben schnell
+        if (lethRate > 0 && st.collapse > 0.9 && st.healthy < 1) lethRate = Math.max(lethRate, 0.4);
         let deaths = st.infected * lethRate;
         // letzte Überlebende in einem ausgebluteten Land
         if (lethRate > 0 && st.healthy < 1 && st.infected < 400) deaths = Math.max(deaths, st.infected * 0.35, 1);
@@ -363,7 +368,10 @@ export class Engine {
         }
       }
       // gute Gesundheitssysteme halten länger durch
-      st.collapse = clamp((st.dead / Math.max(1, st.pop) - (0.25 + 0.3 * c.medical)) / 0.35, 0, 1);
+      // verlorene Bevölkerung: Tote, aber auch Zombies und Kristallwesen – ein von
+      // Untoten überranntes Land hat keinen funktionierenden Staat mehr
+      const lost = st.dead + (st.zombies || 0) + (st.xmon || 0);
+      st.collapse = clamp((lost / Math.max(1, st.pop) - (0.25 + 0.3 * c.medical)) / 0.35, 0, 1);
 
       // Entdeckung: sichtbare Symptome – oder Labor-Überwachung bei großer Verbreitung
       if (!st.detected && st.infected > Math.max(80, alive * 0.0006)) {
@@ -563,7 +571,9 @@ export class Engine {
     let cap = 0;
     for (const st of this.list) {
       const involved = st.infected > 0 || st.dead > 0;
-      cap += st.researchW * (1 - st.collapse * 0.85) * (involved ? 1 : 0.6);
+      // forschen kann nur, wer noch lebt: unter 30 % Überlebenden sinkt die Kapazität
+      const aliveF = (st.healthy + st.infected) / Math.max(1, st.pop);
+      cap += st.researchW * (1 - st.collapse * 0.85) * (involved ? 1 : 0.6) * clamp(aliveF / 0.3, 0, 1);
     }
     const functional = cap / Math.max(1e-9, this.researchTotal);
     const funding = 0.3 + this.priority * 1.6;
@@ -717,7 +727,7 @@ export class Engine {
           st.apes = Math.min(st.apes, st.pop);
           // intelligente Affen verdrängen Menschen
           const push = Math.min(st.healthy, st.apes * 0.015);
-          st.healthy -= push;
+          st.healthy -= push; st.dead += push;   // Menschen sterben im Kampf gegen die Affen
         }
         a += st.apes;
       }
@@ -827,30 +837,21 @@ export class Engine {
   }
 
   // ---- Sieg / Niederlage ----
+  // Sieg gibt es für JEDEN Erregertyp und auf jeder Stufe nur, wenn kein Mensch
+  // mehr lebt. Kontrolle, Zombies, Affen, Vampire und Kristalle sind Werkzeuge
+  // auf dem Weg dorthin – nur infizieren oder kontrollieren reicht nicht.
   checkEnd() {
     if (this.gameOver) return;
     const healthy = this.totalHealthy();
     const infected = this.totalInfected();
-
-    // Sieg zuerst: ist die gesamte Menschheit tot, hat die Krankheit gewonnen –
-    // auch wenn die letzten Infizierten am selben Tag sterben (nur infizieren reicht nicht)
-    if (healthy + infected < 1 && this.day > 10) {
-      if (!this.checkSpecialWin(false)) this.endGame(true, 'extinction');
-      return;
-    }
-    // Niederlage: ausgestorben
-    const specialAlive = this.special.zombies + this.special.apes + this.special.vampires + this.special.controlled + (this.special.xmon || 0);
-    if (infected < 1 && specialAlive < 1 && this.day > 20) {
-      this.endGame(false, 'ausgestorben');
-      return;
-    }
-    // Niederlage: Heilmittel fertig (nur wenn kein Sondersieg schon erreicht)
-    if (this.cure >= 1) {
-      if (!this.checkSpecialWin(true)) this.endGame(false, 'cure');
-      return;
-    }
-    // Sieg: Sondermodi
-    this.checkSpecialWin(false);
+    // Sieg zuerst: sterben die letzten Menschen und Infizierten am selben Tag, hat
+    // die Krankheit gewonnen
+    if (healthy + infected < 1 && this.day > 10) { this.endGame(true, this.winReason()); return; }
+    // Niederlage: Erreger ausgestorben (keine Infizierten und keine Sonderwesen mehr)
+    const specialAlive = this.special.zombies + this.special.apes + this.special.vampires + (this.special.xmon || 0);
+    if (infected < 1 && specialAlive < 1 && this.day > 20) { this.endGame(false, 'ausgestorben'); return; }
+    // Niederlage: Heilmittel fertig
+    if (this.cure >= 1) this.endGame(false, 'cure');
   }
 
   hasSpecialActive() {
@@ -858,28 +859,10 @@ export class Engine {
       this.special.vampireActive || this.special.xenoActive;
   }
 
-  checkSpecialWin(force) {
-    const healthy = this.totalHealthy();
-    const d = this.def;
-    if (d.winMode === 'control' && this.special.controlActive) {
-      if (this.special.controlled >= (healthy + this.special.controlled) * 0.95 && this.special.controlled > this.worldPop * 0.4) {
-        this.endGame(true, 'control'); return true;
-      }
-    }
-    if (d.winMode === 'zombie' && this.special.zombieActive) {
-      if (healthy < this.worldPop * 0.02 && this.special.zombies > this.worldPop * 0.03) { this.endGame(true, 'zombie'); return true; }
-    }
-    if (d.winMode === 'apes' && this.special.apesActive) {
-      if (this.special.apes >= this.worldPop * 0.4 && healthy < this.worldPop * 0.1) { this.endGame(true, 'apes'); return true; }
-    }
-    if (d.winMode === 'vampire' && this.special.vampireActive) {
-      if (healthy < this.worldPop * 0.02 && this.special.vampires > 1000) { this.endGame(true, 'vampire'); return true; }
-    }
-    if (d.winMode === 'xeno' && this.special.xenoActive) {
-      if (this.special.xeno >= 0.98) { this.endGame(true, 'xeno'); return true; }
-    }
-    if (force && healthy + this.totalInfected() < 1) { this.endGame(true, 'extinction'); return true; }
-    return false;
+  // Endtext passend zum Erreger (Sondertypen mit aktivierter Fähigkeit)
+  winReason() {
+    const m = this.def.winMode;
+    return m && this.hasSpecialActive() ? m : 'extinction';
   }
 
   endGame(win, reason) {
@@ -889,11 +872,11 @@ export class Engine {
       cure: 'Die Menschheit hat rechtzeitig ein Heilmittel entwickelt.',
       ausgestorben: 'Der Erreger ist ausgestorben, bevor er die Menschheit besiegen konnte.',
       extinction: 'Die gesamte Menschheit wurde infiziert und ausgelöscht.',
-      control: 'Die Menschheit steht vollständig unter der Kontrolle des Neurax-Wurms.',
-      zombie: 'Die Zombie-Apokalypse hat die Menschheit ausgelöscht.',
-      apes: 'Die intelligente Affenpopulation hat die Menschheit verdrängt.',
-      vampire: 'Die Vampire haben die Menschheit ausgelöscht.',
-      xeno: 'Der Planet wurde vollständig in Kristall verwandelt.',
+      control: 'Gesteuert vom Neurax-Wurm hat sich die Menschheit bis zum letzten Menschen selbst vernichtet.',
+      zombie: 'Kein Mensch hat überlebt – die Zombie-Horden beherrschen die Erde.',
+      apes: 'Die Menschheit ist ausgestorben – intelligente Affen übernehmen den Planeten.',
+      vampire: 'Die letzten Menschen sind gefallen – die Nacht gehört für immer den Vampiren.',
+      xeno: 'Kein Mensch lebt mehr – die Erde gehört nun dem Xenolith und seinen Kristallen.',
     };
     this.pushNews(win ? `SIEG: „${this.opts.name}“ hat gewonnen! ${reasons[reason]}` : `NIEDERLAGE: ${reasons[reason]}`, win ? 'win' : 'lose');
     this.gameOver.text = reasons[reason];

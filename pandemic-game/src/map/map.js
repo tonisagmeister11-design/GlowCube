@@ -5,6 +5,7 @@
 // garantiert nur auf Wasser, Flugzeuge überall. Driftende Wolken beleben die Karte.
 import { VEHICLES } from '../generated/vehicles.js';
 import { toLocal } from '../device.js';
+import GEO50 from '../data/geo50.json';
 
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 // Saubere equirektangulare Projektion (2:1). Voller Bereich mit etwas Rand oben/
@@ -27,8 +28,6 @@ export const DOT_TYPES = [
 ];
 const DOT_CODE = Object.fromEntries(DOT_TYPES.map((d, i) => [d ? d.key : 'none', i]));
 export const DOT_RGBA = (key, a = 1) => { const d = DOT_TYPES[DOT_CODE[key]]; return `rgba(${d.rgb.join(',')},${a})`; };
-// Handys: etwas geringere Auflösung der Punkt-Ebenen (Speicher)
-const IS_COARSE = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 const DOT_SPACING = 3;          // Abstand der Punkte in Basis-Pixeln
 const DOT_R = DOT_SPACING * 0.95; // Radius: Punkte überlappen -> volles Land wirkt komplett gefärbt
 
@@ -39,6 +38,9 @@ export class WorldMap {
     this.world = world;
     this.byIso = {};
     for (const c of world.countries) this.byIso[c.iso] = c;
+    // detaillierte Umrisse (50m) für Darstellung, Antippen und Punkte
+    this.geo = {};
+    for (const c of world.countries) this.geo[c.iso] = (GEO50[c.iso] && GEO50[c.iso].length) ? GEO50[c.iso] : world.geo[c.iso];
     this.view = { x: 0, y: 0, scale: 1 };
     this.hoverIso = null;
     this.selectedIso = null;
@@ -47,7 +49,8 @@ export class WorldMap {
     this.onBubble = null;
     this.eng = null;
     this.bubbles = [];
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // volle Pixeldichte (Handys bis 3×), bei wenig Gerätespeicher max. 2×
+    this.dpr = Math.min(window.devicePixelRatio || 1, (navigator.deviceMemory && navigator.deviceMemory <= 4) ? 2 : 3);
     this.ready = true;
     this.planeImg = new Image(); this.planeImg.src = VEHICLES.plane;
     this.shipImg = new Image(); this.shipImg.src = VEHICLES.ship;
@@ -131,10 +134,20 @@ export class WorldMap {
     [d.x[0], d.x[best]] = [d.x[best], d.x[0]]; [d.y[0], d.y[best]] = [d.y[best], d.y[0]];
   }
 
+  // Punktbilder in zwei Auflösungen: klein für die Übersicht, groß für starken Zoom
   _buildDotSprites() {
-    this.dotSprites = DOT_TYPES.map((t) => {
+    this.dotSprites = this._makeSprites(32);
+    this.dotSpritesHi = this._makeSprites(128);
+  }
+
+  _sprite(code, devDiameter) {
+    return (devDiameter > 34 ? this.dotSpritesHi : this.dotSprites)[code];
+  }
+
+  _makeSprites(S) {
+    return DOT_TYPES.map((t) => {
       if (!t) return null;
-      const S = 24, c = S / 2;
+      const c = S / 2;
       const cv = document.createElement('canvas'); cv.width = cv.height = S;
       const x = cv.getContext('2d');
       const [r, g, b] = t.rgb;
@@ -184,14 +197,34 @@ export class WorldMap {
       }
     }
     this.cloudTile = cv;
-    // Land-Textur (feine Struktur für mehr Realismus)
-    const nt = document.createElement('canvas'); nt.width = 256; nt.height = 256;
+    // Land-Textur: kachelbares Werterauschen (3 Oktaven) + feine Körnung – wirkt
+    // wie Geländerelief und bleibt beim Zoomen scharf
+    const N = 256;
+    const nt = document.createElement('canvas'); nt.width = N; nt.height = N;
     const nx = nt.getContext('2d'); const rn = mulberry(4711);
-    for (let i = 0; i < 2600; i++) {
-      const v = rn(); const shade = v < 0.5 ? 0 : 255; const al = 0.03 + rn() * 0.05;
-      nx.fillStyle = `rgba(${shade},${shade},${shade},${al})`;
-      const s = 1 + rn() * 2; nx.fillRect(rn() * 256, rn() * 256, s, s);
+    const img = nx.createImageData(N, N);
+    const octave = (cells) => {
+      const g = new Float32Array((cells + 1) * (cells + 1));
+      for (let j = 0; j <= cells; j++) for (let i = 0; i <= cells; i++) g[j * (cells + 1) + i] = (i === cells || j === cells) ? 0 : rn();
+      for (let j = 0; j <= cells; j++) g[j * (cells + 1) + cells] = g[j * (cells + 1)];
+      for (let i = 0; i <= cells; i++) g[cells * (cells + 1) + i] = g[i];
+      return (u, v) => {
+        const fx = u * cells, fy = v * cells, i = Math.floor(fx), j = Math.floor(fy);
+        const tx = fx - i, ty = fy - j, sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+        const a = g[j * (cells + 1) + i], b = g[j * (cells + 1) + i + 1], c = g[(j + 1) * (cells + 1) + i], d = g[(j + 1) * (cells + 1) + i + 1];
+        return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+      };
+    };
+    const o1 = octave(4), o2 = octave(8), o3 = octave(16);
+    for (let y = 0; y < N; y++) for (let x2 = 0; x2 < N; x2++) {
+      const u = x2 / N, v = y / N;
+      const n = o1(u, v) * 0.5 + o2(u, v) * 0.3 + o3(u, v) * 0.2 + (rn() - 0.5) * 0.18;
+      const shade = n > 0.5 ? 255 : 0;
+      const i4 = (y * N + x2) * 4;
+      img.data[i4] = img.data[i4 + 1] = img.data[i4 + 2] = shade;
+      img.data[i4 + 3] = Math.min(255, Math.abs(n - 0.5) * 95);
     }
+    nx.putImageData(img, 0, 0);
     this.noiseTile = nt;
   }
 
@@ -238,6 +271,7 @@ export class WorldMap {
         const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         this.view.scale = clamp(g.s0 * d / g.d0, 1, 8);
+        this._lastZoomT = performance.now();
         this.view.x = mid.x - g.anchor.x * this.view.scale;
         this.view.y = mid.y - g.anchor.y * this.view.scale;
         this._clampView();
@@ -309,6 +343,7 @@ export class WorldMap {
   // Zoom um einen Bildschirmpunkt, optional weich animiert
   zoomAt(sx, sy, scale, animate = true) {
     scale = clamp(scale, 1, 8);
+    this._lastZoomT = performance.now();
     if (!animate) {
       const before = this._toWorld(sx, sy);
       this.view.scale = scale;
@@ -433,8 +468,12 @@ export class WorldMap {
     this._buildDots();
     if (this.eng) { const c = this.byIso[this.eng.startCountry]; if (c) { const [x, y] = this.proj(c.lon, c.lat); this._orderDots(c.iso, x, y); } }
     this.popDots = [];
+    // Weltbilder (Übersicht) so hoch wie sinnvoll aufgelöst; beim Hineinzoomen
+    // übernimmt der scharfe Ausschnitt (_vc) in voller Bildschirmauflösung
+    this._resB = clamp(4096 / this.baseW, 1, 2.5);
+    this._vc = null;
     this._infCanvas = document.createElement('canvas');
-    this._infRes = IS_COARSE ? 1.5 : 2; // höhere Auflösung für scharfe Infektionspunkte beim Zoom
+    this._infRes = clamp(4096 / this.baseW, 1, 2.5);
     this._infCanvas.width = Math.round(this.baseW * this._infRes);
     this._infCanvas.height = Math.round(this.baseH * this._infRes);
     this._ovCanvas = document.createElement('canvas');
@@ -463,58 +502,66 @@ export class WorldMap {
 
   _hsl(o, dl = 0, ds = 0) { return `hsl(${o.h.toFixed(0)},${clamp(o.s + ds, 0, 100).toFixed(0)}%,${clamp(o.l + dl, 0, 100).toFixed(0)}%)`; }
 
+  // Basisbild der ganzen Welt (Übersicht / Rückfallebene)
   _renderBase() {
-    const resB = 1.6;
+    const k = this._resB;
     const bc = this._baseCanvas = document.createElement('canvas');
-    bc.width = Math.round(this.baseW * resB); bc.height = Math.round(this.baseH * resB);
-    const x = bc.getContext('2d');
-    x.setTransform(resB, 0, 0, resB, 0, 0);
-    // Ozean-Verlauf
+    bc.width = Math.round(this.baseW * k); bc.height = Math.round(this.baseH * k);
+    this._paintMap(bc.getContext('2d'), { k, x0: 0, y0: 0, w: this.baseW, h: this.baseH, px: k });
+  }
+
+  // Zeichnet Ozean, Länder, Relief und Grenzen für einen Kartenausschnitt.
+  // k = Gerätepixel pro Karteneinheit, px = Gerätepixel pro CSS-Pixel der
+  // späteren Ansicht (Linien, Glanz und Textur bleiben so bei jedem Zoom fein).
+  _paintMap(x, { k, x0, y0, w, h, px }) {
+    x.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    // Ozean-Verlauf (über die ganze Kartenhöhe)
     const g = x.createLinearGradient(0, 0, 0, this.baseH);
     g.addColorStop(0, '#0b2036'); g.addColorStop(0.5, '#0c2f4e'); g.addColorStop(1, '#08182b');
-    x.fillStyle = g; x.fillRect(0, 0, this.baseW, this.baseH);
-    // subtile Ozean-Struktur
-    if (this.cloudTile) { x.globalAlpha = 0.05; for (let ox = 0; ox < this.baseW; ox += 1024) x.drawImage(this.cloudTile, ox, this.baseH * 0.1, 1024, this.baseH * 0.8); x.globalAlpha = 1; }
-    // Länder füllen
-    for (const c of this.world.countries) {
-      const col = this._landColors[c.iso];
-      const path = this.paths[c.iso];
-      // sanfter Küstenglanz
+    x.fillStyle = g; x.fillRect(x0, y0, w, h);
+    if (this.cloudTile) {
+      x.globalAlpha = 0.05;
+      for (let ox = Math.floor(x0 / 1024) * 1024; ox < x0 + w; ox += 1024) x.drawImage(this.cloudTile, ox, this.baseH * 0.1, 1024, this.baseH * 0.8);
+      x.globalAlpha = 1;
+    }
+    const vis = this.world.countries.filter((c) => {
+      const b = this.bbox[c.iso];
+      return b[2] >= x0 && b[0] <= x0 + w && b[3] >= y0 && b[1] <= y0 + h;
+    });
+    // Länder mit sanftem Küstenglanz (Glanzbreite in Bildschirmpixeln)
+    for (const c of vis) {
       x.save();
-      x.shadowColor = 'rgba(120,180,220,0.5)'; x.shadowBlur = 4;
-      x.fillStyle = this._hsl(col); x.fill(path);
+      x.shadowColor = 'rgba(120,180,220,0.5)'; x.shadowBlur = 4 * px;
+      x.fillStyle = this._hsl(this._landColors[c.iso]); x.fill(this.paths[c.iso]);
       x.restore();
     }
-    // Terrain-Schattierung (oben heller) + Grenzen
-    for (const c of this.world.countries) {
-      const col = this._landColors[c.iso];
-      const path = this.paths[c.iso];
+    // Terrain-Schattierung je Land (oben heller)
+    for (const c of vis) {
+      const col = this._landColors[c.iso], b = this.bbox[c.iso];
       const [, cy] = this.proj(c.lon, c.lat);
-      x.save(); x.clip(path);
+      x.save(); x.clip(this.paths[c.iso]);
       const lg = x.createLinearGradient(0, cy - 60, 0, cy + 60);
       lg.addColorStop(0, this._hsl(col, 10)); lg.addColorStop(1, this._hsl(col, -10));
-      x.globalAlpha = 0.5; x.fillStyle = lg; x.fillRect(0, 0, this.baseW, this.baseH); x.globalAlpha = 1;
+      x.globalAlpha = 0.5; x.fillStyle = lg; x.fillRect(b[0] - 1, b[1] - 1, b[2] - b[0] + 2, b[3] - b[1] + 2); x.globalAlpha = 1;
       x.restore();
     }
-    // feine Land-Textur (Relief) über alle Landflächen
+    // Relief-Textur über alle Landflächen: in Bildschirmgröße, am Kartenursprung
+    // verankert – bleibt bei jedem Zoom fein und scharf
     if (this.noiseTile) {
       x.save();
-      x.beginPath();
-      for (const c of this.world.countries) for (const ring of this.world.geo[c.iso]) {
-        const pts = this._ringPoints(ring);
-        pts.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.closePath();
-      }
-      x.clip();
-      x.globalAlpha = 0.5;
-      for (let oy = 0; oy < this.baseH; oy += 256) for (let ox = 0; ox < this.baseW; ox += 256) x.drawImage(this.noiseTile, ox, oy, 256, 256);
-      x.globalAlpha = 1;
+      const land = new Path2D();
+      for (const c of vis) land.addPath(this.paths[c.iso]);
+      x.clip(land);
+      const pat = x.createPattern(this.noiseTile, 'repeat');
+      if (pat.setTransform) pat.setTransform(new DOMMatrix().scaleSelf(px / k, px / k));
+      x.globalAlpha = 0.55; x.fillStyle = pat; x.fillRect(x0, y0, w, h); x.globalAlpha = 1;
       x.restore();
     }
-    // Ländergrenzen (dünn)
+    // Grenzen und Küsten: immer ca. 0,8 Bildschirmpixel breit
     x.lineJoin = 'round';
-    for (const c of this.world.countries) {
-      x.lineWidth = 0.6; x.strokeStyle = 'rgba(20,30,25,0.5)'; x.stroke(this.paths[c.iso]);
-    }
+    x.lineWidth = 0.8 * px / k; x.strokeStyle = 'rgba(20,30,25,0.55)';
+    for (const c of vis) x.stroke(this.paths[c.iso]);
   }
 
   _buildLandMask() {
@@ -557,7 +604,7 @@ export class WorldMap {
       const p = new Path2D();
       const rings = [];
       const bb = [1e9, 1e9, -1e9, -1e9];
-      for (const ring of this.world.geo[c.iso]) {
+      for (const ring of this.geo[c.iso]) {
         const pts = this._ringPoints(ring);
         for (let i = 0; i < pts.length; i++) {
           if (i === 0) p.moveTo(pts[i][0], pts[i][1]); else p.lineTo(pts[i][0], pts[i][1]);
@@ -672,22 +719,22 @@ export class WorldMap {
   }
 
   // Rot (Infizierte) und Kristallboden liegen unten, alle besonderen Gruppen
-  // (Tote, Zombies, Kontrollierte, Affen, Vampire, Kristallwesen) darüber
-  _layerOf(code) { return code === DOT_CODE.inf || code === DOT_CODE.xeno ? this._infCanvas : this._ovCanvas; }
+  // (Tote, Zombies, Kontrollierte, Affen, Vampire, Kristallwesen) darüber – siehe _isBaseCode
 
   _updateDots() {
     if (!this.eng || !this.dots || !this._infCanvas) return;
-    const L = [this._infCanvas.getContext('2d'), this._ovCanvas.getContext('2d')];
-    const ctxOf = (code) => (this._layerOf(code) === this._infCanvas ? L[0] : L[1]);
     const reset = this._dotsReset;
+    const T = this._dotTargets();
     if (reset) {
-      for (const x of L) { x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, this._infCanvas.width, this._infCanvas.height); }
+      for (const t of T) for (const x of [t.b, t.o]) { x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, x.canvas.width, x.canvas.height); x.restore(); }
       for (const iso in this.dots) { const d = this.dots[iso]; d.state.fill(0); if (d.cnt) d.cnt.fill(0); }
       this.popDots = [];
     }
-    for (const x of L) x.setTransform(this._infRes, 0, 0, this._infRes, 0, 0);
     const animated = new Set(this.popDots.map((p) => p.iso + ':' + p.i));
-    let budget = reset ? 0 : 450 - this.popDots.length;   // max. gleichzeitige Plopp-Animationen
+    // Plopp-Animationen nur für sichtbare Punkte; bei hoher Detailstufe weniger gleichzeitig
+    const lodN = this._vc ? this._lod(this._vc.scale) : 1;
+    let budget = reset ? 0 : Math.max(40, Math.round(450 / (lodN * lodN))) - this.popDots.length;
+    const sc = this.view.scale, vx0 = -this.view.x / sc, vy0 = -this.view.y / sc, vx1 = vx0 + this.cw / sc, vy1 = vy0 + this.ch / sc;
     const now = this._time;
     for (const c of this.world.countries) {
       const d = this.dots[c.iso];
@@ -704,41 +751,86 @@ export class WorldMap {
       for (let i = 0; i < d.n; i++) {
         const a = d.state[i], b = want[i];
         if (a === b) continue;
-        if (b === 0 || (a !== 0 && ctxOf(a) !== ctxOf(b))) {
+        if (b === 0 || (a !== 0 && this._isBaseCode(a) !== this._isBaseCode(b))) {
           if (allowFull) { full = true; break; }
           want[i] = a; continue;
         }
         changed.push(i);
       }
       if (!full && !changed.length) continue;
-      for (const x of L) { x.save(); x.clip(this.paths[c.iso]); }
+      // neue Punkte: ein Teil ploppt animiert auf (danach eingebrannt)
+      const draw = [];
       if (full) {
-        const bb = this.bbox[c.iso];
-        for (const x of L) x.clearRect(bb[0] - 3, bb[1] - 3, bb[2] - bb[0] + 6, bb[3] - bb[1] + 6);
-        for (let i = 0; i < d.n; i++) if (want[i]) this._blitDot(ctxOf(want[i]), d.x[i], d.y[i], want[i]);
         this.popDots = this.popDots.filter((p) => p.iso !== c.iso);
+        for (let i = 0; i < d.n; i++) if (want[i]) draw.push(i);
       } else {
         for (const i of changed) {
           const isNew = d.state[i] === 0;
           if (isNew && animated.has(c.iso + ':' + i)) continue;
-          if (isNew && budget > 0) {
-            // gestaffeltes Aufploppen über den Tag verteilt
-            this.popDots.push({ iso: c.iso, i, t0: now + Math.random() * 0.35 });
-            budget--;
-          } else this._blitDot(ctxOf(want[i]), d.x[i], d.y[i], want[i]);
+          const onScreen = d.x[i] > vx0 && d.x[i] < vx1 && d.y[i] > vy0 && d.y[i] < vy1;
+          if (isNew && budget > 0 && onScreen) { this.popDots.push({ iso: c.iso, i, t0: now + Math.random() * 0.35 }); budget--; }
+          else draw.push(i);
         }
       }
-      for (const x of L) x.restore();
+      const bb = this.bbox[c.iso];
+      for (const t of T) {
+        if (!this._hitsTarget(t, bb)) continue;
+        t.b.save(); t.b.clip(this.paths[c.iso]); t.o.save(); t.o.clip(this.paths[c.iso]);
+        if (full) for (const x of [t.b, t.o]) x.clearRect(bb[0] - 3, bb[1] - 3, bb[2] - bb[0] + 6, bb[3] - bb[1] + 6);
+        const edge = t.n > 1;   // scharfer Ausschnitt: nur Punkte innerhalb zeichnen
+        for (const i of draw) {
+          if (edge && (d.x[i] < t.x0 - 4 || d.x[i] > t.x1 + 4 || d.y[i] < t.y0 - 4 || d.y[i] > t.y1 + 4)) continue;
+          const code = want[i];
+          this._blitDotLOD(this._isBaseCode(code) ? t.b : t.o, d, i, code, 1, t.k, t.n);
+        }
+        t.b.restore(); t.o.restore();
+      }
       d.state.set(want);
     }
     this._dotsReset = false;
     this._infDirty = false;
   }
 
-  _blitDot(ctx, px, py, code, scale = 1) {
+  // k = Gerätepixel pro Karteneinheit des Ziels (für die passende Punktauflösung)
+  _blitDot(ctx, px, py, code, scale = 1, k = 2) {
     const r = DOT_R * scale;
-    ctx.drawImage(this.dotSprites[code], px - r, py - r, r * 2, r * 2);
+    ctx.drawImage(this._sprite(code, 2 * r * k), px - r, py - r, r * 2, r * 2);
   }
+
+  _isBaseCode(code) { return code === DOT_CODE.inf || code === DOT_CODE.xeno; }
+
+  // Detailstufe der Punkte: je weiter hineingezoomt, desto mehr kleinere Punkte
+  // pro Stelle (Bildschirmgröße bleibt fein, volle Länder bleiben komplett rot)
+  _lod(scale) { return scale < 2.4 ? 1 : Math.min(6, Math.round(scale / 1.5)); }
+
+  // Punkt i eines Landes zeichnen – bei n > 1 als n×n kleinere Punkte
+  _blitDotLOD(ctx, d, i, code, scale, k, n) {
+    if (n <= 1) { this._blitDot(ctx, d.x[i], d.y[i], code, scale, k); return; }
+    // kleine Punkte zufällig (aber fest) in einem Kreis um die Stelle verteilt –
+    // wirkt organisch statt kachelig
+    const r0 = DOT_R / n * 1.15 * scale, spread = DOT_SPACING * 0.78;
+    const spr = this._sprite(code, 2 * r0 * k);
+    let h = (i * 2654435761 + 12345) >>> 0;
+    const rnd = () => { h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0; return h / 4294967296; };
+    for (let j = 0; j < n * n; j++) {
+      const ang = rnd() * 6.2832, rad = Math.sqrt(rnd()) * spread, r = r0 * (0.8 + rnd() * 0.4);
+      const px = d.x[i] + Math.cos(ang) * rad, py = d.y[i] + Math.sin(ang) * rad;
+      ctx.drawImage(spr, px - r, py - r, r * 2, r * 2);
+    }
+  }
+
+  // Zeichenziele für Punkte: das Weltbild (Übersicht) und – beim Zoomen – der
+  // scharfe Ausschnitt in voller Bildschirmauflösung. Beide werden gleichzeitig
+  // und nur mit den Änderungen aktualisiert.
+  _dotTargets() {
+    const T = [{ b: this._infCanvas.getContext('2d'), o: this._ovCanvas.getContext('2d'), k: this._infRes, n: 1, x0: 0, y0: 0, x1: this.baseW, y1: this.baseH }];
+    const vc = this._vc;
+    if (vc) T.push({ b: vc.db.getContext('2d'), o: vc.do.getContext('2d'), k: vc.k, n: this._lod(vc.scale), x0: vc.x0, y0: vc.y0, x1: vc.x0 + vc.w, y1: vc.y0 + vc.h });
+    for (const t of T) for (const x of [t.b, t.o]) x.setTransform(t.k, 0, 0, t.k, -t.x0 * t.k, -t.y0 * t.k);
+    return T;
+  }
+
+  _hitsTarget(t, bb) { return bb[2] >= t.x0 - 4 && bb[0] <= t.x1 + 4 && bb[3] >= t.y0 - 4 && bb[1] <= t.y1 + 4; }
 
   // Animation: Punkt wächst mit Überschwinger und Leuchten, dann fest eingebrannt
   _drawPopDots(ctx) {
@@ -753,21 +845,23 @@ export class WorldMap {
       if (a >= 1 || !code) { (done[p.iso] ||= []).push(p); continue; }
       const sc = a < 0.6 ? (a / 0.6) * 1.9 : 1.9 - (a - 0.6) / 0.4 * 0.9;
       ctx.globalAlpha = Math.min(1, a * 3);
-      this._blitDot(ctx, d.x[p.i], d.y[p.i], code, sc);
+      this._blitDotLOD(ctx, d, p.i, code, sc, this.view.scale * this.dpr, this._vc ? this._lod(this._vc.scale) : 1);
     }
     ctx.restore();
     const isos = Object.keys(done);
     if (!isos.length) return;
-    const L = [this._infCanvas.getContext('2d'), this._ovCanvas.getContext('2d')];
-    for (const x of L) x.setTransform(this._infRes, 0, 0, this._infRes, 0, 0);
+    const T = this._dotTargets();
     for (const iso of isos) {
-      const d = this.dots[iso];
-      for (const x of L) { x.save(); x.clip(this.paths[iso]); }
-      for (const p of done[iso]) {
-        const code = d.state[p.i];
-        if (code) this._blitDot(this._layerOf(code) === this._infCanvas ? L[0] : L[1], d.x[p.i], d.y[p.i], code);
+      const d = this.dots[iso], bb = this.bbox[iso];
+      for (const t of T) {
+        if (!this._hitsTarget(t, bb)) continue;
+        t.b.save(); t.b.clip(this.paths[iso]); t.o.save(); t.o.clip(this.paths[iso]);
+        for (const p of done[iso]) {
+          const code = d.state[p.i];
+          if (code) this._blitDotLOD(this._isBaseCode(code) ? t.b : t.o, d, p.i, code, 1, t.k, t.n);
+        }
+        t.b.restore(); t.o.restore();
       }
-      for (const x of L) x.restore();
     }
     const fin = new Set(isos.flatMap((iso) => done[iso]));
     this.popDots = this.popDots.filter((p) => !fin.has(p));
@@ -818,6 +912,84 @@ export class WorldMap {
     if (this.eng && this.eng.day !== this._lastInfDay) { this._lastInfDay = this.eng.day; this._infDirty = true; }
   }
 
+  // ---------- Scharfer Ausschnitt in voller Bildschirmauflösung ----------
+  // Sobald die Übersichtsbilder beim Zoomen hochskaliert würden, wird der
+  // sichtbare Bereich (plus Rand zum Verschieben) als Vektorgrafik in voller
+  // Pixeldichte neu gezeichnet – Karte und Infektionspunkte. Neu gezeichnet wird,
+  // wenn der Zoom stillsteht oder man über den Rand hinaus verschiebt.
+  _vcNeeded() { return this.view.scale * this.dpr > this._resB * 1.08; }
+
+  _vcCovers(vc) {
+    const sc = this.view.scale, e = 0.5 / sc;
+    const vx0 = -this.view.x / sc, vy0 = -this.view.y / sc;
+    return vx0 >= vc.x0 - e && vy0 >= vc.y0 - e && vx0 + this.cw / sc <= vc.x0 + vc.w + e && vy0 + this.ch / sc <= vc.y0 + vc.h + e;
+  }
+
+  _maintainViewCache() {
+    if (!this._vcNeeded()) { this._vc = null; return; }
+    const vc = this._vc;
+    const sameScale = vc && Math.abs(vc.scale - this.view.scale) < 1e-6;
+    if (sameScale && this._vcCovers(vc)) return;
+    const now = performance.now();
+    const zooming = this._zoomAnim || now - (this._lastZoomT || 0) < 180;
+    if (vc && zooming) return;                               // erst neu zeichnen, wenn der Zoom stillsteht
+    if (sameScale && now - (this._vcT || 0) < 90) return;   // beim Verschieben höchstens ~10× pro Sekunde
+    this._renderViewCache();
+    this._vcT = performance.now();
+  }
+
+  _renderViewCache() {
+    const sc = this.view.scale, M = 0.18;
+    const vw = this.cw / sc, vh = this.ch / sc, vx0 = -this.view.x / sc, vy0 = -this.view.y / sc;
+    const x0 = Math.max(0, vx0 - vw * M), y0 = Math.max(0, vy0 - vh * M);
+    const x1 = Math.min(this.baseW, vx0 + vw * (1 + M)), y1 = Math.min(this.baseH, vy0 + vh * (1 + M));
+    // Gerätepixel pro Karteneinheit; bei riesigen Bildschirmen auf 4096 px begrenzt
+    const k = Math.min(sc * this.dpr, 4096 / (x1 - x0), 4096 / (y1 - y0));
+    const W = Math.ceil((x1 - x0) * k), H = Math.ceil((y1 - y0) * k);
+    const old = this._vc;
+    const mk = (c) => { if (c && c.width === W && c.height === H) return c; const n = document.createElement('canvas'); n.width = W; n.height = H; return n; };
+    const vc = { scale: sc, k, x0, y0, w: x1 - x0, h: y1 - y0, map: mk(old && old.map), db: mk(old && old.db), do: mk(old && old.do) };
+    this._paintMap(vc.map.getContext('2d'), { k, x0, y0, w: vc.w, h: vc.h, px: this.dpr });
+    // Infektionspunkte des Ausschnitts in voller Auflösung
+    const b = vc.db.getContext('2d'), o = vc.do.getContext('2d');
+    for (const x of [b, o]) { x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H); x.setTransform(k, 0, 0, k, -x0 * k, -y0 * k); x.imageSmoothingQuality = 'high'; }
+    if (this.eng && this.dots) {
+      const t = { x0, y0, x1, y1 }, n = this._lod(sc);
+      for (const c of this.world.countries) {
+        const bb = this.bbox[c.iso];
+        if (!this._hitsTarget(t, bb)) continue;
+        const d = this.dots[c.iso];
+        let any = false;
+        for (let i = 0; i < d.n; i++) if (d.state[i]) { any = true; break; }
+        if (!any) continue;
+        b.save(); b.clip(this.paths[c.iso]); o.save(); o.clip(this.paths[c.iso]);
+        const pending = new Set(this.popDots.filter((p) => p.iso === c.iso).map((p) => p.i));
+        for (let i = 0; i < d.n; i++) {
+          const code = d.state[i];
+          if (!code || pending.has(i)) continue;
+          const px = d.x[i], py = d.y[i];
+          if (px < x0 - 4 || px > x1 + 4 || py < y0 - 4 || py > y1 + 4) continue;
+          this._blitDotLOD(this._isBaseCode(code) ? b : o, d, i, code, 1, k, n);
+        }
+        b.restore(); o.restore();
+      }
+    }
+    this._vc = vc;
+  }
+
+  // Zwischenspeicher 1:1 auf ganze Gerätepixel setzen (gestochen scharf);
+  // während eines Zooms skaliert gezeichnet
+  _blitCache(ctx, vc, canvas) {
+    const sc = this.view.scale;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const dx = (this.view.x + vc.x0 * sc) * this.dpr, dy = (this.view.y + vc.y0 * sc) * this.dpr;
+    const f = sc * this.dpr / vc.k;
+    if (Math.abs(f - 1) < 1e-6) ctx.drawImage(canvas, Math.round(dx), Math.round(dy));
+    else ctx.drawImage(canvas, dx, dy, canvas.width * f, canvas.height * f);
+    ctx.restore();
+  }
+
   render(t) {
     const ctx = this.ctx;
     ctx.save();
@@ -827,17 +999,27 @@ export class WorldMap {
     ctx.scale(this.view.scale, this.view.scale);
 
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    // Selbst gerenderte Karte (Ozean + Länder + Grenzen) aus dem Basis-Canvas
-    if (this._baseCanvas) ctx.drawImage(this._baseCanvas, 0, 0, this.baseW, this.baseH);
+    // Scharfen Ausschnitt aktualisieren (nur wenn gezoomt wird es nötig)
+    this._maintainViewCache();
+    const vc = this._vc, covers = vc && this._vcCovers(vc);
+    // Selbst gerenderte Karte: Übersichtsbild als Rückfallebene, darüber der scharfe Ausschnitt
+    if (!covers && this._baseCanvas) ctx.drawImage(this._baseCanvas, 0, 0, this.baseW, this.baseH);
+    if (vc) this._blitCache(ctx, vc, vc.map);
 
-    // driftende Wolken (zwei Ebenen)
+    // driftende Wolken (zwei Ebenen) – beim Hineinzoomen fliegt man unter ihnen durch
     this._drawClouds(ctx, t);
 
-    // Infektionspunkte (hochauflösend vorgerendert) + gerade aufploppende Punkte
+    // Infektionspunkte + gerade aufploppende Punkte
     if ((this._infDirty || this._dotsReset) && this._infCanvas) this._updateDots();
     if (this._infCanvas && this.eng) {
-      ctx.drawImage(this._infCanvas, 0, 0, this.baseW, this.baseH);
-      ctx.drawImage(this._ovCanvas, 0, 0, this.baseW, this.baseH);
+      if (!covers) {
+        ctx.save();
+        if (vc) { ctx.beginPath(); ctx.rect(0, 0, this.baseW, this.baseH); ctx.rect(vc.x0, vc.y0, vc.w, vc.h); ctx.clip('evenodd'); }
+        ctx.drawImage(this._infCanvas, 0, 0, this.baseW, this.baseH);
+        ctx.drawImage(this._ovCanvas, 0, 0, this.baseW, this.baseH);
+        ctx.restore();
+      }
+      if (vc) { this._blitCache(ctx, vc, vc.db); this._blitCache(ctx, vc, vc.do); }
     }
     if (this.eng) this._drawPopDots(ctx);
 
@@ -907,9 +1089,10 @@ export class WorldMap {
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
     const layers = [{ sp: 3, op: 0.22, sc: 1 }, { sp: 6, op: 0.14, sc: 1.5 }];
+    const fade = clamp(1.3 - 0.3 * this.view.scale, 0.15, 1);
     for (const L of layers) {
       const off = ((t * L.sp) % W);
-      ctx.globalAlpha = L.op;
+      ctx.globalAlpha = L.op * fade;
       const tw = W * L.sc, th = H;
       for (let ox = -tw; ox < W + tw; ox += tw) ctx.drawImage(this.cloudTile, ox - off, 0, tw, th);
     }
@@ -948,11 +1131,14 @@ export class WorldMap {
     }
   }
 
+  // Fahrzeuggröße in Karteneinheiten für eine gewünschte Bildschirmgröße
+  _vehiclePx(base) { return base * (1 + 0.28 * Math.log2(this.view.scale)) / this.view.scale; }
+
   _drawPlane(ctx, x, y, ang, infected, t) {
-    // Größe in Weltkoordinaten (auf Bildschirm ~konstant), 3D-gerenderter Sprite
-    const px = clamp(26 / this.view.scale, 12, 30);
+    // Größe in Bildschirmpixeln (wächst beim Zoomen nur leicht), 3D-gerenderter Sprite
+    const px = this._vehiclePx(26);
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2);
-    if (infected) { ctx.shadowColor = 'rgba(255,70,50,0.9)'; ctx.shadowBlur = 8 / this.view.scale; }
+    if (infected) { ctx.shadowColor = 'rgba(255,70,50,0.9)'; ctx.shadowBlur = 7 * this.dpr; }
     if (this.planeImg.complete) ctx.drawImage(this.planeImg, -px / 2, -px / 2, px, px);
     if (infected) { // roter Infektions-Marker
       ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,60,40,0.95)';
@@ -962,13 +1148,16 @@ export class WorldMap {
   }
 
   _drawShip(ctx, x, y, ang, infected, t) {
-    const px = clamp(24 / this.view.scale, 11, 28);
+    const px = this._vehiclePx(24);
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang + Math.PI / 2);
     ctx.translate(0, Math.sin(t * 2 + x) * 0.4 / this.view.scale);
-    // Kielwasser
-    ctx.fillStyle = 'rgba(210,235,255,0.2)';
-    ctx.beginPath(); ctx.moveTo(-px * 0.25, px * 0.4); ctx.lineTo(px * 0.35, px * 0.9); ctx.lineTo(-px * 0.35, px * 0.9); ctx.closePath(); ctx.fill();
-    if (infected) { ctx.shadowColor = 'rgba(255,70,50,0.9)'; ctx.shadowBlur = 7 / this.view.scale; }
+    // Kielwasser: weiches, auslaufendes V hinter dem Heck
+    const wg = ctx.createLinearGradient(0, px * 0.38, 0, px * 1.25);
+    wg.addColorStop(0, 'rgba(225,240,255,0.42)'); wg.addColorStop(1, 'rgba(225,240,255,0)');
+    ctx.fillStyle = wg;
+    ctx.beginPath(); ctx.moveTo(-px * 0.07, px * 0.38); ctx.lineTo(-px * 0.34, px * 1.25); ctx.lineTo(-px * 0.2, px * 1.25);
+    ctx.lineTo(0, px * 0.62); ctx.lineTo(px * 0.2, px * 1.25); ctx.lineTo(px * 0.34, px * 1.25); ctx.lineTo(px * 0.07, px * 0.38); ctx.closePath(); ctx.fill();
+    if (infected) { ctx.shadowColor = 'rgba(255,70,50,0.9)'; ctx.shadowBlur = 6 * this.dpr; }
     if (this.shipImg.complete) ctx.drawImage(this.shipImg, -px / 2, -px / 2, px, px);
     if (infected) { ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,60,40,0.95)'; ctx.beginPath(); ctx.arc(0, 0, px * 0.09, 0, 7); ctx.fill(); }
     ctx.restore();
@@ -1014,7 +1203,7 @@ export class WorldMap {
   // Schwarm aus einzelnen Punkten (Zombies, Vampire, Kristallwesen), die über
   // Land ziehen und sich im Zielland verteilen
   _drawSwarm(ctx, a, now) {
-    const sprite = this.dotSprites[a.code];
+    const sprite = this._sprite(a.code, DOT_R * 4.4 * this.view.scale * this.dpr);
     for (const p of a.parts) {
       const s = clamp((now - a.t0 - p.delay) / a.dur, 0, 1);
       if (now - a.t0 - p.delay < 0) continue;
@@ -1026,7 +1215,7 @@ export class WorldMap {
       x += Math.sin(now * 7 + p.ph) * wob; y += Math.cos(now * 6 + p.ph) * wob;
       const fade = s >= 1 ? clamp(1 - (now - a.t0 - p.delay - a.dur) / 0.6, 0, 1) : 1;
       if (fade <= 0) continue;
-      const r = DOT_R * (1.15 + 0.2 * Math.sin(now * 9 + p.ph));
+      const r = DOT_R * (1.15 + 0.2 * Math.sin(now * 9 + p.ph)) / Math.max(1, this._lod(this.view.scale) * 0.75);
       ctx.globalAlpha = fade * 0.35;
       ctx.drawImage(sprite, x - r * 2.2, y - r * 2.2, r * 4.4, r * 4.4);
       ctx.globalAlpha = fade;
