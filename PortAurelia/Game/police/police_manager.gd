@@ -423,8 +423,12 @@ func _update_units(delta: float) -> void:
 					u["stall"] = 0.0
 				else:
 					u["stall"] = float(u.get("stall", 0.0)) + delta
-				if v and float(u["stall"]) > 12.0 and vd > 70.0 and not _in_view(v.global_position):
+				if v and float(u["stall"]) > 12.0 and vd > 80.0 and not _in_view(v.global_position):
 					_remove_unit(u)
+					continue
+				# stuck close by (dead end, traffic jam): officers continue on foot
+				if v and float(u["stall"]) > 5.0 and vd <= 80.0 and not in_vehicle:
+					_set_unit(u, U.ENGAGE)
 					continue
 				if v and vd < (45.0 if in_vehicle else 30.0):
 					_set_unit(u, U.CHASE if in_vehicle else U.ENGAGE)

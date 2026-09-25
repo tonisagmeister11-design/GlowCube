@@ -72,7 +72,8 @@ func _ready() -> void:
 		p.health.health = maxf(p.health.health, 60.0)
 		shot_at = shots[0] > 2
 	check("officers open fire at level 3", shot_at, "%d police shots, t=%.1f" % [shots[0], t])
-	# ---- evade
+	# ---- evade (ambient patrol cars would legitimately spot the player: isolate the search logic)
+	world.traffic.call("set_enabled", false)
 	pol.set_wanted(1)
 	p.health.invulnerable = true
 	var far := world.data.nearest_poi("hospital", p.global_position)

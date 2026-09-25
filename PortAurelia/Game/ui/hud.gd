@@ -55,13 +55,16 @@ func _ready() -> void:
 	Events.notify.connect(notify)
 	Events.big_message.connect(big_message)
 	Events.mission_objective.connect(func(t): set_objective(t))
-	Events.subtitle.connect(func(t, d): set_objective(t, d))
+	Events.subtitle.connect(func(t, d): if Settings.get_value("gameplay", "subtitles"): set_objective(t, d))
 	Events.interaction_prompt.connect(func(t): _prompt.text = t; _prompt.visible = t != "")
 	Events.money_changed.connect(_on_money)
 	Events.district_entered.connect(_on_district)
 	Events.player_entered_vehicle.connect(_on_enter_vehicle)
 	Events.waypoint_set.connect(func(p): gps.set_target(p))
 	_money_shown = Game.player_data.money if Game.player_data else 0
+	var wheel := WeaponWheel.new()
+	wheel.name = "WeaponWheel"
+	add_child(wheel)
 
 
 # ------------------------------------------------------------------ construction
@@ -301,6 +304,7 @@ func _process(delta: float) -> void:
 	var p := world.player as Player
 	if p == null:
 		return
+	_apply_scale()
 	# health / armour
 	_hp_bar.max_value = p.health.max_health
 	_hp_bar.value = p.health.health
@@ -357,7 +361,9 @@ func _process(delta: float) -> void:
 	_vehicle_timer -= delta
 	_vehicle_name.modulate.a = clampf(_vehicle_timer, 0.0, 1.0)
 	if p.is_in_vehicle() and p.vehicle is Vehicle:
-		_speed.text = "%d km/h" % int(absf((p.vehicle as Vehicle).speed_kmh))
+		var kmh := absf((p.vehicle as Vehicle).speed_kmh)
+		_speed.text = "%d mph" % int(kmh * 0.621371) if int(Settings.get_value("gameplay", "speed_units")) == 1 \
+			else "%d km/h" % int(kmh)
 	else:
 		_speed.text = ""
 	# crosshair
@@ -384,8 +390,7 @@ func _fmt(n: int) -> String:
 
 
 func _update_radar(delta: float, p: Player, lvl: int, searching: bool) -> void:
-	var cam := p.cam
-	var yaw: float = cam.yaw if cam else p.rotation.y
+	var yaw := _radar_yaw(p)
 	var speed := 0.0
 	if p.is_in_vehicle():
 		speed = absf((p.vehicle as Vehicle).speed_kmh)
@@ -410,6 +415,21 @@ func _update_radar(delta: float, p: Player, lvl: int, searching: bool) -> void:
 	_radar_overlay.queue_redraw()
 
 
+func _radar_yaw(p: Player) -> float:
+	if not Settings.get_value("gameplay", "minimap_rotate"):
+		return 0.0
+	return p.cam.yaw if p.cam else p.rotation.y
+
+
+func _apply_scale() -> void:
+	var sc := float(Settings.get_value("gameplay", "hud_scale"))
+	if absf(_root.scale.x - sc) < 0.001 and _root.size.is_equal_approx(get_viewport().get_visible_rect().size / sc):
+		return
+	_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_root.scale = Vector2(sc, sc)
+	_root.size = get_viewport().get_visible_rect().size / sc
+
+
 ## World position -> radar pixel (relative to the radar rect), clamped flag.
 func _to_radar(w: Vector3, center: Vector3, yaw: float, half: float) -> Vector2:
 	var d := Vector2(w.x - center.x, w.z - center.z) / _radar_radius
@@ -425,7 +445,7 @@ func _draw_radar_overlay() -> void:
 	if p == null:
 		return
 	var half := _radar.size.x * 0.5
-	var yaw: float = p.cam.yaw if p.cam else p.rotation.y
+	var yaw := _radar_yaw(p)
 	var center := p.global_position
 	var ov := _radar_overlay
 	# GPS route

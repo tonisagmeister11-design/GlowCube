@@ -35,6 +35,9 @@ var _col: CollisionShape3D
 var _capsule: CapsuleShape3D
 var _fall_speed := 0.0
 var _air_time := 0.0
+var in_cover := false
+var _cover_normal := Vector3.ZERO
+var _cover_low := false
 var _climb_target := Vector3.ZERO
 var _climb_t := 0.0
 var _enter_timer := 0.0
@@ -86,6 +89,8 @@ func set_camera(c: CameraRig) -> void:
 
 # ------------------------------------------------------------------ physics
 func _physics_process(delta: float) -> void:
+	if in_cover and state != State.GROUND:
+		_leave_cover()
 	match state:
 		State.GROUND, State.AIR:
 			_move_on_foot(delta)
@@ -118,6 +123,13 @@ func _input_dir() -> Vector3:
 func _move_on_foot(delta: float) -> void:
 	var dir := _input_dir()
 	var on_floor := is_on_floor()
+	if input_enabled and Input.is_action_just_pressed("cover") and on_floor:
+		if in_cover:
+			_leave_cover()
+		else:
+			_enter_cover()
+	if in_cover:
+		dir = _cover_move(dir)
 	aiming = input_enabled and Input.is_action_pressed("aim") and weapons.has_ranged()
 	sprinting = input_enabled and Input.is_action_pressed("sprint") and dir.length() > 0.3 and not aiming and not crouching \
 		and stamina > 0.05
@@ -140,8 +152,14 @@ func _move_on_foot(delta: float) -> void:
 	hv = hv.move_toward(want, acc * delta * maxf(target_speed, 3.0))
 	velocity.x = hv.x
 	velocity.z = hv.z
+	if in_cover:
+		var want_crouch := _cover_low and not (aiming or weapons.is_firing())
+		if want_crouch != crouching:
+			_set_crouch(want_crouch)
 	# facing
-	if aiming or weapons.is_firing():
+	if in_cover and not (aiming or weapons.is_firing()):
+		rotation.y = lerp_angle(rotation.y, atan2(_cover_normal.x, _cover_normal.z), clampf(delta * 12.0, 0.0, 1.0))
+	elif aiming or weapons.is_firing():
 		var fy := cam.yaw
 		rotation.y = lerp_angle(rotation.y, fy, clampf(delta * 18.0, 0.0, 1.0))
 	elif hv.length() > 0.3:
@@ -195,6 +213,68 @@ func _set_crouch(c: bool) -> void:
 	crouching = c
 	_capsule.height = 1.25 if c else 1.8
 	_col.position.y = _capsule.height * 0.5
+
+
+# ------------------------------------------------------------------ cover
+## Q next to a wall / low obstacle: take cover. Movement slides along the wall,
+## low cover crouches, aiming pops out.
+func _enter_cover() -> void:
+	var space := get_world_3d().direct_space_state
+	var fwd := -global_basis.z
+	if cam:
+		fwd = cam.forward_flat()
+	var best := {}
+	for ang in [0.0, 0.5, -0.5, 1.0, -1.0]:
+		var d := fwd.rotated(Vector3.UP, ang)
+		var q := PhysicsRayQueryParameters3D.create(global_position + Vector3(0, 0.7, 0), global_position + Vector3(0, 0.7, 0) + d * 2.0)
+		q.exclude = [get_rid()]
+		q.collision_mask = 1 | (1 << 2)
+		var r := space.intersect_ray(q)
+		if not r.is_empty() and absf((r["normal"] as Vector3).y) < 0.4:
+			best = r
+			break
+	if best.is_empty():
+		return
+	var n: Vector3 = best["normal"]
+	n.y = 0.0
+	n = n.normalized()
+	# low cover if a ray at head height passes over the obstacle
+	var bp: Vector3 = best["position"]
+	var q2 := PhysicsRayQueryParameters3D.create(global_position + Vector3(0, 1.55, 0),
+		Vector3(bp.x, global_position.y + 1.55, bp.z) - n * 0.3)
+	q2.exclude = [get_rid()]
+	q2.collision_mask = 1 | (1 << 2)
+	_cover_low = space.intersect_ray(q2).is_empty()
+	_cover_normal = n
+	in_cover = true
+	var target: Vector3 = best["position"] + n * 0.42
+	global_position = Vector3(target.x, global_position.y, target.z)
+	velocity = Vector3.ZERO
+
+
+func _leave_cover() -> void:
+	in_cover = false
+	if crouching:
+		_set_crouch(false)
+
+
+func _cover_move(dir: Vector3) -> Vector3:
+	# pushing away from the wall leaves cover
+	if dir.dot(_cover_normal) > 0.7:
+		_leave_cover()
+		return dir
+	var tangent := _cover_normal.cross(Vector3.UP).normalized()
+	var along := dir.dot(tangent)
+	var moved := tangent * along
+	# stop at the end of the wall
+	if absf(along) > 0.05:
+		var probe := global_position + tangent * signf(along) * 0.45 + Vector3(0, 0.7, 0)
+		var q := PhysicsRayQueryParameters3D.create(probe, probe - _cover_normal * 1.0)
+		q.exclude = [get_rid()]
+		q.collision_mask = 1 | (1 << 2)
+		if get_world_3d().direct_space_state.intersect_ray(q).is_empty():
+			moved = Vector3.ZERO
+	return moved * 0.6
 
 
 func _try_climb() -> bool:

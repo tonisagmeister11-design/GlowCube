@@ -22,6 +22,7 @@ var _sun_dir := Vector3.UP
 
 func _ready() -> void:
 	world_env = WorldEnvironment.new()
+	world_env.add_to_group("world_environment")
 	env = Environment.new()
 	var sky := Sky.new()
 	sky_mat = ShaderMaterial.new()
@@ -62,6 +63,7 @@ func _ready() -> void:
 	env.adjustment_brightness = 1.0
 	world_env.environment = env
 	add_child(world_env)
+	Settings.apply_effects()
 
 	sun = DirectionalLight3D.new()
 	sun.name = "Sun"

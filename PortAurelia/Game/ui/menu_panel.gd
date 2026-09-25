@@ -10,6 +10,7 @@ signal closed
 static var current: MenuPanel
 
 var title := ""
+var phone_style := false
 var subtitle := ""
 var items: Array = []
 var _list: VBoxContainer
@@ -21,10 +22,11 @@ var _player: Player
 var _prev_mouse := Input.MOUSE_MODE_CAPTURED
 
 
-static func open(t: String, its: Array, sub := "") -> MenuPanel:
+static func open(t: String, its: Array, sub := "", phone := false) -> MenuPanel:
 	if current and is_instance_valid(current):
 		current.close()
 	var m := MenuPanel.new()
+	m.phone_style = phone
 	m.title = t
 	m.items = its
 	m.subtitle = sub
@@ -45,16 +47,28 @@ func _ready() -> void:
 	_prev_mouse = Input.mouse_mode
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var panel := PanelContainer.new()
-	panel.anchor_left = 0.0
-	panel.anchor_top = 0.0
-	panel.offset_left = 60
-	panel.offset_top = 90
-	panel.custom_minimum_size = Vector2(560, 0)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.05, 0.07, 0.88)
-	sb.border_color = Color(0.95, 0.75, 0.25)
-	sb.border_width_top = 5
-	sb.set_corner_radius_all(4)
+	if phone_style:
+		panel.anchor_left = 1.0
+		panel.anchor_right = 1.0
+		panel.anchor_top = 1.0
+		panel.anchor_bottom = 1.0
+		panel.offset_left = -460
+		panel.offset_right = -60
+		panel.offset_top = -760
+		panel.offset_bottom = -40
+		sb.bg_color = Color(0.06, 0.07, 0.1, 0.96)
+		sb.border_color = Color(0.2, 0.22, 0.26)
+		sb.set_border_width_all(10)
+		sb.set_corner_radius_all(28)
+	else:
+		panel.offset_left = 60
+		panel.offset_top = 90
+		panel.custom_minimum_size = Vector2(560, 0)
+		sb.bg_color = Color(0.04, 0.05, 0.07, 0.88)
+		sb.border_color = Color(0.95, 0.75, 0.25)
+		sb.border_width_top = 5
+		sb.set_corner_radius_all(4)
 	sb.content_margin_left = 22
 	sb.content_margin_right = 22
 	sb.content_margin_top = 16
@@ -82,7 +96,7 @@ func _ready() -> void:
 	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_sub)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 420)
+	scroll.custom_minimum_size = Vector2(0, 420 if not phone_style else 470)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(scroll)
 	_list = VBoxContainer.new()

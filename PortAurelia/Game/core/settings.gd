@@ -20,6 +20,9 @@ const DEFAULTS := {
 	"audio": {
 		"master": 0.9,
 		"sfx": 1.0,
+		"weapons": 1.0,
+		"vehicles": 1.0,
+		"environment": 1.0,
 		"voice": 1.0,
 		"music": 0.0,              # music is disabled until the player enables it
 		"music_enabled": false,
@@ -108,6 +111,9 @@ func _apply_display() -> void:
 func _apply_audio() -> void:
 	_bus("Master", get_value("audio", "master"))
 	_bus("SFX", get_value("audio", "sfx"))
+	_bus("Weapons", get_value("audio", "weapons"))
+	_bus("Vehicles", get_value("audio", "vehicles"))
+	_bus("Environment", get_value("audio", "environment"))
 	_bus("Voice", get_value("audio", "voice"))
 	_bus("UI", get_value("audio", "ui"))
 	var music_on: bool = get_value("audio", "music_enabled")
@@ -137,6 +143,24 @@ func _apply_rendering() -> void:
 	vp.positional_shadow_atlas_size = [512, 1024, 2048, 4096][clampi(sq, 0, 3)]
 	var tq: int = get_value("graphics", "texture_quality")
 	vp.anisotropic_filtering_level = [Viewport.ANISOTROPY_2X, Viewport.ANISOTROPY_4X, Viewport.ANISOTROPY_16X][clampi(tq, 0, 2)]
+	apply_effects()
+
+
+## Screen-space effects on the world environment (called again when the world loads).
+func apply_effects() -> void:
+	if not is_inside_tree():
+		return
+	var w = get_tree().get_first_node_in_group("world_environment")
+	if w == null or not (w is WorldEnvironment):
+		return
+	var env: Environment = (w as WorldEnvironment).environment
+	var fx: int = get_value("graphics", "effects")
+	var q: int = get_value("graphics", "quality")
+	env.ssao_enabled = fx >= 1
+	env.ssr_enabled = fx >= 2 and q >= 2
+	env.ssil_enabled = fx >= 2 and q >= 3
+	env.glow_enabled = true
+	env.volumetric_fog_enabled = fx >= 2 and q >= 3
 
 
 ## Streaming radius for world chunks in metres (view distance setting)

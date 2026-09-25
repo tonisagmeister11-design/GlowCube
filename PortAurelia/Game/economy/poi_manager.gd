@@ -484,13 +484,13 @@ func _open_safehouse(_pl: Player, p: Dictionary) -> void:
 
 func _open_save_menu() -> void:
 	var items := []
-	for slot in [1, 2, 3]:
+	for slot in [0, 1, 2]:
 		var info := SaveManager.slot_info(slot)
-		var label := "Speicherplatz %d" % slot
+		var label := "Speicherplatz %d" % (slot + 1)
 		var right := "leer" if info.is_empty() else "%s · $%s" % [String(info["district"]), str(info["money"])]
 		items.append({"label": label, "right": right, "action": func():
 			if SaveManager.save_slot(slot):
-				Events.notify.emit("Spiel gespeichert (Platz %d)." % slot, 3.0)})
+				Events.notify.emit("Spiel gespeichert (Platz %d)." % (slot + 1), 3.0)})
 	MenuPanel.open("Speichern", items)
 
 

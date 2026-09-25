@@ -132,3 +132,20 @@ func latest_slot() -> int:
 func delete_slot(slot: int) -> void:
 	if has_slot(slot):
 		DirAccess.remove_absolute(_path(slot))
+
+
+## F5: quick save into the autosave slot (not during missions or while wanted).
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("quick_save") or Game.state != Game.State.PLAYING:
+		return
+	var w := GameWorld.instance
+	if w == null:
+		return
+	if w.missions and w.missions.call("is_active"):
+		Events.notify.emit("Während einer Mission kann nicht gespeichert werden.", 3.0)
+		return
+	if w.police and int(w.police.get("wanted_level")) > 0:
+		Events.notify.emit("Du wirst gesucht – Speichern nicht möglich.", 3.0)
+		return
+	if autosave():
+		Events.notify.emit("Schnellspeicherung erstellt.", 2.5)

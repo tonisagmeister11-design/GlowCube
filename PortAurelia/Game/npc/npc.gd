@@ -72,6 +72,8 @@ var _chase: Node3D = null
 var _search_center := Vector3.ZERO
 var _search_radius := 30.0
 var unit = null                 # police unit dictionary (set by the police manager)
+var _detour_timer := 0.0
+var _detour_dir := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -418,13 +420,16 @@ func _move(delta: float) -> void:
 			_stuck += delta
 		else:
 			_stuck = maxf(0.0, _stuck - delta)
-		if _stuck > 2.5:
+		if _stuck > (1.0 if state in [S.CHASE, S.GOTO, S.FIGHT, S.SEARCH] else 2.5):
 			_stuck = 0.0
 			_on_stuck()
 	_last_pos = global_position
 
 
 func _steer_dir() -> Vector3:
+	if _detour_timer > 0.0:
+		_detour_timer -= get_physics_process_delta_time()
+		return _detour_dir
 	var tgt := _current_target()
 	var d := tgt - global_position
 	d.y = 0.0
@@ -581,8 +586,15 @@ func _on_stuck() -> void:
 			_path_i = mini(best + 1, _path.size() - 1)
 	elif state == S.FLEE:
 		_path = PackedVector3Array()
-	elif state == S.GOTO:
-		_goal += Vector3(randf_range(-2, 2), 0, randf_range(-2, 2))
+	elif state in [S.GOTO, S.CHASE, S.FIGHT, S.SEARCH]:
+		# walk around the obstacle: sidestep perpendicular to the blocked direction
+		var to := _current_target() - global_position
+		to.y = 0.0
+		var side := to.normalized().cross(Vector3.UP)
+		if randf() < 0.5:
+			side = -side
+		_detour_dir = (side * 0.85 - to.normalized() * 0.15).normalized()
+		_detour_timer = randf_range(0.8, 1.6)
 
 
 # ------------------------------------------------------------------ flee

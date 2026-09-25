@@ -6,13 +6,16 @@ const TIPS := [
 	"Tipp: Drücke F in der Nähe eines Autos, um einzusteigen.",
 	"Tipp: Mit TAB öffnest du das Waffenrad.",
 	"Tipp: Die Polizei sucht dich im markierten Bereich. Bleib außer Sicht, um sie abzuschütteln.",
-	"Tipp: In der Garage kannst du Fahrzeuge reparieren, lackieren und tunen.",
-	"Tipp: Mit ↑ öffnest du dein Handy: Nachrichten, Aufträge, Karte und Einstellungen.",
+	"Tipp: In der Werkstatt (M auf dem Radar) kannst du Fahrzeuge reparieren, lackieren und tunen.",
+	"Tipp: Mit ↑ öffnest du dein Handy: Kontakte, Jobs, Nachrichten und Statistik.",
 	"Tipp: Leg eigene Musik in den Ordner Audio/Music und aktiviere sie in den Einstellungen.",
 	"Tipp: Safehouses sind Speicherpunkte. Kaufe Immobilien, um neue freizuschalten.",
 	"Tipp: Im Regen verlieren die Reifen an Haftung – bremse früher.",
-	"Tipp: Taxi-, Liefer- und Rennjobs findest du auf der Karte und im Handy.",
+	"Tipp: Taxi-, Kurier- und Bürgerwehrjobs startest du im Handy, Rennen an den R-Markern.",
 	"Tipp: Halte die rechte Maustaste zum Zielen, die linke zum Schießen.",
+	"Tipp: Mit Q gehst du hinter Mauern und Autos in Deckung.",
+	"Tipp: F5 erstellt eine Schnellspeicherung (nicht während Missionen).",
+	"Tipp: 25 Postkarten sind in der Stadt versteckt. Jede bringt $100.",
 ]
 
 var bar: ProgressBar

@@ -69,10 +69,10 @@ func _ready() -> void:
 	MenuPanel.current._choose(eng)
 	check("engine upgrade", int(v.upgrades["engine"]) == 1)
 	# save to slot 3
-	check("save slot", SaveManager.save_slot(3) and SaveManager.has_slot(3))
-	var info := SaveManager.slot_info(3)
+	check("save slot", SaveManager.save_slot(2) and SaveManager.has_slot(2))
+	var info := SaveManager.slot_info(2)
 	check("slot info", int(info.get("money", -1)) == pd.money, str(info))
-	SaveManager.delete_slot(3)
+	SaveManager.delete_slot(2)
 	# bus travel
 	var start := p.global_position
 	var hosp := world.data.nearest_poi("hospital", p.global_position)
