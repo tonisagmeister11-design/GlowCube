@@ -19,7 +19,7 @@ Game/assets/textures/*.import
 Game/data/city/
 Game/Audio/SFX/**/*.wav
 Game/Audio/SFX/**/*.import
-Export/
+/Export/
 __pycache__/
 *.pyc
 *.tmp
