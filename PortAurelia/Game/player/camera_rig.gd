@@ -90,7 +90,8 @@ func _process(delta: float) -> void:
 	var md := _mouse_delta * 0.0025 * sens * (0.6 if aiming else 1.0)
 	_mouse_delta = Vector2.ZERO
 	var pad := Vector2(Input.get_axis("look_left", "look_right"), Input.get_axis("look_up", "look_down"))
-	md += pad * delta * 2.6 * sens
+	var pad_sens: float = Settings.get_value("controls", "controller_sensitivity") if Settings else 1.0
+	md += pad * delta * 2.6 * pad_sens
 	if not locked:
 		yaw -= md.x
 		pitch = clampf(pitch - md.y * inv, PITCH_MIN, PITCH_MAX)

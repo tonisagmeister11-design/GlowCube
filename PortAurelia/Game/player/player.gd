@@ -503,6 +503,7 @@ func _ground_surface() -> String:
 # ------------------------------------------------------------------ damage / death
 func _on_damaged(amount: float, source: Node, _pos: Vector3, _dir: Vector3) -> void:
 	Events.player_damaged.emit(amount, source)
+	InputSetup.rumble(0.4, minf(amount / 40.0, 1.0), 0.15)
 	if cam:
 		cam.add_shake(minf(amount / 30.0, 0.6))
 	if state == State.GROUND and amount > 8.0:

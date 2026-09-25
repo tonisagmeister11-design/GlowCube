@@ -25,6 +25,22 @@ func _ready() -> void:
 	player_data = PlayerData.new()
 	Events.player_died.connect(_on_player_died)
 	Events.player_busted.connect(_on_player_busted)
+	if "--smoke-test" in OS.get_cmdline_user_args():
+		_smoke_test.call_deferred()
+
+
+## Release verification: boots a new game, waits for the world, prints the result and quits.
+func _smoke_test() -> void:
+	print("SMOKE packs=", Paths.mounted_packs, " saves=", Paths.saves_dir)
+	await get_tree().create_timer(1.0).timeout
+	new_game()
+	await Events.world_ready
+	await get_tree().create_timer(3.0).timeout
+	var w := GameWorld.instance
+	var ok := w != null and w.streaming.loaded_chunks().size() > 4 and w.traffic != null and w.peds != null
+	print("SMOKE ", "OK" if ok else "FAIL", " chunks=", w.streaming.loaded_chunks().size() if w else 0,
+		" traffic=", (w.traffic as TrafficManager).drivers.size() if w else 0)
+	get_tree().quit(0 if ok else 1)
 
 
 func _process(delta: float) -> void:

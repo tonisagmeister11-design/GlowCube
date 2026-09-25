@@ -12,10 +12,24 @@ var config_dir := ""
 var music_dir := ""
 var screenshots_dir := ""
 var portable := false
+var mounted_packs: Array = []
+
+## Data packs of the release layout, mounted before anything else is loaded:
+##   Game/PortAurelia.pck  characters, vehicles, weapons, props, interiors, textures, sounds
+##   Assets/City.pck       city chunks, far city, map, city data
+const PACKS := ["Game/PortAurelia.pck", "Assets/City.pck"]
 
 
 func _enter_tree() -> void:
 	var exe_dir := OS.get_executable_path().get_base_dir()
+	if not OS.has_feature("editor"):
+		for rel in PACKS:
+			var pck := exe_dir.path_join(rel)
+			if FileAccess.file_exists(pck):
+				if ProjectSettings.load_resource_pack(pck, true):
+					mounted_packs.append(rel)
+				else:
+					push_error("Could not mount " + pck)
 	if not OS.has_feature("editor") and _writable(exe_dir):
 		base_dir = exe_dir
 		portable = true

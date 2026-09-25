@@ -1,0 +1,44 @@
+# Builds Port Aurelia from source (procedural assets -> Godot import -> tests -> Windows export)
+# and uploads MyOpenWorldGame.zip. Tags "port-aurelia-v*" additionally publish a GitHub release.
+name: Port Aurelia build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["port-aurelia-v*"]
+    paths: ["PortAurelia/**", ".github/workflows/port-aurelia.yml"]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: PortAurelia
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: System libraries for Blender (bpy)
+        run: sudo apt-get update && sudo apt-get install -y libxi6 libxrender1 libxkbcommon0 libsm6 libgl1 unzip
+      - name: Toolchain (portable Godot 4.4.1 + export templates, bpy venv)
+        run: Tools/setup_toolchain.sh
+      - name: Build assets, import, validate, test, export
+        run: Tools/build_all.sh
+      - name: Upload game
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyOpenWorldGame
+          path: PortAurelia/Export/Release/MyOpenWorldGame.zip
+          compression-level: 0
+      - name: Upload development build
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyOpenWorldGame-Development
+          path: PortAurelia/Export/Development/MyOpenWorldGame
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/port-aurelia-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PortAurelia/Export/Release/MyOpenWorldGame.zip

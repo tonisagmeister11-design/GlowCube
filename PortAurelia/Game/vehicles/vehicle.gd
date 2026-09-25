@@ -665,6 +665,7 @@ func _collision_damage(impulse: float, local_pos: Vector3, other: Object) -> voi
 		var p := driver as Player
 		if p.cam:
 			p.cam.add_shake(minf(sev / 40.0, 1.0))
+		InputSetup.rumble(0.5, minf(sev / 30.0, 1.0), 0.25)
 		if sev > 30.0:
 			p.health.take_damage((sev - 30.0) * 1.2, null)
 	_check_engine()

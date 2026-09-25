@@ -25,12 +25,14 @@ const MOUSE := {
 }
 
 const PAD_BUTTONS := {
-	"jump": JOY_BUTTON_A, "sprint": JOY_BUTTON_A, "crouch": JOY_BUTTON_LEFT_STICK,
-	"reload": JOY_BUTTON_B, "interact": JOY_BUTTON_RIGHT_SHOULDER, "vehicle_enter": JOY_BUTTON_Y,
-	"map": JOY_BUTTON_BACK, "pause": JOY_BUTTON_START, "weapon_wheel": JOY_BUTTON_LEFT_SHOULDER,
+	# on foot: A sprint, X jump, B reload, D-pad right interact, Y enter vehicle, RB cover, LB weapon wheel
+	# in vehicles the same buttons are reused contextually (RB handbrake, LS horn, D-pad right lights)
+	"jump": JOY_BUTTON_X, "sprint": JOY_BUTTON_A, "crouch": JOY_BUTTON_LEFT_STICK,
+	"reload": JOY_BUTTON_B, "interact": JOY_BUTTON_DPAD_RIGHT, "vehicle_enter": JOY_BUTTON_Y,
+	"map": JOY_BUTTON_DPAD_DOWN, "pause": JOY_BUTTON_START, "weapon_wheel": JOY_BUTTON_LEFT_SHOULDER,
 	"phone": JOY_BUTTON_DPAD_UP, "horn": JOY_BUTTON_LEFT_STICK, "handbrake": JOY_BUTTON_RIGHT_SHOULDER,
 	"camera_mode": JOY_BUTTON_BACK, "cover": JOY_BUTTON_RIGHT_SHOULDER, "look_behind": JOY_BUTTON_RIGHT_STICK,
-	"headlights": JOY_BUTTON_DPAD_RIGHT, "weapon_next": JOY_BUTTON_DPAD_RIGHT, "weapon_prev": JOY_BUTTON_DPAD_LEFT,
+	"headlights": JOY_BUTTON_DPAD_RIGHT, "weapon_prev": JOY_BUTTON_DPAD_LEFT,
 }
 
 const PAD_AXES := {
@@ -62,6 +64,29 @@ func _enter_tree() -> void:
 		var ev := InputEventKey.new()
 		ev.physical_keycode = KEY_0 + i
 		InputMap.action_add_event(action, ev)
+	set_controller_enabled(true)
+	# the Settings autoload is created after this one
+	_connect_settings.call_deferred()
+
+
+func _connect_settings() -> void:
+	set_controller_enabled(bool(Settings.get_value("controls", "controller_enabled")))
+	Settings.changed.connect(_on_setting)
+
+
+func _on_setting(section: String, key: String) -> void:
+	if section == "controls" and key == "controller_enabled":
+		set_controller_enabled(bool(Settings.get_value("controls", "controller_enabled")))
+
+
+## Adds or removes all gamepad bindings (Settings -> Steuerung -> Controller aktiviert).
+func set_controller_enabled(on: bool) -> void:
+	for action in InputMap.get_actions():
+		for ev in InputMap.action_get_events(action):
+			if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+				InputMap.action_erase_event(action, ev)
+	if not on:
+		return
 	for action in PAD_BUTTONS:
 		_ensure(action)
 		var jb := InputEventJoypadButton.new()
@@ -73,6 +98,14 @@ func _enter_tree() -> void:
 		jm.axis = PAD_AXES[action][0]
 		jm.axis_value = PAD_AXES[action][1]
 		InputMap.action_add_event(action, jm)
+
+
+## Controller rumble (respects Settings -> Vibration). weak/strong 0..1.
+func rumble(weak: float, strong: float, duration: float) -> void:
+	if Settings == null or not Settings.get_value("controls", "vibration") or not Settings.get_value("controls", "controller_enabled"):
+		return
+	for pad in Input.get_connected_joypads():
+		Input.start_joy_vibration(pad, clampf(weak, 0.0, 1.0), clampf(strong, 0.0, 1.0), duration)
 
 
 func _ensure(action: String) -> void:

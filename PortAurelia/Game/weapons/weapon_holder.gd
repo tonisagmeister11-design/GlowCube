@@ -272,6 +272,7 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 			player.cam.pitch = minf(player.cam.pitch + deg_to_rad(float(d.get("recoil", 1.0))) * 0.35, CameraRig.PITCH_MAX)
 			player.cam.yaw += deg_to_rad(randf_range(-1.0, 1.0) * float(d.get("recoil", 1.0)) * 0.12)
 			player.cam.add_shake(float(d.get("recoil", 1.0)) * 0.05)
+			InputSetup.rumble(0.3, clampf(float(d.get("recoil", 1.0)) * 0.1, 0.05, 0.7), 0.08)
 		_emit_ammo()
 	fired.emit(current)
 	return true
