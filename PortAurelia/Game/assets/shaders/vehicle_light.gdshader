@@ -7,8 +7,11 @@ instance uniform float intensity = 0.0;
 
 void fragment() {
 	vec3 c = lamp_color * COLOR.rgb;
-	ALBEDO = mix(vec3(0.75), c, 0.5) * 0.4;
-	ROUGHNESS = 0.08;
-	METALLIC = 0.2;
+	// off: tinted lens over a chrome reflector; on: bright emission
+	ALBEDO = mix(vec3(0.6), c, 0.75) * 0.42;
+	ROUGHNESS = 0.06;
+	METALLIC = 0.55;
+	CLEARCOAT = 1.0;
+	CLEARCOAT_ROUGHNESS = 0.02;
 	EMISSION = c * intensity * 6.0;
 }

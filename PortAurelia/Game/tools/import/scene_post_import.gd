@@ -73,6 +73,8 @@ func _setup_mesh(mi: MeshInstance3D) -> void:
 			if lib:
 				mesh.surface_set_material(i, lib)
 	var nm := String(mi.name)
+	if nm in ["Body", "BumperF", "BumperR"] and mesh is ArrayMesh and _has_paint(mesh):
+		_strip_lods(mi)
 	for k in RANGES:
 		if nm.begins_with(k):
 			var r: Vector2 = RANGES[k]
@@ -85,3 +87,25 @@ func _setup_mesh(mi: MeshInstance3D) -> void:
 	# don't cast (performance), buildings and structures do
 	if nm.begins_with("Markings") or nm.begins_with("Far_") or nm.begins_with("Ground") or nm.begins_with("Detail"):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+func _has_paint(mesh: Mesh) -> bool:
+	for i in mesh.get_surface_count():
+		var m := mesh.surface_get_material(i)
+		if m and String(m.resource_path).get_file().begins_with("car_paint"):
+			return true
+	return false
+
+
+## Vehicle paint surfaces carry panel-gap distance fields in UV/UV2; automatic LOD
+## simplification collapses vertices without respecting them (blotchy gap lines), so these
+## meshes keep full detail and uncompressed attributes.
+func _strip_lods(mi: MeshInstance3D) -> void:
+	var src := mi.mesh as ArrayMesh
+	var out := ArrayMesh.new()
+	for i in src.get_surface_count():
+		out.add_surface_from_arrays(src.surface_get_primitive_type(i), src.surface_get_arrays(i))
+		out.surface_set_material(i, src.surface_get_material(i))
+		out.surface_set_name(i, src.surface_get_name(i))
+	out.resource_name = src.resource_name
+	mi.mesh = out

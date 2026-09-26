@@ -193,9 +193,11 @@ class MeshBuilder:
                 flat_uv.append(gltf_to_blender_v(u[1]))
             if has_uv2:
                 u2 = self.uv2[fi] or (0.0, 0.0)
-                for _ in f:
-                    flat_uv2.append(u2[0])
-                    flat_uv2.append(gltf_to_blender_v(u2[1]))
+                per_corner = isinstance(u2, list)
+                for ci in range(len(f)):
+                    q = u2[ci] if per_corner else u2
+                    flat_uv2.append(q[0])
+                    flat_uv2.append(gltf_to_blender_v(q[1]))
             for c in self.cols[fi]:
                 flat_col.extend((srgb_to_linear(c[0]), srgb_to_linear(c[1]), srgb_to_linear(c[2]), c[3]))
         nloops = len(me.loops)
