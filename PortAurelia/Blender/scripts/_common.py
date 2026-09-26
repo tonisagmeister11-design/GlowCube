@@ -236,6 +236,11 @@ class MeshBuilder:
             bm = bmesh.new()
             bm.from_mesh(me)
             bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=merge_dist)
+            # zero-area slivers (collinear cap triangles) get random normals and render as black specks
+            bm.normal_update()
+            slivers = [f for f in bm.faces if f.calc_area() < 1e-11]
+            if slivers:
+                bmesh.ops.delete(bm, geom=slivers, context="FACES_ONLY")
             bm.to_mesh(me)
             bm.free()
         me.polygons.foreach_set("use_smooth", [smooth] * len(me.polygons))

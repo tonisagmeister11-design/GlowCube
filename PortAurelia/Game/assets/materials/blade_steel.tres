@@ -1,0 +1,18 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/weapon.gdshader" id="1"]
+[ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="2"]
+
+[resource]
+resource_name = "blade_steel"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/base_color = Color(0.72, 0.72, 0.72, 1)
+shader_parameter/noise_tex = ExtResource("2")
+shader_parameter/metallic = 1.0
+shader_parameter/roughness = 0.2
+shader_parameter/wear_color = Color(0.95, 0.95, 0.95, 1)
+shader_parameter/wear_roughness = 0.08
+shader_parameter/wear_amount = 1.0
+shader_parameter/aniso = 0.6
+shader_parameter/micro = 0.1

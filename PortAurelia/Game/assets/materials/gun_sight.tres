@@ -1,0 +1,11 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/emissive.gdshader" id="1"]
+
+[resource]
+resource_name = "gun_sight"
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/mode = 0
+shader_parameter/energy = 5.0
+shader_parameter/color = Color(0.35, 1.0, 0.45, 1)

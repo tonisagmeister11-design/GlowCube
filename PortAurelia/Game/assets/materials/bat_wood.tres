@@ -4,15 +4,15 @@
 [ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="2"]
 
 [resource]
-resource_name = "gun_polymer"
+resource_name = "bat_wood"
 render_priority = 0
 shader = ExtResource("1")
-shader_parameter/base_color = Color(0.04, 0.04, 0.043, 1)
+shader_parameter/base_color = Color(0.86, 0.72, 0.52, 1)
 shader_parameter/noise_tex = ExtResource("2")
 shader_parameter/metallic = 0.0
-shader_parameter/roughness = 0.62
-shader_parameter/wear_color = Color(0.12, 0.12, 0.12, 1)
-shader_parameter/wear_metallic = 0.0
-shader_parameter/wear_roughness = 0.45
-shader_parameter/wear_amount = 0.5
-shader_parameter/specular_amount = 0.4
+shader_parameter/roughness = 0.38
+shader_parameter/wear_amount = 0.0
+shader_parameter/wood = true
+shader_parameter/wood_dark = Color(0.62, 0.46, 0.29, 1)
+shader_parameter/grain_scale = 300.0
+shader_parameter/clearcoat_amount = 0.8

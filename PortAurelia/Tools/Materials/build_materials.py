@@ -35,6 +35,12 @@ def facade(style, wall="plaster", scale=(0.25, 0.25), **kw):
     return ("facade.gdshader", p)
 
 
+def weapon(base, **kw):
+    p = {"base_color": base, "noise_tex": T("detail_noise.png")}
+    p.update(kw)
+    return ("weapon.gdshader", p)
+
+
 def col(r, g, b):
     return ("color", (r, g, b))
 
@@ -127,9 +133,32 @@ MATERIALS = {
     "char_cloth": ("character.gdshader", {"roughness": 0.9}),
     "char_hair": ("character.gdshader", {"roughness": 0.6, "rim": 0.15}),
     "char_detail": ("character.gdshader", {"roughness": 0.15}),
-    "gun_metal": surf(None, None, color=col(0.12, 0.12, 0.13), metallic=0.8, rough_mul=0.35, puddles=0.0),
-    "gun_polymer": surf(None, None, color=col(0.06, 0.06, 0.065), rough_mul=0.6, puddles=0.0),
-    "gun_wood": surf("wood_planks_col.png", None, uv_scale=2.0, world_uv=False, color=col(0.7, 0.45, 0.3), puddles=0.0),
+    # weapons (weapon.gdshader): edge wear from vertex colour R, AO from G
+    "gun_metal": weapon(col(0.045, 0.047, 0.05), metallic=0.8, roughness=0.42, wear_color=col(0.42, 0.42, 0.41),
+                        wear_amount=0.55),
+    "gun_metal_dark": weapon(col(0.015, 0.015, 0.017), metallic=0.5, roughness=0.6, wear_amount=0.0),
+    "gun_steel": weapon(col(0.56, 0.56, 0.55), metallic=1.0, roughness=0.34, wear_color=col(0.78, 0.78, 0.76),
+                        wear_roughness=0.18, wear_amount=0.4, aniso=0.45),
+    "gun_polymer": weapon(col(0.04, 0.04, 0.043), metallic=0.0, roughness=0.62, wear_color=col(0.12, 0.12, 0.12),
+                          wear_metallic=0.0, wear_roughness=0.45, wear_amount=0.5, specular_amount=0.4),
+    "gun_polymer_grip": weapon(col(0.035, 0.035, 0.038), metallic=0.0, roughness=0.8, wear_amount=0.0,
+                               stipple=0.55, specular_amount=0.35),
+    "gun_polymer_tan": weapon(col(0.42, 0.35, 0.25), metallic=0.0, roughness=0.72, wear_color=col(0.3, 0.27, 0.22),
+                              wear_metallic=0.0, wear_roughness=0.6, wear_amount=0.45, specular_amount=0.35),
+    "gun_wood": weapon(col(0.34, 0.18, 0.085), metallic=0.0, roughness=0.42, wear_color=col(0.55, 0.36, 0.2),
+                       wear_metallic=0.0, wear_roughness=0.5, wear_amount=0.35, wood=True,
+                       wood_dark=col(0.11, 0.05, 0.022), grain_scale=420.0, clearcoat_amount=0.6),
+    "bat_wood": weapon(col(0.86, 0.72, 0.52), metallic=0.0, roughness=0.38, wear_amount=0.0, wood=True,
+                       wood_dark=col(0.62, 0.46, 0.29), grain_scale=300.0, clearcoat_amount=0.8),
+    "gun_rubber": weapon(col(0.03, 0.03, 0.03), metallic=0.0, roughness=0.93, wear_amount=0.0, stipple=0.25,
+                         specular_amount=0.25),
+    "gun_brass": weapon(col(0.78, 0.58, 0.28), metallic=1.0, roughness=0.28, wear_amount=0.0),
+    "gun_lens": weapon(col(0.02, 0.03, 0.05), metallic=0.4, roughness=0.03, wear_amount=0.0, micro=0.0,
+                       clearcoat_amount=1.0, fresnel_tint=1.0),
+    "blade_steel": weapon(col(0.72, 0.72, 0.72), metallic=1.0, roughness=0.2, wear_color=col(0.95, 0.95, 0.95),
+                          wear_roughness=0.08, wear_amount=1.0, aniso=0.6, micro=0.1),
+    "gun_sight": ("emissive.gdshader", {"mode": 0, "energy": 5.0, "color": col(0.35, 1.0, 0.45)}),
+    "gun_sight_red": ("emissive.gdshader", {"mode": 0, "energy": 7.0, "color": col(1.0, 0.1, 0.05)}),
 }
 
 FACADES = {

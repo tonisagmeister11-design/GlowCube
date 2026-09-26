@@ -4,12 +4,11 @@
 [ext_resource type="Texture2D" path="res://assets/textures/detail_noise.png" id="2"]
 
 [resource]
-resource_name = "gun_metal"
+resource_name = "gun_metal_dark"
 render_priority = 0
 shader = ExtResource("1")
-shader_parameter/base_color = Color(0.045, 0.047, 0.05, 1)
+shader_parameter/base_color = Color(0.015, 0.015, 0.017, 1)
 shader_parameter/noise_tex = ExtResource("2")
-shader_parameter/metallic = 0.8
-shader_parameter/roughness = 0.42
-shader_parameter/wear_color = Color(0.42, 0.42, 0.41, 1)
-shader_parameter/wear_amount = 0.55
+shader_parameter/metallic = 0.5
+shader_parameter/roughness = 0.6
+shader_parameter/wear_amount = 0.0
