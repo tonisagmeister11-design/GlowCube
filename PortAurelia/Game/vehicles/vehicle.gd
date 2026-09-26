@@ -787,8 +787,22 @@ func explode() -> void:
 	destroyed = true
 	_burn_timer = -1.0
 	Combat.explode(get_world_3d(), global_position + Vector3.UP, 7.0, 180.0, self)
-	apply_central_impulse(Vector3.UP * mass * 6.0 + Vector3(randf() - 0.5, 0, randf() - 0.5) * mass * 2.0)
-	apply_torque_impulse(Vector3(randf() - 0.5, 0, randf() - 0.5) * mass * 3.0)
+	# the blast throws the car up and tumbles it
+	apply_central_impulse(Vector3.UP * mass * 7.5 + Vector3(randf() - 0.5, 0, randf() - 0.5) * mass * 3.0)
+	apply_torque_impulse(Vector3(randf() - 0.5, (randf() - 0.5) * 0.4, randf() - 0.5) * mass * 4.0)
+	# burning wreck: big fire in the cabin, engine fire, dark smoke column
+	var wreck_fire := VFX.fire(self, Vector3(0, float(meta.get("hood", 1.0)) * 0.8, 0.2), 1.9)
+	var wreck_smoke := VFX.engine_smoke(self, Vector3(0, float(meta.get("height", 1.4)) + 0.3, 0), true)
+	wreck_smoke.amount = 26
+	wreck_smoke.lifetime = 5.0
+	wreck_smoke.scale_amount_max = 4.5
+	if _fire == null:
+		_fire = VFX.fire(self, Vector3(0, float(meta.get("hood", 1.0)), -float(meta.get("length", 4.5)) * 0.35))
+	get_tree().create_timer(30.0).timeout.connect(func():
+		if is_instance_valid(wreck_fire):
+			wreck_fire.queue_free()
+		if is_instance_valid(wreck_smoke):
+			wreck_smoke.emitting = false)
 	for mi in _paint_meshes:
 		mi.set_instance_shader_parameter("paint", Color(0.06, 0.05, 0.05))
 		mi.set_instance_shader_parameter("dirt", 1.0)

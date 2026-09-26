@@ -47,6 +47,7 @@ func _ready() -> void:
 	camera.fov = 70.0
 	arm.add_child(camera)
 	camera.current = true
+	Events.explosion.connect(_on_explosion)
 
 
 func set_target(t: Node3D) -> void:
@@ -79,7 +80,21 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func add_shake(amount: float) -> void:
-	shake = minf(1.5, shake + amount)
+	shake = minf(2.0, shake + amount)
+
+
+## Explosions shake the camera (and rumble the controller) depending on the distance.
+func _on_explosion(pos: Vector3, radius: float, _source) -> void:
+	if camera == null:
+		return
+	var d := camera.global_position.distance_to(pos)
+	var k := clampf(1.0 - d / (radius * 7.0), 0.0, 1.0)
+	if k <= 0.0:
+		return
+	add_shake(1.7 * k * k + 0.2)
+	var pads := Input.get_connected_joypads()
+	if not pads.is_empty() and Settings.get_value("controls", "vibration"):
+		Input.start_joy_vibration(pads[0], 0.6 * k, k, 0.7)
 
 
 func forward_flat() -> Vector3:
@@ -160,11 +175,13 @@ func _process(delta: float) -> void:
 	if shake > 0.0:
 		shake = maxf(0.0, shake - delta * 2.5)
 		var t := Time.get_ticks_msec() * 0.05
-		camera.h_offset = sin(t * 1.7) * shake * 0.08
-		camera.v_offset = cos(t * 2.3) * shake * 0.08
+		camera.h_offset = (sin(t * 1.7) + sin(t * 4.3) * 0.4) * shake * 0.08
+		camera.v_offset = (cos(t * 2.3) + cos(t * 5.1) * 0.4) * shake * 0.08
+		camera.rotation.z = sin(t * 3.1) * shake * 0.012
 	else:
 		camera.h_offset = 0.0
 		camera.v_offset = 0.0
+		camera.rotation.z = 0.0
 
 
 ## Aim ray: returns {position, normal, collider} of what the crosshair points at (or far point).
