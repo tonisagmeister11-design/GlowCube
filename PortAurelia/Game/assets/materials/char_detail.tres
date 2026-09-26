@@ -6,4 +6,5 @@
 resource_name = "char_detail"
 render_priority = 0
 shader = ExtResource("1")
-shader_parameter/roughness = 0.15
+shader_parameter/mode = 4
+shader_parameter/roughness = 0.06

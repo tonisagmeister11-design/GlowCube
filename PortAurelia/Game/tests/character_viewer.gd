@@ -29,7 +29,9 @@ func _ready() -> void:
 		"Top_Jacket_F": Color(0.7, 0.2, 0.25), "Bottom_Skirt_F": Color(0.15, 0.15, 0.18), "Hair_Long": Color(0.45, 0.28, 0.12),
 		"Top_LongSleeve_M": Color(0.12, 0.16, 0.3), "Top_Vest_M": Color(0.08, 0.08, 0.1), "Hat_Police": Color(0.1, 0.12, 0.25),
 		"Shoes_Sneakers_M": Color(0.9, 0.9, 0.9), "Shoes_Sneakers_F": Color(0.95, 0.95, 0.95), "Shoes_Boots_M": Color(0.1, 0.08, 0.06),
-		"Hair_Buzz": Color(0.1, 0.08, 0.06)}
+		"Hair_Buzz": Color(0.1, 0.08, 0.06), "Body_M": Color(0.82, 0.62, 0.48), "Head_M": Color(0.82, 0.62, 0.48),
+		"Body_F": Color(0.9, 0.72, 0.58), "Head_F": Color(0.9, 0.72, 0.58), "Brows_M": Color(0.12, 0.08, 0.05),
+		"Brows_F": Color(0.45, 0.28, 0.12)}
 	var xs := [-1.2, 0.0, 1.2]
 	var anims := String(args.get("anim", "idle,walk,run")).split(",")
 	var keys := ["m", "f", "cop"]
@@ -51,8 +53,17 @@ func _ready() -> void:
 			print("anims: ", ap.get_animation_list())
 	var cam := Camera3D.new()
 	add_child(cam)
-	cam.fov = 40
-	cam.look_at_from_position(Vector3(0.4, 1.4, 5.2), Vector3(0, 0.95, 0))
+	cam.fov = float(args.get("fov", "40"))
+	var cp := Vector3(0.4, 1.4, 5.2)
+	var lp := Vector3(0, 0.95, 0)
+	if args.has("cam"):
+		var c := String(args["cam"]).split_floats(",")
+		cp = Vector3(c[0], c[1], c[2])
+	if args.has("look"):
+		var l := String(args["look"]).split_floats(",")
+		lp = Vector3(l[0], l[1], l[2])
+	cam.near = 0.02
+	cam.look_at_from_position(cp, lp)
 	cam.current = true
 
 

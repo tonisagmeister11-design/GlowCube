@@ -6,5 +6,6 @@
 resource_name = "char_skin"
 render_priority = 0
 shader = ExtResource("1")
+shader_parameter/mode = 1
 shader_parameter/roughness = 0.55
-shader_parameter/sss = 0.35
+shader_parameter/sss = 0.5

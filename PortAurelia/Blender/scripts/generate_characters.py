@@ -2,11 +2,19 @@
 
 Output: Game/assets/generated/characters/human.glb
   Skeleton (humanoid bones) + meshes:
-    Body_M, Body_F, Head_M, Head_F, Eyes, Brows,
-    Hair_Short, Hair_Buzz, Hair_Long, Hair_Bun, Hair_Curly,
+    Body_M, Body_F   anatomical bodies built from implicit muscle primitives (see _anatomy.py):
+                     pecs/breasts, abdominals, lats, trapezius, deltoids, biceps/triceps, glutes,
+                     quads, calves, kneecaps, ankles; hands with five separate fingers
+    Head_M, Head_F   cranium, brow ridge, eye sockets, cheekbones, nose (bridge, tip, wings,
+                     nostrils), dental arch, lips, chin, jaw, ears + almond-shaped eyelids
+    Eyes_M/F         sclera, limbal ring, radial iris, pupil;  Brows_M/F  brows + upper lashes
+    Hair_Short, Hair_Buzz, Hair_Long, Hair_Bun, Hair_Curly (shrink-wrapped, strand grooves)
     Top_TShirt_M/F, Top_LongSleeve_M/F, Top_Jacket_M/F, Top_Suit_M/F, Top_Vest_M/F (police/security),
-    Bottom_Jeans_M/F, Bottom_Shorts_M/F, Bottom_Skirt_F,
-    Shoes_Sneakers, Shoes_Boots, Hat_Cap, Hat_Police, Glasses_Sun
+    Bottom_Jeans_M/F, Bottom_Shorts_M/F, Bottom_Skirt_F  (cut from the body along clean planes,
+    smoothed so the fabric drapes, folded hems, wrinkles), Shoes_Sneakers, Shoes_Boots,
+    Hat_Cap, Hat_Police, Glasses_Sun
+  Every mesh stores its rest-pose position in UV/UV2 for stable shader detail (pores, weave,
+  hair strands) and per-vertex colour variation (lips, cheeks, stubble, knuckles ...).
   and ~35 animations (in place, 30 fps).
 
 Character faces Godot -Z (Blender +Y). Bones are named by the character's own side:
@@ -25,6 +33,7 @@ import bmesh  # noqa: E402
 from mathutils import Matrix, Vector, Euler, Quaternion  # noqa: E402
 
 from _common import GEN, reset_scene, export_glb, get_material, srgb_to_linear  # noqa: E402
+import _anatomy as A  # noqa: E402
 
 OUT = os.path.join(GEN, "characters")
 FPS = 30
@@ -55,75 +64,6 @@ BONES = {
     "Toes.R":     ((0.11, 0.11, 0.03), (0.11, 0.18, 0.02), "Foot.R"),
 }
 DEFORM_ORDER = list(BONES.keys())
-
-
-# ------------------------------------------------------------------ body via skin modifier
-def body_skeleton(kind):
-    """Vertices / edges / skin radii (x across, y depth) of the body stick figure."""
-    f = kind == "F"
-    sh = 0.155 if f else 0.18       # shoulder half width
-    hip = 0.115 if f else 0.1
-    V = []
-    R = []
-    E = []
-
-    def v(p, r):
-        V.append(p)
-        R.append(r)
-        return len(V) - 1
-
-    pelvis = v((0, 0.0, 0.97), (0.15 if f else 0.145, 0.1))
-    belly = v((0, 0.005, 1.08), (0.125 if f else 0.135, 0.1))
-    waist = v((0, 0.005, 1.16), (0.11 if f else 0.13, 0.095))
-    chest = v((0, 0.0, 1.28), (0.145 if f else 0.165, 0.11 if f else 0.115))
-    upper = v((0, -0.005, 1.39), (0.155 if f else 0.175, 0.1))
-    neck0 = v((0, -0.005, 1.47), (0.058, 0.058))
-    neck1 = v((0, 0.0, 1.55), (0.05 if f else 0.055, 0.052))
-    E += [(pelvis, belly), (belly, waist), (waist, chest), (chest, upper), (upper, neck0), (neck0, neck1)]
-    for s in (-1, 1):
-        cl = v((s * 0.12, -0.01, 1.42), (0.06, 0.055))
-        shd = v((s * sh, -0.01, 1.425), (0.064 if f else 0.074, 0.064 if f else 0.072))
-        mid = v((s * (sh + 0.12), -0.01, 1.43), (0.051 if f else 0.06, 0.05 if f else 0.058))
-        elb = v((s * 0.44, -0.01, 1.43), (0.041 if f else 0.047, 0.04 if f else 0.045))
-        fore = v((s * 0.57, -0.01, 1.43), (0.038 if f else 0.044, 0.033 if f else 0.038))
-        wr = v((s * 0.69, -0.01, 1.43), (0.026 if f else 0.03, 0.02 if f else 0.022))
-        palm = v((s * 0.76, -0.01, 1.428), (0.038 if f else 0.042, 0.016))
-        fing = v((s * 0.84, -0.01, 1.422), (0.034 if f else 0.037, 0.012))
-        thumb0 = v((s * 0.735, 0.03, 1.425), (0.013, 0.013))
-        thumb1 = v((s * 0.78, 0.055, 1.42), (0.011, 0.011))
-        E += [(upper, cl), (cl, shd), (shd, mid), (mid, elb), (elb, fore), (fore, wr), (wr, palm), (palm, fing),
-              (palm, thumb0), (thumb0, thumb1)]
-        hp = v((s * hip, 0.0, 0.93), (0.085 if f else 0.08, 0.085 if f else 0.08))
-        th = v((s * (hip + 0.005), 0.005, 0.74), (0.08 if f else 0.078, 0.078 if f else 0.078))
-        kn = v((s * 0.105, 0.01, 0.52), (0.054, 0.056))
-        calf = v((s * 0.107, -0.01, 0.34), (0.054 if f else 0.058, 0.056))
-        an = v((s * 0.11, -0.02, 0.1), (0.032, 0.034))
-        heel = v((s * 0.11, -0.045, 0.045), (0.035, 0.035))
-        ball = v((s * 0.11, 0.1, 0.035), (0.042, 0.022))
-        toe = v((s * 0.11, 0.17, 0.028), (0.034, 0.018))
-        E += [(pelvis, hp), (hp, th), (th, kn), (kn, calf), (calf, an), (an, heel), (heel, ball), (ball, toe)]
-    return V, E, R, neck1
-
-
-def make_skin_mesh(name, V, E, R, root, levels=1):
-    me = bpy.data.meshes.new(name + "_skel")
-    me.from_pydata(V, E, [])
-    ob = bpy.data.objects.new(name + "_skel", me)
-    bpy.context.scene.collection.objects.link(ob)
-    sk = ob.modifiers.new("skin", "SKIN")
-    sk.branch_smoothing = 0.7
-    sk.use_smooth_shade = True
-    for i, r in enumerate(R):
-        me.skin_vertices[0].data[i].radius = r
-    me.skin_vertices[0].data[root].use_root = True
-    sub = ob.modifiers.new("sub", "SUBSURF")
-    sub.levels = levels
-    dg = bpy.context.evaluated_depsgraph_get()
-    res = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
-    bpy.data.objects.remove(ob, do_unlink=True)
-    bpy.data.meshes.remove(me)
-    res.name = name
-    return res
 
 
 # ------------------------------------------------------------------ weights
@@ -195,149 +135,6 @@ def mesh_object(name, me, arm, weights, mat, color=(1, 1, 1, 1), per_vertex_colo
     return ob
 
 
-def inflate_region(me_src, name, keep_vertex, offset, weights_src, scale_z=None):
-    """Copy the faces whose vertices all satisfy keep_vertex(i, co) and push them along normals."""
-    bm = bmesh.new()
-    bm.from_mesh(me_src)
-    bm.verts.ensure_lookup_table()
-    bm.normal_update()
-    # remember source indices (for weights) and normals before deleting anything
-    idx_layer = bm.verts.layers.int.new("src")
-    for v in bm.verts:
-        v[idx_layer] = v.index
-    keep = set(i for i, v in enumerate(bm.verts) if keep_vertex(i, v.co))
-    del_faces = [f for f in bm.faces if not all(v.index in keep for v in f.verts)]
-    bmesh.ops.delete(bm, geom=del_faces, context="FACES")
-    loose = [v for v in bm.verts if not v.link_faces]
-    bmesh.ops.delete(bm, geom=loose, context="VERTS")
-    bm.verts.ensure_lookup_table()
-    src_idx = [v[idx_layer] for v in bm.verts]
-    normals = [v.normal.copy() for v in bm.verts]
-    for v, n in zip(bm.verts, normals):
-        v.co += n * offset
-    me = bpy.data.meshes.new(name)
-    bm.to_mesh(me)
-    bm.free()
-    weights = [weights_src[i] for i in src_idx]
-    return me, weights
-
-
-# ------------------------------------------------------------------ head
-def make_head(kind):
-    bm = bmesh.new()
-    f = kind == "F"
-    bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=14, radius=1.0)
-    for v in bm.verts:
-        x, y, z = v.co
-        sx = 0.078 if f else 0.084
-        sy = 0.098 if f else 0.102
-        sz = 0.112 if f else 0.118
-        # narrower jaw, forward chin
-        if z < 0:
-            k = 1.0 + z * (0.28 if f else 0.22)
-            x *= k
-            y = y * (1.0 + z * 0.1) + (0.12 if y > 0 else 0.0) * (-z) * 0.5
-        # flatter back of head, slight forehead
-        if y < 0:
-            y *= 0.93
-        v.co = Vector((x * sx, y * sy, z * sz))
-        v.co.z += 1.665
-        v.co.y += 0.012
-    # nose
-    geom = bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=True, segments=6, radius1=0.018, radius2=0.004, depth=0.045)
-    for v in geom["verts"]:
-        v.co = Vector((v.co.x * 0.9, v.co.z * 0.55 + 0.108, v.co.y * 0.45 + 1.66))
-        v.co.y += (0.0 if v.co.z > 1.65 else 0.0)
-    # ears
-    for s in (-1, 1):
-        g = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=1.0)
-        for v in g["verts"]:
-            v.co = Vector((v.co.x * 0.012 + s * (0.082 if f else 0.087), v.co.y * 0.022 - 0.005, v.co.z * 0.03 + 1.66))
-    me = bpy.data.meshes.new("Head_" + kind)
-    bm.to_mesh(me)
-    bm.free()
-    return me
-
-
-def front_y(me, x, z, r=0.02):
-    """Front surface of the head mesh near (x, z)."""
-    best = -1.0
-    for v in me.vertices:
-        if abs(v.co.x - x) < r and abs(v.co.z - z) < r and v.co.y > best:
-            best = v.co.y
-    return best
-
-
-def make_eyes(head):
-    bm = bmesh.new()
-    cols = []
-    iris_y = {}
-    for s in (-1, 1):
-        fy = front_y(head, s * 0.032, 1.688)
-        cy = fy - 0.006
-        g = bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=8, radius=0.0125)
-        for v in g["verts"]:
-            v.co += Vector((s * 0.032, cy, 1.688))
-        g2 = bmesh.ops.create_circle(bm, cap_ends=True, segments=10, radius=0.0068)
-        for v in g2["verts"]:
-            v.co = Vector((v.co.x + s * 0.032, cy + 0.0122, v.co.y + 1.688))
-        iris_y[s] = cy + 0.011
-    me = bpy.data.meshes.new("Eyes")
-    bm.to_mesh(me)
-    bm.free()
-    for v in me.vertices:
-        s = -1 if v.co.x < 0 else 1
-        cols.append((0.95, 0.95, 0.93, 1) if v.co.y < iris_y[s] else (0.16, 0.11, 0.07, 1))
-    return me, cols
-
-
-def make_brows_mouth(head):
-    bm = bmesh.new()
-    for s in (-1, 1):
-        fy = front_y(head, s * 0.033, 1.713)
-        g = bmesh.ops.create_cube(bm, size=1.0)
-        for v in g["verts"]:
-            v.co = Vector((v.co.x * 0.032 + s * 0.033, v.co.y * 0.006 + fy, v.co.z * 0.007 + 1.713))
-    fy = front_y(head, 0.0, 1.618, 0.025)
-    g = bmesh.ops.create_cube(bm, size=1.0)
-    for v in g["verts"]:
-        v.co = Vector((v.co.x * 0.036, v.co.y * 0.005 + fy, v.co.z * 0.0045 + 1.618))
-    me = bpy.data.meshes.new("Brows")
-    bm.to_mesh(me)
-    bm.free()
-    return me
-
-
-def make_hair(style, kind):
-    bm = bmesh.new()
-    bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=12, radius=1.0)
-    f = kind == "F"
-    base = (0.088 if f else 0.092, 0.108 if f else 0.11, 0.124)
-    rm = []
-    for v in bm.verts:
-        x, y, z = v.co
-        cut = {"short": -0.05, "buzz": 0.05, "long": -0.3, "bun": -0.1, "curly": -0.15}[style]
-        front_cut = 0.35 if style != "buzz" else 0.25
-        if z < cut or (y > 0.55 and z < front_cut):
-            rm.append(v)
-            continue
-        thick = {"short": 1.08, "buzz": 1.03, "long": 1.1, "bun": 1.07, "curly": 1.2}[style]
-        v.co = Vector((x * base[0] * thick, y * base[1] * thick - (0.005 if style == "long" else 0.0), z * base[2] * thick + 1.666))
-    bmesh.ops.delete(bm, geom=rm, context="VERTS")
-    if style == "long":
-        g = bmesh.ops.create_cube(bm, size=1.0)
-        for v in g["verts"]:
-            v.co = Vector((v.co.x * 0.17, v.co.y * 0.05 - 0.07, v.co.z * 0.2 + 1.56))
-    if style == "bun":
-        g = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=0.045)
-        for v in g["verts"]:
-            v.co += Vector((0, -0.08, 1.78))
-    me = bpy.data.meshes.new("Hair_" + style)
-    bm.to_mesh(me)
-    bm.free()
-    return me
-
-
 def make_cap(police=False):
     bm = bmesh.new()
     bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=1.0)
@@ -358,15 +155,26 @@ def make_cap(police=False):
     return me
 
 
-def make_glasses():
+def make_glasses(eyes):
+    """Sunglasses sized to the eye positions: two rounded lenses, bridge, temples."""
     bm = bmesh.new()
+    for s, c in eyes.items():
+        g = bmesh.ops.create_circle(bm, cap_ends=True, segments=16, radius=1.0)
+        for v in g["verts"]:
+            x, y, z = v.co
+            v.co = Vector((c.x + x * 0.026 + s * 0.003, c.y + A.EYE_R + 0.011, c.z + y * 0.018 - 0.002))
+        g = bmesh.ops.create_cube(bm, size=1.0)
+        for v in g["verts"]:
+            v.co = Vector((v.co.x * 0.004 + s * 0.071, v.co.y * 0.1 + c.y - 0.035, v.co.z * 0.005 + c.z + 0.008))
+    ex = eyes[1]
+    g = bmesh.ops.create_cube(bm, size=1.0)
+    for v in g["verts"]:
+        v.co = Vector((v.co.x * 0.03, v.co.y * 0.003 + ex.y + A.EYE_R + 0.011, v.co.z * 0.004 + ex.z + 0.01))
     for s in (-1, 1):
         g = bmesh.ops.create_cube(bm, size=1.0)
         for v in g["verts"]:
-            v.co = Vector((v.co.x * 0.04 + s * 0.033, v.co.y * 0.006 + 0.103, v.co.z * 0.022 + 1.688))
-    g = bmesh.ops.create_cube(bm, size=1.0)
-    for v in g["verts"]:
-        v.co = Vector((v.co.x * 0.15, v.co.y * 0.004 + 0.1, v.co.z * 0.004 + 1.699))
+            v.co = Vector((v.co.x * 0.018 + s * 0.058, v.co.y * 0.004 + ex.y + A.EYE_R + 0.004, v.co.z * 0.005 + ex.z + 0.008))
+    bm.normal_update()
     me = bpy.data.meshes.new("Glasses")
     bm.to_mesh(me)
     bm.free()
@@ -694,79 +502,104 @@ def build_animations(arm):
 
 
 # ------------------------------------------------------------------ main
-SKIN_BASE = (0.86, 0.66, 0.53, 1.0)
+# (name, zmin, zmax, |x| max, offset, wrinkle amplitude)
+CLOTHES = [("Top_TShirt", 0.9, 1.49, 0.33, 0.010, 0.0016), ("Top_LongSleeve", 0.9, 1.49, 0.672, 0.011, 0.0018),
+           ("Top_Jacket", 0.86, 1.5, 0.678, 0.026, 0.0028), ("Top_Suit", 0.86, 1.5, 0.678, 0.02, 0.0012),
+           ("Top_Vest", 1.0, 1.46, 0.2, 0.04, 0.0008), ("Bottom_Jeans", 0.1, 1.02, 0.25, 0.013, 0.0018),
+           ("Bottom_Shorts", 0.6, 1.02, 0.25, 0.012, 0.0015), ("Shoes_Sneakers", None, 0.13, None, 0.011, 0.0),
+           ("Shoes_Boots", None, 0.28, None, 0.014, 0.0)]
 
 
 def main():
     reset_scene()
     arm = make_armature()
-    bones = {n: (Vector(v[0]), Vector(v[1])) for n, v in BONES.items()}
-    body_bones = [n for n in BONES]
     objs = []
+    trees = {}
     for kind in ("M", "F"):
-        V, E, R, root = body_skeleton(kind)
-        me = make_skin_mesh("Body_" + kind, V, E, R, root, levels=1)
-        w = auto_weights(me, {n: BONES[n] for n in body_bones})
-        body = mesh_object("Body_" + kind, me, arm, w, "char_skin", SKIN_BASE)
-        objs.append(body)
-        # ------------------------------------------------ clothing derived from the body
-        def region(pred):
-            return lambda i, co: pred(co)
-        torso = lambda co: co.z > 0.9 and co.z < 1.5 and abs(co.x) < 0.3 + (0.0)  # noqa: E731
-        tshirt = lambda co: co.z > 0.9 and co.z < 1.49 and abs(co.x) < 0.33  # noqa: E731
-        longsl = lambda co: co.z > 0.9 and co.z < 1.49 and abs(co.x) < 0.68  # noqa: E731
-        jacket = lambda co: co.z > 0.86 and co.z < 1.5 and abs(co.x) < 0.69  # noqa: E731
-        jeans = lambda co: co.z < 1.02 and co.z > 0.1 and abs(co.x) < 0.25  # noqa: E731
-        shorts = lambda co: co.z < 1.02 and co.z > 0.62 and abs(co.x) < 0.25  # noqa: E731
-        skirt = lambda co: co.z < 1.02 and co.z > 0.58 and abs(co.x) < 0.25  # noqa: E731
-        shoes = lambda co: co.z < 0.13  # noqa: E731
-        vest = lambda co: co.z > 1.0 and co.z < 1.46 and abs(co.x) < 0.2  # noqa: E731
-        items = [("Top_TShirt", tshirt, 0.012), ("Top_LongSleeve", longsl, 0.013), ("Top_Jacket", jacket, 0.03),
-                 ("Top_Suit", jacket, 0.024), ("Top_Vest", vest, 0.045),
-                 ("Bottom_Jeans", jeans, 0.016), ("Bottom_Shorts", shorts, 0.014), ("Shoes_Sneakers", shoes, 0.012),
-                 ("Shoes_Boots", lambda co: co.z < 0.28, 0.016)]
+        me = A.make_body(kind)
+        w = auto_weights(me, BONES)
+        cols = A.skin_colors(me, kind)
+        A.rest_uvs(me)
+        objs.append(mesh_object("Body_" + kind, me, arm, w, "char_skin", per_vertex_colors=cols))
+        # ------------------------------------------------ clothing cut from the body
+        items = list(CLOTHES)
         if kind == "F":
-            items.append(("Bottom_Skirt", skirt, 0.03))
-        for (name, pred, off) in items:
-            cme, cw = inflate_region(me, f"{name}_{kind}", region(pred), off, w)
+            sme, sw = A.make_skirt(kind)
+            A.rest_uvs(sme)
+            objs.append(mesh_object("Bottom_Skirt_F", sme, arm, sw, "char_cloth", (1, 1, 1, 1)))
+        for (name, z0, z1, xm, off, wr) in items:
+            cme = A.cloth_from_body(me, f"{name}_{kind}", z0, z1, xm, off, wr,
+                                    smooth=14 if name.startswith("Top") else 5)
             if len(cme.vertices) == 0:
                 continue
-            if name == "Bottom_Skirt":
-                # flare the skirt outwards below the hips
+            ccols = None
+            if name.startswith("Shoes"):
+                sole = (0.93, 0.93, 0.92, 1) if name == "Shoes_Sneakers" else (0.3, 0.28, 0.26, 1)
+                ccols = []
                 for v in cme.vertices:
-                    if v.co.z < 0.92:
-                        k = (0.92 - v.co.z) * 0.6
-                        v.co.x *= 1.0 + k
-                        v.co.y *= 1.0 + k * 0.8
-            objs.append(mesh_object(f"{name}_{kind}", cme, arm, cw, "char_cloth", (1, 1, 1, 1)))
-        # ------------------------------------------------ head
-        hme = make_head(kind)
-        hw = [{"Head": 1.0}] * len(hme.vertices)
-        # neck blend: lowest vertices follow the neck a little
-        hw = [({"Head": 0.7, "Neck": 0.3} if v.co.z < 1.575 else {"Head": 1.0}) for v in hme.vertices]
-        objs.append(mesh_object("Head_" + kind, hme, arm, hw, "char_skin", SKIN_BASE))
-        head_ref = make_head(kind)
-        eyes_me, eye_cols = make_eyes(head_ref)
+                    if v.co.z < 0.012:
+                        v.co.z = 0.0
+                    ccols.append(sole if v.co.z < 0.024 else (1, 1, 1, 1))
+            cw = auto_weights(cme, BONES)
+            A.rest_uvs(cme)
+            objs.append(mesh_object(f"{name}_{kind}", cme, arm, cw, "char_cloth", (1, 1, 1, 1), ccols))
+        # ------------------------------------------------ head, eyelids, eyes, brows + lashes
+        tree = A.head_bvh(kind)
+        trees[kind] = tree
+        eyes = A.eye_centers(tree, kind)
+        hme = A.make_head(kind)
+        bm = bmesh.new()
+        bm.from_mesh(hme)
+        lids = A.eyelids(eyes)
+        lme = bpy.data.meshes.new("lids")
+        lids.to_mesh(lme)
+        lids.free()
+        bm.from_mesh(lme)
+        bm.to_mesh(hme)
+        bm.free()
+        for p in hme.polygons:
+            p.use_smooth = True
+        hw = [({"Head": 0.6, "Neck": 0.4} if v.co.z < 1.56 else ({"Head": 0.85, "Neck": 0.15} if v.co.z < 1.585
+                                                                 else {"Head": 1.0})) for v in hme.vertices]
+        hcols = A.skin_colors(hme, kind, head=True)
+        A.rest_uvs(hme)
+        objs.append(mesh_object("Head_" + kind, hme, arm, hw, "char_skin", per_vertex_colors=hcols))
+        eyes_me, eye_cols = A.make_eyes(eyes)
         eyes_me.name = "Eyes_" + kind
+        A.rest_uvs(eyes_me)
         objs.append(mesh_object("Eyes_" + kind, eyes_me, arm, [{"Head": 1.0}] * len(eyes_me.vertices), "char_detail",
                                 per_vertex_colors=eye_cols))
-        br = make_brows_mouth(head_ref)
+        br = A.lashes_brows(tree, eyes, kind)
+        A.rest_uvs(br)
         objs.append(mesh_object("Brows_" + kind, br, arm, [{"Head": 1.0}] * len(br.vertices), "char_hair",
-                                (0.12, 0.08, 0.06, 1)))
+                                (0.72, 0.72, 0.72, 1)))
+        if kind == "M":
+            glasses_eyes = eyes
     for style in ("short", "buzz", "long", "bun", "curly"):
-        hm = make_hair(style, "M" if style in ("short", "buzz", "curly") else "F")
+        hm = A.make_hair(style, "M", trees["M"])
         weights = [({"Head": 0.8, "Neck": 0.2} if v.co.z < 1.6 else {"Head": 1.0}) for v in hm.vertices]
-        objs.append(mesh_object("Hair_" + style.capitalize(), hm, arm, weights, "char_hair", (1, 1, 1, 1)))
+        if style == "long":
+            weights = [({"Chest": 0.5, "Neck": 0.5} if v.co.z < 1.5 else ({"Head": 0.5, "Neck": 0.5} if v.co.z < 1.6
+                                                                         else {"Head": 1.0})) for v in hm.vertices]
+        hcols = A.hair_colors(hm)
+        A.rest_uvs(hm)
+        objs.append(mesh_object("Hair_" + style.capitalize(), hm, arm, weights, "char_hair", per_vertex_colors=hcols))
     cap = make_cap(False)
+    A.rest_uvs(cap)
     objs.append(mesh_object("Hat_Cap", cap, arm, [{"Head": 1.0}] * len(cap.vertices), "char_cloth", (1, 1, 1, 1)))
     pcap = make_cap(True)
+    A.rest_uvs(pcap)
     objs.append(mesh_object("Hat_Police", pcap, arm, [{"Head": 1.0}] * len(pcap.vertices), "char_cloth", (1, 1, 1, 1)))
-    gl = make_glasses()
+    gl = make_glasses(glasses_eyes)
+    A.rest_uvs(gl)
     objs.append(mesh_object("Glasses_Sun", gl, arm, [{"Head": 1.0}] * len(gl.vertices), "char_detail", (0.02, 0.02, 0.02, 1)))
     build_animations(arm)
     os.makedirs(OUT, exist_ok=True)
     export_glb(os.path.join(OUT, "human.glb"), [arm], with_anim=True)
-    print("[characters] meshes:", len(objs), "actions:", len(bpy.data.actions))
+    tris = sum(sum(len(p.vertices) - 2 for p in o.data.polygons) for o in objs)
+    print("[characters] meshes:", len(objs), "actions:", len(bpy.data.actions), "tris:", tris)
+    for o in objs:
+        print("   ", o.name, sum(len(p.vertices) - 2 for p in o.data.polygons))
 
 
 if __name__ == "__main__":
