@@ -49,6 +49,15 @@ func _ready() -> void:
 	_refresh_giver()
 	_setup_races()
 	_setup_postcards()
+	if Game.pending_mission != "":
+		var mid := Game.pending_mission
+		Game.pending_mission = ""
+		await Events.world_ready
+		await get_tree().create_timer(2.5).timeout
+		if SIDE.has(mid):
+			start_side(mid)
+		else:
+			start_story(mid)
 
 
 func is_active() -> bool:

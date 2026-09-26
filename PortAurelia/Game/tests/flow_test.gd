@@ -21,9 +21,9 @@ func _run() -> void:
 	await wait(1.0)
 	check("main menu loaded", get_tree().current_scene != null and get_tree().current_scene.name == "MainMenu")
 	var buttons := get_tree().current_scene.find_children("*", "Button", true, false)
-	var labels := buttons.map(func(b): return (b as Button).text)
-	check("menu buttons", labels.has("SPIEL STARTEN") and labels.has("FORTSETZEN") and labels.has("LADEN") \
-		and labels.has("EINSTELLUNGEN") and labels.has("BEENDEN"), str(labels))
+	var labels := buttons.map(func(b): return (b as Button).text.strip_edges())
+	check("menu buttons", labels.has("START GAME") and labels.has("FREE ROAM") and labels.has("MISSIONS") \
+		and labels.has("LOAD GAME") and labels.has("SETTINGS") and labels.has("QUIT"), str(labels))
 	Game.new_game()
 	await Events.world_ready
 	check("world ready after loading screen", GameWorld.instance != null and Game.state == Game.State.PLAYING)

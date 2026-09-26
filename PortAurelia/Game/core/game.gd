@@ -15,6 +15,8 @@ var player_data: PlayerData
 var pending_slot := -2          # -2 new game, -1 autosave, 0..2 slots
 var debug_enabled := false
 var session_time := 0.0
+var free_roam := false          # started via FREE ROAM: no story intro
+var pending_mission := ""      # started via MISSIONS: begins right after the world is ready
 
 
 func _ready() -> void:
@@ -53,7 +55,27 @@ func _process(delta: float) -> void:
 func new_game() -> void:
 	player_data = PlayerData.new()
 	pending_slot = -2
+	free_roam = false
+	pending_mission = ""
 	_go_loading()
+
+
+## FREE ROAM: a fresh game without the story intro, some starting cash to explore.
+func start_free_roam() -> void:
+	new_game()
+	free_roam = true
+	player_data.money += 10000
+
+
+## MISSIONS menu: loads the latest save (or a new game) and starts the chosen mission.
+func play_mission(mid: String) -> void:
+	var slot := SaveManager.latest_slot()
+	if slot != -99:
+		load_game(slot)
+	else:
+		new_game()
+	free_roam = true
+	pending_mission = mid
 
 
 func continue_game() -> void:

@@ -11,7 +11,7 @@ func _ready() -> void:
 	name = "Phone"
 	world = GameWorld.instance
 	Events.mission_completed.connect(_on_mission_done)
-	if Game.is_new_game():
+	if Game.is_new_game() and not Game.free_roam:
 		get_tree().create_timer(6.0).timeout.connect(func():
 			message("Marco", "Hey, du bist zurück! Komm zum Safehouse, ich hab einen Wagen für dich. (Symbol M auf dem Radar)"))
 
