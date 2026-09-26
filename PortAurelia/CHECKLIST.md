@@ -59,6 +59,9 @@ Status of the specification against the implementation. "Test" names refer to
 | Public transport | bus stops (fast travel), taxi call, taxi job | Test `economy` (bus) |
 | Audio: no music, MusicManager off, buses, SFX | `audio/*`, `generate_sfx.py` | settings, bus layout |
 | Settings, saves 1–3 + autosave + quick save, loading screen, world state | `core/settings.gd`, `save/save_manager.gd`, `ui/*` | Test `flow` (save/load incl. progress and parked vehicles) |
+| Performance mode (Aus / Ausgewogen / Maximal incl. OpenGL renderer, render scale, FPS cap, population) | `core/settings.gd`, `ui/settings_menu.gd` | `street_shot --perf 2` in OpenGL: ~500 draw calls / ~190k primitives vs ~1,500 / ~850k |
+| Camera options (first person on foot, hood/cockpit in vehicles, distance, height, shake, HUD) | `player/camera_rig.gd`, `ui/settings_menu.gd` | Shot `demo_shots --views 1` |
+| High-detail weapons, anatomical characters, new vehicle bodies, big explosions | `_shapes.py`, `_anatomy.py`, `_carbody.py`, `combat/vfx.gd` | Shots `weapon_viewer`, `character_viewer`, `vehicle_viewer`, `explosion_shots` |
 | Debug F1–F11, disabled in release | `debug/debug_tools.gd`, `Game.debug_enabled` | – |
 
 ## Known limitations (honest)

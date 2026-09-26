@@ -60,8 +60,9 @@ func _ready() -> void:
 	world.traffic = self
 	rng.randomize()
 	var q: int = Settings.quality() if Settings else 2
-	target_moving = [12, 20, 28, 38][clampi(q, 0, 3)]
-	target_parked = [8, 12, 18, 26][clampi(q, 0, 3)]
+	var pop: float = Settings.population_scale() if Settings else 1.0
+	target_moving = int([12, 20, 28, 38][clampi(q, 0, 3)] * pop)
+	target_parked = int([8, 12, 18, 26][clampi(q, 0, 3)] * pop)
 	Events.gunshot.connect(_on_gunshot)
 	Events.explosion.connect(func(p, r, s): _on_gunshot(p, s, 2.0))
 	get_tree().node_added.connect(_on_node_added)

@@ -39,6 +39,7 @@ func _ready() -> void:
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(tabs)
 	tabs.add_child(_graphics_tab())
+	tabs.add_child(_camera_tab())
 	tabs.add_child(_audio_tab())
 	tabs.add_child(_controls_tab())
 	tabs.add_child(_gameplay_tab())
@@ -145,8 +146,61 @@ func _fmt(x: float, hi: float) -> String:
 	return "%d%%" % int(round(x * 100.0)) if hi <= 1.0 else ("%.2f" % x if hi <= 5.0 else str(int(x)))
 
 
+func _hint(g: GridContainer, text: String, col := Color(0.7, 0.72, 0.78)) -> Label:
+	g.add_child(Control.new())
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(420, 0)
+	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_color_override("font_color", col)
+	g.add_child(l)
+	return l
+
+
+const PERF_TEXT := [
+	"Volle Grafik: Forward+-Renderer, alle Effekte und Schatten nach den Einstellungen unten.",
+	"Ausgewogen: 80 % Renderauflösung mit FSR-Schärfung, höchstens mittlere Qualität und Effekte, " +
+		"einfache Schatten, kleinere Himmelsreflexionen, etwas weniger Passanten und Verkehr.",
+	"MAXIMALE LEISTUNG für schwache Laptops: OpenGL-Renderer (Kompatibilität), 60 % Renderauflösung, " +
+		"keine Schatten, kein SSAO/Glow/Reflexionen, kurze Sichtweite, starke LOD-Stufen, ohne Haut-/Stoffdetails, " +
+		"etwa halb so viele Passanten und Autos, einfache Explosionen und 30-FPS-Limit (spart Strom und Akku). " +
+		"Der Renderer wechselt nach einem Neustart des Spiels.",
+]
+
+
 func _graphics_tab() -> Control:
 	var g := _grid("Grafik")
+	_row_label(g, "LEISTUNGSMODUS")
+	var pm := OptionButton.new()
+	for t in ["Aus (volle Grafik)", "Ausgewogen", "Maximal (schwache Laptops)"]:
+		pm.add_item(t)
+	pm.custom_minimum_size = Vector2(420, 42)
+	pm.selected = Settings.perf_mode()
+	g.add_child(pm)
+	var perf_hint := _hint(g, PERF_TEXT[Settings.perf_mode()])
+	_row_label(g, "Renderer")
+	var rn := OptionButton.new()
+	for t in ["Automatisch (nach Leistungsmodus)", "Forward+ (Vulkan, beste Grafik)", "Mobile (Vulkan, schneller)",
+			"Kompatibilität (OpenGL, am schnellsten)"]:
+		rn.add_item(t)
+	rn.custom_minimum_size = Vector2(420, 38)
+	rn.selected = clampi(int(Settings.get_value("graphics", "renderer")), 0, 3)
+	g.add_child(rn)
+	var restart := _hint(g, "", Color(1.0, 0.75, 0.3))
+	var upd := func():
+		perf_hint.text = PERF_TEXT[Settings.perf_mode()]
+		restart.text = ("⚠ Neustart erforderlich: Das Spiel startet beim nächsten Mal mit dem Renderer „%s“." %
+			Settings.wanted_renderer()) if Settings.renderer_restart_needed() else \
+			"Aktueller Renderer: %s" % RenderingServer.get_current_rendering_method()
+	upd.call()
+	pm.item_selected.connect(func(i):
+		Settings.set_value("graphics", "performance_mode", i)
+		upd.call())
+	rn.item_selected.connect(func(i):
+		Settings.set_value("graphics", "renderer", i)
+		upd.call())
+	_slider(g, "Renderauflösung (3D)", "graphics", "render_scale", 0.5, 1.0, 0.05)
 	_row_label(g, "Auflösung")
 	var o := OptionButton.new()
 	var cur: Vector2i = Settings.get_value("graphics", "resolution")
@@ -174,7 +228,25 @@ func _graphics_tab() -> Control:
 	f.selected = maxi(0, limits.find(int(Settings.get_value("graphics", "fps_limit"))))
 	f.item_selected.connect(func(i): Settings.set_value("graphics", "fps_limit", limits[i]))
 	g.add_child(f)
+	return g.get_parent()
+
+
+func _camera_tab() -> Control:
+	var g := _grid("Kamera")
+	_option(g, "Perspektive zu Fuß", "camera", "foot_view", ["Third Person (Schulterkamera)", "First Person (Ego-Perspektive)"])
+	_option(g, "Perspektive im Fahrzeug", "camera", "vehicle_view",
+		["Verfolger nah", "Verfolger weit", "Motorhaube", "Cockpit (First Person)"])
+	_hint(g, "Taste V (Controller: Select) wechselt die Perspektive jederzeit im Spiel – zu Fuß zwischen " +
+		"Third und First Person, im Fahrzeug zwischen allen vier Ansichten. B schaut nach hinten.")
+	_slider(g, "Kameraabstand", "camera", "distance", 0.6, 1.6, 0.05)
+	_slider(g, "Kamerahöhe", "camera", "height", 0.7, 1.5, 0.05)
 	_slider(g, "Sichtfeld (FOV)", "graphics", "fov", 55.0, 95.0, 1.0)
+	_slider(g, "Kamerawackeln (Explosionen, Treffer)", "camera", "shake", 0.0, 1.5, 0.05)
+	_check(g, "Fahrzeugkamera automatisch zentrieren", "camera", "auto_center")
+	_check(g, "Kopfbewegung in der Ego-Perspektive", "camera", "head_bob")
+	_check(g, "Fadenkreuz anzeigen", "gameplay", "crosshair")
+	_check(g, "Minikarte anzeigen", "gameplay", "show_minimap")
+	_check(g, "HUD anzeigen", "gameplay", "show_hud")
 	return g.get_parent()
 
 

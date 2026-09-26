@@ -43,6 +43,11 @@ var _custom_anim: AnimationNodeAnimation
 var _oneshot_name := ""
 var _sim: PhysicalBoneSimulator3D
 var _track_prefix := "Skeleton:"
+## NPCs never change clothes: hidden outfit meshes are freed after the first apply_outfit
+## (fewer nodes and per-instance shader slots, important for the OpenGL renderer).
+var prune_hidden := false
+var first_person := false
+var _fp_shadow := {}
 
 
 func _ready() -> void:
@@ -92,7 +97,8 @@ func apply_outfit(o: Dictionary) -> void:
 		mi.visible = false
 	var b := body_type
 	var skin: Color = o.get("skin", Color(0.86, 0.66, 0.53))
-	_show("Body_" + b, skin)
+	for zone in _visible_body_zones(o):
+		_show("Body_%s_%s" % [b, zone], skin)
 	_show("Head_" + b, skin)
 	_show("Eyes_" + b, Color.WHITE)
 	_show("Brows_" + b, o.get("hair_color", Color(0.15, 0.1, 0.07)))
@@ -108,6 +114,66 @@ func apply_outfit(o: Dictionary) -> void:
 		_show("Hat_" + o["hat"], o.get("hat_color", Color(0.1, 0.1, 0.1)))
 	if o.get("glasses", false):
 		_show("Glasses_Sun", Color.WHITE)
+	if prune_hidden:
+		for k in meshes.keys():
+			var mi: MeshInstance3D = meshes[k]
+			if not mi.visible:
+				mi.queue_free()
+				meshes.erase(k)
+	if first_person:
+		set_first_person(true)
+
+
+## First-person view: the head, hair, hat and glasses only cast shadows (the camera sits
+## inside the head), the rest of the body stays visible.
+func set_first_person(on: bool) -> void:
+	first_person = on
+	for k in meshes:
+		var n := String(k)
+		if not (n.begins_with("Head") or n.begins_with("Eyes") or n.begins_with("Brows") or n.begins_with("Hair")
+				or n.begins_with("Hat") or n.begins_with("Glasses") or n.ends_with("_Neck")):
+			continue
+		var mi: MeshInstance3D = meshes[k]
+		if on:
+			if not _fp_shadow.has(n):
+				_fp_shadow[n] = mi.cast_shadow
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		elif _fp_shadow.has(n):
+			mi.cast_shadow = _fp_shadow[n]
+	if not on:
+		_fp_shadow.clear()
+
+
+## Body zones that are not completely covered by the outfit (covered skin is never drawn,
+## so it can't poke through the clothes at low LOD levels either).
+func _visible_body_zones(o: Dictionary) -> Array:
+	var covered := {}
+	var top := String(o.get("top", "TShirt"))
+	if top != "" and top != "None":
+		covered["Torso"] = true
+		covered["Hips"] = true
+		if top in ["LongSleeve", "Jacket", "Suit"]:
+			covered["Arms"] = true
+	match String(o.get("bottom", "Jeans")):
+		"Jeans":
+			for z in ["Hips", "Thighs", "Shins", "Ankles"]:
+				covered[z] = true
+		"Shorts":
+			covered["Hips"] = true
+			covered["Thighs"] = true
+		"Skirt":
+			covered["Hips"] = true
+	match String(o.get("shoes", "Sneakers")):
+		"Sneakers":
+			covered["Feet"] = true
+		"Boots":
+			covered["Feet"] = true
+			covered["Ankles"] = true
+	var out := []
+	for z in ["Base", "Neck", "Torso", "Hips", "Arms", "Thighs", "Shins", "Ankles", "Feet"]:
+		if not covered.has(z):
+			out.append(z)
+	return out
 
 
 func _show(mesh_name: String, tint: Color) -> void:

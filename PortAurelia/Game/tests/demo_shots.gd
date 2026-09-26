@@ -4,6 +4,7 @@ extends Node
 
 var world: GameWorld
 var out := "user://"
+var views := false
 
 
 func _ready() -> void:
@@ -11,6 +12,10 @@ func _ready() -> void:
 	for i in range(0, a.size() - 1, 2):
 		if a[i] == "--out":
 			out = a[i + 1]
+		elif a[i] == "--views":
+			views = a[i + 1] == "1"
+		elif a[i] == "--perf":
+			Settings.set_value("graphics", "performance_mode", int(a[i + 1]))
 	Game.player_data = PlayerData.new()
 	Game.pending_slot = -2
 	world = load("res://scenes/world.tscn").instantiate()
@@ -40,6 +45,11 @@ func _ready() -> void:
 	var s: float = clampf(lane["s"], 4.0, maxf(l.length - 30.0, 4.0))
 	var pos := l.point_at(s)
 	var dir := l.dir_at(s)
+	# clear the spawn point (a traffic car parked there would crash into the new one)
+	for other in get_tree().get_nodes_in_group("vehicles"):
+		if other is Node3D and (other as Node3D).global_position.distance_to(pos) < 14.0:
+			other.queue_free()
+	await get_tree().process_frame
 	var car := Vehicle.create("sports", Color(0.85, 0.1, 0.05))
 	world.add_child(car)
 	car.transform = Transform3D(Basis.looking_at(dir, Vector3.UP), pos + Vector3.UP * 0.6)
@@ -51,6 +61,15 @@ func _ready() -> void:
 	Input.action_press("accelerate")
 	await wait(3.0)
 	await shot("02_driving")
+	if views:
+		p.cam.vehicle_view = 2
+		await wait(1.0)
+		await shot("05_hood_cam")
+		p.cam.vehicle_view = 3
+		await wait(1.0)
+		await shot("06_cockpit")
+		p.cam.vehicle_view = 0
+		await wait(0.4)
 
 	# ---------------------------------------------------------------- 3) running over a pedestrian
 	var ahead := car.global_position - car.global_basis.z * 12.0
@@ -95,6 +114,11 @@ func _ready() -> void:
 	await wait(0.1)
 	Input.action_release("fire")
 	Input.action_release("aim")
+	if views:
+		p.cam.first_person = true
+		await wait(2.5)
+		await shot("07_first_person")
+		p.cam.first_person = false
 
 	get_tree().quit()
 

@@ -91,6 +91,7 @@ func _ready() -> void:
 	add_child(_col)
 	model = CharacterModel.new()
 	model.name = "Model"
+	model.prune_hidden = true
 	model.outfit = outfit
 	add_child(model)
 	health = Health.new()

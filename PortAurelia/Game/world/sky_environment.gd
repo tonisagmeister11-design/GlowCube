@@ -96,7 +96,12 @@ func apply_quality(q: int) -> void:
 	q = clampi(q, 0, 3)
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if q <= 1 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	sun.directional_shadow_max_distance = [110.0, 180.0, 280.0, 420.0][q]
-	sun.shadow_enabled = int(Settings.get_value("graphics", "shadow_quality")) > 0 if Settings else true
+	sun.shadow_enabled = Settings.shadow_quality() > 0 if Settings else true
+	# performance modes: smaller sky reflection map, updated over several frames
+	var perf: int = Settings.perf_mode() if Settings else 0
+	if env and env.sky:
+		env.sky.radiance_size = [Sky.RADIANCE_SIZE_256, Sky.RADIANCE_SIZE_128, Sky.RADIANCE_SIZE_64][perf]
+		env.sky.process_mode = Sky.PROCESS_MODE_REALTIME if perf == 0 else Sky.PROCESS_MODE_INCREMENTAL
 
 
 func set_time(h: float) -> void:

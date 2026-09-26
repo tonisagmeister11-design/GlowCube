@@ -389,6 +389,11 @@ func enter_vehicle(v: Node3D) -> void:
 	weapons.holster()
 	_set_crouch(false)
 	_col.disabled = true
+	# the capsule must never touch the car it sits in: a kinematic body inside a rigid body
+	# produces huge contact impulses (the car would be wrecked on entry at low frame rates)
+	if v is PhysicsBody3D:
+		add_collision_exception_with(v)
+		(v as PhysicsBody3D).add_collision_exception_with(self)
 	var had_driver: Node = v.call("eject_driver", self)
 	if had_driver:
 		Events.vehicle_stolen.emit(v, self)
@@ -416,6 +421,12 @@ func exit_vehicle() -> void:
 	global_position = exit_pos
 	rotation = Vector3(0, v.global_rotation.y, 0)
 	_col.disabled = false
+	if v is PhysicsBody3D:
+		var pv := v as PhysicsBody3D
+		get_tree().create_timer(0.6).timeout.connect(func():
+			if is_instance_valid(pv) and vehicle != pv:
+				remove_collision_exception_with(pv)
+				pv.remove_collision_exception_with(self))
 	state = State.GROUND
 	model.set_mode("ground")
 	model.play_oneshot("exit_vehicle")
@@ -473,7 +484,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact") and _interact_target and state == State.GROUND:
 		_interact_target.call("interact", self)
 	elif event.is_action_pressed("camera_mode") and cam:
-		cam.first_person = not cam.first_person
+		cam.cycle_view()
 	elif event.is_action_pressed("look_behind") and cam:
 		cam.look_behind = true
 	elif event.is_action_released("look_behind") and cam:

@@ -2,7 +2,7 @@
 
 Output: Game/assets/generated/characters/human.glb
   Skeleton (humanoid bones) + meshes:
-    Body_M, Body_F   anatomical bodies built from implicit muscle primitives (see _anatomy.py):
+    Body_M_*, Body_F_*  anatomical bodies (zones Base/Torso/Hips/Arms/Thighs/Shins/Ankles/Feet) built from implicit muscle primitives (see _anatomy.py):
                      pecs/breasts, abdominals, lats, trapezius, deltoids, biceps/triceps, glutes,
                      quads, calves, kneecaps, ankles; hands with five separate fingers
     Head_M, Head_F   cranium, brow ridge, eye sockets, cheekbones, nose (bridge, tip, wings,
@@ -517,10 +517,12 @@ def main():
     trees = {}
     for kind in ("M", "F"):
         me = A.make_body(kind)
-        w = auto_weights(me, BONES)
-        cols = A.skin_colors(me, kind)
-        A.rest_uvs(me)
-        objs.append(mesh_object("Body_" + kind, me, arm, w, "char_skin", per_vertex_colors=cols))
+        # body split into zones along the clothing cut planes; covered zones are hidden in game
+        for zone, zme in A.split_body(me).items():
+            zw = auto_weights(zme, BONES)
+            zcols = A.skin_colors(zme, kind)
+            A.rest_uvs(zme)
+            objs.append(mesh_object(f"Body_{kind}_{zone}", zme, arm, zw, "char_skin", per_vertex_colors=zcols))
         # ------------------------------------------------ clothing cut from the body
         items = list(CLOTHES)
         if kind == "F":

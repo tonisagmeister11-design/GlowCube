@@ -36,7 +36,8 @@ func _ready() -> void:
 	ped_graph = PedGraph.new()
 	ped_graph.load_graph()
 	var q: int = Settings.quality() if Settings else 2
-	target_count = [12, 20, 30, 40][clampi(q, 0, 3)]
+	var pop: float = Settings.population_scale() if Settings else 1.0
+	target_count = int([12, 20, 30, 40][clampi(q, 0, 3)] * pop)
 	Events.gunshot.connect(_on_gunshot)
 	Events.explosion.connect(_on_explosion)
 	Events.npc_killed.connect(_on_npc_killed)

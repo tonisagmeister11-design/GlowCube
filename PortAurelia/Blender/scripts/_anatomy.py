@@ -687,6 +687,59 @@ def make_skirt(kind):
     return me, weights
 
 
+# body zones, hidden by the game when clothing fully covers them (see character_model.gd)
+BODY_ZONES = ["Base", "Neck", "Torso", "Hips", "Arms", "Thighs", "Shins", "Ankles", "Feet"]
+
+
+def _zone(c):
+    x, z = abs(c.x), c.z
+    if x > 0.672:
+        return "Base"                       # hands
+    if z >= 1.49:
+        return "Neck"                       # hidden in first person (camera inside the head)
+    if x > 0.33:
+        return "Arms" if z > 1.2 else "Base"
+    if z >= 1.02:
+        return "Torso"
+    if z >= 0.9:
+        return "Hips"
+    if z >= 0.6:
+        return "Thighs"
+    if z >= 0.28:
+        return "Shins"
+    if z >= 0.13:
+        return "Ankles"
+    return "Feet"
+
+
+def split_body(me):
+    """Cuts the body along the clothing planes and returns {zone: Mesh}."""
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    planes = [((0, 0, z), (0, 0, 1)) for z in (0.13, 0.28, 0.6, 0.9, 1.02, 1.49)]
+    planes += [((x, 0, 0), (1, 0, 0)) for x in (0.33, -0.33, 0.672, -0.672)]
+    for co, no in planes:
+        geom = list(bm.verts) + list(bm.edges) + list(bm.faces)
+        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no, dist=1e-5)
+    out = {}
+    for zone in BODY_ZONES:
+        b2 = bm.copy()
+        dead = [f for f in b2.faces if _zone(f.calc_center_median()) != zone]
+        bmesh.ops.delete(b2, geom=dead, context="FACES")
+        bmesh.ops.delete(b2, geom=[v for v in b2.verts if not v.link_faces], context="VERTS")
+        if len(b2.faces) == 0:
+            b2.free()
+            continue
+        m = bpy.data.meshes.new(me.name + "_" + zone)
+        b2.to_mesh(m)
+        b2.free()
+        for p in m.polygons:
+            p.use_smooth = True
+        out[zone] = m
+    bm.free()
+    return out
+
+
 def rest_uvs(me):
     """UVMap = Godot rest position (x, y), UVMap2.x = rest z: stable detail for the shader."""
     uv = me.uv_layers.new(name="UVMap")

@@ -28,6 +28,7 @@ var _weapon: Label
 var _ammo: Label
 var _stars: Label
 var _crosshair: Control
+var _radar_box: Control
 var _big_title: Label
 var _big_sub: Label
 var _big_timer := 0.0
@@ -110,6 +111,7 @@ func _build() -> void:
 	radar_box.add_theme_constant_override("separation", 4)
 	radar_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(radar_box)
+	_radar_box = radar_box
 	_radar = ColorRect.new()
 	_radar.custom_minimum_size = Vector2(250, 250)
 	_radar_mat = ShaderMaterial.new()
@@ -314,6 +316,8 @@ func _process(delta: float) -> void:
 	if p == null:
 		return
 	_apply_scale()
+	_root.visible = visible_hud and bool(Settings.get_value("gameplay", "show_hud"))
+	_radar_box.visible = bool(Settings.get_value("gameplay", "show_minimap"))
 	# health / armour
 	_hp_bar.max_value = p.health.max_health
 	_hp_bar.value = p.health.health
@@ -380,7 +384,8 @@ func _process(delta: float) -> void:
 	_scope.visible = scoped
 	if scoped:
 		_scope.queue_redraw()
-	_crosshair.visible = not scoped and (p.aiming or (p.is_in_vehicle() and Input.is_action_pressed("aim")))
+	_crosshair.visible = not scoped and bool(Settings.get_value("gameplay", "crosshair")) and (p.aiming \
+		or (p.is_in_vehicle() and Input.is_action_pressed("aim")) or (p.cam and p.cam.first_person and not p.is_in_vehicle()))
 	_crosshair.queue_redraw()
 	# mission countdown
 	var tl: float = world.missions.call("current_time_left") if world.missions else -1.0

@@ -100,6 +100,7 @@ jolt_physics_3d/simulation/max_bodies=20480
 [rendering]
 
 renderer/rendering_method="forward_plus"
+rendering_device/fallback_to_opengl3=true
 textures/canvas_textures/default_texture_filter=1
 textures/default_filters/anisotropic_filtering_level=3
 anti_aliasing/quality/msaa_3d=0

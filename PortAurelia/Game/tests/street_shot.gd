@@ -9,6 +9,8 @@ func _ready() -> void:
 	var a := OS.get_cmdline_user_args()
 	for i in range(0, a.size() - 1, 2):
 		args[a[i].trim_prefix("--")] = a[i + 1]
+	if args.has("perf"):
+		Settings.set_value("graphics", "performance_mode", int(args["perf"]))
 	Game.player_data = PlayerData.new()
 	Game.pending_slot = -2
 	var world: GameWorld = load("res://scenes/world.tscn").instantiate()
@@ -32,7 +34,8 @@ func _ready() -> void:
 	for i in 3:
 		await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png(out.path_join("street_%d.png" % i))
-		print("shot ", i, " peds ", world.peds.call("count") if world.peds else 0, " cars ", world.traffic.drivers.size() if world.traffic else 0,
+		print("shot ", i, " renderer ", RenderingServer.get_current_rendering_method(), " perf ", Settings.perf_mode(),
+			" fps_cap ", Engine.max_fps, " scale ", get_viewport().scaling_3d_scale, " peds ", world.peds.call("count") if world.peds else 0, " cars ", world.traffic.drivers.size() if world.traffic else 0,
 			" draws ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 			" objects ", Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 			" prims ", Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),

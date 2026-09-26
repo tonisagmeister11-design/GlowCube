@@ -21,9 +21,9 @@ func _ready() -> void:
 	add_child(ground)
 	var s: PackedScene = load("res://assets/generated/characters/human.glb")
 	var outfits := {
-		"m": ["Body_M", "Head_M", "Eyes_M", "Brows_M", "Hair_Short", "Top_TShirt_M", "Bottom_Jeans_M", "Shoes_Sneakers_M"],
-		"f": ["Body_F", "Head_F", "Eyes_F", "Brows_F", "Hair_Long", "Top_Jacket_F", "Bottom_Skirt_F", "Shoes_Sneakers_F"],
-		"cop": ["Body_M", "Head_M", "Eyes_M", "Brows_M", "Hair_Buzz", "Top_LongSleeve_M", "Top_Vest_M", "Bottom_Jeans_M", "Shoes_Boots_M", "Hat_Police"],
+		"m": ["Body_M_Base", "Body_M_Neck", "Body_M_Arms", "Head_M", "Eyes_M", "Brows_M", "Hair_Short", "Top_TShirt_M", "Bottom_Jeans_M", "Shoes_Sneakers_M"],
+		"f": ["Body_F_Base", "Body_F_Neck", "Body_F_Thighs", "Body_F_Shins", "Body_F_Ankles", "Head_F", "Eyes_F", "Brows_F", "Hair_Long", "Top_Jacket_F", "Bottom_Skirt_F", "Shoes_Sneakers_F"],
+		"cop": ["Body_M_Base", "Body_M_Neck", "Head_M", "Eyes_M", "Brows_M", "Hair_Buzz", "Top_LongSleeve_M", "Top_Vest_M", "Bottom_Jeans_M", "Shoes_Boots_M", "Hat_Police"],
 	}
 	var tints := {"Top_TShirt_M": Color(0.95, 0.95, 0.93), "Bottom_Jeans_M": Color(0.2, 0.3, 0.5), "Hair_Short": Color(0.12, 0.08, 0.05),
 		"Top_Jacket_F": Color(0.7, 0.2, 0.25), "Bottom_Skirt_F": Color(0.15, 0.15, 0.18), "Hair_Long": Color(0.45, 0.28, 0.12),
@@ -42,8 +42,11 @@ func _ready() -> void:
 		inst.rotation.y = deg_to_rad(float(args.get("yaw", "0")))
 		for mi in inst.find_children("*", "MeshInstance3D", true, false):
 			mi.visible = String(mi.name) in outfits[keys[i]]
-			if tints.has(String(mi.name)):
-				mi.set_instance_shader_parameter("tint", tints[String(mi.name)])
+			var tk := String(mi.name)
+			if tk.begins_with("Body_"):
+				tk = tk.substr(0, 6)
+			if tints.has(tk):
+				mi.set_instance_shader_parameter("tint", tints[tk])
 		var ap: AnimationPlayer = inst.find_children("*", "AnimationPlayer", true, false)[0]
 		var an: String = anims[min(i, anims.size() - 1)]
 		ap.play(an)

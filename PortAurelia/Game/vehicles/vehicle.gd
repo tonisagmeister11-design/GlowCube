@@ -423,6 +423,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var total_imp := 0.0
 		var imp_pos := Vector3.ZERO
 		for i in state.get_contact_count():
+			if state.get_contact_collider_object(i) == driver:
+				continue
 			var imp := state.get_contact_impulse(i).length()
 			if imp > total_imp:
 				total_imp = imp
@@ -587,6 +589,14 @@ func honk(duration := 0.6) -> void:
 
 
 # ------------------------------------------------------------------ occupants
+## Local camera position for the hood (view 2) and cockpit / first-person (view 3) cameras.
+func camera_eye(view: int) -> Vector3:
+	var seat: Array = meta.get("seat", [-0.4, 0.5, 0.0])
+	if view == 3:
+		return Vector3(float(seat[0]), float(seat[1]) + 0.68, float(seat[2]) - 0.02)
+	return Vector3(0.0, float(meta.get("hood", 1.0)) + 0.4, -float(meta.get("length", 4.5)) * 0.16)
+
+
 func driver_seat_transform() -> Transform3D:
 	var s: Array = meta.get("seat", [-0.4, 0.5, 0.0])
 	return Transform3D(Basis.IDENTITY, Vector3(s[0], float(s[1]) - 0.4, s[2]))

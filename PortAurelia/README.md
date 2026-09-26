@@ -95,9 +95,9 @@ All scripts run with the bpy venv (`Tools/Blender/venv/bin/python`) or `blender 
 | `generate_buildings.py` / `generate_towers.py` | styled buildings, skyscrapers, all landmarks |
 | `generate_vegetation.py`, `generate_lights.py`, `generate_props.py` | trees, lamps, traffic lights, street furniture |
 | `build_asset_library.py` | props library GLB + metadata for MultiMesh placement |
-| `generate_vehicles.py` | 16 vehicles with separate wheels, lights, bumpers, glass, siren |
-| `generate_weapons.py` | 8 weapons + muzzle metadata |
-| `generate_characters.py` | rigged humans (2 body types), 30+ outfit meshes, 34 animations |
+| `generate_vehicles.py` + `_carbody.py` | 16 vehicles: high-res lofted bodies (flared arches, crease, raked nose), shader-drawn panel gaps, flush projected lamps/grilles/plates, alloy wheels, full interiors, detachable bumpers |
+| `generate_weapons.py` + `_shapes.py` | 8 high-detail weapons (~34k tris) with chamfered edges, edge-wear/AO vertex colours, muzzle metadata |
+| `generate_characters.py` + `_anatomy.py` | anatomical humans from implicit muscle primitives (2 body types, hands with fingers, detailed faces, eyelids, iris), body zones hidden under clothing, 30+ outfit meshes, 34 animations |
 | `generate_interiors.py` | safehouse, store, gun shop (shooting range), bank |
 | `setup_materials.py` | material names/previews · CLI: validates every GLB material has a Godot material |
 | `setup_uvs.py` | UV conventions · CLI: validates UV0/UV2 against the shaders |
@@ -110,7 +110,7 @@ Godot side: `tools/import/scene_post_import.gd` replaces materials by name with
 into static bodies tagged with their surface (footsteps, tyre grip).
 
 Other generators: `Tools/Textures/generate_textures.py` (PBR-ish tiling textures),
-`Tools/Materials/build_materials.py` (83 shader materials), `Tools/Audio/generate_sfx.py`
+`Tools/Materials/build_materials.py` (94 shader materials), `Tools/Audio/generate_sfx.py`
 (83 sound effects, no music), `Tools/Map/render_map.py` (map/radar texture).
 
 ## 5. Controls
@@ -128,6 +128,24 @@ Other generators: `Tools/Textures/generate_textures.py` (PBR-ish tiling textures
 | Drive | W/S, A/D, Space handbrake, H horn, L lights, G siren | RT/LT, left stick, RB, left stick click, D-pad right |
 | Quick save | F5 | – |
 
+### Camera
+
+`V` (controller: Back) cycles the camera: on foot third person ↔ first person, in vehicles
+chase near → chase far → hood → cockpit (first person). Defaults, distance, height, FOV, shake,
+auto-centring, head bob, crosshair, minimap and HUD are in **Einstellungen → Kamera**.
+
+### Performance mode (Einstellungen → Grafik → Leistungsmodus)
+
+| Mode | What it does |
+|---|---|
+| Aus | full Forward+ graphics according to the individual settings |
+| Ausgewogen | 80 % 3D resolution with FSR, quality/effects capped at medium, simple shadows, smaller sky reflections, ~80 % pedestrians/traffic |
+| Maximal | for weak laptops: **OpenGL (Compatibility) renderer** after a restart, 60 % 3D resolution, no shadows/SSAO/SSR/glow, near view distance, aggressive LODs, no skin/cloth micro detail, ~55 % pedestrians/traffic, reduced explosion detail, 30 FPS cap (saves power) |
+
+The renderer can also be chosen manually (Forward+, Mobile, Compatibility). Exported builds
+store the choice in `override.cfg` next to `StartGame.exe`; Godot applies it at start-up. If
+Vulkan is unavailable the game falls back to OpenGL automatically.
+
 ## 6. Debug controls (development build only)
 
 F1 overlay (FPS, position, chunk, AI counts) · F2 spawn vehicle · F3 spawn pedestrian ·
@@ -144,8 +162,9 @@ for t in gameplay traffic ped police economy mission interior flow; do
   $G --headless --path Game res://tests/${t}_test.tscn; done
 ```
 
-Screenshot scenes (need a GPU or `xvfb-run` + Vulkan): `street_shot`, `ui_shots`,
-`interior_shots`, `character_viewer`, `vehicle_viewer`, `world_viewer`.
+Screenshot scenes (need a GPU or `xvfb-run` + Vulkan): `street_shot` (`--perf 0..2`), `ui_shots`,
+`interior_shots`, `character_viewer`, `vehicle_viewer` (`--closeup id,id`), `weapon_viewer`,
+`explosion_shots`, `demo_shots` (`--views 1`: hood, cockpit and first-person shots), `world_viewer`.
 
 ## 8. Release build
 
