@@ -233,7 +233,7 @@ func _write_renderer_override() -> void:
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		return
-	f.store_string("; written by Port Aurelia (Einstellungen > Grafik > Renderer)\n[rendering]\n\n" +
+	f.store_string("; written by Harbor Heat (Einstellungen > Grafik > Renderer)\n[rendering]\n\n" +
 		"renderer/rendering_method=\"%s\"\nrenderer/rendering_method.mobile=\"%s\"\n" % [want, want])
 	f.close()
 

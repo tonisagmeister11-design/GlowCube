@@ -1,5 +1,5 @@
 extends Control
-## Game logo drawn in code: "PORT AURELIA" with a sun emblem and wave underline.
+## Game logo drawn in code: "HARBOR HEAT" with a sun emblem and wave underline.
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -14,11 +14,11 @@ func _draw() -> void:
 		var y := 70.0 + i * 8.0
 		draw_line(Vector2(c.x - 60 + i * 6, y), Vector2(c.x + 60 - i * 6, y), Color(0.1, 0.12, 0.3, 0.85), 4.0)
 	var font := ThemeDB.fallback_font
-	var title := "PORT AURELIA"
+	var title := "HARBOR HEAT"
 	var fs := 64
 	var tw := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	draw_string(font, Vector2((w - tw) * 0.5 + 3, 168 + 3), title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(0, 0, 0, 0.5))
 	draw_string(font, Vector2((w - tw) * 0.5, 168), title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1))
-	var sub := "O P E N   C I T Y"
+	var sub := "P O R T   A U R E L I A"
 	var sw := font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
 	draw_string(font, Vector2((w - sw) * 0.5, 198), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(1.0, 0.75, 0.45))

@@ -6,7 +6,7 @@
 Output (Export/Release/MyOpenWorldGame and Export/Development/MyOpenWorldGame):
     StartGame.exe            Windows x86_64 executable with the embedded core pack
                              (code, UI, shaders, materials)
-    Game/PortAurelia.pck     characters, vehicles, weapons, props, interiors, textures, sounds
+    Game/HarborHeat.pck     characters, vehicles, weapons, props, interiors, textures, sounds
     Assets/City.pck          streamed city chunks, far city, map, city data
     Audio/Music/             put your own .ogg/.mp3/.wav here (no music ships with the game)
     Saves/  Config/          created/used at runtime (portable)
@@ -39,8 +39,9 @@ GAME_INCLUDE = ("Audio/SFX/manifest.json,assets/generated/characters/*.json,asse
                 "assets/generated/weapons/*.json,assets/generated/props/*.json,assets/generated/interiors/*.json")
 RESOURCE_EXT = (".glb", ".png", ".wav", ".ogg", ".tres", ".res", ".gdshader")
 
-PLAYER_README = """PORT AURELIA
-============
+PLAYER_README = """HARBOR HEAT
+===========
+Open-World-Action in der Küstenmetropole Port Aurelia.
 
 Starten:   StartGame.exe doppelklicken. Es muss nichts installiert werden.
 
@@ -122,8 +123,8 @@ def win_options(debug, embed=True):
         "binary_format/architecture": "x86_64", "codesign/enable": False, "application/modify_resources": False,
         "application/icon": "res://assets/ui/icon.png", "application/icon_interpolation": 4,
         "application/file_version": VERSION + ".0", "application/product_version": VERSION + ".0",
-        "application/company_name": "Port Aurelia", "application/product_name": "Port Aurelia",
-        "application/file_description": "Port Aurelia", "application/copyright": "",
+        "application/company_name": "Harbor Heat", "application/product_name": "Harbor Heat",
+        "application/file_description": "Harbor Heat", "application/copyright": "",
         "application/trademarks": "", "application/export_angle": 0, "application/export_d3d12": 0,
         "application/d3d12_agility_sdk_multiarch": True, "ssh_remote_deploy/enabled": False,
     }
@@ -181,7 +182,7 @@ def build(kind, packs_dir):
     folder_layout(dst)
     preset_name = "Windows Release" if kind == "Release" else "Windows Development"
     godot("--export-release" if kind == "Release" else "--export-debug", preset_name, os.path.join(dst, "StartGame.exe"))
-    shutil.copy(os.path.join(packs_dir, "PortAurelia.pck"), os.path.join(dst, "Game", "PortAurelia.pck"))
+    shutil.copy(os.path.join(packs_dir, "HarborHeat.pck"), os.path.join(dst, "Game", "HarborHeat.pck"))
     shutil.copy(os.path.join(packs_dir, "City.pck"), os.path.join(dst, "Assets", "City.pck"))
     size = sum(os.path.getsize(os.path.join(dp, f)) for dp, _d, fn in os.walk(dst) for f in fn)
     print(f"[export] {kind}: {dst} ({size / 1e6:.0f} MB)")
@@ -207,7 +208,7 @@ def smoke(packs_dir):
         shutil.rmtree(dst)
     folder_layout(dst)
     godot("--export-debug", "Linux Smoke", os.path.join(dst, "StartGame.x86_64"))
-    shutil.copy(os.path.join(packs_dir, "PortAurelia.pck"), os.path.join(dst, "Game", "PortAurelia.pck"))
+    shutil.copy(os.path.join(packs_dir, "HarborHeat.pck"), os.path.join(dst, "Game", "HarborHeat.pck"))
     shutil.copy(os.path.join(packs_dir, "City.pck"), os.path.join(dst, "Assets", "City.pck"))
     exe = os.path.join(dst, "StartGame.x86_64")
     os.chmod(exe, 0o755)
@@ -229,7 +230,7 @@ def main():
     write_presets()
     packs = os.path.join(EXPORT, "packs")
     os.makedirs(packs, exist_ok=True)
-    godot("--export-pack", "Game Data", os.path.join(packs, "PortAurelia.pck"))
+    godot("--export-pack", "Game Data", os.path.join(packs, "HarborHeat.pck"))
     godot("--export-pack", "City Data", os.path.join(packs, "City.pck"))
     ok = True
     if all_ or "--smoke" in args:

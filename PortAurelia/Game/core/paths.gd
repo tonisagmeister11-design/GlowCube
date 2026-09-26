@@ -15,9 +15,9 @@ var portable := false
 var mounted_packs: Array = []
 
 ## Data packs of the release layout, mounted before anything else is loaded:
-##   Game/PortAurelia.pck  characters, vehicles, weapons, props, interiors, textures, sounds
+##   Game/HarborHeat.pck   characters, vehicles, weapons, props, interiors, textures, sounds
 ##   Assets/City.pck       city chunks, far city, map, city data
-const PACKS := ["Game/PortAurelia.pck", "Assets/City.pck"]
+const PACKS := ["Game/HarborHeat.pck", "Assets/City.pck"]
 
 
 func _enter_tree() -> void:

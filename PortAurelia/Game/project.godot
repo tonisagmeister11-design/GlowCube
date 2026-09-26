@@ -1,12 +1,12 @@
 ; Engine configuration file.
-; Port Aurelia - open world action game (Godot 4.4)
+; Harbor Heat - open world action game (Godot 4.4)
 
 config_version=5
 
 [application]
 
-config/name="Port Aurelia"
-config/description="Open world action game set in the coastal metropolis of Port Aurelia."
+config/name="Harbor Heat"
+config/description="Harbor Heat - open world action game set in the coastal metropolis of Port Aurelia."
 config/version="0.9.0"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.4", "Forward Plus")
@@ -14,7 +14,7 @@ config/icon="res://assets/ui/icon.png"
 boot_splash/bg_color=Color(0.03, 0.04, 0.06, 1)
 boot_splash/show_image=false
 config/use_custom_user_dir=true
-config/custom_user_dir_name="PortAurelia"
+config/custom_user_dir_name="HarborHeat"
 
 [audio]
 

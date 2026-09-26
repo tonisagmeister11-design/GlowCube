@@ -45,7 +45,7 @@ func _ready() -> void:
 	_button("EINSTELLUNGEN", _settings)
 	_button("BEENDEN", func(): Game.quit())
 	var ver := Label.new()
-	ver.text = "Port Aurelia · v%s · Eigene Stadt, eigene Figuren, eigene Fahrzeuge" % ProjectSettings.get_setting("application/config/version", "1.0")
+	ver.text = "Harbor Heat · v%s · Eigene Stadt, eigene Figuren, eigene Fahrzeuge" % ProjectSettings.get_setting("application/config/version", "1.0")
 	ver.anchor_top = 1.0
 	ver.anchor_bottom = 1.0
 	ver.offset_top = -40

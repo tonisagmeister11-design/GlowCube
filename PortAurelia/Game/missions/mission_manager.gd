@@ -164,7 +164,7 @@ func _on_finished(ok: bool, m: Mission) -> void:
 		AudioManager.play_ui("mission_passed")
 		if is_story and next_story().is_empty():
 			get_tree().create_timer(5.0).timeout.connect(func():
-				Events.big_message.emit("PORT AURELIA", "Story abgeschlossen – die Stadt gehört dir.", 6.0))
+				Events.big_message.emit("HARBOR HEAT", "Story abgeschlossen – die Stadt gehört dir.", 6.0))
 		get_tree().create_timer(4.5).timeout.connect(func(): SaveManager.autosave())
 	else:
 		AudioManager.play_ui("mission_failed")

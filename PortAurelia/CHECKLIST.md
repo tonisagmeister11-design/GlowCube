@@ -1,4 +1,4 @@
-# Port Aurelia – internal checklist
+# Harbor Heat – internal checklist
 
 Status of the specification against the implementation. "Test" names refer to
 `Game/tests/*_test.tscn` (headless, PASS/FAIL output); "Shot" to rendered screenshot scenes.
