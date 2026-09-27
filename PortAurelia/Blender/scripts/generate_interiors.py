@@ -350,24 +350,24 @@ def tech():
 
 def diner():
     """Diner: booths along the wall, long counter with stools, checkered floor strip."""
-    r = Room("diner", 14.0, 12.0, 3.2, floor_mat="interior_floor", floor_col=(0.95, 0.95, 0.93, 1),
-             wall_col=(0.95, 0.9, 0.82, 1))
+    r = Room("diner", 14.0, 12.0, 3.4, floor_mat="interior_floor", floor_col=(0.9, 0.9, 0.88, 1),
+             wall_col=(0.9, 0.84, 0.74, 1))
     red = (0.75, 0.08, 0.08, 1)
     for i in range(4):
         z = -2.2 - i * 2.4
-        box(r.mb, (-5.9, 0.4, z - 0.75), (1.6, 0.8, 0.4), "leather", col=red)          # bench
-        box(r.mb, (-5.9, 0.4, z + 0.75), (1.6, 0.8, 0.4), "leather", col=red)
+        box(r.mb, (-5.9, 0.4, z - 0.75), (1.6, 0.8, 0.4), "fabric", col=red)          # bench
+        box(r.mb, (-5.9, 0.4, z + 0.75), (1.6, 0.8, 0.4), "fabric", col=red)
         box(r.mb, (-5.9, 0.75, z), (1.2, 0.05, 0.9), "metal", col=(0.9, 0.9, 0.9, 1))  # table top
-        cylinder(r.mb, (-5.9, 0, z), 0.05, 0.75, "chrome", segs=8)
+        cylinder(r.mb, (-5.9, 0, z), 0.05, 0.75, "metal", segs=8)
         r.collide("wood", (-5.9, 0.4, z), (1.6, 0.8, 2.0))
     # counter across the back with stools
     counter(r, 1.5, -9.0, 8.0, col=(0.75, 0.08, 0.08, 1))
     for i in range(7):
         x = -2.0 + i * 1.1
-        cylinder(r.mb, (x, 0, -8.1), 0.04, 0.7, "chrome", segs=8)
-        cylinder(r.mb, (x, 0.7, -8.1), 0.2, 0.06, "leather", segs=12, col=red)
+        cylinder(r.mb, (x, 0, -8.1), 0.04, 0.7, "metal", segs=8)
+        cylinder(r.mb, (x, 0.7, -8.1), 0.2, 0.06, "fabric", segs=12, col=red)
     box(r.mb, (1.5, 1.6, -11.8), (7.0, 0.8, 0.3), "metal", col=(0.85, 0.85, 0.85, 1))    # kitchen hatch
-    box(r.mb, (0, 2.8, -0.3), (5.0, 0.5, 0.05), "sign_emissive", col=(0.2, 0.8, 1.0, 1))
+    box(r.mb, (0, 3.0, -0.3), (5.0, 0.5, 0.05), "sign_emissive", col=(0.2, 0.8, 1.0, 1))
     for x in (-4.5, 0.0, 4.5):
         for z in (-2.5, -6.0, -9.5):
             r.ceiling_light(x, z, energy=1.4, color=(1.0, 0.92, 0.8))
