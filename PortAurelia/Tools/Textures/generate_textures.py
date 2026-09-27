@@ -111,63 +111,103 @@ def save_pbr(name, col, rough, height, strength):
 
 
 # ---------------------------------------------------------------- materials
+def cracks(S, period, seed, width=0.012):
+    """Thin branching crack lines from ridged noise (1 on the crack)."""
+    r = 1.0 - np.abs(fbm(S, period, 5, seed) * 2.0 - 1.0)
+    return np.clip((r - (1.0 - width)) / width, 0.0, 1.0)
+
+
 def asphalt(S=1024):
+    """Worn road asphalt: bitumen with mixed-tone aggregate, polished stones, fine cracks,
+    darker tar sealing lines, patches and oil stains."""
     n1 = fbm(S, 8, 6, 1)
     grain = white(S, 2)
-    speck = (white(S, 3) > 0.985).astype(float)
-    stones = blur((white(S, 4) > 0.93).astype(float), 1)
-    h = n1 * 0.3 + grain * 0.25 + stones * 0.6
-    base = 0.17 + n1 * 0.06 + grain * 0.05 - stones * 0.03 + speck * 0.18
+    # aggregate: stones of three sizes and tones (some bright quartz, some dark basalt)
+    big = blur((white(S, 4) > 0.955).astype(float), 2)
+    mid = blur((white(S, 5) > 0.93).astype(float), 1)
+    tone = white(S, 6)
+    stones = np.clip(big * 1.6 + mid, 0, 1)
+    speck = (white(S, 3) > 0.988).astype(float)
+    crack = cracks(S, 6, 7, 0.012) * np.clip((fbm(S, 2, 3, 8) - 0.5) * 3, 0, 1)
+    seal = cracks(S, 3, 9, 0.02) * np.clip((fbm(S, 2, 3, 10) - 0.6) * 3, 0, 1)
+    patch = np.clip((fbm(S, 2, 4, 11) - 0.66) * 5, 0, 1)
+    oil = np.clip((fbm(S, 4, 4, 12) - 0.66) * 6, 0, 1)
+    h = n1 * 0.25 + grain * 0.2 + stones * 0.55 - crack * 0.7 + seal * 0.15 - patch * 0.1
+    base = 0.16 + n1 * 0.05 + grain * 0.045 + speck * 0.16
+    base = base + stones * (tone - 0.45) * 0.14
     stain = fbm(S, 4, 4, 5)
-    base = base * (0.85 + 0.3 * stain)
-    col = np.stack([base, base, base * 1.04], -1)
-    rough = 0.82 + grain * 0.12 - stain * 0.08
-    save_pbr("asphalt", col, rough, h, 3.0)
-
+    base = base * (0.86 + 0.28 * stain)
+    base = base * (1 - crack * 0.35) * (1 - seal * 0.25) * (1 - patch * 0.12) * (1 - oil * 0.25)
+    col = np.stack([base, base * 0.995, base * 1.03], -1)
+    rough = 0.84 + grain * 0.1 - stain * 0.08 - stones * 0.12 - seal * 0.25 - oil * 0.3
+    save_pbr("asphalt", col, rough, h, 3.4)
 
 def concrete(S=1024):
+    """Cast concrete: fine aggregate, air pores, cloudy tone variation and water stains."""
     n = fbm(S, 4, 7, 11)
     g = white(S, 12)
+    agg = blur((white(S, 14) > 0.96).astype(float), 1)
     pores = (white(S, 13) > 0.992).astype(float)
-    h = n * 0.5 + g * 0.1 - pores * 0.5
-    v = 0.58 + (n - 0.5) * 0.18 + g * 0.04 - pores * 0.2
-    col = np.stack([v, v * 0.99, v * 0.96], -1)
-    rough = 0.85 + g * 0.1
-    save_pbr("concrete", col, rough, h, 2.0)
-
+    y = np.mgrid[0:S, 0:S][0] / S
+    streak = blur(np.repeat(fbm(S, 16, 3, 15)[:1, :], S, 0), 1) * (0.6 + 0.4 * fbm(S, 2, 3, 16))
+    blot = fbm(S, 2, 4, 17)
+    h = n * 0.45 + g * 0.1 + agg * 0.15 - pores * 0.5
+    v = 0.58 + (n - 0.5) * 0.16 + g * 0.035 + (agg - 0.2) * 0.04 - pores * 0.2 + (blot - 0.5) * 0.08
+    v = v - np.clip(streak - 0.55, 0, 1) * 0.08
+    col = np.stack([v, v * 0.99, v * 0.955], -1)
+    rough = 0.84 + g * 0.1 - agg * 0.05
+    save_pbr("concrete", col, rough, h, 2.2)
 
 def pavers(S=1024, tiles=8):
-    """Sidewalk slabs: tiles x tiles squares per texture (1 texture = 4 m -> 50 cm slabs)."""
+    """Sidewalk slabs: tiles x tiles squares per texture (1 texture = 4 m -> 50 cm slabs).
+    Bevelled edges, per-slab tone, dirt in the joints, a few cracked or stained slabs."""
     y, x = np.mgrid[0:S, 0:S] / S * tiles
-    fx = x - np.floor(x)
-    fy = y - np.floor(y)
-    gap = 0.035
+    ix, iy = np.floor(x), np.floor(y)
+    fx = x - ix
+    fy = y - iy
+    gap = 0.03
     edge = np.minimum(np.minimum(fx, 1 - fx), np.minimum(fy, 1 - fy))
     joint = np.clip(edge / gap, 0, 1)
-    tile_id = (np.floor(x) * 7 + np.floor(y) * 13).astype(int)
-    tint = (np.sin(tile_id * 12.9898) * 43758.5453) % 1.0
+    bevel = np.clip(edge / (gap * 2.6), 0, 1) ** 0.6
+    tile_id = (ix * 7 + iy * 13).astype(int)
+    rnd = lambda k: (np.sin(tile_id * 12.9898 + k * 78.233) * 43758.5453) % 1.0  # noqa: E731
+    tint = rnd(1)
+    warm = rnd(2)
+    cracked = rnd(3) > 0.95
+    stained = rnd(4) > 0.8
     n = fbm(S, 8, 6, 21)
     g = white(S, 22)
-    h = joint * 0.6 + n * 0.25 + g * 0.05
-    v = (0.62 + tint * 0.08 + (n - 0.5) * 0.1) * (0.55 + 0.45 * joint)
-    col = np.stack([v * 1.0, v * 0.97, v * 0.93], -1)
-    rough = 0.78 + g * 0.1 + (1 - joint) * 0.1
+    agg = blur(blur((white(S, 23) > 0.9).astype(float), 1), 1)
+    crk = cracks(S, 4, 24, 0.012) * cracked
+    stain = np.clip((fbm(S, 8, 4, 25) - 0.5) * 3, 0, 1) * stained
+    gum = blur((white(S, 26) > 0.99997).astype(float), 2) > 0.05
+    h = bevel * 0.55 + n * 0.2 + g * 0.05 + agg * 0.08 - crk * 0.4
+    v = (0.6 + tint * 0.1 + (n - 0.5) * 0.09 + (agg - 0.2) * 0.02) * (0.45 + 0.55 * joint)
+    v = v * (1 - crk * 0.22) * (1 - stain * 0.22) * (1 - gum * 0.35)
+    col = np.stack([v * (1.0 + warm * 0.03), v * 0.97, v * (0.94 - warm * 0.03)], -1)
+    rough = 0.76 + g * 0.1 + (1 - joint) * 0.12 - stain * 0.1
     save_pbr("pavers", col, rough, h, 4.0)
 
-
 def grass(S=1024):
+    """Lawn: blade clumps in several greens, clover patches, dry spots and bare soil."""
     n = fbm(S, 4, 6, 31)
     n2 = fbm(S, 16, 5, 32)
     g = white(S, 33)
     blades = blur(g, 1)
-    h = blades * 0.5 + n2 * 0.4
-    col = colorize(n, (0.22, 0.34, 0.10), (0.36, 0.44, 0.16))
-    col = col * (0.8 + 0.35 * blades[..., None])
+    fine = white(S, 35)
+    clumps = fbm(S, 32, 3, 36)
+    clover = np.clip((fbm(S, 8, 4, 37) - 0.62) * 6, 0, 1) * blur((white(S, 38) > 0.6).astype(float), 2)
+    soil = np.clip((fbm(S, 4, 5, 39) - 0.72) * 7, 0, 1)
+    h = blades * 0.45 + n2 * 0.35 + clumps * 0.25 - soil * 0.3 + clover * 0.15
+    col = colorize(n, (0.2, 0.33, 0.09), (0.35, 0.45, 0.15))
+    col = col * (0.6 + 0.65 * blades[..., None]) * (0.85 + 0.3 * clumps[..., None])
+    col = col + (fine[..., None] > 0.985) * np.array([0.12, 0.14, 0.04])       # sunlit blade tips
+    col = col * (1 - clover[..., None] * 0.3) + np.array([0.16, 0.34, 0.12]) * clover[..., None] * 0.3
     dry = np.clip((fbm(S, 2, 3, 34) - 0.55) * 3, 0, 1)[..., None]
-    col = col * (1 - dry * 0.6) + np.array([0.46, 0.42, 0.24]) * dry * 0.6
-    rough = 0.92 - g * 0.05
-    save_pbr("grass", col, rough, h, 3.0)
-
+    col = col * (1 - dry * 0.55) + np.array([0.48, 0.43, 0.24]) * dry * 0.55
+    col = col * (1 - soil[..., None] * 0.7) + np.array([0.3, 0.24, 0.16]) * soil[..., None] * 0.7
+    rough = 0.9 - g * 0.06 + soil * 0.05
+    save_pbr("grass", col, rough, h, 3.2)
 
 def sand(S=1024):
     n = fbm(S, 4, 7, 41)
@@ -200,38 +240,51 @@ def rock(S=1024):
 
 
 def brick(S=1024, rows=16, cols=8):
-    """Running bond brick: 1 texture = 2 m wide x 1 m high at default scale."""
+    """Running bond brick: 1 texture = 2 m wide x 1 m high at default scale. Every brick has its
+    own tone and texture, rounded arrises, recessed sandy mortar, some dark clinkers and a
+    little white efflorescence."""
     y, x = np.mgrid[0:S, 0:S] / S
     ry = y * rows
     row = np.floor(ry)
     rx = x * cols + (row % 2) * 0.5
     fx = rx - np.floor(rx)
     fy = ry - row
-    mortar = 0.06
+    mortar = 0.055
     e = np.minimum(np.minimum(fx, 1 - fx) * 2.2, np.minimum(fy, 1 - fy))
     jm = np.clip(e / mortar, 0, 1)
+    round_ = np.clip(e / (mortar * 2.2), 0, 1) ** 0.5
     bid = (np.floor(rx) * 17 + row * 31).astype(int)
-    tint = (np.sin(bid * 78.233) * 43758.5453) % 1.0
+    rnd = lambda k: (np.sin(bid * 78.233 + k * 12.9898) * 43758.5453) % 1.0  # noqa: E731
+    tint = rnd(1)
+    clinker = (rnd(2) > 0.93)[..., None]
     n = fbm(S, 16, 5, 71)
     g = white(S, 72)
-    h = jm * 0.7 + n * 0.2 + g * 0.08
-    base = colorize(tint, (0.50, 0.22, 0.15), (0.70, 0.36, 0.24)) * (0.85 + 0.25 * n[..., None])
-    mort = np.array([0.72, 0.70, 0.66])
+    pits = blur((white(S, 73) > 0.985).astype(float), 1)
+    eff = np.clip((fbm(S, 4, 4, 74) - 0.62) * 4, 0, 1)
+    msand = white(S, 75)
+    h = round_ * 0.65 + n * 0.18 + g * 0.07 - pits * 0.2 + (1 - jm) * msand * 0.08
+    base = colorize(tint, (0.48, 0.2, 0.13), (0.72, 0.38, 0.25)) * (0.82 + 0.28 * n[..., None])
+    base = base * (1 - pits[..., None] * 0.25)
+    base = base * (1 - clinker * 0.45) + clinker * np.array([0.16, 0.1, 0.08]) * 0.45
+    mort = np.array([0.7, 0.68, 0.63])[None, None, :] * (0.85 + 0.25 * msand[..., None])
     col = base * jm[..., None] + mort * (1 - jm[..., None])
-    rough = 0.85 + g * 0.1
+    col = col * (1 - eff[..., None] * 0.25) + np.array([0.85, 0.84, 0.8]) * eff[..., None] * 0.25
+    rough = 0.84 + g * 0.1 + (1 - jm) * 0.04
     save_pbr("brick", col, rough, h, 5.0)
 
-
 def plaster(S=1024):
+    """Render / stucco: sandy grain, soft trowel swirls, water streaks running down from the top."""
     n = fbm(S, 8, 7, 81)
     g = white(S, 82)
-    h = n * 0.5 + g * 0.2
-    v = 0.86 + (n - 0.5) * 0.08 + g * 0.03
+    sand_ = blur(white(S, 84), 1)
+    swirl = fbm(S, 16, 3, 85)
+    streak = blur(np.repeat(fbm(S, 32, 3, 86)[:1, :], S, 0), 1) * fbm(S, 2, 3, 87)
+    h = n * 0.35 + sand_ * 0.35 + swirl * 0.2
+    v = 0.86 + (n - 0.5) * 0.07 + (sand_ - 0.5) * 0.05 + (swirl - 0.5) * 0.03
     grime = np.clip((fbm(S, 2, 4, 83) - 0.5) * 2, 0, 1)
-    v = v - grime * 0.08
-    col = np.stack([v, v, v], -1)
-    save_pbr("plaster", col, 0.9 - g * 0.05, h, 1.5)
-
+    v = v - grime * 0.08 - np.clip(streak - 0.4, 0, 1) * 0.04
+    col = np.stack([v, v * 0.995, v * 0.985], -1)
+    save_pbr("plaster", col, 0.9 - g * 0.05, h, 1.8)
 
 def metal_siding(S=1024, ribs=16):
     y, x = np.mgrid[0:S, 0:S] / S
@@ -479,6 +532,12 @@ def main():
         OUT = sys.argv[1]
     os.makedirs(OUT, exist_ok=True)
     print("textures ->", OUT)
+    try:  # car decal atlas needs Pillow for text (the Blender venv has it)
+        sys.path.insert(0, HERE)
+        import generate_decals
+        generate_decals.build(OUT)
+    except ImportError as ex:
+        print("  ! car decals skipped:", ex)
     asphalt()
     concrete()
     pavers()

@@ -10,7 +10,7 @@ LOD0 = full detail, LOD1 = volumes + roofs only, FAR = one prism.
 """
 import math
 
-from _common import G, box, cylinder, prism, cap_polygon, sweep
+from _common import G, MeshBuilder, box, cylinder, prism, cap_polygon, sweep
 
 SHOP_NAMES = ["CORA", "Nova Deli", "Sol & Sal", "Brightline", "Kiko", "Maison 9", "Luma", "Harbor Books",
               "Pixelhaus", "Tidewater", "Café Alba", "Urban Rack", "Marlo", "Seaside Optics", "Fresco",
@@ -27,6 +27,9 @@ class BuildingContext:
         self.col = col_building   # collision
         self.rng = rng
         self.signs = []           # (text, pos, rot_y, size, color) for 3D text pass
+        self.relief = MeshBuilder()   # 3D facade relief (frames, sills, fins, balconies) - LOD0 only
+        self.balcony_cols = {}    # (side start, side end) -> columns carrying balconies (no sill there)
+        lod0.relief_ctx = self    # facade_walls on the LOD0 builder adds the matching relief
 
 
 def seed_col(spec, tint=None):
@@ -51,6 +54,185 @@ def facade_walls(mb, poly, y0, y1, mat, col, floor_h, skip_side=None):
         out = G.left(e)
         mb.face([(a[0], y0, a[1]), (b[0], y0, b[1]), (b[0], y1, b[1]), (a[0], y1, a[1])],
                 [(0.0, y0), (l, y0), (l, y1), (0.0, y1)], mat, col, up=(out[0], 0, out[1]), uv2=(l, floor_h))
+        rc = getattr(mb, "relief_ctx", None)
+        if rc is not None:
+            facade_relief(rc, a, b, y0, y1, mat, col, floor_h)
+
+
+# ====================================================================== 3D facade relief
+# Window grid of every facade material, mirrored from the facade shader / material library:
+# style, spacing, width (fraction of the pitch), height and sill (fractions of the floor height).
+FACADE_WIN = {
+    "facade_stone": (0, 2.6, 0.45, 0.58, 0.28), "facade_brick_red": (0, 2.8, 0.42, 0.55, 0.28),
+    "facade_brick_brown": (0, 2.8, 0.42, 0.55, 0.28), "facade_plaster": (0, 3.0, 0.45, 0.52, 0.28),
+    "facade_stucco_white": (4, 3.2, 0.5, 0.48, 0.28), "facade_wood_siding": (4, 3.0, 0.42, 0.5, 0.28),
+    "facade_concrete_panel": (1, 3.0, 1.0, 0.46, 0.36), "facade_glass_blue": (2, 1.6, 0.96, 0.8, 0.1),
+    "facade_glass_green": (2, 1.6, 0.96, 0.8, 0.1), "facade_glass_silver": (2, 1.5, 0.96, 0.8, 0.1),
+    "facade_glass_bronze": (2, 1.6, 0.96, 0.8, 0.1), "facade_glass_dark": (2, 1.8, 0.96, 0.8, 0.1),
+}
+TRIM_COLORS = [(0.96, 0.95, 0.92, 1), (0.93, 0.89, 0.8, 1), (0.82, 0.8, 0.76, 1), (0.36, 0.36, 0.37, 1),
+               (0.2, 0.2, 0.21, 1), (0.88, 0.84, 0.74, 1)]
+SHUTTER_COLORS = [(0.2, 0.36, 0.28, 1), (0.22, 0.32, 0.46, 1), (0.45, 0.2, 0.16, 1), (0.34, 0.36, 0.38, 1),
+                  (0.9, 0.9, 0.88, 1), (0.52, 0.62, 0.66, 1)]
+FIN_COLORS = [(0.62, 0.64, 0.66, 1), (0.16, 0.16, 0.17, 1), (0.8, 0.8, 0.78, 1), (0.42, 0.34, 0.24, 1)]
+RELIEF_FULL_H = 48.0      # full window surrounds up to this height above the facade base, sills only above
+
+
+def _h(seed, k):
+    """Deterministic 0..1 value per building seed (+ salt)."""
+    x = math.sin(seed * 12.9898 + k * 78.233) * 43758.5453
+    return x - math.floor(x)
+
+
+def _rbox(mb, a, e, out, u0, u1, y0, y1, d0, d1, mat, col, top=True, bottom=True, sides=True):
+    """Box in facade space (u along the side, y up, d out of the wall) without the hidden back face."""
+    def P(u, y, d):
+        return (a[0] + e[0] * u + out[0] * d, y, a[1] + e[1] * u + out[1] * d)
+    on = (out[0], 0, out[1])
+    mb.face([P(u0, y0, d1), P(u1, y0, d1), P(u1, y1, d1), P(u0, y1, d1)], [(u0, y0), (u1, y0), (u1, y1), (u0, y1)],
+            mat, col, up=on)
+    if top:
+        mb.face([P(u0, y1, d0), P(u1, y1, d0), P(u1, y1, d1), P(u0, y1, d1)], [(u0, d0), (u1, d0), (u1, d1), (u0, d1)],
+                mat, col, up=(0, 1, 0))
+    if bottom:
+        mb.face([P(u0, y0, d0), P(u1, y0, d0), P(u1, y0, d1), P(u0, y0, d1)], [(u0, d0), (u1, d0), (u1, d1), (u0, d1)],
+                mat, col, up=(0, -1, 0))
+    if sides:
+        mb.face([P(u0, y0, d0), P(u0, y0, d1), P(u0, y1, d1), P(u0, y1, d0)], [(d0, y0), (d1, y0), (d1, y1), (d0, y1)],
+                mat, col, up=(-e[0], 0, -e[1]))
+        mb.face([P(u1, y0, d0), P(u1, y0, d1), P(u1, y1, d1), P(u1, y1, d0)], [(d0, y0), (d1, y0), (d1, y1), (d0, y1)],
+                mat, col, up=(e[0], 0, e[1]))
+
+
+def _side_bar(mb, a, e, out, u, y0, y1, d0, d1, col, left):
+    """Single outward-facing quad for a baluster on the side of a balcony."""
+    def P(uu, y, d):
+        return (a[0] + e[0] * uu + out[0] * d, y, a[1] + e[1] * uu + out[1] * d)
+    n = (-e[0], 0, -e[1]) if left else (e[0], 0, e[1])
+    mb.face([P(u, y0, d0), P(u, y0, d1), P(u, y1, d1), P(u, y1, d0)], None, "metal_painted", col, up=n)
+
+
+def _frame_ring(mb, a, e, out, u0, u1, y0, y1, t, d, mat, col):
+    """Picture-frame window surround: front ring and inner reveals (14 tris)."""
+    def P(u, y, dd):
+        return (a[0] + e[0] * u + out[0] * dd, y, a[1] + e[1] * u + out[1] * dd)
+    on = (out[0], 0, out[1])
+    U0, U1, Y0, Y1 = u0 - t, u1 + t, y0 - t, y1 + t
+    ring = [((U0, Y0), (U1, Y0), (u1, y0), (u0, y0)), ((U1, Y0), (U1, Y1), (u1, y1), (u1, y0)),
+            ((U1, Y1), (U0, Y1), (u0, y1), (u1, y1)), ((U0, Y1), (U0, Y0), (u0, y0), (u0, y1))]
+    for q in ring:
+        mb.face([P(uu, yy, d) for (uu, yy) in q], [(uu, yy) for (uu, yy) in q], mat, col, up=on)
+    # inner reveals (top and jambs; the sill closes the bottom). The outer edges are only a few cm
+    # deep and never visible from the street, so they are left out to keep the city light.
+    mb.face([P(u0, y1, 0), P(u1, y1, 0), P(u1, y1, d), P(u0, y1, d)], None, mat, col, up=(0, -1, 0))
+    mb.face([P(u0, y0, 0), P(u0, y1, 0), P(u0, y1, d), P(u0, y0, d)], None, mat, col, up=(e[0], 0, e[1]))
+    mb.face([P(u1, y0, 0), P(u1, y1, 0), P(u1, y1, d), P(u1, y0, d)], None, mat, col, up=(-e[0], 0, -e[1]))
+
+
+def facade_relief(ctx, a, b, y0, y1, mat, col, fh):
+    """Real geometry that matches the shader-drawn windows of one facade side: window surrounds,
+    sills and lintels, shutters, flower boxes and AC units for punched windows, sill/head bands for
+    ribbon windows, vertical fins and floor slabs for curtain walls."""
+    spec = FACADE_WIN.get(mat)
+    if spec is None or fh > 20.0 or y1 - y0 < 2.0:
+        return
+    style, spacing, ww, wh, sill = spec
+    l = G.dist(a, b)
+    if l < 2.0:
+        return
+    e = G.norm(G.sub(b, a))
+    out = G.left(e)
+    mb = ctx.relief
+    seed = col[3] if len(col) > 3 else 0.5
+    ncol = max(1.0, math.floor(l / spacing + 0.5))
+    pitch = l / ncol
+    k0 = int(math.ceil((y0 + 0.25) / fh - sill))
+    k1 = int(math.floor((y1 - 0.2) / fh - sill - wh))
+    if style == 2:
+        # curtain wall: slim vertical fins on the mullion lines + a slab edge on every floor line
+        fcol = FIN_COLORS[int(_h(seed, 3) * len(FIN_COLORS))]
+        every = 1 if _h(seed, 4) < 0.5 else 2
+        depth = 0.18 + 0.2 * _h(seed, 5)
+        for c in range(0, int(ncol) + 1, every):
+            u = c * pitch
+            u0, u1 = max(0.0, u - 0.05), min(l, u + 0.05)
+            _rbox(mb, a, e, out, u0, u1, y0 + 0.1, y1 - 0.05, 0.0, depth, "metal_painted", fcol, bottom=False)
+        k = int(math.ceil(y0 / fh))
+        while k * fh < y1 - 0.5:
+            y = k * fh
+            if y > y0 + 0.5:
+                _rbox(mb, a, e, out, 0.0, l, y - 0.12, y + 0.12, 0.0, 0.12, "metal_painted", fcol, sides=False)
+            k += 1
+        return
+    if style == 1:
+        # ribbon windows: continuous precast sill and head bands
+        tcol = TRIM_COLORS[int(_h(seed, 6) * 3)]
+        for k in range(k0, k1 + 1):
+            ys = (k + sill) * fh
+            _rbox(mb, a, e, out, -0.05, l + 0.05, ys - 0.22, ys, 0.0, 0.22, "trim_tint", tcol)
+            yh = (k + sill + wh) * fh
+            _rbox(mb, a, e, out, -0.05, l + 0.05, yh, yh + 0.14, 0.0, 0.1, "trim_tint", tcol, bottom=True)
+        return
+    # punched windows
+    if "stone" in mat or ("brick" in mat and _h(seed, 15) < 0.5):
+        # quoins / corner pilasters
+        qc = (0.86, 0.82, 0.74, 1) if "stone" in mat else (0.9, 0.88, 0.82, 1)
+        for (q0, q1) in ((0.0, 0.55), (l - 0.55, l)):
+            _rbox(mb, a, e, out, q0, q1, y0, y1, 0.0, 0.09, "trim_tint", qc, top=False, bottom=False)
+    brick = "brick" in mat
+    stone = "stone" in mat
+    house = style == 4
+    tcol = TRIM_COLORS[int(_h(seed, 7) * len(TRIM_COLORS))]
+    if brick or stone:
+        tcol = (0.86, 0.82, 0.74, 1) if _h(seed, 8) < 0.7 else (0.95, 0.94, 0.9, 1)
+    shutters = house and _h(seed, 9) < 0.55 or (mat == "facade_plaster" and _h(seed, 10) < 0.25)
+    scol = SHUTTER_COLORS[int(_h(seed, 11) * len(SHUTTER_COLORS))]
+    ac_rate = 0.0 if house or stone else 0.07 * _h(seed, 12)
+    flowers = (house or stone or brick) and _h(seed, 13) < 0.45
+    bal = ctx.balcony_cols.get((round(a[0], 2), round(a[1], 2), round(b[0], 2), round(b[1], 2)), set())
+    rng = ctx.rng
+    for k in range(k0, k1 + 1):
+        ys = (k + sill) * fh
+        yt = ys + wh * fh
+        full = ys - y0 < RELIEF_FULL_H
+        for c in range(int(ncol)):
+            uc = (c + 0.5) * pitch
+            hw = ww * pitch * 0.5
+            u0, u1 = uc - hw, uc + hw
+            if (c, k) in bal:
+                # balcony door: plain surround, no sill
+                _frame_ring(mb, a, e, out, u0, u1, k * fh + 0.05, yt, 0.08, 0.06, "trim_tint", tcol)
+                continue
+            if full:
+                if brick:
+                    # stone lintel + sill, the brick reveals do the rest
+                    _rbox(mb, a, e, out, u0 - 0.12, u1 + 0.12, yt, yt + 0.24, 0.0, 0.08, "trim_tint", tcol, top=False,
+                          sides=False)
+                else:
+                    _frame_ring(mb, a, e, out, u0, u1, ys, yt, 0.11 if stone else 0.08, 0.07, "trim_tint", tcol)
+                    if stone and _h(seed, 14) < 0.6:
+                        # cornice-style hood over the window
+                        _rbox(mb, a, e, out, u0 - 0.2, u1 + 0.2, yt + 0.11, yt + 0.24, 0.0, 0.16, "trim_tint", tcol)
+            # sill (always, sticks out further than the surround)
+            _rbox(mb, a, e, out, u0 - 0.1, u1 + 0.1, ys - 0.07, ys, 0.0, 0.14 if full else 0.1, "trim_tint", tcol,
+                  sides=False)
+            if not full:
+                continue
+            if shutters:
+                sw = hw * 0.95
+                for (s0, s1) in ((u0 - 0.1 - sw, u0 - 0.1), (u1 + 0.1, u1 + 0.1 + sw)):
+                    if s0 > 0.1 and s1 < l - 0.1:
+                        _rbox(mb, a, e, out, s0, s1, ys + 0.02, yt - 0.02, 0.0, 0.04, "metal_painted", scol,
+                              top=False, bottom=False, sides=False)
+            r = rng.random()
+            if flowers and r < 0.18:
+                _rbox(mb, a, e, out, u0 + 0.05, u1 - 0.05, ys, ys + 0.18, 0.02, 0.22, "awning",
+                      (0.35, 0.2, 0.12, 1), bottom=False)
+                _rbox(mb, a, e, out, u0 + 0.08, u1 - 0.08, ys + 0.18, ys + 0.34, 0.04, 0.2, "hedge", (1, 1, 1, 1),
+                      bottom=False)
+            elif r > 1.0 - ac_rate and k * fh > y0 + 2.0:
+                _rbox(mb, a, e, out, uc - 0.4, uc + 0.4, ys - 0.62, ys - 0.1, 0.0, 0.42, "metal",
+                      (0.9, 0.9, 0.88, 1))
 
 
 def roof_cap(mb, poly, y, mat="roof_flat", col=(1, 1, 1, 1)):
@@ -221,11 +403,25 @@ def roof_equipment(ctx, poly, y, rng, amount=1.0):
             cylinder(ctx.detail, (p[0], y + 4.4, p[1]), 1.35, 0.6, "metal_dark", segs=10, r_top=0.1)
 
 
-def balconies(ctx, poly, y0, y1, floor_h, spec, side_filter=None):
+def balconies(ctx, poly, y0, y1, floor_h, spec, side_filter=None, mat=None):
+    """Balconies that sit on the window grid of the facade (door behind each one), stacked in
+    columns like real apartment blocks. Registers the columns so the facade relief draws balcony
+    doors instead of sills there. Call before facade_walls."""
     rng = ctx.rng
     poly = G.ensure_ccw(poly)
     n = len(poly)
-    col = (0.9, 0.9, 0.9, 1)
+    fac = mat or ("facade_" + spec.get("facade", "plaster"))
+    win = FACADE_WIN.get(fac)
+    if win is None or win[0] == 2:
+        return
+    _, spacing, ww, wh, sill = win
+    seed = (spec["seed"] % 997) / 997.0
+    kind = int(_h(seed, 21) * 3)                         # 0 glass, 1 bars, 2 solid parapet
+    if spec.get("style") in ("oldtown", "highrise_classic"):
+        kind = 1
+    depth = 1.15 + 0.4 * _h(seed, 22)
+    rail_col = FIN_COLORS[int(_h(seed, 23) * len(FIN_COLORS))]
+    slab_col = TRIM_COLORS[int(_h(seed, 24) * 3)]
     fi = front_side_index(poly, spec["front"])
     for i in range(n):
         if side_filter == "front" and i != fi:
@@ -234,24 +430,79 @@ def balconies(ctx, poly, y0, y1, floor_h, spec, side_filter=None):
         l = G.dist(a, b)
         if l < 6:
             continue
+        if not rng.chance(0.85 if i == fi else 0.4):
+            continue
         e = G.norm(G.sub(b, a))
         out = G.left(e)
-        cols_n = max(1, int(l / 4.5))
-        pitch = l / cols_n
-        y = y0 + floor_h
-        while y < y1 - 1.0:
-            for c in range(cols_n):
-                if rng.chance(0.35):
-                    continue
-                m = G.add(a, G.mul(e, pitch * (c + 0.5)))
-                w = pitch * 0.7
-                p = G.add(m, G.mul(out, 0.7))
-                ang = math.atan2(-e[0], -e[1]) + math.pi * 0.5
-                box(ctx.detail, (p[0], y - 0.1, p[1]), (w, 0.18, 1.4), "concrete", rot_y=ang, bottom=True)
-                # railing
-                rp = G.add(m, G.mul(out, 1.35))
-                box(ctx.detail, (rp[0], y + 0.45, rp[1]), (w, 0.9, 0.05), "metal_dark", rot_y=ang)
-            y += floor_h
+        ncol = int(max(1.0, math.floor(l / spacing + 0.5)))
+        pitch = l / ncol
+        pattern = rng.randint(0, 3)
+        cols = [c for c in range(ncol) if (pattern == 0 or (pattern == 1 and c % 2 == 0) or
+                                           (pattern == 2 and c % 2 == 1) or
+                                           (pattern == 3 and (c in (0, ncol - 1) or c == ncol // 2)))]
+        if not cols:
+            continue
+        k0 = int(math.ceil((y0 + floor_h * 0.8) / floor_h))
+        k_top = int(math.floor((y1 - 1.6) / floor_h))
+        key = (round(a[0], 2), round(a[1], 2), round(b[0], 2), round(b[1], 2))
+        reg = ctx.balcony_cols.setdefault(key, set())
+        w = min(pitch - 0.25, max(ww * pitch + 0.9, pitch * 0.8))
+        mb = ctx.relief
+        for k in range(k0, k_top + 1):
+            if (k + sill + wh) * floor_h > y1 - 0.2:
+                continue
+            yf = k * floor_h
+            for c in cols:
+                reg.add((c, k))
+                uc = (c + 0.5) * pitch
+                u0, u1 = uc - w * 0.5, uc + w * 0.5
+                # slab with a crisp edge band
+                _rbox(mb, a, e, out, u0, u1, yf - 0.2, yf + 0.02, 0.0, depth, "concrete", (1, 1, 1, 1))
+                _rbox(mb, a, e, out, u0 - 0.02, u1 + 0.02, yf - 0.22, yf + 0.04, depth - 0.02, depth + 0.03,
+                      "trim_tint", slab_col, top=True, bottom=True)
+                if kind == 0:
+                    # frameless glass balustrade with a slim metal handrail
+                    for (pu0, pu1, pd0, pd1) in ((u0 + 0.04, u1 - 0.04, depth - 0.1, depth - 0.08),):
+                        _rbox(mb, a, e, out, pu0, pu1, yf + 0.04, yf + 1.0, pd0, pd1, "glass_clear", (1, 1, 1, 1),
+                              top=False, bottom=False)
+                    for uu in (u0 + 0.04, u1 - 0.06):
+                        _rbox(mb, a, e, out, uu, uu + 0.02, yf + 0.04, yf + 1.0, 0.05, depth - 0.1, "glass_clear",
+                              (1, 1, 1, 1), top=False, bottom=False, sides=True)
+                    _rbox(mb, a, e, out, u0 + 0.02, u1 - 0.02, yf + 1.0, yf + 1.05, depth - 0.12, depth - 0.06,
+                          "metal_painted", rail_col)
+                elif kind == 1:
+                    # metal railing: handrail, bottom rail and balusters
+                    _rbox(mb, a, e, out, u0 + 0.03, u1 - 0.03, yf + 0.98, yf + 1.04, depth - 0.1, depth - 0.04,
+                          "metal_painted", rail_col)
+                    _rbox(mb, a, e, out, u0 + 0.03, u1 - 0.03, yf + 0.1, yf + 0.14, depth - 0.09, depth - 0.05,
+                          "metal_painted", rail_col)
+                    nb = max(3, int((u1 - u0) / 0.16))
+                    for t in range(nb + 1):
+                        uu = u0 + 0.05 + (u1 - u0 - 0.1) * t / nb
+                        _rbox(mb, a, e, out, uu - 0.012, uu + 0.012, yf + 0.02, yf + 0.98, depth - 0.085, depth - 0.07,
+                              "metal_painted", rail_col, top=False, bottom=False, sides=False)
+                    for uu in (u0 + 0.03, u1 - 0.06):
+                        _rbox(mb, a, e, out, uu, uu + 0.03, yf + 0.98, yf + 1.04, 0.0, depth - 0.1, "metal_painted",
+                              rail_col)
+                        ns = max(2, int(depth / 0.16))
+                        for t in range(1, ns):
+                            dd = (depth - 0.1) * t / ns
+                            _side_bar(mb, a, e, out, uu + 0.015, yf + 0.02, yf + 0.98, dd - 0.012, dd + 0.012,
+                                      rail_col, uu < (u0 + u1) * 0.5)
+                    if spec.get("style") in ("oldtown", "highrise_classic"):
+                        # carved brackets under the slab
+                        for uu in (u0 + 0.25, u1 - 0.45):
+                            _rbox(mb, a, e, out, uu, uu + 0.2, yf - 0.55, yf - 0.2, 0.0, depth * 0.55, "trim_tint",
+                                  slab_col, top=False)
+                else:
+                    # solid parapet walls
+                    _rbox(mb, a, e, out, u0, u1, yf + 0.02, yf + 1.0, depth - 0.12, depth, "trim_tint", slab_col,
+                          bottom=False)
+                    for (s0, s1) in ((u0, u0 + 0.12), (u1 - 0.12, u1)):
+                        _rbox(mb, a, e, out, s0, s1, yf + 0.02, yf + 1.0, 0.0, depth - 0.12, "trim_tint", slab_col,
+                              bottom=False)
+                    _rbox(mb, a, e, out, u0 - 0.03, u1 + 0.03, yf + 1.0, yf + 1.06, depth - 0.15, depth + 0.03,
+                          "concrete", (1, 1, 1, 1))
 
 
 def gable_roof(mb, poly, y, h, overhang=0.5, mat="roof_tiles", col=(1, 1, 1, 1), hip=False, wall_mat=None, wall_col=None,
@@ -339,6 +590,12 @@ def build_generic(ctx, spec, gf=True):
             prev = lv
     else:
         segments.append((poly, ys, y_top))
+    if not spec.get("balconies") and spec["style"] in ("hotel", "midrise") and _h(col[3], 31) < 0.45:
+        spec = dict(spec)
+        spec["balconies"] = True
+    if spec.get("balconies"):
+        p0, a0, b0 = segments[0]
+        balconies(ctx, p0, a0, b0, fh, spec)
     for (p, a, b) in segments:
         facade_walls(ctx.lod0, p, a, b, fac, col, fh)
         facade_walls(ctx.lod1, p, a, b, fac, col, fh)
@@ -346,7 +603,10 @@ def build_generic(ctx, spec, gf=True):
         roof_cap(ctx.lod1, p, b)
         parapet(ctx.detail, p, b, 0.9 if b - a > 8 else 0.6)
         prism(ctx.col, p, a, b, "concrete", top=True)
-    if gf_h > 0:
+    if gf_h == 0:
+        # stone plinth along the foot of the building
+        ledge(ctx.relief, poly, y0 - 0.4, 0.07, 1.1, mat="concrete")
+    else:
         facade_walls(ctx.lod1, poly, y0, y0 + gf_h, "shopfront", (1, 1, 1, 0.5), gf_h)
         if segments and segments[0][0] is poly:
             ledge(ctx.detail, poly, y0 + gf_h - 0.05, 0.3, 0.35)
@@ -356,8 +616,6 @@ def build_generic(ctx, spec, gf=True):
         while y < y_top - fh:
             ledge(ctx.detail, poly, y - 0.12, 0.08, 0.14)
             y += fh
-    if spec.get("balconies"):
-        balconies(ctx, poly, y0 + gf_h, y_top, fh, spec)
     last = segments[-1][0]
     roof_equipment(ctx, last, segments[-1][2], rng)
     if H > 70 and rng.chance(0.5):
@@ -431,6 +689,8 @@ def build_house(ctx, spec):
     rng = ctx.rng
     # plinth
     prism(ctx.lod0, poly, y0 - 0.3, y0 + 0.3, "concrete", top=False)
+    if H > fh * 1.8 and _h(col[3], 32) < 0.4:
+        balconies(ctx, poly, y0 + 0.3, y0 + H, fh, spec, side_filter="front", mat=fac)
     facade_walls(ctx.lod0, poly, y0 + 0.3, y0 + H, fac, col, fh)
     facade_walls(ctx.lod1, poly, y0, y0 + H, fac, col, fh)
     prism(ctx.col, poly, y0, y0 + H, "concrete", top=True)

@@ -13,6 +13,7 @@ const MAT_DIR := "res://assets/materials/"
 const RANGES := {
 	"Markings_LOD0": Vector2(0.0, 200.0),
 	"Detail_LOD0": Vector2(0.0, 170.0),
+	"Facade_LOD0": Vector2(0.0, 200.0),
 	"Buildings_LOD0": Vector2(0.0, 220.0),
 	"Buildings_LOD1": Vector2(220.0, 0.0),
 }

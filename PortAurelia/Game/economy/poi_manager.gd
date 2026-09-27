@@ -490,6 +490,7 @@ func _save_upgrades(v: Vehicle) -> void:
 		if e["id"] == v.owned_id:
 			e["upgrades"] = v.upgrades.duplicate()
 			e["color"] = v.paint.to_html()
+			e["livery"] = v.livery.duplicate()
 
 
 # ------------------------------------------------------------------ car dealer
@@ -506,7 +507,7 @@ func _open_dealer(_pl: Player, p: Dictionary) -> void:
 
 func _buy_vehicle(p: Dictionary, id: String) -> void:
 	var entry := {"id": "veh_%d" % Time.get_ticks_usec(), "type": id, "color": VehicleDefs.random_color(null, id).to_html(),
-		"upgrades": {"engine": 0, "brakes": 0, "armor": 0, "tires": 0}}
+		"upgrades": {"engine": 0, "brakes": 0, "armor": 0, "tires": 0}, "livery": VehicleDefs.random_livery(id)}
 	Game.player_data.owned_vehicles.append(entry)
 	Events.vehicle_purchased.emit(id)
 	var v := spawn_owned_vehicle(entry, _entrance(p, 8.0), p["facing_v"])
@@ -520,7 +521,7 @@ func claim_vehicle(v: Vehicle) -> void:
 	if v == null or v.player_owned:
 		return
 	var entry := {"id": "veh_%d" % Time.get_ticks_usec(), "type": v.type_id, "color": v.paint.to_html(),
-		"upgrades": v.upgrades.duplicate()}
+		"upgrades": v.upgrades.duplicate(), "livery": v.livery.duplicate()}
 	Game.player_data.owned_vehicles.append(entry)
 	v.player_owned = true
 	v.owned_id = entry["id"]
@@ -557,6 +558,7 @@ func summon_vehicle(entry: Dictionary) -> Vehicle:
 
 func spawn_owned_vehicle(entry: Dictionary, pos: Vector3, facing: Vector3) -> Vehicle:
 	var v := Vehicle.create(entry["type"], Color.html(entry["color"]))
+	v.livery = (entry.get("livery", {}) as Dictionary).duplicate()
 	v.player_owned = true
 	v.owned_id = entry["id"]
 	_pending_parked.erase(entry["id"])

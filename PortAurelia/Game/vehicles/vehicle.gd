@@ -16,6 +16,8 @@ var type_id := "sedan"
 var def := {}
 var meta := {}
 var paint := Color(0.6, 0.05, 0.05)
+## paint job (see VehicleDefs.random_livery); empty = roll a random one when spawned
+var livery := {}
 
 # driver input
 var throttle := 0.0
@@ -177,6 +179,32 @@ func _build_visual() -> void:
 	for mi in _paint_meshes:
 		mi.set_instance_shader_parameter("paint", paint)
 		mi.set_instance_shader_parameter("dirt", randf_range(0.0, 0.35))
+	if livery.is_empty():
+		livery = VehicleDefs.random_livery(type_id)
+	apply_livery()
+
+
+## Pushes the paint job to the body shader (stripes, two-tone, logos, race numbers, finish).
+func apply_livery() -> void:
+	var lv := int(livery.get("t", 0))
+	var fin := int(livery.get("f", 0))
+	var c2s := String(livery.get("c2", "ffffff"))
+	var c2 := Color.html(c2s) if c2s != "" else Color(-1, -1, -1)
+	var L := float(meta.get("length", 4.5))
+	var zc := 0.0
+	if type_id in ["van", "delivery", "ambulance"]:
+		zc = L * 0.1
+	elif type_id in ["truck", "fire_truck"]:
+		zc = L * 0.18
+	var dims := Vector4(L, float(meta.get("width", 1.8)), float(meta.get("hood", 0.9)), float(meta.get("height", 1.4)))
+	var dec := Vector4(float(livery.get("s", -1)), float(livery.get("n", -1)), float(livery.get("s2", -1)), zc)
+	for mi in _paint_meshes:
+		mi.set_instance_shader_parameter("livery", float(lv))
+		mi.set_instance_shader_parameter("finish", float(fin))
+		mi.set_instance_shader_parameter("paint2", Vector3(c2.r, c2.g, c2.b))
+		mi.set_instance_shader_parameter("dims", dims)
+		mi.set_instance_shader_parameter("decals", dec)
+		mi.set_instance_shader_parameter("metallic_paint", [0.6, 0.55, 0.1, 0.9][clampi(fin, 0, 3)])
 
 
 func _build_collision() -> void:
@@ -958,7 +986,7 @@ func set_paint(c: Color) -> void:
 
 
 func state_dict() -> Dictionary:
-	return {"type": type_id, "color": paint.to_html(), "engine": engine_health, "body": body_health}
+	return {"type": type_id, "color": paint.to_html(), "engine": engine_health, "body": body_health, "livery": livery}
 
 
 func speed() -> float:

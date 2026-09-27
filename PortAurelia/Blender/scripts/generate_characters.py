@@ -584,11 +584,11 @@ def build_animations(arm):
 
 # ------------------------------------------------------------------ main
 # (name, zmin, zmax, |x| max, offset, wrinkle amplitude)
-CLOTHES = [("Top_TShirt", 0.9, 1.49, 0.33, 0.010, 0.0016), ("Top_LongSleeve", 0.9, 1.49, 0.672, 0.011, 0.0018),
-           ("Top_Jacket", 0.86, 1.5, 0.678, 0.026, 0.0028), ("Top_Suit", 0.86, 1.5, 0.678, 0.02, 0.0012),
-           ("Top_Vest", 1.0, 1.46, 0.2, 0.04, 0.0008), ("Bottom_Jeans", 0.1, 1.02, 0.25, 0.013, 0.0018),
-           ("Bottom_Shorts", 0.6, 1.02, 0.25, 0.012, 0.0015), ("Shoes_Sneakers", None, 0.13, None, 0.011, 0.0),
-           ("Shoes_Boots", None, 0.28, None, 0.014, 0.0)]
+CLOTHES = [("Top_TShirt", 0.9, 1.49, 0.33, 0.010, 0.0008), ("Top_LongSleeve", 0.9, 1.49, 0.672, 0.011, 0.0009),
+           ("Top_Jacket", 0.92, 1.5, 0.678, 0.021, 0.0012), ("Top_Suit", 0.92, 1.5, 0.678, 0.02, 0.0012),
+           ("Top_Vest", 1.0, 1.46, 0.2, 0.03, 0.0), ("Bottom_Jeans", 0.1, 1.02, 0.25, 0.013, 0.001),
+           ("Bottom_Shorts", 0.6, 1.02, 0.25, 0.012, 0.0008), ("Shoes_Sneakers", None, 0.13, None, 0.016, 0.0),
+           ("Shoes_Boots", None, 0.28, None, 0.019, 0.0)]
 
 
 def main():
@@ -612,7 +612,7 @@ def main():
             objs.append(mesh_object("Bottom_Skirt_F", sme, arm, sw, "char_cloth", (1, 1, 1, 1)))
         for (name, z0, z1, xm, off, wr) in items:
             cme = A.cloth_from_body(me, f"{name}_{kind}", z0, z1, xm, off, wr,
-                                    smooth=14 if name.startswith("Top") else 5)
+                                    smooth=12 if name.startswith("Top") else 6)
             if len(cme.vertices) == 0:
                 continue
             ccols = None
@@ -687,3 +687,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    sys.stdout.flush()
+    os._exit(0)          # skip bpy teardown (it occasionally segfaults after a successful export)

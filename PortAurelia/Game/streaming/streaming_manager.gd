@@ -230,6 +230,10 @@ func _instantiate(c: Vector2i, scene: PackedScene) -> void:
 	st.root.name = "Chunk_%d_%d" % [c.x, c.y]
 	add_child(st.root)
 	_chunks[c] = st
+	# 3D facade relief (frames, sills, balconies): shorter range in the performance modes
+	var fac := st.root.find_child("Facade_LOD0*", false, false) as GeometryInstance3D
+	if fac:
+		fac.visibility_range_end = [200.0, 160.0, 110.0, 70.0][clampi(Settings.perf_mode(), 0, 3)]
 	if _far_nodes.has(c):
 		(_far_nodes[c] as Node3D).visible = false
 	_build_props(st)

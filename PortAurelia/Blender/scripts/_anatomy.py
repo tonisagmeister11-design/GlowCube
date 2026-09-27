@@ -90,6 +90,35 @@ class Meta:
         return bm
 
 
+def taubin(bm, iters, lam=0.5, mu=-0.53, keep=None):
+    """Volume-preserving Taubin smoothing (lambda/mu) of a bmesh: irons out the bumps where
+    implicit primitives meet without shrinking limbs. `keep(v)` pins vertices (e.g. soles)."""
+    import numpy as np
+    bm.verts.ensure_lookup_table()
+    bm.verts.index_update()
+    n = len(bm.verts)
+    if n == 0:
+        return
+    co = np.array([v.co[:] for v in bm.verts], dtype=np.float64)
+    ed = np.array([(e.verts[0].index, e.verts[1].index) for e in bm.edges], dtype=np.int64)
+    if len(ed) == 0:
+        return
+    deg = np.bincount(ed.ravel(), minlength=n).astype(np.float64)
+    deg[deg == 0] = 1.0
+    pin = np.zeros(n, dtype=bool)
+    if keep is not None:
+        pin = np.array([bool(keep(v)) for v in bm.verts])
+    for it in range(iters * 2):
+        acc = np.zeros_like(co)
+        np.add.at(acc, ed[:, 0], co[ed[:, 1]])
+        np.add.at(acc, ed[:, 1], co[ed[:, 0]])
+        lap = acc / deg[:, None] - co
+        lap[pin] = 0.0
+        co += (lam if it % 2 == 0 else mu) * lap
+    for i, v in enumerate(bm.verts):
+        v.co = co[i]
+
+
 def decimate(bm, target_tris, name):
     """bmesh -> decimated Mesh datablock with about target_tris triangles."""
     me = bpy.data.meshes.new(name)
@@ -136,31 +165,23 @@ def body_meta(kind):
     m.ell(B, (0, 0.008, 1.12), (L(0.127, 0.106, fem), L(0.086, 0.076, fem), 0.10))              # waist
     m.ell(B, (0, 0.0, 1.27), (L(0.148, 0.127, fem), L(0.104, 0.090, fem), 0.15))                # ribcage
     m.ell(B, (0, -0.012, 1.385), (L(0.162, 0.138, fem), L(0.088, 0.078, fem), 0.07))            # shoulder girdle
+    # everyday build: soft chest and back, no separate little muscle blobs (they read as lumps)
     for s in (-1, 1):
         if fem:
-            m.ell(B, (s * 0.066, 0.064, 1.297), (0.058, 0.05, 0.054), 3.0)                      # breasts
+            m.ell(B, (s * 0.062, 0.058, 1.297), (0.056, 0.046, 0.052), 3.5)                      # breasts
         else:
-            m.ell(B, (s * 0.064, 0.056, 1.325), (0.068, 0.032, 0.054), 3.0)                      # pectorals
-            for z in (1.075, 1.135, 1.195):
-                m.ell(B, (s * 0.032, 0.068, z), (0.024, 0.013, 0.021), 2.5)                      # abdominals
-        m.ell(B, (s * 0.1, 0.008, 1.06), (0.034, 0.05, 0.065), 2.5)                              # obliques
-        m.ell(B, (s * 0.098, -0.034, 1.27), (L(0.05, 0.038, fem), 0.054, 0.11), 2.5)            # lats
-        m.cap(B, (s * 0.03, -0.028, 1.488), (s * 0.15, -0.026, 1.435), L(0.036, 0.029, fem), 3.0)  # trapezius
-        m.ell(B, (s * 0.08, -0.066, 1.335), (0.048, 0.022, 0.06), 2.5)                           # scapula
-        m.ell(B, (s * 0.07, -0.062, L(0.92, 0.915, fem)), (L(0.078, 0.09, fem), L(0.063, 0.075, fem),
-                                                              L(0.084, 0.092, fem)))             # glutes
-        m.cap(B, (s * 0.034, -0.008, 1.555), (s * 0.017, 0.044, 1.448), 0.015)                   # sternocleido
-        if not fem:
-            m.cap(B, (s * 0.026, 0.048, 1.437), (s * 0.15, 0.018, 1.447), 0.0095, 3.0)       # clavicle
-    m.cap(B, (0, -0.002, 1.44), (0, 0.008, 1.57), L(0.056, 0.048, fem))                          # neck
+            m.ell(B, (s * 0.062, 0.046, 1.322), (0.07, 0.03, 0.058), 4.0)                        # chest
+        m.ell(B, (s * 0.094, -0.03, 1.27), (L(0.046, 0.036, fem), 0.05, 0.12), 4.0)              # back / lats
+        m.cap(B, (s * 0.03, -0.024, 1.484), (s * 0.15, -0.024, 1.436), L(0.034, 0.028, fem), 4.0)  # shoulder line
+        m.ell(B, (s * 0.07, -0.056, L(0.925, 0.918, fem)), (L(0.074, 0.086, fem), L(0.058, 0.07, fem),
+                                                              L(0.082, 0.09, fem)), 4.0)         # seat
+    m.cap(B, (0, -0.004, 1.43), (0, 0.008, 1.565), L(0.066, 0.059, fem))                           # neck
     # ---------------------------------------------------------------- arms (T-pose along X)
     for s in (-1, 1):
-        m.ell(B, (s * 0.188, -0.006, 1.426), (L(0.055, 0.045, fem), L(0.058, 0.048, fem), L(0.058, 0.048, fem)), 3.0)
-        m.cap(B, (s * 0.2, -0.01, 1.43), (s * 0.43, -0.01, 1.43), L(0.041, 0.035, fem))           # humerus
-        m.ell(B, (s * 0.31, 0.01, 1.428), (0.075, L(0.031, 0.024, fem), L(0.033, 0.026, fem)), 3.0)  # biceps
-        m.ell(B, (s * 0.29, -0.028, 1.432), (0.085, L(0.031, 0.026, fem), L(0.033, 0.028, fem)), 3.0)  # triceps
-        m.ball(B, (s * 0.44, -0.016, 1.43), 0.033)                                               # elbow
-        m.ell(B, (s * 0.50, -0.008, 1.43), (0.075, L(0.042, 0.034, fem), L(0.036, 0.030, fem)))   # forearm
+        m.ell(B, (s * 0.186, -0.006, 1.426), (L(0.052, 0.043, fem), L(0.054, 0.045, fem), L(0.054, 0.045, fem)), 4.0)
+        m.cap(B, (s * 0.2, -0.01, 1.43), (s * 0.43, -0.01, 1.43), L(0.043, 0.037, fem))           # upper arm
+        m.ell(B, (s * 0.30, -0.008, 1.43), (0.09, L(0.041, 0.034, fem), L(0.042, 0.035, fem)), 4.0)  # arm volume
+        m.ell(B, (s * 0.50, -0.008, 1.43), (0.08, L(0.038, 0.032, fem), L(0.034, 0.029, fem)), 4.0)  # forearm
         m.cap(B, (s * 0.52, -0.01, 1.43), (s * 0.675, -0.01, 1.43), L(0.026, 0.022, fem))
         m.ell(B, (s * 0.69, -0.01, 1.43), (0.02, L(0.028, 0.024, fem), L(0.018, 0.015, fem)))     # wrist
         # hand: palm + thenar in the body family, each finger its own family (no webbing)
@@ -189,15 +210,10 @@ def body_meta(kind):
         m.chain(f"th{side}", th, [0.0125 * hs, 0.0108 * hs, 0.0096 * hs], 4.0)
     # ---------------------------------------------------------------- legs
     for s in (-1, 1):
-        m.ell(B, (s * 0.1, 0.004, 0.84), (L(0.081, 0.092, fem), L(0.084, 0.09, fem), 0.12))       # upper thigh
-        m.ell(B, (s * 0.1, 0.03, 0.70), (L(0.061, 0.058, fem), 0.05, 0.14))                      # quads
-        m.ell(B, (s * 0.134, 0.004, 0.74), (0.034, 0.054, 0.12))                                 # vastus lateralis
-        m.ell(B, (s * 0.1, -0.03, 0.72), (0.054, 0.047, 0.14))                                   # hamstrings
-        m.ell(B, (s * 0.074, 0.0, 0.8), (0.038, 0.054, 0.10))                                    # adductors
-        m.ell(B, (s * 0.105, 0.012, 0.52), (0.047, 0.05, 0.055))                                 # knee
-        m.ball(B, (s * 0.105, 0.05, 0.525), 0.025)                                               # kneecap
-        m.ell(B, (s * 0.107, -0.03, 0.39), (L(0.049, 0.044, fem), 0.049, 0.10))                  # calf
-        m.cap(B, (s * 0.107, 0.004, 0.48), (s * 0.11, -0.012, 0.12), L(0.035, 0.031, fem))       # shin
+        m.ell(B, (s * 0.1, 0.002, 0.83), (L(0.08, 0.09, fem), L(0.082, 0.088, fem), 0.13), 4.0)   # upper thigh
+        m.cap(B, (s * 0.1, 0.0, 0.8), (s * 0.105, 0.008, 0.53), L(0.062, 0.062, fem), 4.0)       # thigh
+        m.cap(B, (s * 0.105, 0.008, 0.53), (s * 0.11, -0.012, 0.12), L(0.041, 0.037, fem), 4.0)  # lower leg
+        m.ell(B, (s * 0.107, -0.018, 0.38), (L(0.043, 0.04, fem), 0.042, 0.11), 4.0)             # calf
         m.ell(B, (s * 0.11, -0.018, 0.085), (0.028, 0.032, 0.03))                                # ankle
         m.ball(B, (s * 0.136, -0.02, 0.085), 0.011)
         m.ball(B, (s * 0.086, -0.015, 0.09), 0.011)
@@ -210,6 +226,8 @@ def body_meta(kind):
 
 def make_body(kind, target_tris=8500):
     bm = body_meta(kind).polygonize(0.0045)
+    # smooth skin; hands and feet stay crisp (fingers are separate islands and would shrink)
+    taubin(bm, 30, keep=lambda v: abs(v.co.x) > 0.69 or v.co.z < 0.1)
     for v in bm.verts:                          # flat soles
         if v.co.z < 0.006:
             v.co.z = 0.006
@@ -269,11 +287,10 @@ def head_meta(kind, ears=True):
     m.ell(H, (0, -0.012, 1.697), (L(0.078, 0.076, fem), L(0.096, 0.093, fem), L(0.094, 0.092, fem)))  # cranium
     m.ell(H, (0, 0.038, 1.714), (0.063, 0.05, 0.052))                                              # forehead
     m.ell(H, (0, 0.044, 1.652), (L(0.062, 0.058, fem), 0.054, 0.054))                              # midface
-    m.ell(H, (0, 0.036, 1.608), (L(0.055, 0.047, fem), 0.052, 0.03))                               # jaw
-    m.ell(H, (0, 0.079, 1.586), (L(0.025, 0.019, fem), 0.018, L(0.018, 0.015, fem)))               # chin
+    m.ell(H, (0, 0.03, 1.612), (L(0.064, 0.059, fem), 0.058, 0.038), 4.0)                          # jaw
+    m.ell(H, (0, 0.07, 1.592), (L(0.024, 0.019, fem), 0.02, L(0.016, 0.014, fem)), 4.0)            # chin
     for s in (-1, 1):
-        m.ball(H, (s * L(0.047, 0.041, fem), 0.006, 1.614), L(0.017, 0.014, fem), 2.5)             # jaw angle
-        m.ell(H, (s * 0.044, 0.07, 1.664), (0.017, 0.013, 0.011), 2.5)                             # cheekbone
+        m.ell(H, (s * 0.047, 0.046, 1.645), (0.026, 0.026, 0.03), 3.0)                             # cheek
         m.cap(H, (s * 0.012, 0.093, 1.702), (s * 0.05, 0.081, 1.705), L(0.0095, 0.007, fem), 3.0)  # brow ridge
         m.ball(H, (s * 0.032, 0.102, 1.682), 0.0165, 4.0, True)                                    # eye socket
         m.ball(H, (s * 0.0122, 0.099, 1.6475), 0.0074)                                             # nose wing
@@ -284,16 +301,17 @@ def head_meta(kind, ears=True):
             m.ball(H, (s * 0.0845, -0.004, 1.667), 0.008, 4.0, True)                               # concha
     m.cap(H, (0, 0.093, 1.686), (0, 0.105, 1.658), L(0.0066, 0.006, fem))                          # nose bridge
     m.ball(H, (0, 0.108, 1.6525), L(0.0102, 0.0092, fem))                                          # nose tip
-    m.ell(H, (0, 0.066, 1.619), (L(0.033, 0.03, fem), 0.026, 0.024), 3.0)                          # dental arch
-    m.ell(H, (0, 0.095, 1.632), (0.011, 0.009, 0.009))                                             # philtrum
-    m.ell(H, (0, 0.095, 1.6225), (L(0.022, 0.021, fem), 0.0085, L(0.0065, 0.0075, fem)))             # upper lip
-    m.ell(H, (0, 0.093, 1.6115), (L(0.019, 0.019, fem), 0.009, L(0.0075, 0.0085, fem)))             # lower lip
-    m.ell(H, (0, 0.1045, 1.6168), (0.02, 0.006, 0.0015), 4.0, None, True)                          # mouth line
+    m.ell(H, (0, 0.058, 1.62), (L(0.031, 0.029, fem), 0.024, 0.022), 3.0)                          # dental arch
+    m.ell(H, (0, 0.092, 1.632), (0.01, 0.008, 0.008))                                             # philtrum
+    m.ell(H, (0, 0.0915, 1.6225), (L(0.02, 0.019, fem), 0.0072, L(0.0056, 0.0064, fem)))             # upper lip
+    m.ell(H, (0, 0.0895, 1.6118), (L(0.017, 0.017, fem), 0.0076, L(0.0064, 0.0072, fem)))             # lower lip
+    m.ell(H, (0, 0.101, 1.6168), (0.019, 0.006, 0.0014), 4.0, None, True)                          # mouth line
     return m
 
 
 def make_head(kind, target_tris=4600):
     bm = head_meta(kind).polygonize(0.0022)
+    taubin(bm, 8)                                 # soft skin, keeps nose, lips and eye sockets
     return decimate(bm, target_tris, "Head_" + kind)
 
 
@@ -580,6 +598,7 @@ def cloth_from_body(me_src, name, zmin, zmax, xmax, offset, wrinkle=0.0, xmin=No
     add a folded hem (visible fabric thickness) and fabric wrinkles."""
     bm = bmesh.new()
     bm.from_mesh(me_src)
+    body_tree = BVHTree.FromBMesh(bm)
     planes = []
     if zmin is not None:
         planes.append(((0, 0, zmin), (0, 0, 1)))
@@ -606,19 +625,35 @@ def cloth_from_body(me_src, name, zmin, zmax, xmax, offset, wrinkle=0.0, xmin=No
     dead = [f for f in bm.faces if not all(inside(v.co) for v in f.verts)]
     bmesh.ops.delete(bm, geom=dead, context="FACES")
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
-    inner = [v for v in bm.verts if not v.is_boundary]
-    for _ in range(smooth):
-        bmesh.ops.smooth_laplacian_vert(bm, verts=inner, lambda_factor=0.6, lambda_border=0.0,
-                                        use_x=True, use_y=True, use_z=True, preserve_volume=True)
+    border_v = {v for v in bm.verts if v.is_boundary}
+    taubin(bm, smooth * 2, keep=lambda v: v in border_v)
+    # inflate in small steps with a little shrink-smoothing in between: the fabric bridges
+    # concave spots (armpits, cleavage, spine) instead of folding into them
+    steps = 5
+    for _ in range(steps):
+        bm.normal_update()
+        for v in bm.verts:
+            v.co += v.normal * (offset / steps)
+        taubin(bm, 2, lam=0.45, mu=-0.2, keep=lambda v: v in border_v)
     bm.normal_update()
     normals = {v: v.normal.copy() for v in bm.verts}
-    for v in bm.verts:
-        n = normals[v]
-        w = 0.0
-        if wrinkle > 0.0:
+    if wrinkle > 0.0:
+        for v in bm.verts:
             p = v.co
             w = wrinkle * (noise.noise(p * 22.0) * 0.6 + 0.4 * math.sin(p.z * 180 + noise.noise(p * 9) * 4))
-        v.co += n * (offset + w)
+            v.co += normals[v] * w
+    # keep a guaranteed gap to the skin so layers never swap (shirt through jeans, jeans
+    # through boots) after the shrink-smoothing above
+    floor = offset * 0.9
+    for v in bm.verts:
+        loc, nrm, _, _ = body_tree.find_nearest(v.co)
+        if loc is None:
+            continue
+        d = (v.co - loc).dot(nrm)
+        if d < floor:
+            v.co = v.co + nrm * (floor - d)
+    bm.normal_update()
+    normals = {v: v.normal.copy() for v in bm.verts}
     # hem: extrude the open borders inwards so the cloth has visible thickness
     border = [e for e in bm.edges if e.is_boundary]
     if border:
@@ -641,7 +676,7 @@ def cloth_from_body(me_src, name, zmin, zmax, xmax, offset, wrinkle=0.0, xmin=No
 def make_skirt(kind):
     """Flared skirt as its own surface (not two leg tubes): elliptical rings from the waist
     over the hips to the hem, with soft pleats. Returns (mesh, weights)."""
-    rings = [(1.02, 0.138, 0.098), (0.97, 0.162, 0.118), (0.92, 0.178, 0.134), (0.84, 0.19, 0.145),
+    rings = [(1.02, 0.132, 0.09), (0.97, 0.156, 0.106), (0.92, 0.174, 0.124), (0.84, 0.19, 0.142),
              (0.72, 0.205, 0.158), (0.6, 0.222, 0.172)]
     nu = 48
     bm = bmesh.new()

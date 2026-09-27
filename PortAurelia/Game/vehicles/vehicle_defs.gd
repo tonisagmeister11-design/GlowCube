@@ -102,3 +102,40 @@ static func random_color(rng: RandomNumberGenerator = null, id := "") -> Color:
 		return SPORT_COLORS[(rng.randi() if rng else randi()) % SPORT_COLORS.size()]
 	var i := (rng.randi() if rng else randi()) % CIVIL_COLORS.size()
 	return CIVIL_COLORS[i]
+
+
+## Random livery for a new vehicle: type (0 plain .. 7 sticker, see car_paint.gdshader), finish,
+## second colour and decal cells. Sports cars get wild paint jobs more often, vans company logos.
+static func random_livery(id: String, rng: RandomNumberGenerator = null) -> Dictionary:
+	var r := func() -> float: return rng.randf() if rng else randf()
+	var pick := func(arr: Array) -> Variant: return arr[int(r.call() * arr.size()) % arr.size()]
+	var lv := 0
+	var fin := 0
+	var fr: float = r.call()
+	if id in SPORTS:
+		fin = 0 if fr < 0.4 else (1 if fr < 0.6 else (2 if fr < 0.8 else 3))
+		if r.call() < 0.6:
+			lv = pick.call([2, 2, 4, 4, 6, 6, 1, 1, 3, 3, 7])
+	elif id in ["compact", "sedan", "luxury", "suv", "pickup"]:
+		fin = 0 if fr < 0.75 else (1 if fr < 0.9 else (2 if fr < 0.95 else 3))
+		if r.call() < 0.25:
+			lv = pick.call([1, 1, 1, 3, 3, 7, 7, 5])
+	elif id in ["van", "delivery", "truck", "bus"]:
+		if id != "van" or r.call() < 0.5:
+			lv = 5
+	if lv == 0:
+		return {"t": 0, "f": fin}
+	var c2: Color = pick.call([Color(0.95, 0.95, 0.95), Color(0.05, 0.05, 0.06), Color(0.95, 0.75, 0.05),
+		Color(0.85, 0.05, 0.05), Color(0.05, 0.35, 0.85), Color(0.6, 0.62, 0.65)])
+	if lv == 1 and r.call() < 0.6:
+		c2 = Color(0.04, 0.04, 0.05)
+	if lv == 6:
+		c2 = pick.call([Color(0.1, 0.05, 0.5), Color(0.9, 0.1, 0.5), Color(0.0, 0.6, 0.7), Color(0.05, 0.05, 0.06),
+			Color(1.0, 0.5, 0.0)])
+	var company := [8, 9, 5, 15, 1, 3, 14, 12]
+	var spons: int = pick.call(company) if lv == 5 else int(r.call() * 16.0) % 16
+	var d := {"t": lv, "f": fin, "c2": c2.to_html(false), "s": spons, "n": 16 + int(r.call() * 16.0) % 16,
+		"s2": int(r.call() * 16.0) % 16}
+	if id in ["delivery", "bus"]:
+		d["c2"] = ""          # keep the fixed vertex-colour livery, logos only
+	return d

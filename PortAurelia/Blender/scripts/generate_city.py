@@ -284,17 +284,18 @@ def build_chunk(plan, cx, cz, pad_mask, assign, far_mbs, rng):
     # pivot at the chunk centre: Godot measures visibility ranges (LOD) from the node origin
     center = chunk_center(plan.wmin, plan.chunk, cx, cz)
     for mb, name in ((ground, "Ground"), (marks, "Markings_LOD0"), (struct, "Structures"), (bl0, "Buildings_LOD0"),
-                     (bl1, "Buildings_LOD1"), (detail, "Detail_LOD0")):
+                     (bl1, "Buildings_LOD1"), (detail, "Detail_LOD0"), (ctx.relief, "Facade_LOD0")):
         if not mb.empty():
             objs.append(mb.to_object(name, origin=center))
     objs.extend(collision_objects(cols))
-    tri = sum(m.tri_count() for m in (ground, marks, struct, bl0, detail))
+    tri = sum(m.tri_count() for m in (ground, marks, struct, bl0, detail, ctx.relief))
     path = os.path.join(OUT, f"chunk_{cx}_{cz}.glb")
     if objs:
         export_glb(path, objs)
     clear_objects()
     far_mbs[key] = far
-    print(f"  chunk {cx}_{cz}: {tri} tris LOD0, {len(assign['buildings'].get(key, []))} buildings "
+    print(f"  chunk {cx}_{cz}: {tri} tris LOD0 ({ctx.relief.tri_count()} facade relief), "
+          f"{len(assign['buildings'].get(key, []))} buildings "
           f"({time.time() - t0:.1f}s)")
     return tri
 
