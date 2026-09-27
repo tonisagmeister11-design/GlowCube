@@ -75,7 +75,8 @@ TRIM_COLORS = [(0.96, 0.95, 0.92, 1), (0.93, 0.89, 0.8, 1), (0.82, 0.8, 0.76, 1)
 SHUTTER_COLORS = [(0.2, 0.36, 0.28, 1), (0.22, 0.32, 0.46, 1), (0.45, 0.2, 0.16, 1), (0.34, 0.36, 0.38, 1),
                   (0.9, 0.9, 0.88, 1), (0.52, 0.62, 0.66, 1)]
 FIN_COLORS = [(0.62, 0.64, 0.66, 1), (0.16, 0.16, 0.17, 1), (0.8, 0.8, 0.78, 1), (0.42, 0.34, 0.24, 1)]
-RELIEF_FULL_H = 48.0      # full window surrounds up to this height above the facade base, sills only above
+RELIEF_FULL_H = 22.0      # full window surrounds up to this height above the facade base, sills only above
+RELIEF_MAX_H = 45.0       # no punched-window relief above this (invisible from the street, costs GPU time)
 
 
 def _h(seed, k):
@@ -151,7 +152,7 @@ def facade_relief(ctx, a, b, y0, y1, mat, col, fh):
     if style == 2:
         # curtain wall: slim vertical fins on the mullion lines + a slab edge on every floor line
         fcol = FIN_COLORS[int(_h(seed, 3) * len(FIN_COLORS))]
-        every = 1 if _h(seed, 4) < 0.5 else 2
+        every = 2 if _h(seed, 4) < 0.5 else 3
         depth = 0.18 + 0.2 * _h(seed, 5)
         for c in range(0, int(ncol) + 1, every):
             u = c * pitch
@@ -194,6 +195,8 @@ def facade_relief(ctx, a, b, y0, y1, mat, col, fh):
     for k in range(k0, k1 + 1):
         ys = (k + sill) * fh
         yt = ys + wh * fh
+        if ys - y0 > RELIEF_MAX_H:
+            break
         full = ys - y0 < RELIEF_FULL_H
         for c in range(int(ncol)):
             uc = (c + 0.5) * pitch

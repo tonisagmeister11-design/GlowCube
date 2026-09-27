@@ -116,6 +116,8 @@ func to_main_menu() -> void:
 	if _leaving:
 		return
 	_leaving = true
+	if state == State.PLAYING or state == State.PAUSED:
+		SaveManager.save_on_exit()
 	state = State.MENU
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -157,6 +159,8 @@ func set_paused(p: bool) -> void:
 
 
 func quit() -> void:
+	if state == State.PLAYING or state == State.PAUSED:
+		SaveManager.save_on_exit()
 	Settings.save_settings()
 	get_tree().quit()
 

@@ -202,17 +202,46 @@ func handle_input(aiming: bool) -> void:
 			fire_at(hit["position"], aiming)
 
 
+const DRIVEBY_KINDS := ["pistol", "smg", "rifle", "shotgun"]
+
+
+func _driveby_weapons() -> Array:
+	return owned_sorted().filter(func(id): return String(WeaponData.get_def(id)["kind"]) in DRIVEBY_KINDS)
+
+
 func handle_vehicle_input() -> void:
-	# drive-by with pistol / SMG while holding aim
+	# in the car: number keys / mouse wheel pick a drive-by weapon, R reloads it, aim + fire shoots
+	var list := _driveby_weapons()
+	if list.is_empty():
+		return
+	var pick := ""
+	for i in range(1, 10):
+		if Input.is_action_just_pressed("weapon_%d" % i):
+			for id in list:
+				if int(WeaponData.get_def(id)["slot"]) == i:
+					pick = id
+					break
+	var step := 0
+	if Input.is_action_just_pressed("weapon_next"):
+		step = 1
+	elif Input.is_action_just_pressed("weapon_prev"):
+		step = -1
+	if step != 0:
+		var i := list.find(current)
+		pick = list[posmod(i + step, list.size())] if i >= 0 else list[0]
+	if pick != "" and pick != current:
+		equip(pick)
+		Events.notify.emit("Waffe: %s" % String(WeaponData.get_def(pick)["name"]), 1.5)
+	var usable := current in list
 	if Input.is_action_just_pressed("reload"):
+		if not usable:
+			equip(list[0])
+			usable = true
 		reload()
 	if not Input.is_action_pressed("aim"):
 		return
-	if not (current in ["pistol", "revolver", "smg"]):
-		for id in ["smg", "pistol", "revolver"]:
-			if owned.has(id):
-				equip(id)
-				break
+	if not usable:
+		equip(list[0])
 	var d := WeaponData.get_def(current)
 	if not WeaponData.is_ranged(current):
 		return
@@ -246,6 +275,12 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 	if not is_player:
 		spread += (1.0 - accuracy) * 6.0
 	var pellets := int(d.get("pellets", 1))
+	if not is_player and _aims_at_player(target):
+		# NPCs and cops don't hit every shot: many bullets go past the player
+		var miss := clampf(0.22 + (1.0 - accuracy) * 0.4 + from.distance_to(target) / 150.0, 0.22, 0.7)
+		if randf() < miss:
+			var side := (target - from).cross(Vector3.UP).normalized()
+			target += side * randf_range(0.7, 2.2) * (1.0 if randf() < 0.5 else -1.0) + Vector3.UP * randf_range(-0.6, 1.2)
 	var base_dir := (target - from).normalized()
 	if d.has("projectile"):
 		Projectile.launch(owner_body, from, _spread_dir(base_dir, spread), String(d["projectile"]), float(d["damage"]),
@@ -267,7 +302,7 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 		if not r.is_empty():
 			end = r["position"]
 			var c: Object = r["collider"]
-			var dmg := float(d["damage"]) * (1.0 if is_player else 0.55)
+			var dmg := float(d["damage"]) * (1.0 if is_player else 0.4)
 			Combat.apply_damage(c, dmg, owner_body, end, dir)
 			Combat.impact_fx(end, r["normal"], Combat.surface_of(c))
 			if c is RigidBody3D:
@@ -293,6 +328,15 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 	if int(st["clip"]) <= 0:
 		reload()
 	return true
+
+
+func _aims_at_player(target: Vector3) -> bool:
+	var pl := owner_body.get_tree().get_first_node_in_group("player") as Node3D
+	if pl == null:
+		return false
+	var pv = pl.get("vehicle")
+	var ref: Vector3 = (pv as Node3D).global_position if pv is Node3D else pl.global_position
+	return target.distance_to(ref) < 4.0
 
 
 func _spread_dir(dir: Vector3, deg: float) -> Vector3:

@@ -156,8 +156,8 @@ func _build_visual() -> void:
 		if n == "Body":
 			body_mesh = mi
 			_paint_meshes.append(mi)
-			# own a unique copy of the mesh for deformation
-			mi.mesh = mi.mesh.duplicate()
+			# the shared body mesh is only replaced by a private copy on the first dent (_deform
+			# builds a new mesh), so spawning traffic doesn't upload a fresh body mesh every time
 		elif n == "Detail" or n.begins_with("Bumper"):
 			_paint_meshes.append(mi)
 		if n == "Glass":
@@ -214,11 +214,36 @@ func _build_collision() -> void:
 	var gc := float(meta.get("ground", 0.2))
 	var hood := float(meta.get("hood", H * 0.6))
 	var lower := CollisionShape3D.new()
-	var b := BoxShape3D.new()
 	var low_top := hood if def.get("bike", false) == false else 0.95
-	b.size = Vector3(W * 0.96, maxf(low_top - gc - 0.05, 0.3), L * 0.97)
-	lower.shape = b
-	lower.position = Vector3(0, gc + 0.05 + b.size.y * 0.5, 0)
+	if def.get("bike", false):
+		var b := BoxShape3D.new()
+		b.size = Vector3(W * 0.96, maxf(low_top - gc - 0.05, 0.3), L * 0.97)
+		lower.shape = b
+		lower.position = Vector3(0, gc + 0.05 + b.size.y * 0.5, 0)
+	else:
+		# chassis hull: flat floor between the axles, well above the 16 cm kerbs, and bumpers that
+		# slope up like a ramp - driving onto the pavement lifts the car instead of stopping it dead
+		var wz := [-L * 0.3, L * 0.3]
+		var wm: Dictionary = meta.get("wheels", {})
+		for n in wm:
+			var z := float(wm[n][2])
+			wz[0] = minf(wz[0], z)
+			wz[1] = maxf(wz[1], z)
+		var y0 := maxf(gc + 0.06, 0.24)
+		var yb := maxf(y0 + 0.14, 0.4)
+		var y1 := maxf(low_top, yb + 0.15)
+		var hw := W * 0.48
+		var pts := PackedVector3Array()
+		for x in [-hw, hw]:
+			pts.append(Vector3(x, y0, wz[0]))
+			pts.append(Vector3(x, y0, wz[1]))
+			pts.append(Vector3(x, yb, -L * 0.485))
+			pts.append(Vector3(x, yb, L * 0.485))
+			pts.append(Vector3(x, y1, -L * 0.485))
+			pts.append(Vector3(x, y1, L * 0.485))
+		var hull := ConvexPolygonShape3D.new()
+		hull.points = pts
+		lower.shape = hull
 	add_child(lower)
 	if H > hood + 0.15 and not def.get("bike", false):
 		var upper := CollisionShape3D.new()
@@ -341,7 +366,7 @@ func _player_input(delta: float) -> void:
 	var back := Input.get_action_strength("brake")
 	var v_long := -linear_velocity.dot(global_basis.z)
 	if v_long < 1.0 and back > 0.1 and fwd < 0.1:
-		throttle = -back * 0.85   # reverse (up to ~50 km/h)
+		throttle = -back          # reverse (quick pull, up to ~50 km/h)
 		brake_input = 0.0
 	else:
 		throttle = fwd
@@ -353,6 +378,7 @@ func _player_input(delta: float) -> void:
 		fire_nitro()
 	if Input.is_action_just_pressed("horn"):
 		_horn_audio.play()
+		get_tree().call_group("npc", "hear_horn", self)
 	if Input.is_action_just_pressed("headlights"):
 		headlights_on = not headlights_on
 	if Input.is_action_just_pressed("siren") and def.get("siren", false):
@@ -404,7 +430,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var comp_vel: float = (compress - float(w["last_compress"])) / dt
 		var k := float(def["spring"]) * (0.5 if w.get("aux", false) else 1.0)
 		var c := float(def["damp"]) * (0.5 if w.get("aux", false) else 1.0)
-		var f_s := maxf(0.0, compress * k + comp_vel * c)
+		var f_s := maxf(0.0, compress * k + clampf(comp_vel, -2.5, 2.5) * c)
 		var contact: Vector3 = hit["position"]
 		w["ground_pos"] = contact
 		var col: Object = hit["collider"]
@@ -458,7 +484,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 				# full pull until close to the top speed, then a steep fall-off
 				eng *= clampf(1.0 - pow(maxf(v_long_body, 0.0) / top, 3.0), 0.0, 1.0) * 1.15
 			elif throttle < 0.0:
-				eng = throttle * mass * 3.5 * clampf(1.0 + v_long_body / 16.0, 0.0, 1.0)
+				eng = throttle * mass * 6.0 * clampf(1.0 - pow(maxf(-v_long_body, 0.0) / 14.0, 3.0), 0.0, 1.0)
 			f_long += eng / n_driven
 		if brake_input > 0.0:
 			f_long -= signf(v_long) * float(def["brake"]) * (1.0 + 0.15 * int(upgrades["brakes"])) * brake_input / 4.0 * clampf(absf(v_long) * 2.0, 0.0, 1.0)

@@ -64,7 +64,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif is_open and (event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause")):
 		close()
 		get_viewport().set_input_as_handled()
-	elif is_open and event.is_action_pressed("summon_vehicle"):
+	elif event.is_action_pressed("summon_vehicle") and (is_open or (Game.state == Game.State.PLAYING
+			and not MenuPanel.is_open())):
+		# T works on the map and directly while playing
 		get_viewport().set_input_as_handled()
 		_summon_menu()
 
@@ -79,7 +81,8 @@ func _summon_menu() -> void:
 	for e in cars:
 		items.append({"label": VehicleDefs.display_name(e["type"]), "desc": "Wird an die nächste Straße gebracht.",
 			"action": func():
-				close()
+				if is_open:
+					close()
 				world.economy.call("summon_vehicle", e)})
 	MenuPanel.open("Fahrzeug rufen", items, "Welches Auto soll zu dir kommen?")
 

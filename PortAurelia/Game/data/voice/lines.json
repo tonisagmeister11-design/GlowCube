@@ -8,5 +8,15 @@
 "jeweler": ["Not the diamonds! Please!", "The alarm is on, you won't get far!"],
 "cop": ["Freeze! Police!", "Hands where I can see them!", "You're under arrest!"],
 "racer": ["Eat my dust!", "See you at the finish!", "You call that driving?"],
-"buyer": ["Nice ride. Here's your money.", "Pleasure doing business."]
+"buyer": ["Nice ride. Here's your money.", "Pleasure doing business."],
+"greet": ["Hey, how's it going?", "Nice day, huh?", "Morning!", "What's up?", "Hi there!", "Looking good today!", "Hey! Long time no see!", "Evening, stranger."],
+"chat": ["This city never sleeps.", "Did you see the game last night?", "Rent in this town is insane.", "I need a coffee. Badly.", "Traffic was crazy today.", "You new around here?", "Watch your back in this part of town.", "Ever been to the beach at sunset?"],
+"car_comment": ["Sweet ride!", "Nice car, man!", "Wow, is that yours?", "Now that's a real car!", "Can I get a ride?", "How fast does that thing go?"],
+"bump": ["Hey, watch it!", "Excuse me?!", "Do you mind?", "Ow! Look where you're going!", "Personal space, buddy!", "Easy there!"],
+"insult": ["What are you looking at?", "You got a problem?", "Get lost, loser!", "This is my street!", "You want some?", "Walk away while you still can.", "Nice shoes. Did your mom buy them?", "Keep walking, tough guy."],
+"fight_start": ["That's it, you're dead!", "Come on then!", "You asked for it!", "Let's go, right here!"],
+"fight_flee": ["Okay, okay, I'm out!", "You're crazy, man!", "Whoa, whoa! I'm leaving!"],
+"back_off": ["Yeah, that's what I thought.", "Not worth my time.", "Get out of here."],
+"horn": ["Alright, alright!", "Stop honking!", "I'm walking here!"],
+"night": ["Kind of late to be out, huh?", "Stay safe out here tonight.", "Can't sleep either?"]
 }

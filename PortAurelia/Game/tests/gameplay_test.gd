@@ -117,7 +117,9 @@ func _run() -> void:
 	Input.action_release("brake")
 	check("vehicle brakes", slowest < 2.0, "%.0f -> %.0f km/h" % [before, slowest])
 	check("vehicle upright", v.global_basis.y.dot(Vector3.UP) > 0.8)
-	await wait(0.5)
+	# reversing is quick now: come to a stop with the handbrake before getting out
+	await hold("handbrake", 1.5)
+	await wait(0.3)
 	await hold("vehicle_enter", 0.1)
 	await wait(1.0)
 	check("player exited vehicle", p.state == Player.State.GROUND, "state=%d" % p.state)

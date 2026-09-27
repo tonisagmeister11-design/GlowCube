@@ -67,7 +67,8 @@ func _ready() -> void:
 	add_child(model)
 	health = Health.new()
 	health.name = "Health"
-	health.max_health = 100.0
+	health.max_health = 250.0
+	health.regen_rate = 4.0
 	add_child(health)
 	health.died.connect(_on_died)
 	health.damaged.connect(_on_damaged)

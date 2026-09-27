@@ -80,6 +80,14 @@ var _dodge_vel := Vector3.ZERO    # sideways dive away from a car, decays over ~
 var _say_cd := 0.0
 var _bubble: Label3D
 var _bubble_t := 0.0
+## street life: people greet you, comment on your car, complain when bumped; troublemakers
+## insult you, follow you and sometimes start a fist fight
+var troublemaker := false
+var _social_cd := 0.0
+var _provoke := 0               # 0 none, 1 insulted, 2 following, 3 fighting / done
+var _provoke_t := 0.0
+var _brawl := false             # fist fight started by this NPC (defending yourself is no crime)
+static var _last_street_line := 0
 
 
 func _ready() -> void:
@@ -114,6 +122,9 @@ func _ready() -> void:
 	weapons.accuracy = 0.55
 	female = outfit.get("body", "M") == "F"
 	_voice_pitch = randf_range(1.15, 1.4) if female else randf_range(0.85, 1.05)
+	_social_cd = randf_range(2.0, 10.0)
+	if role in ["civilian", "worker", "gang"] and not persistent and shop_role == "":
+		troublemaker = randf() < (0.35 if role == "gang" else (0.03 if female else 0.08))
 	_offset = randf_range(-0.7, 0.7)
 	_graph = manager.get("ped_graph") if manager else null
 	_last_pos = global_position
@@ -399,6 +410,8 @@ func _physics_process(delta: float) -> void:
 			_search(delta)
 		S.CHASE:
 			_chase_update(delta)
+	if p and dist < 14.0 and near:
+		_social(delta, p, dist)
 	_avoid_vehicles(p)
 	_move(delta)
 	_animate(delta, dist)
@@ -712,7 +725,17 @@ func _fight(delta: float) -> void:
 		target = null
 		start_walking()
 		return
-	var ranged := weapons.has_ranged()
+	if _brawl and target is Player:
+		var tpl := target as Player
+		var gun: bool = tpl.is_armed() and tpl.weapons.current_is_ranged() and tpl.aiming
+		if health.fraction() < 0.45 or gun:
+			_brawl = false
+			hostile = false
+			target = null
+			say("fight_flee")
+			flee_from(tp, 12.0)
+			return
+	var ranged := weapons.has_ranged() and not _brawl
 	if ranged and not weapons.current_is_ranged():
 		for id in weapons.owned_sorted():
 			if WeaponData.is_ranged(id):
@@ -824,6 +847,9 @@ func _on_damaged(amount: float, source: Node, _pos: Vector3, dir: Vector3) -> vo
 		model.play_oneshot("hit_react")
 		if randf() < 0.5:
 			AudioManager.play_voice("pain", global_position)
+	if troublemaker and source is Player and _provoke > 0 and not _brawl and state != S.KNOCKED:
+		start_brawl(source as Node3D)
+		return
 	if source is Player and not _assault_reported and role != "gang" and not outlaw:
 		_assault_reported = true
 		Events.crime_committed.emit("assault_cop" if role == "cop" else "assault", global_position,
@@ -961,6 +987,135 @@ func _near_miss(veh: Node3D, close: bool) -> void:
 	_scream_cd = 4.0   # the spoken line replaces the scream
 	flee_from(veh.global_position, randf_range(6.0, 10.0))
 	say("near_miss" if close and randf() < 0.6 else "help")
+
+
+# ------------------------------------------------------------------ street life
+func _street_line_ok(gap_ms: int) -> bool:
+	return Time.get_ticks_msec() - _last_street_line > gap_ms
+
+
+func _street_say(cat: String, gap_ms := 3500) -> bool:
+	if not _street_line_ok(gap_ms) or _say_cd > 0.0:
+		return false
+	_last_street_line = Time.get_ticks_msec()
+	say(cat)
+	return true
+
+
+func _social(delta: float, p: Node3D, dist: float) -> void:
+	var pl := p as Player
+	if pl == null or pl.health.dead:
+		return
+	_social_cd -= delta
+	var calm := state in [S.WALK, S.IDLE, S.TALK, S.PHONE, S.WINDOW, S.WAIT_CROSS, S.WORK]
+	var in_car := pl.is_in_vehicle()
+	# troublemakers: insult -> follow -> fight or back off
+	if troublemaker and _provoke < 3:
+		_provoke_tick(delta, pl, dist, calm, in_car)
+		return
+	if not calm or _social_cd > 0.0:
+		return
+	var pv := pl.vehicle as Vehicle if in_car else null
+	if in_car:
+		# comments on a flashy car that stops next to them
+		if pv and dist < 7.0 and absf(pv.speed_kmh) < 6.0 and pv.type_id in VehicleDefs.SPORTS:
+			_social_cd = randf_range(20.0, 40.0)
+			if randf() < 0.6:
+				_face(pl.global_position)
+				_street_say("car_comment")
+		return
+	# bumped into by the player
+	if dist < 0.85 and pl.velocity.length() > 2.0:
+		_social_cd = randf_range(6.0, 12.0)
+		_face(pl.global_position)
+		_street_say("bump", 1500)
+		if not troublemaker and role != "cop" and not female and bravery > 0.45 and randf() < 0.25:
+			troublemaker = true   # "you want some?"
+		return
+	if dist < 3.2:
+		_social_cd = randf_range(14.0, 30.0)
+		if randf() > 0.45:
+			return
+		_face(pl.global_position)
+		var near_sports := false
+		for v in get_tree().get_nodes_in_group("vehicles"):
+			var veh := v as Vehicle
+			if veh.player_owned and veh.type_id in VehicleDefs.SPORTS and veh.global_position.distance_to(global_position) < 8.0:
+				near_sports = true
+				break
+		var h := float(GameWorld.instance.day_night.get("hour")) if GameWorld.instance and GameWorld.instance.day_night else 12.0
+		if near_sports:
+			_street_say("car_comment")
+		elif (h < 5.0 or h > 22.0) and randf() < 0.6:
+			_street_say("night")
+		else:
+			_street_say("greet" if randf() < 0.55 else "chat")
+
+
+func _provoke_tick(delta: float, pl: Player, dist: float, calm: bool, in_car: bool) -> void:
+	_provoke_t -= delta
+	match _provoke:
+		0:
+			if calm and not in_car and dist < 7.0 and _social_cd <= 0.0 and randf() < delta * 1.5:
+				var to := pl.global_position - global_position
+				if to.normalized().dot(-global_basis.z) > 0.2 or dist < 4.0:
+					if _street_say("insult", 1200):
+						_provoke = 1
+						_provoke_t = randf_range(3.0, 4.5)
+						_face(pl.global_position)
+						_set_state(S.IDLE)
+						_timer = 8.0
+		1:
+			_face(pl.global_position)
+			if dist > 11.0 or in_car:
+				_end_provoke(false)
+			elif _provoke_t <= 0.0:
+				if dist < 5.0:
+					_provoke = 2
+					outlaw = true   # he is looking for trouble: hitting him first is no crime
+					_provoke_t = randf_range(3.0, 5.0)
+					say("insult")
+					go_to(pl.global_position, false)
+				else:
+					_end_provoke(false)
+		2:
+			if state != S.GOTO and state != S.IDLE:
+				_provoke = 3
+				return
+			if dist > 12.0 or in_car:
+				_end_provoke(false)
+				return
+			_goal = pl.global_position
+			if _provoke_t <= 0.0:
+				if dist < 3.5 and randf() < 0.55:
+					start_brawl(pl)
+				else:
+					_end_provoke(true)
+
+
+## Picks a fist fight with the player (troublemakers). Hitting back is self-defence: no stars.
+func start_brawl(pl: Node3D) -> void:
+	_provoke = 3
+	_brawl = true
+	outlaw = true
+	weapons.holster()
+	say("fight_start")
+	engage(pl)
+
+
+func _end_provoke(with_line: bool) -> void:
+	_provoke = 3
+	if with_line:
+		say("back_off")
+	start_walking()
+
+
+## A car honks at this pedestrian.
+func hear_horn(v: Node3D) -> void:
+	if state in [S.WALK, S.IDLE, S.WAIT_CROSS, S.TALK, S.PHONE] and v.global_position.distance_to(global_position) < 12.0:
+		if randf() < 0.5:
+			_face(v.global_position)
+			_street_say("horn", 2000)
 
 
 ## Speak a voice line with a short speech bubble over the head.

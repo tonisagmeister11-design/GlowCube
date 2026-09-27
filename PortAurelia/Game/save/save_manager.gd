@@ -32,7 +32,10 @@ func _path(slot: int) -> String:
 
 func autosave() -> bool:
 	var w := GameWorld.instance
-	if w == null or w.player == null or (w.player as Player).state != Player.State.GROUND:
+	if w == null or w.player == null:
+		return false
+	var st := (w.player as Player).state
+	if st != Player.State.GROUND and st != Player.State.VEHICLE:
 		return false
 	if w.police and int(w.police.get("wanted_level")) > 0:
 		return false
@@ -42,6 +45,18 @@ func autosave() -> bool:
 	if ok:
 		Events.notify.emit("Automatisch gespeichert", 2.0)
 	return ok
+
+
+## Leaving the game (main menu / quit): always keep where the player is, the money and the cars,
+## even while wanted or during a mission (those are not resumed, but nothing else is lost).
+func save_on_exit() -> bool:
+	var w := GameWorld.instance
+	if w == null or w.player == null or Game.player_data == null:
+		return false
+	var p := w.player as Player
+	if p.health.dead or Game.player_data.world_state.get("creative", false):
+		return false
+	return save_slot(AUTOSAVE)
 
 
 func save_slot(slot: int) -> bool:

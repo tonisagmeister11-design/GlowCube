@@ -14,7 +14,9 @@ signal chunk_loaded(c: Vector2i)
 signal chunk_unloaded(c: Vector2i)
 
 const CHUNK_DIR := "res://assets/generated/city/"
-const MAX_PARALLEL_LOADS := 3
+# background loads run on worker threads without sub-threads: with sub-threads, fast driving
+# (constant streaming) could occupy every CPU core and starve the game and render threads
+const MAX_PARALLEL_LOADS := 2
 const INSTANCE_BUDGET_MS := 6.0
 const UPDATE_INTERVAL := 0.2
 
@@ -180,7 +182,7 @@ func _update_requests() -> void:
 		if _pending.size() >= MAX_PARALLEL_LOADS:
 			break
 		var p := _path(c)
-		if ResourceLoader.load_threaded_request(p, "PackedScene", true) == OK:
+		if ResourceLoader.load_threaded_request(p, "PackedScene", false) == OK:
 			_pending[c] = p
 
 
@@ -233,7 +235,11 @@ func _instantiate(c: Vector2i, scene: PackedScene) -> void:
 	# 3D facade relief (frames, sills, balconies): shorter range in the performance modes
 	var fac := st.root.find_child("Facade_LOD0*", false, false) as GeometryInstance3D
 	if fac:
-		fac.visibility_range_end = [200.0, 160.0, 110.0, 70.0][clampi(Settings.perf_mode(), 0, 3)]
+		fac.visibility_range_end = [150.0, 120.0, 80.0, 0.001][clampi(Settings.perf_mode(), 0, 3)]
+		fac.visible = Settings.perf_mode() < 3
+		# the relief only casts sun shadows at ULTRA quality (4 shadow cascades would draw it 4x)
+		fac.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if Settings.quality() >= 3 \
+			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if _far_nodes.has(c):
 		(_far_nodes[c] as Node3D).visible = false
 	_build_props(st)

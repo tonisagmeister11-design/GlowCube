@@ -184,7 +184,14 @@ func _process(delta: float) -> void:
 	signals.advance(delta)
 	var cam := get_viewport().get_camera_3d()
 	if player and is_instance_valid(player):
-		streaming.set_focus(player.global_position)
+		# look ahead while driving: the chunks in front load first, the ones behind unload
+		var f: Vector3 = player.global_position
+		var pv = player.get("vehicle")
+		if pv is RigidBody3D:
+			var vel := (pv as RigidBody3D).linear_velocity
+			vel.y = 0.0
+			f += vel.limit_length(90.0) * 2.0
+		streaming.set_focus(f)
 	elif cam:
 		streaming.set_focus(cam.global_position)
 

@@ -168,7 +168,11 @@ func _density_factor(p: Vector3) -> float:
 func _maintain_population(pp: Vector3) -> void:
 	var dens := _density_factor(pp)
 	var want_moving := int(target_moving * dens)
-	var want_parked := int(target_parked * clampf(dens + 0.3, 0.3, 1.0))
+	# parked cars: more at night and in the evening (everyone is home), fewer at midday
+	var h := float(world.day_night.get("hour")) if world.day_night else 12.0
+	var night := 1.6 if (h < 6.0 or h > 21.0) else (1.3 if (h < 7.5 or h > 18.5) else 1.0)
+	var district := float(world.data.district_at(pp).get("traffic", 0.6))
+	var want_parked := int(target_parked * clampf(district + 0.35, 0.45, 1.0) * night)
 	if drivers.size() < want_moving:
 		_spawn_moving(pp)
 	if parked.size() < want_parked:

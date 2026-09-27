@@ -13,7 +13,7 @@ const MAT_DIR := "res://assets/materials/"
 const RANGES := {
 	"Markings_LOD0": Vector2(0.0, 200.0),
 	"Detail_LOD0": Vector2(0.0, 170.0),
-	"Facade_LOD0": Vector2(0.0, 200.0),
+	"Facade_LOD0": Vector2(0.0, 150.0),
 	"Buildings_LOD0": Vector2(0.0, 220.0),
 	"Buildings_LOD1": Vector2(220.0, 0.0),
 }
@@ -87,7 +87,8 @@ func _setup_mesh(mi: MeshInstance3D) -> void:
 			mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	# shadow casting only where it is visible: flat ground, markings and small details
 	# don't cast (performance), buildings and structures do
-	if nm.begins_with("Markings") or nm.begins_with("Far_") or nm.begins_with("Ground") or nm.begins_with("Detail"):
+	if nm.begins_with("Markings") or nm.begins_with("Far_") or nm.begins_with("Ground") or nm.begins_with("Detail") \
+			or nm.begins_with("Facade"):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 

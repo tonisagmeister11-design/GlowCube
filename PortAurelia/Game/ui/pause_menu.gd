@@ -164,11 +164,11 @@ func _input(event: InputEvent) -> void:
 
 
 func _main_menu() -> void:
-	_confirm("Zum Hauptmenü? Nicht gespeicherter Fortschritt geht verloren.", func(): Game.to_main_menu())
+	_confirm("Zum Hauptmenü? Dein Spiel wird automatisch gespeichert (Ort, Geld, Autos).", func(): Game.to_main_menu())
 
 
 func _quit() -> void:
-	_confirm("Spiel wirklich beenden? Nicht gespeicherter Fortschritt geht verloren.", func(): Game.quit())
+	_confirm("Spiel wirklich beenden? Dein Spiel wird automatisch gespeichert.", func(): Game.quit())
 
 
 func _confirm(text: String, yes: Callable) -> void:
