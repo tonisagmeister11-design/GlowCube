@@ -523,14 +523,33 @@ func _cop_attack(cop: NPC, p: Player) -> void:
 
 
 ## The police are right on you and you are on foot (or standing behind/at a parked car):
-## start the chase track. It keeps playing until the wanted level is gone.
+## start the chase track. It fades out once no cop is after you any more (all down, lost you,
+## or far away for a few seconds) and at the latest when the wanted level is gone.
+var _chase_calm := 0.0
+
+
 func _chase_music() -> void:
 	var p := world.player as Player
 	if p.state in [Player.State.DEAD, Player.State.BUSTED]:
 		AudioManager.radio.stop_chase(true)
 		return
 	if AudioManager.radio.is_chasing():
+		var threat := false
+		if not searching:
+			for u in units:
+				for c in u["cops"]:
+					if is_instance_valid(c) and not (c as NPC).is_dead() and (c as NPC).state != NPC.S.KNOCKED \
+							and (c as Node3D).global_position.distance_to(p.global_position) < 45.0:
+						threat = true
+						break
+				if threat:
+					break
+		_chase_calm = 0.0 if threat else _chase_calm + get_physics_process_delta_time()
+		if _chase_calm > 4.0:
+			_chase_calm = 0.0
+			AudioManager.radio.stop_chase()
 		return
+	_chase_calm = 0.0
 	var on_foot := not p.is_in_vehicle() or (p.vehicle as Vehicle).speed() < 2.0
 	if not on_foot:
 		return

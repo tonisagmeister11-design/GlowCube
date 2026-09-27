@@ -8,21 +8,41 @@ signal saved(slot: int)
 const VERSION := 1
 const AUTOSAVE := -1
 
-var autosave_interval := 180.0
+var autosave_interval := 60.0
 var _auto_timer := 0.0
+var _money_save_in := -1.0     # pending save after earning / spending money
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# money never gets lost: every bigger gain or purchase is written to the autosave shortly after
+	Events.money_changed.connect(func(_m: int, delta: int):
+		if absi(delta) >= 100 and Game.state == Game.State.PLAYING:
+			_money_save_in = 3.0)
+	Events.mission_completed.connect(func(_id: String, _r: int): _money_save_in = 2.0)
 
 
 func _process(delta: float) -> void:
 	if Game.state != Game.State.PLAYING:
 		return
 	_auto_timer += delta
+	if _money_save_in > 0.0:
+		_money_save_in -= delta
+		if _money_save_in <= 0.0:
+			if autosave(false):
+				_auto_timer = 0.0
+			else:
+				_money_save_in = 5.0   # busy (dead, in a cutscene...): try again shortly
 	if _auto_timer >= autosave_interval:
-		_auto_timer = 0.0
-		autosave()
+		_auto_timer = 0.0 if autosave(false) else autosave_interval - 10.0
+
+
+## The game window is closed (X button, Alt+F4): save before quitting.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if Game.state == Game.State.PLAYING or Game.state == Game.State.PAUSED:
+			save_on_exit()
+		Settings.save_settings()
 
 
 func _path(slot: int) -> String:
@@ -30,19 +50,20 @@ func _path(slot: int) -> String:
 	return Paths.saves_dir.path_join(name)
 
 
-func autosave() -> bool:
+## Autosave slot. Works during missions and while wanted too (those are not resumed after
+## loading, but money, cars, weapons and position are never lost); only skipped while dead,
+## busted or in a scripted sequence.
+func autosave(notify := true) -> bool:
 	var w := GameWorld.instance
-	if w == null or w.player == null:
+	if w == null or w.player == null or Game.player_data == null:
 		return false
-	var st := (w.player as Player).state
-	if st != Player.State.GROUND and st != Player.State.VEHICLE:
+	var p := w.player as Player
+	if p.health.dead or p.state in [Player.State.DEAD, Player.State.BUSTED, Player.State.LOCKED]:
 		return false
-	if w.police and int(w.police.get("wanted_level")) > 0:
-		return false
-	if w.missions and w.missions.call("is_active"):
+	if Game.player_data.is_creative():
 		return false
 	var ok := save_slot(AUTOSAVE)
-	if ok:
+	if ok and notify:
 		Events.notify.emit("Automatisch gespeichert", 2.0)
 	return ok
 
@@ -173,11 +194,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var w := GameWorld.instance
 	if w == null:
 		return
-	if w.missions and w.missions.call("is_active"):
-		Events.notify.emit("Während einer Mission kann nicht gespeichert werden.", 3.0)
-		return
-	if w.police and int(w.police.get("wanted_level")) > 0:
-		Events.notify.emit("Du wirst gesucht – Speichern nicht möglich.", 3.0)
-		return
-	if autosave():
+	if autosave(false):
 		Events.notify.emit("Schnellspeicherung erstellt.", 2.5)
+	else:
+		Events.notify.emit("Gerade nicht möglich – versuch es gleich nochmal.", 2.5)

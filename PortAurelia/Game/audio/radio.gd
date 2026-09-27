@@ -75,6 +75,7 @@ func _play(t: int, pos: float) -> void:
 	_track = t
 	radio.stream = s
 	radio.play(pos)
+	radio.stream_paused = chase.playing   # the chase track has priority
 
 
 func _next_song() -> void:
@@ -141,16 +142,30 @@ func start_chase() -> void:
 	chase.stream = s
 	chase.volume_db = 0.0
 	chase.play(CHASE_START)
+	# never on top of other music: the car radio pauses while the chase track plays
+	radio.stream_paused = true
+	if AudioManager.music and AudioManager.music.player:
+		AudioManager.music.player.stream_paused = true
 
 
 func stop_chase(now := false) -> void:
 	if not chase.playing:
+		_resume_after_chase()
 		return
 	if now:
 		chase.stop()
+		_resume_after_chase()
 		return
 	if _chase_fade:
 		_chase_fade.kill()
 	_chase_fade = create_tween()
 	_chase_fade.tween_property(chase, "volume_db", -40.0, 1.5)
-	_chase_fade.tween_callback(chase.stop)
+	_chase_fade.tween_callback(func():
+		chase.stop()
+		_resume_after_chase())
+
+
+func _resume_after_chase() -> void:
+	radio.stream_paused = false
+	if AudioManager.music and AudioManager.music.player:
+		AudioManager.music.player.stream_paused = false

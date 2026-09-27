@@ -53,6 +53,8 @@ func _run() -> void:
 	await _test_save_on_exit(p)
 	await _test_parked_night(p)
 	await _test_street_life(p)
+	await _test_saving_always(p)
+	await _test_chase_music(p)
 
 
 func _test_balance(p: Player) -> void:
@@ -291,3 +293,43 @@ func _test_street_life(p: Player) -> void:
 	check("fighting back gives no wanted level", int(world.police.wanted_level) == 0, "wanted %d" % world.police.wanted_level)
 	tm.queue_free()
 	fl.queue_free()
+
+
+func _test_saving_always(p: Player) -> void:
+	Game.state = Game.State.PLAYING
+	world.police.call("set_wanted", 2)
+	var ok := SaveManager.autosave(false)
+	check("saving works while wanted", ok)
+	world.police.call("clear_wanted")
+	Game.player_data.add_money(1234, "test")
+	var want := Game.player_data.money
+	await wait(4.5)
+	var pd := SaveManager.load_slot(SaveManager.AUTOSAVE)
+	check("earned money is saved automatically", pd != null and pd.money == want, "%d vs %d" % [pd.money if pd else -1, want])
+
+
+func _test_chase_music(p: Player) -> void:
+	var r: CarRadio = AudioManager.radio
+	var car := Vehicle.create("sedan")
+	world.add_child(car)
+	car.global_position = p.global_position + Vector3(4, 0.8, 0)
+	await wait(0.6)
+	p.enter_vehicle(car)
+	await wait(0.8)
+	var radio_on := r.radio.playing
+	r.start_chase()
+	await wait(0.2)
+	check("car radio pauses during the chase track", r.is_chasing() and (not radio_on or r.radio.stream_paused))
+	p.exit_vehicle()
+	await wait(0.5)
+	# still wanted, but no cop anywhere near: the chase track fades out
+	world.police.call("set_wanted", 1)
+	for u in world.police.units:
+		for c in u["cops"]:
+			if is_instance_valid(c):
+				(c as Node3D).global_position += Vector3(0, -500, 0)
+	await wait(7.0)
+	check("chase music stops once no cop is after you", not r.is_chasing(), "wanted %d" % world.police.wanted_level)
+	check("radio resumes after the chase", not r.radio.stream_paused)
+	world.police.call("clear_wanted")
+	car.queue_free()
