@@ -21,13 +21,20 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v1.0
-          name: Harbor Heat v1.0
+          tag_name: harbor-heat-v2.0
+          name: Harbor Heat v2.0
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v2.0** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
-            Weak laptop: Settings > Grafik > Leistungsmodus > "Maximal", then restart.
+
+            New in 2.0: rob every shop (aim at the shopkeeper), jewelry stores and a gun shop that
+            fights back · sports cars up to ~290 km/h, nitro (N), street races in three classes ·
+            rocket launcher, grenade launcher, minigun and more · knock over lamp posts ·
+            new big-money contracts with checkpoints · surrender to the police (X) and serve your
+            time · creative mode · NPCs dodge cars and shout for help · expensive real estate.
+
+            Weak laptop: open Settings, switch on PERFORMANCE MODE at the top, restart.
             If Windows SmartScreen warns: "More info" > "Run anyway" (unsigned build).
           files: HarborHeat.exe
