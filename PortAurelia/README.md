@@ -128,6 +128,8 @@ Other generators: `Tools/Textures/generate_textures.py` (PBR-ish tiling textures
 | Drive | W/S, A/D, Space handbrake, Shift drift (or steer hard at speed), N nitro, H horn, L lights, G siren | RT/LT, left stick, RB, LB drift, A nitro, left stick click, D-pad right |
 | Rob a shop | aim a gun at the shopkeeper and keep it on them | aim with LT |
 | Surrender to the police / abort mission | X / K (or pause menu) | – |
+| Car radio | + / - volume, . next song, , on/off | – |
+| Keep a stolen car / call your car | J (no wanted level) / T on the map | – |
 | Quick save | F5 | – |
 
 ### Camera

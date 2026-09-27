@@ -923,6 +923,11 @@ func _avoid_vehicles(p: Node3D) -> void:
 		var t_hit := along / spd
 		var by_player := veh.driver is Player
 		if along > -1.0 and t_hit < 1.1 and lateral < 2.7:
+			_dodge_cd = 0.6
+			if randf() > 0.7:
+				# frozen in shock - not everybody gets away
+				_scream()
+				return
 			# dive out of the way, to the side the car is not heading for
 			var side := fwd.cross(Vector3.UP)
 			if side.dot(rel) < 0.0:

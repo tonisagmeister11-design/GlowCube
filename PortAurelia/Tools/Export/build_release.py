@@ -60,6 +60,7 @@ Steuerung (Tastatur & Maus, Xbox-Controller wird automatisch erkannt)
   E Interagieren · F Fahrzeug · M Karte · Pfeil hoch Telefon · ESC Pause · F5 Schnellspeichern
   Im Auto: W/S Gas/Bremse · A/D Lenken · Leertaste Handbremse · Shift Driften · N Nitro · H Hupe · L Licht · G Sirene
   Laden ausrauben: Waffe auf den Verkäufer richten · X bei der Polizei ergeben · K Mission abbrechen
+  Radio im Auto: +/- Lautstärke · . nächstes Lied · , an/aus · J gestohlenes Auto behalten · Karte: T Auto rufen
   V Kamera wechseln (zu Fuß: Third/First Person, im Auto: nah, weit, Motorhaube, Cockpit)
 
 Kamera

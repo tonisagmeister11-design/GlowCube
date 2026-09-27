@@ -12,7 +12,8 @@ const TEXT := """Zu Fuß
 Fahrzeug
   W / S  Gas / Bremse & Rückwärts          A / D  Lenken
   Leertaste  Handbremse   Shift  Driften (oder hart einlenken)   N  Nitro   H  Hupe   L  Scheinwerfer   G  Sirene
+  Radio:  + / -  Lautstärke   .  nächstes Lied   ,  an/aus        J  gestohlenes Auto übernehmen
   B  Zurückschauen        Maus  Kamera   (Zielen + Klick: aus dem Fenster schießen)
 Allgemein
-  M  Karte     Pfeil hoch  Telefon     ESC  Pause     F5  Schnellspeichern     K  Mission abbrechen
+  M  Karte (dort T: eigenes Auto rufen)     Pfeil hoch  Telefon     ESC  Pause     F5  Schnellspeichern     K  Mission abbrechen
 Controller wird automatisch erkannt (Xbox-Layout)."""

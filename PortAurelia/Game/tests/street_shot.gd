@@ -27,6 +27,15 @@ func _ready() -> void:
 		world.police.call("set_wanted", int(args["wanted"]))
 	var out: String = args.get("out", "user://")
 	var p := world.player as Player
+	if args.has("at"):
+		# --at x,z : stand on the nearest road there (e.g. to check a hill road)
+		var xz: PackedStringArray = String(args["at"]).split(",")
+		var target := Vector3(float(xz[0]), 0.0, float(xz[1]))
+		var cl := world.graph.closest_lane(target, 80.0)
+		if not cl.is_empty():
+			target = cl["pos"]
+		world.streaming.load_area_blocking(target, 300.0)
+		p.teleport(target + Vector3.UP * 1.0)
 	var home := world.data.nearest_poi("safehouse", p.global_position)
 	var f: Vector3 = home.get("facing_v", Vector3.FORWARD)
 	p.cam.yaw = atan2(-f.x, -f.z) + float(args.get("yaw", "0"))

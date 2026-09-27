@@ -13,7 +13,7 @@ step "2/9 materials";           $PY Tools/Materials/build_materials.py
 step "3/9 sound effects";       $PY Tools/Audio/generate_sfx.py
 step "4/9 city plan + chunks";  $PY -u Blender/scripts/generate_city.py -- --plan
 step "5/9 assets";              for s in build_asset_library generate_vehicles generate_weapons generate_characters generate_interiors; do $PY -u Blender/scripts/$s.py; done
-step "6/9 map";                 $PY Tools/Map/render_map.py
+step "6/9 map";                 $PY Tools/Map/render_map.py && $PY Tools/Map/check_roads.py
 step "7/9 Godot import";        $GODOT --headless --path Game --import
 step "8/9 validation";          for s in export_glb setup_materials setup_uvs generate_lods generate_colliders; do $PY Blender/scripts/$s.py; done
 [ "${1:-}" = "--assets" ] && exit 0

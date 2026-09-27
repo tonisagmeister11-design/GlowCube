@@ -11,6 +11,7 @@ foreach ($s in "build_asset_library","generate_vehicles","generate_weapons","gen
     & $py -u "Blender\scripts\$s.py"
 }
 & $py Tools\Map\render_map.py
+& $py Tools\Map\check_roads.py
 & $godot --headless --path Game --import
 foreach ($s in "export_glb","setup_materials","setup_uvs","generate_lods","generate_colliders") { & $py "Blender\scripts\$s.py" }
 & $py Tools\Export\build_release.py

@@ -63,6 +63,7 @@ func _ready() -> void:
 	await wait(0.3)
 	n2._set_state(NPC.S.IDLE)
 	n2._timer = 30.0
+	n2._dodge_cd = 1e9   # this check is about the impact, not about diving away
 	var v := Vehicle.create("sedan")
 	world.add_child(v)
 	var side := world.player.global_basis.x

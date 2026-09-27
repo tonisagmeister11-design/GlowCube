@@ -55,6 +55,18 @@ def build_plan(verbose=True):
                 if e.tunnel[i] and e.tunnel[i + 1]:
                     continue
                 T.carve_segment(pts[i], pts[i + 1], e.ys[i], e.ys[i + 1], w, 14.0, "cut")
+    # final pass: carving one road with its 10 m falloff could raise the ground back over a road
+    # carved earlier (hills, junctions at different heights). Cut the ground below every
+    # surface road again (only lowers, never raises) so no road ends up under the terrain.
+    for e in net.edges:
+        if e.level != "surface":
+            continue
+        pts = e.pts
+        w = e.hw + max(e.walk, 1.0) + 1.5
+        for i in range(len(pts) - 1):
+            if e.bridge[i] and e.bridge[i + 1]:
+                continue
+            T.carve_segment(pts[i], pts[i + 1], e.ys[i] - 0.05, e.ys[i + 1] - 0.05, w, 6.0, "cut")
     # tunnel portals: remove terrain cells just inside each tunnel mouth
     tunnels = []
     for e in net.edges:
