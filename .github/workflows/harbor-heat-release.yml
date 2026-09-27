@@ -21,13 +21,20 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v2.3
-          name: Harbor Heat v2.3
+          tag_name: harbor-heat-v2.4
+          name: Harbor Heat v2.4
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v2.3** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v2.4** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            2.4: much less lag when driving fast across the city · going back to the main menu or
+            quitting saves automatically (position, money, your cars) · T calls your car anytime ·
+            250 health, weaker weapons, the police miss a lot more · drive up kerbs without
+            stopping dead, faster reverse · switch weapons (1-9 / mouse wheel) and reload in the car ·
+            more parked cars at night · pedestrians greet you, chat, comment on your car and complain;
+            some troublemakers insult you and start fist fights (fighting back is no crime).
 
             2.3 (big texture update): smooth, natural people (no more bulging muscles or lumpy
             faces, clothes without clipping) · buildings with real 3D facades: window frames, sills,
