@@ -1,4 +1,4 @@
-"""Parametric vehicle generator: 16 original vehicles.
+"""Parametric vehicle generator: 18 original vehicles.
 
 Body = high-resolution loft (see _carbody.py): bulging sides with character crease and
 shoulder, flared wheel arches, rounded nose/tail, crowned hood/roof, tumblehome glass with
@@ -33,9 +33,16 @@ VEHICLES = {
     "luxury":    dict(name="Regent", style="sedan", L=5.12, W=1.92, H=1.48, WB=3.02, R=0.35, gc=0.15, hood=0.94,
                       ws=0.33, rs=0.46, re=0.71, rw=0.82, rear=1.0, paint="civil", chrome=True),
     "sports":    dict(name="Vento GT", style="coupe", L=4.45, W=1.88, H=1.27, WB=2.58, R=0.34, gc=0.12, hood=0.78,
-                      ws=0.36, rs=0.52, re=0.66, rw=0.86, rear=0.88, paint="civil", spoiler=True),
+                      ws=0.36, rs=0.52, re=0.66, rw=0.86, rear=0.88, paint="civil", spoiler=True,
+                      stripes=(0.95, 0.95, 0.95, 1)),
     "supercar":  dict(name="Stratos X", style="super", L=4.62, W=2.02, H=1.13, WB=2.72, R=0.35, gc=0.1, hood=0.66,
-                      ws=0.30, rs=0.47, re=0.56, rw=0.9, rear=0.85, paint="civil", spoiler=True),
+                      ws=0.30, rs=0.47, re=0.56, rw=0.9, rear=0.85, paint="civil", spoiler=True, intakes=True),
+    "hypercar":  dict(name="Zenith R", style="super", L=4.78, W=2.08, H=1.07, WB=2.82, R=0.36, gc=0.08, hood=0.6,
+                      ws=0.27, rs=0.43, re=0.52, rw=0.9, rear=0.86, paint="civil", spoiler=True, wing=True,
+                      stripes=(0.95, 0.95, 0.95, 1), intakes=True),
+    "muscle":    dict(name="Brute V8", style="coupe", L=4.92, W=1.96, H=1.3, WB=2.9, R=0.36, gc=0.13, hood=0.94,
+                      ws=0.40, rs=0.55, re=0.72, rw=0.9, rear=0.94, paint="civil", scoop=True,
+                      stripes=(0.05, 0.05, 0.06, 1)),
     "suv":       dict(name="Terra", style="suv", L=4.85, W=1.96, H=1.78, WB=2.86, R=0.38, gc=0.22, hood=1.08,
                       ws=0.28, rs=0.40, re=0.93, rw=0.985, rear=1.22, paint="civil"),
     "pickup":    dict(name="Ranchero", style="pickup", L=5.35, W=2.0, H=1.86, WB=3.25, R=0.4, gc=0.24, hood=1.15,
@@ -445,6 +452,39 @@ def build_car(vid, p):
                 "x", -hw * 0.86, hw * 0.86, "car_trim", 0.006, DK, DK)
         for sx in (-0.6, 0.6):
             bbox(detail, (sx * hw, sy - 0.06, sz), (0.03, 0.13 if st == "super" else 0.09, 0.1), "car_trim", 0.004, DK)
+    if p.get("wing"):
+        # tall rear wing on swan-neck struts with end plates
+        wz = zr - 0.3
+        wy = rr_["belt"] + 0.42
+        extrude(detail, smooth_loop([(wz - 0.2, wy), (wz + 0.18, wy + 0.02), (wz + 0.2, wy + 0.055), (wz - 0.17, wy + 0.04)], 1),
+                "x", -hw * 0.94, hw * 0.94, "car_trim", 0.006, DK, DK)
+        for sx in (-1, 1):
+            extrude(detail, [(wz - 0.22, wy - 0.06), (wz + 0.24, wy - 0.06), (wz + 0.24, wy + 0.12), (wz - 0.22, wy + 0.1)], "x",
+                    min(sx * hw * 0.94, sx * hw * 0.97), max(sx * hw * 0.94, sx * hw * 0.97), "car_trim", 0.003, DK, DK)
+            tube(detail, [(sx * hw * 0.35, rr_["belt"] - 0.02, wz + 0.1), (sx * hw * 0.35, wy - 0.12, wz + 0.02),
+                          (sx * hw * 0.35, wy + 0.01, wz - 0.08)], 0.018, "car_trim", 8, DK)
+        # rear diffuser fins
+        for k in range(5):
+            xx = -hw * 0.5 + k * hw * 0.25
+            bbox(detail, (xx, gc + 0.1, zr - 0.2), (0.012, 0.14, 0.4), "car_trim", 0.0, DK)
+    if p.get("intakes"):
+        # big side intakes ahead of the rear wheels
+        iz = p["WB"] * 0.5 - R - 0.45
+        poly = [(iz - 0.55, gc + 0.3), (iz + 0.25, gc + 0.34), (iz + 0.25, gc + 0.62), (iz - 0.2, gc + 0.52)]
+        for sgn in (1, -1):
+            cb.decal(detail, poly, "x", sgn, 0.004, "metal_dark", DK)
+    if p.get("scoop"):
+        sz = zf + L * p["ws"] * 0.55
+        sy = top_at(p, p["ws"] * 0.55) + cb.crown
+        extrude(body, smooth_loop([(sz - 0.45, sy - 0.02), (sz + 0.35, sy - 0.02), (sz + 0.35, sy + 0.1), (sz - 0.1, sy + 0.08)], 1),
+                "x", -0.3, 0.3, pm, 0.02, lv(0.2, 1.0, None), lv(0.2, 1.0, None))
+        extrude(detail, rrect(0.06, 0.07, 0.01, 2), "x", -0.26, 0.26, "metal_dark", 0.0, DK, DK, offset=(sz - 0.44, sy + 0.035))
+    if p.get("stripes"):
+        # twin racing stripes over hood, roof and tail
+        sc = p["stripes"]
+        for x0, x1 in ((-0.24, -0.1), (0.1, 0.24)):
+            cb.decal(detail, [(x0, zf - 0.1), (x1, zf - 0.1), (x1, zr + 0.1), (x0, zr + 0.1)], "y", 1, 0.003,
+                     "car_paint_vc", sc, min_facing=0.3)
     if st == "pickup":
         bz0 = zf + L * p["rw"]
         for sx in (-1, 1):

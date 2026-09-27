@@ -12,7 +12,7 @@ const KEYS := {
 	"handbrake": [KEY_SPACE], "drift": [KEY_SHIFT], "accelerate": [KEY_W], "brake": [KEY_S],
 	"steer_left": [KEY_A], "steer_right": [KEY_D],
 	"ui_phone_up": [KEY_UP], "ui_phone_down": [KEY_DOWN],
-	"quick_save": [KEY_F5],
+	"quick_save": [KEY_F5], "nitro": [KEY_N], "surrender": [KEY_X], "mission_abort": [KEY_K],
 	"debug_hud": [KEY_F1], "debug_spawn_vehicle": [KEY_F2], "debug_spawn_npc": [KEY_F3],
 	"debug_give_weapon": [KEY_F4], "debug_wanted": [KEY_F6], "debug_teleport": [KEY_F7],
 	"debug_mission": [KEY_F8], "debug_toggle_ai": [KEY_F9], "debug_perf": [KEY_F10],
@@ -33,6 +33,7 @@ const PAD_BUTTONS := {
 	"phone": JOY_BUTTON_DPAD_UP, "horn": JOY_BUTTON_LEFT_STICK, "handbrake": JOY_BUTTON_RIGHT_SHOULDER,
 	"camera_mode": JOY_BUTTON_BACK, "cover": JOY_BUTTON_RIGHT_SHOULDER, "look_behind": JOY_BUTTON_RIGHT_STICK,
 	"headlights": JOY_BUTTON_DPAD_RIGHT, "weapon_prev": JOY_BUTTON_DPAD_LEFT, "drift": JOY_BUTTON_LEFT_SHOULDER,
+	"nitro": JOY_BUTTON_A,
 }
 
 const PAD_AXES := {

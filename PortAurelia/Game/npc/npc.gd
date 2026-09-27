@@ -37,6 +37,7 @@ var near := true
 var persistent := false         # not despawned by the ped manager (mission / police)
 var crime_reported := false
 var money := 0
+var shop_role := ""            # "clerk" / "gunshop": shopkeeper inside an interior (robbable)
 
 var _graph: PedGraph
 var _edge := -1
@@ -74,6 +75,10 @@ var _search_radius := 30.0
 var unit = null                 # police unit dictionary (set by the police manager)
 var _detour_timer := 0.0
 var _detour_dir := Vector3.ZERO
+var _dodge_vel := Vector3.ZERO    # sideways dive away from a car, decays over ~0.7 s
+var _say_cd := 0.0
+var _bubble: Label3D
+var _bubble_t := 0.0
 
 
 func _ready() -> void:
@@ -236,6 +241,9 @@ func is_head_hit(p: Vector3) -> bool:
 func hear_gunshot(pos: Vector3, shooter: Node) -> void:
 	if state == S.DEAD or state == S.KNOCKED:
 		return
+	if shop_role != "" and shooter is Player and not hostile:
+		threatened_by(shooter as Node3D)
+		return
 	if role == "gang" and shooter is Player and weapons.has_ranged() and pos.distance_to(global_position) < 40.0:
 		engage(shooter as Node3D)
 		return
@@ -249,10 +257,17 @@ func hear_gunshot(pos: Vector3, shooter: Node) -> void:
 		cower(randf_range(5.0, 10.0))
 	else:
 		flee_from(pos)
+		if randf() < 0.35:
+			say("flee" if randf() < 0.6 else "help")
 
 
 ## Player points a gun at this NPC.
 func threatened_by(p: Node3D) -> void:
+	if shop_role != "" and state not in [S.DEAD, S.KNOCKED]:
+		var im := InteriorManager.get_manager()
+		if im and im.is_inside():
+			im.clerk_threatened(self, p)
+			return
 	if state in [S.DEAD, S.KNOCKED, S.FIGHT, S.HANDS_UP]:
 		return
 	if role in ["gang"] and weapons.has_ranged():
@@ -264,8 +279,10 @@ func threatened_by(p: Node3D) -> void:
 	if p.global_position.distance_to(global_position) < 10.0 and randf() < 0.7:
 		_face(p.global_position)
 		hands_up(randf_range(4.0, 8.0))
+		say("surrender")
 	else:
 		flee_from(p.global_position)
+		say("flee")
 
 
 func on_vehicle_impact(v: Node3D, rel_speed: float) -> void:
@@ -330,6 +347,11 @@ func _physics_process(delta: float) -> void:
 	near = dist < NEAR_DIST or persistent or state in [S.FIGHT, S.FLEE, S.KNOCKED, S.CHASE]
 	_dodge_cd -= delta
 	_scream_cd -= delta
+	_say_cd -= delta
+	if _bubble_t > 0.0:
+		_bubble_t -= delta
+		if _bubble_t <= 0.0 and _bubble:
+			_bubble.visible = false
 	_think -= delta
 	match state:
 		S.IDLE:
@@ -359,7 +381,9 @@ func _physics_process(delta: float) -> void:
 			_want_speed = 0.0
 			_timer -= delta
 			if _timer <= 0.0:
-				if state == S.HANDS_UP and p and p.get("aiming") and _player_aims_at_me(p):
+				if shop_role != "":
+					_timer = 2.0   # shopkeepers stay behind the counter with their hands up
+				elif state == S.HANDS_UP and p and p.get("aiming") and _player_aims_at_me(p):
 					_timer = 1.5
 				else:
 					flee_from(p.global_position if p else global_position, 10.0)
@@ -405,8 +429,15 @@ func _move(delta: float) -> void:
 					if d.length() > 0.01:
 						sep += d.normalized() * (1.3 - d.length())
 			velocity += sep * 2.0
+		if _dodge_vel.length_squared() > 0.01:
+			velocity.x += _dodge_vel.x
+			velocity.z += _dodge_vel.z
+			_dodge_vel = _dodge_vel.move_toward(Vector3.ZERO, delta * 9.0)
+			var dv := Vector3(_dodge_vel.x, 0, _dodge_vel.z)
+			if dv.length() > 0.5:
+				rotation.y = lerp_angle(rotation.y, atan2(-dv.x, -dv.z), clampf(delta * 10.0, 0.0, 1.0))
 		move_and_slide()
-		if global_position.y < -30.0:
+		if global_position.y < -30.0 and not persistent:   # interiors sit 250 m below the city
 			queue_free()
 	else:
 		global_position += hv * delta
@@ -866,31 +897,89 @@ func _knocked(delta: float) -> void:
 
 
 func _avoid_vehicles(p: Node3D) -> void:
-	if _dodge_cd > 0.0 or not near or state in [S.SIT, S.DEAD, S.KNOCKED]:
+	if _dodge_cd > 0.0 or not near or state in [S.SIT, S.DEAD, S.KNOCKED, S.FIGHT]:
 		return
 	var tm = GameWorld.instance.traffic
-	if tm == null:
-		return
-	_dodge_cd = 0.25
-	for v in tm.call("vehicles_near", global_position, 12.0):
+	_dodge_cd = 0.15
+	var cands: Array = tm.call("vehicles_near", global_position, 28.0) if tm else []
+	var pv: Node3D = p.get("vehicle") if p is Player and (p as Player).state == Player.State.VEHICLE else null
+	if pv and not pv in cands and pv.global_position.distance_to(global_position) < 32.0:
+		cands.append(pv)
+	for v in cands:
 		var veh := v as Vehicle
-		var vel := veh.linear_velocity
-		if vel.length() < 4.0 or veh.kinematic_mode:
+		if veh == null or veh.kinematic_mode:
 			continue
+		var vel := veh.linear_velocity
+		vel.y = 0.0
+		var spd := vel.length()
+		if spd < 3.0:
+			continue
+		var fwd := vel / spd
 		var rel := global_position - veh.global_position
 		rel.y = 0.0
-		var along := rel.dot(vel.normalized())
-		var lateral := (rel - vel.normalized() * along).length()
-		if along > 0.0 and along < vel.length() * 1.3 and lateral < 2.0:
-			# jump out of the way
-			var side := vel.normalized().cross(Vector3.UP)
+		var along := rel.dot(fwd)
+		var lateral := (rel - fwd * along).length()
+		var t_hit := along / spd
+		var by_player := veh.driver is Player
+		if along > -1.0 and t_hit < 1.1 and lateral < 2.7:
+			# dive out of the way, to the side the car is not heading for
+			var side := fwd.cross(Vector3.UP)
 			if side.dot(rel) < 0.0:
 				side = -side
-			velocity += side * 5.5 + Vector3.UP * 2.5
-			_scream()
-			if state in [S.WALK, S.IDLE, S.PHONE, S.TALK, S.WINDOW, S.WAIT_CROSS] and veh.driver is Player:
-				flee_from(veh.global_position, 6.0)
+			_dodge_vel = side * 6.5
+			if is_on_floor():
+				velocity.y = 3.2
+			_dodge_cd = 0.6
+			if by_player:
+				_near_miss(veh, true)
+			else:
+				_scream()
 			return
+		if not by_player:
+			continue
+		# the player is driving at us, or tearing along the sidewalk nearby: get away
+		var coming := along > 0.0 and t_hit < 3.2 and lateral < 5.5 and spd > 7.0
+		var sidewalk := spd > 4.0 and rel.length() < 14.0 and veh.is_on_sidewalk()
+		if coming or sidewalk:
+			_near_miss(veh, false)
+			return
+
+
+## A near miss by the player's car: run away shouting - no crime, no wanted level.
+func _near_miss(veh: Node3D, close: bool) -> void:
+	if role == "cop" or state in [S.FLEE, S.PANIC, S.HANDS_UP, S.CHASE, S.GOTO, S.SEARCH]:
+		if state == S.FLEE:
+			_flee_from = veh.global_position
+			_timer = maxf(_timer, 6.0)
+		return
+	_scream_cd = 4.0   # the spoken line replaces the scream
+	flee_from(veh.global_position, randf_range(6.0, 10.0))
+	say("near_miss" if close and randf() < 0.6 else "help")
+
+
+## Speak a voice line with a short speech bubble over the head.
+func say(cat: String) -> void:
+	if _say_cd > 0.0 or state == S.DEAD:
+		return
+	_say_cd = randf_range(4.0, 7.0)
+	var text := AudioManager.play_line(cat, female, global_position, 1.0 + (_voice_pitch - 1.0) * 0.2)
+	if text == "" or not near:
+		return
+	if _bubble == null:
+		_bubble = Label3D.new()
+		_bubble.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		_bubble.no_depth_test = true
+		_bubble.fixed_size = true
+		_bubble.pixel_size = 0.0012
+		_bubble.font_size = 30
+		_bubble.outline_size = 10
+		_bubble.modulate = Color(1, 1, 1)
+		_bubble.outline_modulate = Color(0, 0, 0, 0.85)
+		_bubble.position = Vector3(0, 2.15, 0)
+		add_child(_bubble)
+	_bubble.text = text
+	_bubble.visible = true
+	_bubble_t = 2.4
 
 
 func _player_aims_at_me(p: Node3D) -> bool:

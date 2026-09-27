@@ -1,0 +1,12 @@
+{
+"help": ["Help me!", "Somebody help!", "Help! Help!", "Call the police!"],
+"near_miss": ["Watch out!", "Are you crazy?!", "Slow down, idiot!", "You almost killed me!", "Learn to drive!"],
+"flee": ["Run! He's got a gun!", "Oh my god!", "Get away from me!", "Somebody call the cops!"],
+"surrender": ["Okay, okay! Don't shoot!", "Take it! Just take the money!", "Please, don't hurt me!", "Here, take everything!"],
+"robbed_out": ["That's all I have!", "There's nothing left, I swear!"],
+"gunshop": ["Wrong store, buddy!", "You picked the wrong shop!"],
+"jeweler": ["Not the diamonds! Please!", "The alarm is on, you won't get far!"],
+"cop": ["Freeze! Police!", "Hands where I can see them!", "You're under arrest!"],
+"racer": ["Eat my dust!", "See you at the finish!", "You call that driving?"],
+"buyer": ["Nice ride. Here's your money.", "Pleasure doing business."]
+}

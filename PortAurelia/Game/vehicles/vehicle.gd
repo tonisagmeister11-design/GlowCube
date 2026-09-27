@@ -28,6 +28,9 @@ var horn := false
 var driver: Node3D = null
 var drift_input := false           # Shift / LB: throw the car into a drift
 var drift_amount := 0.0            # 0 grip .. 1 full drift (rear tyres let go)
+var nitro := 0                     # nitro charges (N / A button), 2.5 s boost each
+var _nitro_t := 0.0
+var _nitro_fx_t := 0.0
 var _drift_prev_dir := Vector3.ZERO
 var auto_drift := false           # hard-corner drifting for non-player drivers (AI traffic keeps grip)
 var ai_driver: Node = null
@@ -85,7 +88,7 @@ static func create(id: String, color := Color(-1, 0, 0)) -> Vehicle:
 	if color.r >= 0.0:
 		v.paint = color
 	else:
-		v.paint = VehicleDefs.random_color()
+		v.paint = VehicleDefs.random_color(null, id)
 	return v
 
 
@@ -94,6 +97,7 @@ func _ready() -> void:
 	def = VehicleDefs.get_def(type_id)
 	meta = VehicleDefs.meta(type_id)
 	is_police = type_id == "police"
+	nitro = int(def.get("nitro", {"sports": 1, "muscle": 1, "supercar": 2}.get(type_id, 0)))
 	camera_distance = float(def.get("cam", 6.0))
 	mass = float(def["mass"])
 	collision_layer = 1 << 2
@@ -103,7 +107,10 @@ func _ready() -> void:
 	max_contacts_reported = 4
 	continuous_cd = true
 	can_sleep = true
-	linear_damp = 0.05
+	# the engine's default linear damp (0.1, combined) acted like a brake growing with speed and
+	# capped every car at ~90 km/h; aerodynamic drag is modelled in _integrate_forces instead
+	linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
+	linear_damp = 0.0
 	angular_damp = 0.8
 	var pm := PhysicsMaterial.new()
 	pm.friction = 0.4
@@ -256,6 +263,14 @@ func _physics_process(delta: float) -> void:
 		handbrake = linear_velocity.length() < 2.0
 	if linear_velocity.length() > 2.5:
 		_check_pedestrian_hits()
+	if _nitro_t > 0.0:
+		_nitro_t -= delta
+		_nitro_fx_t -= delta
+		if _nitro_fx_t <= 0.0:
+			_nitro_fx_t = 0.06
+			var back := global_basis.z
+			var tail := global_position + back * float(meta.get("length", 4.5)) * 0.5 + Vector3.UP * 0.35
+			VFX.muzzle_flash(tail, back, 1.3)
 	_update_effects(delta)
 
 
@@ -302,6 +317,8 @@ func _player_input(delta: float) -> void:
 	steer_input = Input.get_axis("steer_right", "steer_left")
 	handbrake = Input.is_action_pressed("handbrake")
 	drift_input = Input.is_action_pressed("drift")
+	if Input.is_action_just_pressed("nitro"):
+		fire_nitro()
 	if Input.is_action_just_pressed("horn"):
 		_horn_audio.play()
 	if Input.is_action_just_pressed("headlights"):
@@ -377,8 +394,12 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var v_lat := pv.dot(wr)
 		var surf_grip := 1.0
 		match String(w["surface"]):
-			"grass", "sand", "dirt":
-				surf_grip = 0.65
+			"grass":
+				surf_grip = 0.86
+			"dirt":
+				surf_grip = 0.8
+			"sand":
+				surf_grip = 0.7
 			"concrete", "sidewalk":
 				surf_grip = 0.95
 		var flat_i := _wheels.find(w)
@@ -398,11 +419,12 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		if is_driven and not destroyed and not in_water:
 			var n_driven := 4 if drive_mode == "awd" else 2
 			var power := float(def["power"]) * (0.45 if engine_health < 150.0 else 1.0) * (1.0 + 0.12 * int(upgrades["engine"]))
-			var top := float(def["top"])
+			var top := float(def["top"]) * (1.3 if _nitro_t > 0.0 else 1.0)
 			var eng := 0.0
 			if throttle > 0.0:
 				eng = minf(mass * 6.5, power / maxf(absf(v_long_body), 4.0)) * throttle
-				eng *= clampf(1.0 - v_long_body / top, 0.0, 1.0) * 1.2
+				# full pull until close to the top speed, then a steep fall-off
+				eng *= clampf(1.0 - pow(maxf(v_long_body, 0.0) / top, 3.0), 0.0, 1.0) * 1.15
 			elif throttle < 0.0:
 				eng = throttle * mass * 3.5 * clampf(1.0 + v_long_body / 8.0, 0.0, 1.0)
 			f_long += eng / n_driven
@@ -410,7 +432,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			f_long -= signf(v_long) * float(def["brake"]) * (1.0 + 0.15 * int(upgrades["brakes"])) * brake_input / 4.0 * clampf(absf(v_long) * 2.0, 0.0, 1.0)
 		if handbrake and not w["front"]:
 			f_long -= signf(v_long) * float(def["brake"]) * 0.35 * clampf(absf(v_long), 0.0, 1.0)
-		f_long -= v_long * 12.0  # rolling resistance
+		f_long -= v_long * 5.0  # rolling resistance
 		# friction circle
 		var total := Vector2(f_long, f_lat)
 		var slip := 0.0
@@ -445,8 +467,11 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			state.apply_central_force(vdir * keep)
 	else:
 		_drift_prev_dir = Vector3.ZERO
+	# nitro: a hard shove along the nose on top of the engine
+	if _nitro_t > 0.0 and n_contact >= 2:
+		state.apply_central_force(fwd * mass * 7.5)
 	# aerodynamic drag and downforce
-	var drag := -v * spd * 0.42
+	var drag := -v * spd * 0.36
 	state.apply_central_force(drag)
 	var df := float(def.get("downforce", 0.4))
 	state.apply_central_force(-up * spd * spd * df)
@@ -512,11 +537,12 @@ func _update_effects(delta: float) -> void:
 	_set_light("LightTurnR", 1.0 if turn_signal == 1 and blink_on else 0.0)
 	_update_headlight_spots(head_on)
 	# engine audio
-	if occupied and not destroyed:
+	# AI engines only close by: dozens of identical engine loops phase into a droning echo
+	if occupied and not destroyed and (driver is Player or _near_player(38.0)):
 		if not _engine_audio.playing:
 			_engine_audio.play(randf())
 		_engine_audio.pitch_scale = float(def.get("pitch", 1.0)) * (0.55 + rpm / 7000.0 * 1.35)
-		_engine_audio.volume_db = lerpf(-12.0, -2.0, clampf(absf(throttle), 0.0, 1.0)) + (4.0 if driver is Player else 0.0)
+		_engine_audio.volume_db = lerpf(-12.0, -2.0, clampf(absf(throttle), 0.0, 1.0)) + (4.0 if driver is Player else -4.0)
 	elif _engine_audio.playing:
 		_engine_audio.stop()
 	# tyre skid
@@ -587,6 +613,31 @@ func _update_headlight_spots(on: bool) -> void:
 		for s in _head_spots:
 			s.queue_free()
 		_head_spots.clear()
+
+
+func nitro_active() -> bool:
+	return _nitro_t > 0.0
+
+
+func fire_nitro() -> bool:
+	if nitro <= 0 or _nitro_t > 0.0 or destroyed:
+		if nitro <= 0 and driver is Player:
+			Events.notify.emit("Kein Nitro – beim Mechaniker nachfüllen.", 2.0)
+		return false
+	nitro -= 1
+	upgrades["nitro"] = nitro
+	_nitro_t = 2.6
+	AudioManager.play_3d("nitro", global_position, 2.0)
+	if driver is Player and (driver as Player).cam:
+		(driver as Player).cam.add_shake(0.25)
+	return true
+
+
+func is_on_sidewalk() -> bool:
+	for w in _wheels:
+		if w["contact"] and String(w["surface"]) in ["sidewalk", "concrete", "grass"]:
+			return true
+	return false
 
 
 func _near_player(d: float) -> bool:
@@ -698,7 +749,7 @@ func _on_body_entered(_body: Node) -> void:
 
 func _collision_damage(impulse: float, local_pos: Vector3, other: Object) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
-	if now - _last_collision_time < 0.25:
+	if now - _last_collision_time < 0.5:
 		return
 	_last_collision_time = now
 	var sev := impulse / mass

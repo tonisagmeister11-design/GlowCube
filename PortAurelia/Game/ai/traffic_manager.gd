@@ -13,24 +13,25 @@ const SPAWN_MAX := 230.0
 const DESPAWN := 290.0
 const NEAR_PHYSICS := 140.0
 const GRID := 25.0
+var event_density := 1.0       # lowered during street races
 
 const MIX := {
-	"downtown": {"police": 0.4, "sedan": 5, "taxi": 4, "luxury": 2, "compact": 3, "suv": 2, "bus": 1, "van": 1, "delivery": 1, "sports": 1},
-	"financial": {"sedan": 4, "taxi": 4, "luxury": 4, "suv": 2, "sports": 1, "supercar": 0.4},
+	"downtown": {"police": 0.4, "sedan": 5, "taxi": 4, "luxury": 2, "compact": 3, "suv": 2, "bus": 1, "van": 1, "delivery": 1},
+	"financial": {"sedan": 4, "taxi": 4, "luxury": 4, "suv": 2},
 	"shopping": {"police": 0.3, "sedan": 4, "compact": 4, "taxi": 2, "suv": 2, "delivery": 1, "bus": 0.6},
-	"entertainment": {"sedan": 3, "sports": 2, "taxi": 3, "compact": 2, "motorcycle": 1},
+	"entertainment": {"sedan": 3, "taxi": 3, "compact": 2, "motorcycle": 1},
 	"oldtown": {"police": 0.4, "compact": 5, "sedan": 3, "van": 1, "motorcycle": 1.5, "taxi": 1},
 	"residential": {"police": 0.25, "sedan": 4, "compact": 4, "suv": 3, "pickup": 1, "van": 1, "motorcycle": 0.6},
 	"suburbs": {"suv": 4, "pickup": 3, "sedan": 3, "compact": 2, "van": 1},
-	"luxury": {"luxury": 4, "sports": 3, "supercar": 1.5, "suv": 3},
+	"luxury": {"luxury": 4, "suv": 3},
 	"industrial": {"truck": 3, "van": 3, "pickup": 3, "delivery": 2, "sedan": 1},
 	"construction": {"truck": 3, "pickup": 3, "van": 2},
 	"harbor": {"truck": 5, "van": 2, "pickup": 2},
 	"airport": {"taxi": 4, "van": 2, "sedan": 2, "bus": 1},
-	"marina": {"sedan": 3, "luxury": 2, "sports": 2, "suv": 2, "taxi": 1},
-	"beach": {"compact": 3, "suv": 3, "sports": 2, "pickup": 1, "motorcycle": 1},
+	"marina": {"sedan": 3, "luxury": 2, "suv": 2, "taxi": 1},
+	"beach": {"compact": 3, "suv": 3, "pickup": 1, "motorcycle": 1},
 	"park": {"sedan": 3, "compact": 3, "taxi": 1},
-	"hills": {"suv": 3, "pickup": 3, "sports": 1},
+	"hills": {"suv": 3, "pickup": 3},
 	"rural": {"pickup": 5, "truck": 2, "suv": 2},
 	"rural_east": {"pickup": 5, "truck": 2, "suv": 2},
 	"sea": {"sedan": 1},
@@ -161,7 +162,7 @@ func _density_factor(p: Vector3) -> float:
 	var weather := 1.0
 	if world.weather and String(world.weather.get("state")) in ["rain", "heavy_rain", "storm"]:
 		weather = 0.8
-	return clampf(f * tod * weather, 0.15, 1.2)
+	return clampf(f * tod * weather * event_density, 0.08, 1.2)
 
 
 func _maintain_population(pp: Vector3) -> void:
@@ -174,8 +175,20 @@ func _maintain_population(pp: Vector3) -> void:
 		_spawn_parked(pp)
 
 
+## Sports cars are rare everywhere (a bit less rare in the rich districts).
+const SPORT_MIX := {"sports": 0.45, "muscle": 0.33, "supercar": 0.16, "hypercar": 0.06}
+const SPORT_CHANCE := {"luxury": 0.09, "financial": 0.05, "marina": 0.05, "entertainment": 0.05}
+
+
 func _pick_type(p: Vector3) -> String:
 	var did: String = world.data.district_at(p).get("id", "downtown")
+	if did not in ["harbor", "construction", "industrial", "sea"] and rng.randf() < float(SPORT_CHANCE.get(did, 0.025)):
+		var sr := rng.randf()
+		for k in SPORT_MIX:
+			sr -= float(SPORT_MIX[k])
+			if sr <= 0.0:
+				return k
+		return "sports"
 	var mix: Dictionary = MIX.get(did, MIX["downtown"])
 	var total := 0.0
 	for k in mix:

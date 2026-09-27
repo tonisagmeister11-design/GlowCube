@@ -84,6 +84,8 @@ func initialize(start_pos: Vector3, progress: Callable = Callable()) -> void:
 	lights.name = "LightPool"
 	add_child(lights)
 	lights.setup(streaming)
+	add_child(BreakableProps.new())
+	add_child(CreativeMode.new())
 	_progress(progress, 0.2, "Welt wird geladen")
 	await _yield()
 	await streaming.load_area_async(start_pos, minf(streaming.load_radius, 420.0),

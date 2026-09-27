@@ -29,7 +29,8 @@ func _ready() -> void:
 	_box.custom_minimum_size = Vector2(420, 0)
 	_box.add_theme_constant_override("separation", 8)
 	_root.add_child(_box)
-	for it in [["FORTSETZEN", _resume], ["KARTE", _map], ["SPIEL SPEICHERN", _save], ["SPIEL LADEN", _load],
+	for it in [["FORTSETZEN", _resume], ["KARTE", _map], ["MISSION ABBRECHEN", _abort_mission],
+			["KREATIVMODUS AN/AUS", _toggle_creative], ["SPIEL SPEICHERN", _save], ["SPIEL LADEN", _load],
 			["EINSTELLUNGEN", _settings], ["STEUERUNG", _controls], ["HAUPTMENÜ", _main_menu], ["SPIEL BEENDEN", _quit]]:
 		var b := Button.new()
 		b.text = it[0]
@@ -70,6 +71,21 @@ func _resume() -> void:
 	visible = false
 	Game.set_paused(false)
 	AudioManager.play_ui("back", -6.0)
+
+
+func _abort_mission() -> void:
+	var mm = world.missions if world else null
+	if mm == null or not mm.call("is_active"):
+		Events.notify.emit("Gerade läuft keine Mission.", 2.0)
+		return
+	_confirm("Mission wirklich abbrechen?", func():
+		_resume()
+		mm.call("abort_current"))
+
+
+func _toggle_creative() -> void:
+	_resume()
+	CreativeMode.set_enabled(not Game.player_data.is_creative())
 
 
 func _map() -> void:

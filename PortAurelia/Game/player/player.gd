@@ -44,6 +44,7 @@ var _enter_timer := 0.0
 var _step_timer := 0.0
 var _interact_target: Node = null
 var _prompt_timer := 0.0
+var surrendered := false      # gave up to the police with X (lighter sentence)
 
 
 func _ready() -> void:
@@ -178,6 +179,8 @@ func _move_on_foot(delta: float) -> void:
 			if not _try_climb():
 				velocity.y = JUMP_VELOCITY
 				model.play_oneshot("jump")
+		else:
+			_auto_step(hv, delta)
 	else:
 		_air_time += delta
 		velocity.y -= GRAVITY * delta
@@ -214,6 +217,43 @@ func _move_on_foot(delta: float) -> void:
 		weapons.handle_input(aiming)
 		if Input.is_action_just_pressed("vehicle_enter"):
 			_try_enter_vehicle()
+
+
+## Curbs, steps and small ledges up to STEP_HEIGHT are hopped automatically: when the
+## capsule is blocked by a low wall and there is floor on top of it, give a small hop just
+## high enough to clear it (no jump key, no jump animation).
+const STEP_HEIGHT := 0.55
+
+
+func _auto_step(hv: Vector3, delta: float) -> void:
+	if hv.length() < 0.5 or velocity.y > 0.5:
+		return
+	var dir := hv.normalized()
+	var motion := dir * maxf(hv.length() * delta * 2.0, 0.14)
+	var hit := KinematicCollision3D.new()
+	if not test_move(global_transform, motion, hit, 0.001):
+		return
+	if hit.get_normal().y > 0.7:
+		return   # walkable slope, move_and_slide handles it
+	var xf := global_transform
+	if test_move(xf, Vector3.UP * STEP_HEIGHT):
+		return   # no head room
+	var up_xf := xf.translated(Vector3.UP * STEP_HEIGHT)
+	if test_move(up_xf, motion):
+		return   # a real wall, too high to step
+	var down := KinematicCollision3D.new()
+	var probe := up_xf.translated(motion + dir * 0.1)
+	if not test_move(probe, Vector3.DOWN * (STEP_HEIGHT + 0.05), down, 0.001):
+		return
+	if down.get_normal().y < 0.7:
+		return
+	var rise := STEP_HEIGHT - down.get_travel().length()
+	if rise < 0.04:
+		return
+	velocity.y = sqrt(2.0 * GRAVITY * (rise + 0.1))
+	# keep the forward speed so the hop carries over the edge
+	velocity.x = hv.x
+	velocity.z = hv.z
 
 
 func _set_crouch(c: bool) -> void:
@@ -492,6 +532,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		cam.look_behind = true
 	elif event.is_action_released("look_behind") and cam:
 		cam.look_behind = false
+	elif event.is_action_pressed("surrender"):
+		if not surrender():
+			Events.notify.emit("Ergeben geht nur, wenn die Polizei hinter dir her ist.", 2.0)
+	elif event.is_action_pressed("mission_abort"):
+		var mm = GameWorld.instance.missions if GameWorld.instance else null
+		if mm and mm.call("is_active"):
+			mm.call("abort_current")
 
 
 # ------------------------------------------------------------------ footsteps
@@ -569,6 +616,16 @@ func on_vehicle_impact(v: Node3D, rel_speed: float) -> void:
 		model.play_oneshot("hit_react")
 
 
+## Give up to the police (X) while wanted: hands up, the arrest follows immediately.
+func surrender() -> bool:
+	var pol = GameWorld.instance.police if GameWorld.instance else null
+	if pol == null or int(pol.get("wanted_level")) <= 0 or state in [State.DEAD, State.BUSTED, State.SWIM]:
+		return false
+	surrendered = true
+	arrest()
+	return true
+
+
 func arrest() -> void:
 	if state == State.DEAD or state == State.BUSTED:
 		return
@@ -582,6 +639,7 @@ func arrest() -> void:
 
 
 func respawn(pos: Vector3, yaw := 0.0) -> void:
+	surrendered = false
 	model.stop_ragdoll()
 	_col.disabled = false
 	if vehicle:

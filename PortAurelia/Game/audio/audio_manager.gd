@@ -19,6 +19,7 @@ var _pool_i := 0
 var _ui: AudioStreamPlayer
 var ambience := {}      # name -> AudioStreamPlayer
 var music: MusicManager
+var _last_start := {}   # stream name -> [msec, position] of the last start (anti-stacking)
 
 
 func _ready() -> void:
@@ -77,7 +78,29 @@ func play_3d(n: String, pos: Vector3, volume_db := 0.0, pitch := 1.0, bus := "SF
 	var cam := get_viewport().get_camera_3d()
 	if cam and cam.global_position.distance_to(pos) > max_dist:
 		return
+	# never stack the same sound on itself: skip a retrigger right after the last start nearby,
+	# and cap how many copies of one sound play at once
+	var now := Time.get_ticks_msec()
+	var base := n.rstrip("0123456789").trim_suffix("_")
+	var last: Array = _last_start.get(base, [-100000, Vector3.ZERO])
+	var min_gap := 60 if bus == "Weapons" else (900 if bus == "Voice" else 180)
+	if now - int(last[0]) < min_gap and (last[1] as Vector3).distance_to(pos) < 12.0:
+		return
+	var copies := 0
+	for q in _pool:
+		if q.playing and q.stream == s:
+			copies += 1
+	if copies >= (6 if bus == "Weapons" else 2):
+		return
+	_last_start[base] = [now, pos]
 	var p := _pool[_pool_i]
+	# prefer a free player over cutting one that is still playing
+	for k in _pool.size():
+		var cand := _pool[(_pool_i + k) % _pool.size()]
+		if not cand.playing:
+			p = cand
+			_pool_i = (_pool_i + k) % _pool.size()
+			break
 	_pool_i = (_pool_i + 1) % _pool.size()
 	p.stream = s
 	p.bus = bus
@@ -116,6 +139,30 @@ func play_weapon(n: String, pos: Vector3, is_player: bool) -> void:
 func play_voice(kind: String, pos: Vector3) -> void:
 	var counts := {"pain": 3, "scream": 2, "shout": 1, "death": 1}
 	play_3d(_variant(kind, counts.get(kind, 1)), pos, -2.0, randf_range(0.9, 1.15), "Voice", 60.0)
+
+
+## Spoken NPC line (see data/voice/lines.json). Returns the text that was said ("" if none).
+var _lines := {}
+
+
+func line_text(cat: String, i: int) -> String:
+	if _lines.is_empty():
+		var d = WorldData._read_json("res://data/voice/lines.json")
+		_lines = d if d is Dictionary else {"_": []}
+	var arr: Array = _lines.get(cat, [])
+	return String(arr[i % arr.size()]) if arr.size() > 0 else ""
+
+
+func play_line(cat: String, female: bool, pos: Vector3, pitch := 1.0) -> String:
+	line_text(cat, 0)
+	var arr: Array = _lines.get(cat, [])
+	if arr.is_empty():
+		return ""
+	var i := randi() % arr.size()
+	var n := "line_%s_%s_%d" % [cat, "f" if female else "m", i]
+	if get_stream(n) != null:
+		play_3d(n, pos, 1.0, pitch, "Voice", 55.0)
+	return String(arr[i])
 
 
 ## Ambience mix (0..1 per layer), driven by the world (district, weather, time).

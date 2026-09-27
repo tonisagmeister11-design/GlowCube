@@ -3,7 +3,7 @@ extends Area3D
 ## Collectable item lying in the world: money, weapon (with ammo), health, armor.
 ## Dropped by dead NPCs and placed by missions/shops. Collected by the player on contact.
 
-var kind := "money"          # money | weapon | health | armor
+var kind := "money"          # money | jewels | weapon | health | armor
 var amount := 50
 var weapon_id := ""
 var lifetime := 90.0
@@ -44,10 +44,29 @@ func _ready() -> void:
 			_build_box(Color(0.9, 0.95, 0.9), Vector3(0.35, 0.25, 0.25), Color(0.9, 0.1, 0.1))
 		"armor":
 			_build_box(Color(0.15, 0.25, 0.5), Vector3(0.35, 0.4, 0.1), Color(0.3, 0.5, 1.0))
+		"jewels":
+			_build_box(Color(0.95, 0.78, 0.25), Vector3(0.16, 0.08, 0.16), Color(1.0, 0.85, 0.3))
+			var gem := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = 0.06
+			sm.height = 0.1
+			sm.radial_segments = 6
+			sm.rings = 3
+			var gm := StandardMaterial3D.new()
+			gm.albedo_color = Color(0.7, 0.9, 1.0)
+			gm.emission_enabled = true
+			gm.emission = Color(0.6, 0.85, 1.0)
+			gm.emission_energy_multiplier = 1.2
+			gm.metallic = 0.3
+			gm.roughness = 0.05
+			sm.material = gm
+			gem.mesh = sm
+			gem.position.y = 0.09
+			_visual.add_child(gem)
 		_:
 			_build_box(Color(0.25, 0.55, 0.25), Vector3(0.22, 0.06, 0.12), Color(0.3, 1.0, 0.4))
 	var glow := OmniLight3D.new()
-	glow.light_color = Color(0.4, 1.0, 0.5) if kind == "money" else Color(1.0, 0.9, 0.5)
+	glow.light_color = Color(0.4, 1.0, 0.5) if kind == "money" else (Color(0.7, 0.9, 1.0) if kind == "jewels" else Color(1.0, 0.9, 0.5))
 	glow.light_energy = 0.6
 	glow.omni_range = 1.6
 	glow.shadow_enabled = false
@@ -101,10 +120,10 @@ func _on_body(b: Node) -> void:
 	if p.state == Player.State.DEAD:
 		return
 	match kind:
-		"money":
-			Game.player_data.add_money(amount)
+		"money", "jewels":
+			Game.player_data.add_money(amount, "loot")
 			AudioManager.play_ui("money", -4.0)
-			Events.notify.emit("+$%d" % amount, 1.5)
+			Events.notify.emit(("Schmuck: +$%d" if kind == "jewels" else "+$%d") % amount, 1.5)
 		"weapon":
 			if p.weapons.has_weapon(weapon_id):
 				p.weapons.add_ammo(weapon_id, amount)

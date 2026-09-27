@@ -14,7 +14,7 @@ func _ready() -> void:
 	await Events.world_ready
 	var im := InteriorManager.get_manager()
 	var p := world.player as Player
-	check("interior manager with 4 interiors", im != null and im.meta.size() == 4, str(im.meta.keys() if im else []))
+	check("interior manager with 6 interiors", im != null and im.meta.size() == 6, str(im.meta.keys() if im else []))
 	var shop := world.data.nearest_poi("shop_convenience", p.global_position)
 	await im.enter(shop)
 	await wait(1.0)
@@ -26,6 +26,26 @@ func _ready() -> void:
 	await get_tree().process_frame
 	check("store menu opens inside", MenuPanel.is_open())
 	MenuPanel.current.close()
+	# robbery: keep threatening the shopkeeper -> cash bundles drop, alarm raises the wanted level
+	var clerk: NPC = im._npcs[0]
+	p.weapons.give("pistol", 60)
+	p.weapons.equip("pistol")
+	var money0 := Game.player_data.money
+	for i in 60:
+		clerk.threatened_by(p)
+		await wait(0.15)
+	var drops := im.current.find_children("*", "Pickup", true, false)
+	check("robbery drops loot", not im._rob.is_empty() and bool(im._rob["done"]) and drops.size() == InteriorManager.ROB_DROPS,
+		"drops %d, paid $%d" % [drops.size(), int(im._rob.get("paid", 0))])
+	check("shopkeeper hands up", clerk.state == NPC.S.HANDS_UP, "state %d" % clerk.state)
+	check("robbery alarm wanted", int(world.police.wanted_level) >= 2, "wanted %d" % int(world.police.wanted_level))
+	for d in drops:
+		if not is_instance_valid(d):
+			continue
+		p.global_position = (d as Node3D).global_position
+		await wait(0.1)
+	check("loot collected", Game.player_data.money > money0 + 1000, "$%d -> $%d" % [money0, Game.player_data.money])
+	world.police.call("set_wanted", 0)
 	await im.leave()
 	await wait(0.5)
 	check("left store to street", not im.is_inside() and p.global_position.distance_to(shop["entrance_v"]) < 5.0,
@@ -43,6 +63,31 @@ func _ready() -> void:
 		lit[0].on_hit(10.0, p, Vector3.ZERO, Vector3.ZERO)
 	check("range counts hits", int(im._range["score"]) == 1, str(im._range.get("score")))
 	await im.leave()
+	# jewelry: smashing a display case scatters jewels and trips the alarm
+	var jw := world.data.nearest_poi("jewelry", p.global_position)
+	if not jw.is_empty():
+		await im.enter(jw)
+		await wait(0.5)
+		var cases := im.current.find_children("*", "DisplayCase", true, false)
+		check("jewelry display cases", cases.size() == 6, str(cases.size()))
+		if cases.size() > 0:
+			(cases[0] as DisplayCase).on_hit(40.0, p, Vector3.ZERO, Vector3.ZERO)
+			await wait(0.2)
+			check("case smashed -> jewels + alarm", (cases[0] as DisplayCase).broken and int(world.police.wanted_level) >= 3,
+				"wanted %d" % int(world.police.wanted_level))
+		world.police.call("set_wanted", 0)
+		await im.leave()
+	# gun shop owner fights back
+	await im.enter(gs)
+	await wait(0.5)
+	var owner: NPC = im._npcs[0]
+	p.health.invulnerable = true
+	owner.threatened_by(p)
+	await wait(0.3)
+	check("gun shop owner fights back", owner.hostile and im._npcs.size() == 2, "guards %d" % (im._npcs.size() - 1))
+	await im.leave()
+	p.health.invulnerable = false
+	world.police.call("clear_wanted")
 	# safehouse sleep
 	var sh := world.data.nearest_poi("safehouse", p.global_position)
 	await im.enter(sh)

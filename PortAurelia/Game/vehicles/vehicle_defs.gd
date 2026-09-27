@@ -19,6 +19,12 @@ const DEFS := {
 	"supercar":  {"mass": 1400.0, "power": 380000.0, "top": 88.0, "grip": 1.4, "drive": "awd", "steer": 30.0,
 		"spring": 70000.0, "damp": 6000.0, "travel": 0.13, "brake": 18000.0, "sound": "engine_sport_loop",
 		"pitch": 1.25, "price": 320000, "category": "super", "cam": 5.8, "downforce": 2.2},
+	"hypercar":  {"mass": 1350.0, "power": 560000.0, "top": 104.0, "grip": 1.5, "drive": "awd", "steer": 30.0,
+		"spring": 75000.0, "damp": 6400.0, "travel": 0.12, "brake": 22000.0, "sound": "engine_sport_loop",
+		"pitch": 1.4, "price": 1250000, "category": "super", "cam": 5.9, "downforce": 3.0, "nitro": 3},
+	"muscle":    {"mass": 1650.0, "power": 330000.0, "top": 78.0, "grip": 1.12, "drive": "rwd", "steer": 32.0,
+		"spring": 52000.0, "damp": 4800.0, "travel": 0.16, "brake": 15000.0, "sound": "engine_sport_loop",
+		"pitch": 0.8, "price": 145000, "category": "sports", "cam": 6.1, "downforce": 0.9},
 	"suv":       {"mass": 2100.0, "power": 170000.0, "top": 50.0, "grip": 1.0, "drive": "awd", "steer": 34.0,
 		"spring": 50000.0, "damp": 5000.0, "travel": 0.26, "brake": 15000.0, "sound": "engine_loop", "pitch": 0.9,
 		"price": 45000, "category": "suv", "cam": 6.8},
@@ -54,6 +60,11 @@ const DEFS := {
 		"pitch": 1.0, "price": 14000, "category": "bike", "cam": 4.8, "bike": true},
 }
 
+## Loud paint for sports cars so they stand out in traffic.
+const SPORT_COLORS := [Color(0.85, 0.02, 0.02), Color(1.0, 0.45, 0.0), Color(1.0, 0.82, 0.0), Color(0.1, 0.8, 0.2),
+	Color(0.0, 0.45, 1.0), Color(0.6, 0.0, 0.9), Color(0.95, 0.95, 0.97), Color(0.03, 0.03, 0.04), Color(1.0, 0.1, 0.55)]
+const SPORTS := ["sports", "supercar", "hypercar", "muscle"]
+
 const CIVIL_COLORS := [Color(0.62, 0.05, 0.05), Color(0.08, 0.09, 0.1), Color(0.9, 0.9, 0.9), Color(0.55, 0.57, 0.6),
 	Color(0.12, 0.2, 0.45), Color(0.3, 0.32, 0.34), Color(0.15, 0.3, 0.2), Color(0.85, 0.72, 0.5),
 	Color(0.95, 0.75, 0.1), Color(0.35, 0.12, 0.35), Color(0.05, 0.35, 0.55), Color(0.72, 0.36, 0.08)]
@@ -64,7 +75,7 @@ static var _meta := {}
 ## Fictional make/model names shown in the HUD, garage and dealer.
 const NAMES := {
 	"compact": "Vireo Pico", "sedan": "Aster Linea", "luxury": "Marquis Regent", "sports": "Falco GT",
-	"supercar": "Stratos Vento", "suv": "Brava Ridge", "pickup": "Hauler 1500", "van": "Porter Cargo",
+	"supercar": "Stratos Vento", "hypercar": "Zenith R", "muscle": "Brute V8", "suv": "Brava Ridge", "pickup": "Hauler 1500", "van": "Porter Cargo",
 	"truck": "Titan Box", "bus": "Metro Liner", "taxi": "Aster Cab", "police": "Interceptor PD",
 	"ambulance": "Medic Unit", "fire_truck": "Blaze Engine", "delivery": "Parcel Runner", "motorcycle": "Nitro 600",
 }
@@ -86,6 +97,8 @@ static func meta(id: String) -> Dictionary:
 	return _meta.get(id, {})
 
 
-static func random_color(rng: RandomNumberGenerator = null) -> Color:
+static func random_color(rng: RandomNumberGenerator = null, id := "") -> Color:
+	if id in SPORTS:
+		return SPORT_COLORS[(rng.randi() if rng else randi()) % SPORT_COLORS.size()]
 	var i := (rng.randi() if rng else randi()) % CIVIL_COLORS.size()
 	return CIVIL_COLORS[i]

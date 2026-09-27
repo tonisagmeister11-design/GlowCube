@@ -67,6 +67,12 @@ func start_free_roam() -> void:
 	player_data.money += 10000
 
 
+## CREATIVE MODE from the main menu: free roam with every weapon, endless ammo, invincible.
+func start_creative() -> void:
+	start_free_roam()
+	player_data.world_state["creative"] = true
+
+
 ## MISSIONS menu: loads the latest save (or a new game) and starts the chosen mission.
 func play_mission(mid: String) -> void:
 	var slot := SaveManager.latest_slot()
@@ -143,28 +149,37 @@ func _on_player_died() -> void:
 	_respawn_at(h, "Krankenhausrechnung: -$%d" % fee)
 
 
+## Arrested (or surrendered with X): jail time depending on the wanted level, the clock skips
+## ahead by the sentence, a fine is charged (may leave you in debt) and you walk out of
+## the police station. Surrendering keeps your weapons and halves the sentence.
 func _on_player_busted() -> void:
 	player_data.stat_add("arrests", 1)
-	Events.big_message.emit("VERHAFTET", "", 4.0)
-	AudioManager.play_ui("wasted")
-	await get_tree().create_timer(4.5).timeout
 	var w := GameWorld.instance
 	if w == null:
 		return
-	var fee := int(player_data.money * BUST_FEE_FRACTION)
-	player_data.add_money(-fee, "bail")
-	# confiscate weapons
 	var p := w.player as Player
-	if p:
+	var lvl := maxi(1, int(w.police.get("wanted_level"))) if w.police else 1
+	var surrendered := p != null and p.surrendered
+	Events.big_message.emit("ERGEBEN" if surrendered else "VERHAFTET", "", 3.0)
+	AudioManager.play_ui("wasted")
+	await get_tree().create_timer(3.0).timeout
+	var weeks := clampi(1 + lvl, 2, 6) if surrendered else clampi(2 + lvl * 2, 4, 12)
+	var fine := 500 if surrendered else 500 + 500 * lvl
+	player_data.charge(fine, "fine")
+	if p and not surrendered:
 		for id in p.weapons.owned.keys():
 			if id != "unarmed":
 				p.weapons.owned.erase(id)
 		p.weapons.equip("unarmed")
+	var js := JailScreen.play(get_tree().root, weeks, fine, surrendered)
+	await get_tree().create_timer(1.0).timeout
 	var ps := w.data.nearest_poi("police_station", w.player.global_position)
-	_respawn_at(ps, "Kaution: -$%d, Waffen beschlagnahmt" % fee)
+	_respawn_at(ps, "", weeks * 7 * 24.0)
+	await js.done
+	Events.notify.emit("Entlassen nach %d Wochen. Strafe: -$%d" % [weeks, fine], 5.0)
 
 
-func _respawn_at(poi: Dictionary, note: String) -> void:
+func _respawn_at(poi: Dictionary, note: String, skip_hours := 6.0) -> void:
 	var w := GameWorld.instance
 	var pos: Vector3 = poi.get("entrance_v", w.data.spawn) if not poi.is_empty() else w.data.spawn
 	var f: Vector3 = poi.get("facing_v", Vector3.FORWARD) if not poi.is_empty() else Vector3.FORWARD
@@ -174,5 +189,6 @@ func _respawn_at(poi: Dictionary, note: String) -> void:
 		w.police.call("clear_wanted")
 	(w.player as Player).respawn(pos, atan2(-f.x, -f.z) + PI)
 	if w.day_night:
-		w.day_night.call("advance_hours", 6.0)
-	Events.notify.emit(note, 5.0)
+		w.day_night.call("advance_hours", skip_hours)
+	if note != "":
+		Events.notify.emit(note, 5.0)

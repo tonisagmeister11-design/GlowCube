@@ -253,6 +253,69 @@ def gunshop():
     return r
 
 
+def jewelry():
+    """Jewelry store: marble floor, glass display cases (built in-game so they can be smashed,
+    positions case_0..case_5), a long back counter with the jeweler, gold trim and spot lights."""
+    r = Room("jewelry", 12.0, 12.0, 3.6, floor_mat="concrete", floor_col=(0.93, 0.92, 0.9, 1),
+             wall_col=(0.2, 0.18, 0.22, 1), ceil_col=(0.25, 0.23, 0.27, 1))
+    # back counter + wall shelves with lit niches
+    counter(r, 0.0, -9.2, 7.0, col=(0.12, 0.1, 0.12, 1))
+    box(r.mb, (0.0, 1.07, -9.2), (6.8, 0.02, 0.6), "glass_clear")
+    for i in range(5):
+        x = -4.0 + i * 2.0
+        box(r.mb, (x, 1.8, -11.85), (1.4, 1.2, 0.2), "trim", col=(0.12, 0.1, 0.12, 1))
+        box(r.mb, (x, 1.8, -11.74), (1.2, 1.0, 0.02), "light_always", col=(1.0, 0.92, 0.75, 1))
+        box(r.mb, (x, 1.6, -11.7), (0.4, 0.05, 0.12), "chrome")
+    # gold trim along the walls and a logo panel
+    for x in (-5.97, 5.97):
+        box(r.mb, (x, 1.1, -6.0), (0.04, 0.06, 12.0), "chrome")
+    box(r.mb, (0.0, 3.1, -11.88), (4.0, 0.5, 0.05), "sign_emissive", col=(1.0, 0.82, 0.4, 1))
+    box(r.mb, (0.0, 0.012, -5.0), (3.0, 0.02, 7.0), "fabric", col=(0.35, 0.05, 0.1, 1))  # runner carpet
+    for x in (-3.5, 0.0, 3.5):
+        for z in (-3.0, -6.5, -10.0):
+            r.ceiling_light(x, z, energy=1.5, rng=8.0, color=(1.0, 0.93, 0.82))
+    cases = [(-3.6, -3.4), (-3.6, -6.6), (3.6, -3.4), (3.6, -6.6), (-1.2, -7.4), (1.2, -7.4)]
+    for i, (x, z) in enumerate(cases):
+        r.points["case_%d" % i] = [x, 0.0, z]
+    r.points.update(counter=[0.0, 0.05, -8.3], clerk=[0.0, 0.05, -10.2, math.pi])
+    return r
+
+
+def boutique():
+    """Clothing store: wooden floor, clothes racks, shelves with folded shirts, mirrors, counter."""
+    r = Room("boutique", 14.0, 12.0, 3.4, floor_mat="wood_planks", floor_col=(0.8, 0.7, 0.58, 1),
+             wall_col=(0.93, 0.91, 0.88, 1))
+    cols = [(0.85, 0.2, 0.2, 1), (0.15, 0.3, 0.65, 1), (0.95, 0.95, 0.93, 1), (0.1, 0.1, 0.12, 1),
+            (0.9, 0.75, 0.2, 1), (0.3, 0.55, 0.35, 1)]
+    k = 5
+    for rx in (-4.0, 0.0):
+        for rz in (-4.0, -8.0):
+            # rack: two posts and a rail with hanging garments
+            for dx in (-1.3, 1.3):
+                cylinder(r.mb, (rx + dx, 0, rz), 0.03, 1.6, "chrome", segs=8)
+            cylinder(r.mb, (rx - 1.3, 1.55, rz), 0.02, 2.6, "chrome", segs=8, axis="x")
+            r.collide("building", (rx, 0.8, rz), (2.7, 1.6, 0.5))
+            for i in range(9):
+                k = (k * 1103515245 + 12345) & 0x7FFFFFFF
+                box(r.mb, (rx - 1.1 + i * 0.27, 1.05, rz), (0.05, 0.95, 0.46), "cloth", col=cols[k % 6])
+    for i in range(4):
+        z = -2.5 - i * 2.4
+        box(r.mb, (-6.7, 1.1, z), (0.5, 2.2, 1.8), "wood", col=(0.55, 0.42, 0.32, 1))
+        r.collide("wood", (-6.7, 1.1, z), (0.5, 2.2, 1.8))
+        for lvl in range(4):
+            k = (k * 1103515245 + 12345) & 0x7FFFFFFF
+            box(r.mb, (-6.4, 0.35 + lvl * 0.5, z), (0.2, 0.12, 1.5), "cloth", col=cols[k % 6])
+    for z in (-3.0, -7.0):
+        box(r.mb, (6.93, 1.3, z), (0.04, 2.0, 1.0), "chrome")
+    counter(r, 4.8, -9.5, 3.2, rot=math.pi / 2, col=(0.3, 0.22, 0.18, 1))
+    box(r.mb, (0, 3.0, -0.3), (5.0, 0.5, 0.05), "sign_emissive", col=(0.7, 0.45, 0.95, 1))
+    for x in (-4.5, 0.0, 4.5):
+        for z in (-2.5, -6.0, -9.5):
+            r.ceiling_light(x, z, energy=1.4)
+    r.points.update(counter=[3.9, 0.05, -9.5], clerk=[5.9, 0.05, -9.5, math.pi / 2])
+    return r
+
+
 def bank():
     r = Room("bank", 20.0, 18.0, 5.0, floor_mat="concrete", floor_col=(0.92, 0.9, 0.86, 1),
              wall_col=(0.88, 0.84, 0.76, 1))
@@ -286,7 +349,7 @@ def main():
     reset_scene()
     os.makedirs(OUT, exist_ok=True)
     meta = {}
-    for fn in (safehouse, store, gunshop, bank):
+    for fn in (safehouse, store, gunshop, bank, jewelry, boutique):
         r = fn()
         meta[r.name] = r.export()
         print(f"[interiors] {r.name}: {r.mb.tri_count()} tris")

@@ -36,6 +36,7 @@ var _timer := 0.0
 var _signal_timer := 0.0
 var _signals_by_chunk := {}
 var lamp_lights := {}       # Vector2i -> PackedVector3Array
+var broken_props := {}      # Vector2i -> {prop index: true}; knocked-over props (until the chunk unloads)
 var tl_head_mat: ShaderMaterial
 
 
@@ -45,6 +46,7 @@ class ChunkState:
 	var multimeshes: Array = []
 	var tl_heads: MultiMeshInstance3D
 	var tl_index: Array = []   # [node, edge] per head instance
+	var prop_refs := {}        # prop index in the chunk list -> [[MultiMesh, instance], ...]
 
 
 func setup(w: WorldData, p: PropLibrary, g: RoadGraph, s: TrafficSignals) -> void:
@@ -223,9 +225,37 @@ func _instantiate(c: Vector2i, scene: PackedScene) -> void:
 	chunk_loaded.emit(c)
 
 
+## Knock a prop over: hide its instances and drop its lamp light. Returns false if gone already.
+func break_prop(c: Vector2i, i: int) -> bool:
+	if not _chunks.has(c):
+		return false
+	if not broken_props.has(c):
+		broken_props[c] = {}
+	if broken_props[c].has(i):
+		return false
+	broken_props[c][i] = true
+	var st: ChunkState = _chunks[c]
+	for ref in st.prop_refs.get(i, []):
+		(ref[0] as MultiMesh).set_instance_transform(int(ref[1]), Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO))
+	var pr: Array = world.props_by_chunk.get("%d_%d" % [c.x, c.y], [])[i]
+	var base := Vector3(pr[1], pr[2], pr[3])
+	if lamp_lights.has(c):
+		var keep := PackedVector3Array()
+		for lp in lamp_lights[c]:
+			if Vector2(lp.x - base.x, lp.z - base.z).length() > 4.5:
+				keep.append(lp)
+		lamp_lights[c] = keep
+	return true
+
+
+func is_chunk_loaded(c: Vector2i) -> bool:
+	return _chunks.has(c)
+
+
 func _unload(c: Vector2i) -> void:
 	var st: ChunkState = _chunks[c]
 	_chunks.erase(c)
+	broken_props.erase(c)   # knocked-over props are back when you return
 	if is_instance_valid(st.root):
 		st.root.queue_free()
 	lamp_lights.erase(c)
@@ -244,7 +274,9 @@ func _build_props(st: ChunkState) -> void:
 		return
 	var groups := {}
 	var lights := PackedVector3Array()
-	for pr in list:
+	var broken: Dictionary = broken_props.get(st.coord, {})
+	for pi in list.size():
+		var pr: Array = list[pi]
 		var t: String = pr[0]
 		var variant := int(pr[5])
 		var gkey := t
@@ -252,7 +284,9 @@ func _build_props(st: ChunkState) -> void:
 			gkey = "%s#%d" % [t, variant % int(props.variants[t])]
 		if not groups.has(gkey):
 			groups[gkey] = []
-		groups[gkey].append(pr)
+		groups[gkey].append(pi)
+		if broken.has(pi):
+			continue
 		for lp in props.light_points(t):
 			var basis := Basis(Vector3.UP, float(pr[4]))
 			lights.append(Vector3(pr[1], pr[2], pr[3]) + basis * Vector3(lp[0], lp[1], lp[2]))
@@ -281,12 +315,17 @@ func _build_props(st: ChunkState) -> void:
 			var arr: Array = groups[gkey]
 			mm.instance_count = arr.size()
 			for i in arr.size():
-				var pr: Array = arr[i]
+				var pr: Array = list[arr[i]]
+				if not st.prop_refs.has(arr[i]):
+					st.prop_refs[arr[i]] = []
+				st.prop_refs[arr[i]].append([mm, i])
 				var sc := 1.0
 				if cat == PropLibrary.CATEGORY["tree"]:
 					sc = 0.8 + 0.12 * float(int(pr[5]) % 4)
 				var b := Basis(Vector3.UP, float(pr[4])).scaled(Vector3(sc, sc, sc))
 				mm.set_instance_transform(i, Transform3D(b, Vector3(pr[1], pr[2], pr[3]) - center))
+				if broken.has(arr[i]):
+					mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO))
 				if mm.use_colors:
 					mm.set_instance_color(i, PropLibrary.CONTAINER_COLORS[int(pr[5]) % PropLibrary.CONTAINER_COLORS.size()])
 			var mmi := MultiMeshInstance3D.new()

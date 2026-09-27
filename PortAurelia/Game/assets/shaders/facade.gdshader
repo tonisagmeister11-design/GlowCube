@@ -128,8 +128,14 @@ void fragment() {
 	if (style == 3) { ww = 0.35; wh = 0.28; sill = 0.62; }
 	if (style == 5) { ww = 0.94; wh = 0.9; sill = 0.04; }
 
-	float in_x = step(abs(fu - 0.5), ww * 0.5);
-	float in_y = step(sill, fv) * step(fv, sill + wh);
+	// anti-aliased window edges (hard steps crawl and flicker at a distance)
+	float aa_u = max(fwidth(fu), 1e-4);
+	float aa_v = max(fwidth(fv), 1e-4);
+	float in_x = clamp((ww * 0.5 - abs(fu - 0.5)) / aa_u + 0.5, 0.0, 1.0);
+	float in_y = clamp((fv - sill) / aa_v + 0.5, 0.0, 1.0) * clamp((sill + wh - fv) / aa_v + 0.5, 0.0, 1.0);
+	float cam_dist = length(w_pos - CAMERA_POSITION_WORLD);
+	// room detail and thin frames only up close; far windows are evenly lit panes
+	float near_detail = 1.0 - smoothstep(22.0, 60.0, cam_dist);
 	// keep windows off the ground-floor slab edge for houses
 	float win = in_x * in_y;
 	if (style == 1) { win = in_y; }
@@ -137,11 +143,11 @@ void fragment() {
 	// frame (thin border around each pane)
 	float fx_d = abs(fu - 0.5) - ww * 0.5;
 	float fy_d = min(fv - sill, sill + wh - fv);
-	float frame = win * (1.0 - step(0.035, -fx_d) * step(0.06 / fh * 3.0, fy_d));
+	float frame = win * (1.0 - step(0.035, -fx_d) * step(0.06 / fh * 3.0, fy_d)) * near_detail;
 	if (style == 1 || style == 2) {
 		// mullions for ribbon / curtain walls
 		float m = step(fract(wuv.x / 1.5 + 0.5), 0.04);
-		frame = max(frame, win * m);
+		frame = max(frame, win * m * near_detail);
 	}
 
 	// ------------------------------------------------ glass & rooms
@@ -158,7 +164,7 @@ void fragment() {
 	float face = 0.0;
 	vec2 cell_size = vec2(pitch * ww, fh * wh);
 	if (style == 2 || style == 1) { cell_size = vec2(pitch, fh); }
-	if (interior_mapping && win > 0.5) {
+	if (interior_mapping && win > 0.01 && near_detail > 0.0) {
 		vec2 cuv = vec2((fu - (0.5 - ww * 0.5)) / max(ww, 0.01), (fv - sill) / max(wh, 0.01));
 		if (style == 1 || style == 2) { cuv = vec2(fu, fv); }
 		room = room_color(clamp(cuv, 0.0, 1.0), cell_size, vt, room_seed, lit_n, face);
@@ -188,18 +194,20 @@ void fragment() {
 		rough = mix(glass_rough, 0.35, spandrel);
 		metal = mix(glass_metal, 0.6, spandrel);
 		albedo = mix(albedo, frame_color, frame);
-	} else if (win > 0.5) {
-		albedo = mix(glass_albedo, frame_color, frame);
-		rough = mix(glass_rough, 0.5, frame);
-		metal = mix(glass_metal, 0.2, frame);
+	} else if (win > 0.01) {
+		albedo = mix(wall, mix(glass_albedo, frame_color, frame), win);
+		rough = mix(wall_rough, mix(glass_rough, 0.5, frame), win);
+		metal = mix(0.0, mix(glass_metal, 0.2, frame), win);
 	}
-	if (win > 0.5 && frame < 0.5) {
+	if (win > 0.01) {
 		vec3 lc = lit_color * mix(0.75, 1.25, fract(room_seed * 3.7));
 		if (fract(room_seed * 17.0) > 0.85) { lc = vec3(0.7, 0.85, 1.0); }
 		float light_face = face == 1.0 ? 1.3 : 1.0;
-		emission = room * lc * lit_n * lit_energy * light_face * (1.0 - blinds_here * 0.4);
+		// steady glow: the parallax room only modulates the light up close
+		vec3 lit_room = mix(vec3(0.62), room * light_face, near_detail);
+		emission = lit_room * lc * lit_n * lit_energy * (1.0 - blinds_here * 0.4) * win * (1.0 - frame);
 		if (style == 5) {
-			emission = (room * 0.6 + 0.4) * lit_color * clamp(city_lights, 0.2, 1.0) * lit_energy * 0.6;
+			emission = (mix(vec3(0.55), room, near_detail) * 0.6 + 0.4) * lit_color * clamp(city_lights, 0.2, 1.0) * lit_energy * 0.6 * win;
 		}
 	}
 

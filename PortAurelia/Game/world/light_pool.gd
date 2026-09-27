@@ -17,8 +17,8 @@ func setup(s: StreamingManager) -> void:
 	for i in pool_size:
 		var l := SpotLight3D.new()
 		l.light_color = Color(1.0, 0.82, 0.58)
-		l.light_energy = 6.0
-		l.spot_range = 20.0
+		l.light_energy = 7.1
+		l.spot_range = 22.0
 		l.spot_angle = 58.0
 		l.spot_attenuation = 0.9
 		l.spot_angle_attenuation = 1.4
@@ -69,7 +69,7 @@ func _process(delta: float) -> void:
 		var l := _lights[i]
 		if i < cands.size():
 			l.global_position = cands[i][1] + Vector3(0, -0.15, 0)
-			l.light_energy = 6.0 * lights_on
+			l.light_energy = 7.1 * lights_on
 			l.visible = true
 		else:
 			l.visible = false

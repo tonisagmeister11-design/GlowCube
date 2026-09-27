@@ -26,6 +26,7 @@ var _fire_hold := 0.0
 var _visual: Node3D
 var _attach: BoneAttachment3D
 var _spread_bloom := 0.0
+var _spin := 0.0             # minigun barrel spin-up (0..spinup seconds)
 
 
 func setup(body: Node3D, m: CharacterModel, player := true) -> void:
@@ -186,6 +187,13 @@ func handle_input(aiming: bool) -> void:
 			melee()
 		return
 	var want := Input.is_action_pressed("fire") if d.get("auto", false) else Input.is_action_just_pressed("fire")
+	if d.has("spinup"):
+		# the minigun has to spin up before it fires
+		var dt := get_process_delta_time()
+		_spin = clampf(_spin + (dt if Input.is_action_pressed("fire") or aiming else -dt * 2.0), 0.0, float(d["spinup"]))
+		if want and _spin < float(d["spinup"]):
+			want = false
+			_fire_hold = 0.35
 	if want:
 		var player := owner_body as Player
 		var cam := player.cam if player else null
@@ -239,6 +247,10 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 		spread += (1.0 - accuracy) * 6.0
 	var pellets := int(d.get("pellets", 1))
 	var base_dir := (target - from).normalized()
+	if d.has("projectile"):
+		Projectile.launch(owner_body, from, _spread_dir(base_dir, spread), String(d["projectile"]), float(d["damage"]),
+			float(d.get("blast", 6.0)))
+		pellets = 0
 	var space := owner_body.get_world_3d().direct_space_state
 	var ex := [owner_body.get_rid()]
 	var vehicle = owner_body.get("vehicle")
@@ -262,7 +274,7 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 				(c as RigidBody3D).apply_impulse(dir * float(d["damage"]) * 0.6, end - (c as RigidBody3D).global_position)
 		if p == 0 or randf() < 0.3:
 			VFX.tracer(from, end)
-	VFX.muzzle_flash(from, base_dir, 1.4 if d["kind"] in ["shotgun", "sniper", "rifle"] else 1.0)
+	VFX.muzzle_flash(from, base_dir, 1.4 if d["kind"] in ["shotgun", "sniper", "rifle", "launcher", "heavy"] else 1.0)
 	AudioManager.play_weapon(String(d.get("sound", "pistol")), from, is_player)
 	Events.gunshot.emit(from, owner_body, 1.0)
 	_spread_bloom = minf(_spread_bloom + float(d.get("recoil", 1.0)) * 0.35, 4.0)

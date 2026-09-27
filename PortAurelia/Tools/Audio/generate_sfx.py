@@ -127,6 +127,34 @@ def weapons():
     gunshot("rifle", 95, 0.6, 0.4, 0.6, 1.1)
     gunshot("shotgun", 70, 1.0, 0.7, 0.9, 1.6)
     gunshot("sniper", 60, 1.2, 1.0, 1.4, 1.8)
+    gunshot("deagle", 72, 1.1, 0.8, 1.0, 1.6)
+    gunshot("lmg", 88, 0.6, 0.35, 0.5, 1.25)
+    gunshot("minigun", 150, 0.22, 0.08, 0.16, 0.8)
+    # rocket launch: hard thump, then a roaring hiss that fades away
+    dur = 1.6
+    n = int(SR * dur)
+    tt = t(dur)
+    thump = np.sin(2 * np.pi * 55 * tt * (1 - tt * 0.5)) * env(n, 0.002, 0.18) * 1.4
+    roar = lp_fast(noise(dur), 2200) * env(n, 0.03, 1.2, curve=2.5)
+    hiss = hp(noise(dur), 3000) * env(n, 0.02, 0.9, curve=3.0) * 0.5
+    save("Weapons", "rocket_launch", reverb(thump + roar + hiss, 0.45, 1.1), 1.0)
+    # 40 mm grenade launcher: hollow "thunk"
+    dur = 0.6
+    n = int(SR * dur)
+    tt = t(dur)
+    thunk = np.sin(2 * np.pi * 120 * tt * (1 - tt)) * env(n, 0.001, 0.12) + lp_fast(noise(dur), 900) * env(n, 0.001, 0.06)
+    save("Weapons", "grenade_launch", reverb(thunk, 0.3, 0.5), 0.9)
+    # nitro boost: rising hiss
+    dur = 1.2
+    n = int(SR * dur)
+    tt = t(dur)
+    nitro = hp(noise(dur), 1500) * env(n, 0.05, 1.0, curve=1.5) + np.sin(2 * np.pi * (180 + 200 * tt) * tt) * 0.15 * env(n, 0.05, 1.0)
+    save("Vehicles", "nitro", nitro, 0.8)
+    # shop alarm bell (two-tone, loops)
+    dur = 1.0
+    tt = t(dur)
+    bell = np.sign(np.sin(2 * np.pi * 950 * tt)) * (tt % 0.5 < 0.25) + np.sign(np.sin(2 * np.pi * 760 * tt)) * (tt % 0.5 >= 0.25)
+    save("Environment", "alarm_bell", lp_fast(bell, 4000) * 0.6, 0.6)
     # reload: two metallic clicks
     x = np.zeros(int(SR * 0.6))
     for (pos, f) in ((0.05, 2400), (0.35, 1800)):
@@ -370,6 +398,13 @@ def main():
     environment()
     ui()
     voice()
+    try:
+        sys.path.insert(0, HERE)
+        import generate_voice
+        generate_voice.OUT = os.path.join(ROOT, "Voice")
+        generate_voice.main()
+    except Exception as e:  # TTS is optional
+        print("voice lines skipped:", e)
     manifest = {}
     for cat in sorted(os.listdir(ROOT)):
         d = os.path.join(ROOT, cat)

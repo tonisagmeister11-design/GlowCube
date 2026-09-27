@@ -25,6 +25,17 @@ var unlocked_zones: Array = ["downtown", "financial", "residential", "shopping"]
 var world_state := {}                    # arbitrary flags (e.g. destroyed/opened things)
 
 
+## Fines and bills that are due no matter what: the balance may go negative (debt). Any
+## money earned afterwards pays the debt off first, simply because it is added to it.
+func charge(amount: int, _reason := "") -> void:
+	money -= amount
+	Events.money_changed.emit(money, -amount)
+
+
+func is_creative() -> bool:
+	return bool(world_state.get("creative", false))
+
+
 func add_money(delta: int, reason := "") -> bool:
 	if delta < 0 and money + delta < 0:
 		return false

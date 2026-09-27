@@ -2,8 +2,8 @@ class_name PoiManager
 extends Node
 ## Economy & points of interest: shops, weapon store, clothing, mechanic (repair,
 ## respray, upgrades), car dealer, hospital, properties (purchase + daily income),
-## safehouses (save, sleep, wardrobe, garage), bus stops (public transport) and
-## store robberies. Creates interaction markers and radar blips for all of them.
+## safehouses (save, sleep, wardrobe, garage) and bus stops (public transport).
+## Store robberies happen inside the shop interiors (see InteriorManager). Creates interaction markers and radar blips for all of them.
 
 const ICONS := {
 	"shop_convenience": ["$", Color(0.3, 0.8, 0.35)], "shop_supermarket": ["$", Color(0.3, 0.8, 0.35)],
@@ -15,11 +15,13 @@ const ICONS := {
 	"jewelry": ["J", Color(0.75, 0.85, 1.0)], "electronics": ["E", Color(0.5, 0.8, 0.9)],
 	"parking_garage": ["G", Color(0.6, 0.6, 0.7)], "airport_terminal": ["F", Color(0.8, 0.8, 0.9)],
 }
+const JEWELRY := [["Goldkette", 8500], ["Diamantring", 24000], ["Luxusuhr", 65000], ["Diamant-Collier", 180000]]
 const FOOD := [["Snack & Limo", 6, 20.0], ["Sandwich", 14, 45.0], ["Großes Menü", 28, 100.0]]
-const ROBBABLE := {"shop_convenience": [300, 900, 2], "gas_station": [250, 700, 2], "shop_supermarket": [500, 1400, 2],
-	"diner": [200, 600, 1], "electronics": [1200, 2600, 2], "jewelry": [3000, 6500, 3]}
-const INCOME := {"property_business": 2500, "property_garage": 800, "property_apartment": 150, "property_house": 300,
-	"property_penthouse": 600, "property_villa": 1200}
+const INCOME := {"property_business": 45000, "property_garage": 1500, "property_apartment": 2500, "property_house": 4500,
+	"property_penthouse": 14000, "property_villa": 30000}
+## Real estate is a serious investment.
+const PROPERTY_PRICE := {"property_business": 3200000, "property_garage": 180000, "property_apartment": 280000,
+	"property_house": 520000, "property_penthouse": 1900000, "property_villa": 4800000}
 const CLOTH_COLORS := [["Weiß", Color(0.95, 0.95, 0.93)], ["Schwarz", Color(0.08, 0.08, 0.1)], ["Rot", Color(0.75, 0.1, 0.1)],
 	["Blau", Color(0.15, 0.3, 0.65)], ["Grün", Color(0.2, 0.45, 0.25)], ["Gelb", Color(0.9, 0.75, 0.15)],
 	["Grau", Color(0.5, 0.5, 0.53)], ["Beige", Color(0.8, 0.7, 0.55)], ["Pink", Color(0.9, 0.5, 0.65)]]
@@ -35,7 +37,6 @@ var markers := {}              # poi id -> InteractMarker
 var _vehicle_markers: Array = []
 var _bus_markers := {}         # prop key -> InteractMarker
 var _bus_timer := 0.0
-var _robbery := {}             # active robbery {poi, time, total}
 var _last_income_day := -1
 var rng := RandomNumberGenerator.new()
 var _pending_parked := {}      # owned vehicle id -> [x, y, z, yaw] waiting to be respawned
@@ -72,7 +73,8 @@ func _create_marker(p: Dictionary) -> void:
 			prompt = "E: %s betreten" % p["name"]
 			col = Color(0.95, 0.3, 0.3)
 		"shop_clothing":
-			handler = _open_clothing.bind(p)
+			handler = _enter_or.bind(p, _open_clothing)
+			prompt = "E: %s betreten" % p["name"]
 			col = Color(0.75, 0.5, 0.95)
 		"car_dealer":
 			handler = _open_dealer.bind(p)
@@ -157,8 +159,6 @@ func _process(delta: float) -> void:
 	if _bus_timer <= 0.0:
 		_bus_timer = 1.5
 		_update_bus_markers(p.global_position)
-	if not _robbery.is_empty():
-		_update_robbery(p, delta)
 	_parked_timer -= delta
 	if _parked_timer <= 0.0 and not _pending_parked.is_empty():
 		_parked_timer = 2.0
@@ -219,6 +219,12 @@ func _prop_key(p: Dictionary) -> String:
 	return "safehouse" if p["type"] == "safehouse" else "%s_%d" % [p["type"], int(p["id"])]
 
 
+func property_price(p: Dictionary) -> int:
+	var base := int(PROPERTY_PRICE.get(p["type"], int(p.get("price", 50000))))
+	var k := float(int(p.get("id", 0)) * 7919 % 100) / 100.0
+	return int(round(base * lerpf(0.85, 1.25, k) / 1000.0)) * 1000
+
+
 func _owns(p: Dictionary) -> bool:
 	return Game.player_data.properties.has(_prop_key(p))
 
@@ -235,18 +241,20 @@ func _enter_or(pl: Player, p: Dictionary, fallback: Callable) -> void:
 # ------------------------------------------------------------------ stores & robbery
 func _open_store(_pl: Player, p: Dictionary) -> void:
 	var items := []
-	for f in FOOD:
-		items.append({"label": f[0], "price": f[1], "desc": "Stellt %d Gesundheit wieder her." % int(f[2]),
-			"action": func(): (world.player as Player).health.heal(f[2]); Events.notify.emit("Guten Appetit!", 2.0),
-			"keep_open": true})
+	if p["type"] == "jewelry":
+		for j in JEWELRY:
+			items.append({"label": j[0], "price": j[1], "desc": "Reiner Luxus – gehört danach dir.",
+				"action": func(): Game.player_data.stat_add("jewelry_bought", 1); Events.notify.emit("%s gekauft." % j[0], 2.5),
+				"keep_open": true})
+	else:
+		for f in FOOD:
+			items.append({"label": f[0], "price": f[1], "desc": "Stellt %d Gesundheit wieder her." % int(f[2]),
+				"action": func(): (world.player as Player).health.heal(f[2]); Events.notify.emit("Guten Appetit!", 2.0),
+				"keep_open": true})
 	if p["type"] in ["gas_station", "shop_convenience"]:
 		items.append({"label": "Reparaturset", "price": 150, "desc": "Behebt kleinere Schäden am letzten Fahrzeug.",
 			"action": _quick_fix})
-	var pl := world.player as Player
-	if ROBBABLE.has(p["type"]) and pl.weapons.current_is_ranged():
-		items.append({"label": "Kasse ausrauben", "desc": "Bedrohe den Kassierer. Die Polizei wird alarmiert!",
-			"action": _start_robbery.bind(p)})
-	MenuPanel.open(p["name"], items, "Willkommen! Was darf es sein?")
+	MenuPanel.open(p["name"], items, "Willkommen! Was darf es sein?   (Tipp: Mit gezogener Waffe auf den Verkäufer zielen = Überfall)")
 
 
 func _quick_fix() -> void:
@@ -269,39 +277,6 @@ func _last_vehicle() -> Vehicle:
 			bd = d
 			best = v
 	return best
-
-
-func _start_robbery(p: Dictionary) -> void:
-	var r: Array = ROBBABLE[p["type"]]
-	_robbery = {"poi": p, "time": 0.0, "total": rng.randi_range(r[0], r[1]), "level": r[2], "paid": 0,
-		"anchor": world.player.global_position}
-	Events.big_message.emit("ÜBERFALL", "Bleib in der Nähe der Kasse!", 2.5)
-	Events.crime_committed.emit("robbery", (p["entrance_v"] as Vector3), 3, world.player)
-	if world.police:
-		world.police.call("set_wanted", maxi(int(world.police.get("wanted_level")), r[2]))
-
-
-func _update_robbery(pl: Player, delta: float) -> void:
-	var p: Dictionary = _robbery["poi"]
-	var d := pl.global_position.distance_to(_robbery["anchor"])
-	if d > 9.0 or pl.state == Player.State.DEAD:
-		var got: int = _robbery["paid"]
-		Events.notify.emit("Überfall abgebrochen. Beute: $%d" % got, 3.0)
-		_robbery = {}
-		return
-	_robbery["time"] = float(_robbery["time"]) + delta
-	var frac := clampf(float(_robbery["time"]) / 8.0, 0.0, 1.0)
-	var should := int(int(_robbery["total"]) * frac)
-	if should - int(_robbery["paid"]) >= 25 or frac >= 1.0:
-		var add := should - int(_robbery["paid"])
-		if add > 0:
-			Game.player_data.add_money(add, "robbery")
-			_robbery["paid"] = should
-	Events.subtitle.emit("Kassierer füllt die Tasche... %d%%" % int(frac * 100.0), 0.3)
-	if frac >= 1.0:
-		Events.big_message.emit("BEUTE: $%d" % int(_robbery["total"]), "Verschwinde!", 3.0)
-		Game.player_data.stat_add("robberies", 1)
-		_robbery = {}
 
 
 # ------------------------------------------------------------------ weapons
@@ -411,6 +386,10 @@ func _open_mechanic(p: Dictionary, v: Vehicle) -> void:
 				"desc": "Aktuell Stufe %d von 3." % lvl, "action": func(): v.upgrades[k] = lvl + 1; _save_upgrades(v)})
 	if int(v.upgrades["tires"]) == 0:
 		items.append({"label": "Kugelsichere Reifen", "price": 4000, "action": func(): v.upgrades["tires"] = 1; _save_upgrades(v)})
+	if v.nitro < 9:
+		items.append({"label": "Nitro (+3 Ladungen)", "price": 6000, "keep_open": true,
+			"desc": "Aktuell %d Ladungen. Zünden mit N (Controller: A) während der Fahrt." % v.nitro,
+			"action": func(): v.nitro = mini(v.nitro + 3, 9); v.upgrades["nitro"] = v.nitro; _save_upgrades(v); Events.notify.emit("Nitro eingebaut: %d Ladungen." % v.nitro, 2.5)})
 	MenuPanel.open(p["name"], items, VehicleDefs.display_name(v.type_id))
 
 
@@ -454,7 +433,7 @@ func _save_upgrades(v: Vehicle) -> void:
 # ------------------------------------------------------------------ car dealer
 func _open_dealer(_pl: Player, p: Dictionary) -> void:
 	var items := []
-	for id in ["compact", "sedan", "pickup", "van", "suv", "motorcycle", "luxury", "sports", "supercar"]:
+	for id in ["compact", "sedan", "pickup", "van", "suv", "motorcycle", "luxury", "sports", "muscle", "supercar", "hypercar"]:
 		var d := VehicleDefs.get_def(id)
 		var price := int(d.get("price", 20000))
 		items.append({"label": VehicleDefs.display_name(id), "price": price,
@@ -464,7 +443,7 @@ func _open_dealer(_pl: Player, p: Dictionary) -> void:
 
 
 func _buy_vehicle(p: Dictionary, id: String) -> void:
-	var entry := {"id": "veh_%d" % Time.get_ticks_usec(), "type": id, "color": VehicleDefs.random_color().to_html(),
+	var entry := {"id": "veh_%d" % Time.get_ticks_usec(), "type": id, "color": VehicleDefs.random_color(null, id).to_html(),
 		"upgrades": {"engine": 0, "brakes": 0, "armor": 0, "tires": 0}}
 	Game.player_data.owned_vehicles.append(entry)
 	Events.vehicle_purchased.emit(id)
@@ -486,6 +465,8 @@ func spawn_owned_vehicle(entry: Dictionary, pos: Vector3, facing: Vector3) -> Ve
 	world.add_child(v)
 	for k in entry.get("upgrades", {}):
 		v.upgrades[k] = int(entry["upgrades"][k])
+	if v.upgrades.has("nitro"):
+		v.nitro = int(v.upgrades["nitro"])
 	if world.traffic:
 		(world.traffic as TrafficManager).keep[v] = true
 	return v
@@ -496,7 +477,7 @@ func _open_property(pl: Player, p: Dictionary) -> void:
 	if _owns(p):
 		_open_safehouse(pl, p)
 		return
-	var price := int(p.get("price", 50000))
+	var price := property_price(p)
 	var inc := int(INCOME.get(p["type"], 0))
 	MenuPanel.open(p["name"], [
 		{"label": "Kaufen", "price": price, "desc": "Speicherpunkt, Garage und täglich $%d Einnahmen." % inc,

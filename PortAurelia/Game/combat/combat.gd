@@ -66,8 +66,9 @@ static func impact_fx(pos: Vector3, normal: Vector3, surface: String) -> void:
 	Events.bullet_impact.emit(pos, normal, surface)
 
 
-## Radial damage (explosions).
-static func explode(world: World3D, pos: Vector3, radius: float, damage: float, source: Node) -> void:
+## Radial damage (explosions). `lethal` (rockets, grenades): everyone inside 85 % of the radius
+## dies outright (cops included) and vehicles inside 90 % explode and are thrown into the air.
+static func explode(world: World3D, pos: Vector3, radius: float, damage: float, source: Node, lethal := false) -> void:
 	VFX.explosion(pos, radius)
 	AudioManager.play_3d("explosion", pos, 6.0)
 	Events.explosion.emit(pos, radius, source)
@@ -90,6 +91,21 @@ static func explode(world: World3D, pos: Vector3, radius: float, damage: float, 
 		var d := cp.distance_to(pos)
 		var f := clampf(1.0 - d / radius, 0.0, 1.0)
 		if t:
-			apply_damage(c, damage * f, source, cp, (cp - pos).normalized())
+			if lethal and t is Vehicle:
+				var veh := t as Vehicle
+				if d < radius * 0.9 and not veh.destroyed:
+					veh.engine_health = 0.0
+					veh.body_health = 0.0
+					veh.call_deferred("explode")
+					var away := (cp - pos)
+					away.y = 0.0
+					veh.apply_central_impulse(Vector3.UP * veh.mass * 9.0 + away.normalized() * veh.mass * 5.0)
+					veh.apply_torque_impulse(Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * veh.mass * 2.5)
+				else:
+					apply_damage(c, damage * f, source, cp, (cp - pos).normalized())
+			elif lethal and d < radius * 0.85 and t.get_node_or_null("Health") is Health:
+				apply_damage(c, 99999.0, source, cp, (cp - pos).normalized())
+			else:
+				apply_damage(c, damage * f, source, cp, (cp - pos).normalized())
 		if c is RigidBody3D:
 			(c as RigidBody3D).apply_central_impulse((cp - pos).normalized() * 900.0 * f + Vector3.UP * 500.0 * f)

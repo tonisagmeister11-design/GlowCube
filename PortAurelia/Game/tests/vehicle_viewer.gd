@@ -10,7 +10,7 @@ var hide: PackedStringArray = []
 var colors := [Color(0.7, 0.1, 0.1), Color(0.15, 0.25, 0.5), Color(0.08, 0.08, 0.09), Color(0.95, 0.75, 0.1),
 	Color(0.9, 0.35, 0.05), Color(0.5, 0.55, 0.52), Color(0.2, 0.3, 0.2), Color(0.9, 0.9, 0.9)]
 var ids := ["compact", "sedan", "luxury", "sports", "supercar", "suv", "pickup", "van", "taxi", "police",
-	"ambulance", "delivery", "truck", "fire_truck", "bus", "motorcycle"]
+	"ambulance", "delivery", "truck", "fire_truck", "bus", "motorcycle", "hypercar", "muscle"]
 
 
 func _ready() -> void:

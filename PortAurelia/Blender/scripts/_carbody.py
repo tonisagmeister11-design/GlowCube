@@ -427,16 +427,18 @@ class CarBody:
 
     # ------------------------------------------------------------------ decals
     def decal(self, mb, outline, axis, sgn, offset, mat, col=(1, 1, 1, 1), min_facing=0.25, uv2=None, zone=None):
-        """Project the convex outline (2D: (x, y) for axis 'z', (z, y) for axis 'x') onto the body
+        """Project the convex outline (2D: (x, y) for axis 'z', (z, y) for axis 'x', (x, z) for 'y') onto the body
         faces facing axis * sgn, clip, and add the pieces to mb offset along the face normals.
         zone: optional (lo, hi) range of the remaining coordinate (z for 'x', x for 'z')."""
         outline = ccw(outline)
-        ai = 2 if axis == "z" else 0
+        ai = {"z": 2, "x": 0, "y": 1}[axis]
         for pts, n in self.faces:
             if n[ai] * sgn < min_facing:
                 continue
             if axis == "z":
                 pr = [(q[0], q[1]) for q in pts]
+            elif axis == "y":
+                pr = [(q[0], q[2]) for q in pts]
             else:
                 pr = [(q[2], q[1]) for q in pts]
             if zone is not None:
@@ -456,6 +458,9 @@ class CarBody:
                 if axis == "z":
                     zz = p0[2] - (n[0] * (u - p0[0]) + n[1] * (v - p0[1])) / n[2]
                     q = (u, v, zz)
+                elif axis == "y":
+                    yy = p0[1] - (n[0] * (u - p0[0]) + n[2] * (v - p0[2])) / n[1]
+                    q = (u, yy, v)
                 else:
                     xx = p0[0] - (n[2] * (u - p0[2]) + n[1] * (v - p0[1])) / n[0]
                     q = (xx, v, u)

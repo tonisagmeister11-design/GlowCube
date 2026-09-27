@@ -26,7 +26,7 @@ const SIDE := {
 	"taxi": {"title": "Taxi-Schicht", "script": "res://missions/side/taxi.gd", "reward": 0, "desc": "Fahrgäste befördern."},
 	"courier": {"title": "Kurierjob", "script": "res://missions/side/courier.gd", "reward": 0, "desc": "4 Pakete gegen die Uhr."},
 	"vigilante": {"title": "Bürgerwehr", "script": "res://missions/side/vigilante.gd", "reward": 0, "desc": "Flüchtige Verdächtige stoppen."},
-	"race": {"title": "Straßenrennen", "script": "res://missions/side/street_race.gd", "reward": 0, "desc": "Startgeld $500, Preisgeld bis $3000."},
+	"race": {"title": "Straßenrennen", "script": "res://missions/side/street_race.gd", "reward": 0, "desc": "Drei Klassen, Preisgeld bis $140.000."},
 }
 const POSTCARDS := 25
 
@@ -119,14 +119,14 @@ func start_story(mid: String) -> bool:
 	return false
 
 
-func start_side(key: String) -> bool:
+func start_side(key: String, params := {}) -> bool:
 	var s: Dictionary = SIDE.get(key, {})
 	if s.is_empty():
 		return false
-	return _start(key, s["script"], s["title"], int(s["reward"]))
+	return _start(key, s["script"], s["title"], int(s["reward"]), params)
 
 
-func _start(mid: String, script_path: String, t: String, rew: int) -> bool:
+func _start(mid: String, script_path: String, t: String, rew: int, params := {}) -> bool:
 	if is_active():
 		Events.notify.emit("Du bist bereits in einer Mission.", 3.0)
 		return false
@@ -137,7 +137,7 @@ func _start(mid: String, script_path: String, t: String, rew: int) -> bool:
 	m.reward = rew
 	m.name = "Mission_" + mid
 	add_child(m)
-	m.setup(self)
+	m.setup(self, params)
 	m.finished.connect(_on_finished.bind(m))
 	current = m
 	current_id = mid
@@ -188,20 +188,47 @@ func _on_failed_reason(_mid: String, reason: String) -> void:
 
 
 # ------------------------------------------------------------------ races (markers)
+const RACE_TIER_NAMES := ["Street", "Pro", "Hypercar-Liga"]
+const RACE_SPOTS := 7
+
+
 func _setup_races() -> void:
 	Events.mission_failed.connect(_on_failed_reason)
-	for t in ["landmark_stadium", "landmark_convention", "fire_station"]:
-		var p := world.data.nearest_poi(t, world.data.spawn)
-		if p.is_empty():
+	# spread the start lines over the whole map (farthest-point sampling over the POIs)
+	var cands: Array = []
+	for p in world.data.pois:
+		if String(p["type"]) in ["safehouse", "police_station", "hospital", "airport_terminal"]:
 			continue
+		cands.append(p)
+	if cands.is_empty():
+		return
+	var chosen: Array = [world.data.nearest_poi("landmark_stadium", world.data.spawn)]
+	if chosen[0].is_empty():
+		chosen = [cands[0]]
+	while chosen.size() < RACE_SPOTS and chosen.size() < cands.size():
+		var best: Dictionary = {}
+		var bd := -1.0
+		for c in cands:
+			var dmin := INF
+			for q in chosen:
+				dmin = minf(dmin, (c["entrance_v"] as Vector3).distance_to(q["entrance_v"]))
+			if dmin > bd:
+				bd = dmin
+				best = c
+		chosen.append(best)
+	for i in chosen.size():
+		var p: Dictionary = chosen[i]
+		var tier := i % 3
+		var tt: Dictionary = preload("res://missions/side/street_race.gd").TIERS[tier]
 		var m := InteractMarker.new()
-		m.prompt = "E: Straßenrennen (Startgeld $500)"
-		m.color = Color(0.3, 0.9, 1.0)
-		m.interact_radius = 2.5
-		m.on_interact = func(_pl): start_side("race")
+		m.prompt = "E: Straßenrennen %s  (Einsatz $%d, Sieg $%d)" % [RACE_TIER_NAMES[tier], int(tt["fee"]), int(tt["prizes"][0])]
+		m.color = [Color(0.3, 0.9, 1.0), Color(1.0, 0.55, 0.15), Color(1.0, 0.2, 0.6)][tier]
+		m.interact_radius = 3.0
+		m.on_interact = func(_pl): start_side("race", {"tier": tier})
 		m.condition = func(_pl): return not is_active()
 		world.add_child(m)
 		m.global_position = (p["entrance_v"] as Vector3) + (p["facing_v"] as Vector3) * 5.0
+		m.set_meta("tier", tier)
 		_race_markers.append(m)
 
 
@@ -304,8 +331,8 @@ func blips() -> Array:
 	if not is_active():
 		var pp := world.player.global_position
 		for m in _race_markers:
-			if is_instance_valid(m) and m.global_position.distance_to(pp) < 500.0:
-				out.append({"pos": m.global_position, "icon": "R", "color": Color(0.3, 0.9, 1.0), "size": 8.0})
+			if is_instance_valid(m) and m.global_position.distance_to(pp) < 900.0:
+				out.append({"pos": m.global_position, "icon": "R", "color": m.color, "size": 8.0})
 	return out
 
 

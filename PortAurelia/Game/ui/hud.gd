@@ -331,7 +331,8 @@ func _process(delta: float) -> void:
 	if _money_shown != target:
 		var step := maxi(1, absi(target - _money_shown) / 12)
 		_money_shown = move_toward(_money_shown, target, step)
-	_money.text = "$%s" % _fmt(_money_shown)
+	_money.text = ("-$%s" % _fmt(-_money_shown)) if _money_shown < 0 else "$%s" % _fmt(_money_shown)
+	_money.add_theme_color_override("font_color", Color(0.95, 0.3, 0.28) if _money_shown < 0 else Color(0.45, 0.9, 0.45))
 	_money_delta_timer -= delta
 	if _money_delta_timer < 0.6:
 		_money_delta.modulate.a = maxf(0.0, _money_delta_timer / 0.6)
@@ -377,6 +378,10 @@ func _process(delta: float) -> void:
 		var kmh := absf((p.vehicle as Vehicle).speed_kmh)
 		_speed.text = "%d mph" % int(kmh * 0.621371) if int(Settings.get_value("gameplay", "speed_units")) == 1 \
 			else "%d km/h" % int(kmh)
+		var veh := p.vehicle as Vehicle
+		if veh.nitro > 0 or veh.nitro_active():
+			_speed.text = ("NITRO %s   " % "●".repeat(veh.nitro)) + _speed.text if not veh.nitro_active() \
+				else ">>> NITRO <<<   " + _speed.text
 	else:
 		_speed.text = ""
 	# crosshair / sniper scope

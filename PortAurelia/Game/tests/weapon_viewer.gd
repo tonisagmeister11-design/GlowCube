@@ -31,10 +31,13 @@ func _ready() -> void:
 	add_child(key)
 	var scn: PackedScene = load("res://assets/generated/weapons/weapons.glb")
 	var inst := scn.instantiate()
-	var names := ["pistol", "revolver", "smg", "knife", "rifle", "shotgun", "sniper", "bat"]
+	var names := ["pistol", "revolver", "smg", "knife", "rifle", "shotgun", "sniper", "bat",
+		"deagle", "lmg", "grenade_launcher", "rpg", "minigun", "machete"]
 	var spots := [Vector3(-0.5, 0.02, -0.42), Vector3(-0.16, 0.02, -0.42), Vector3(0.22, 0.02, -0.42),
 		Vector3(0.58, 0.02, -0.42), Vector3(0.05, 0.02, -0.16), Vector3(0.05, 0.02, 0.08), Vector3(0.05, 0.02, 0.32),
 		Vector3(0.05, 0.02, 0.52)]
+	for i in names.size() - spots.size():
+		spots.append(Vector3(0, -5, 0))   # extra weapons: product shots only
 	var models := {}
 	for i in names.size():
 		var src := inst.find_child(names[i], true, false) as MeshInstance3D
