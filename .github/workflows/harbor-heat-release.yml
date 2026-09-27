@@ -1,0 +1,33 @@
+# Joins the prebuilt parts into one HarborHeat.exe and publishes it as a GitHub release.
+name: Harbor Heat download
+
+on:
+  push:
+    branches: ["harbor-heat-download"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Join parts
+        run: |
+          cat parts/HarborHeat.exe.part* > HarborHeat.exe
+          echo "$(cat parts/SHA256)  HarborHeat.exe" | sha256sum -c -
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: harbor-heat-v1.0
+          name: Harbor Heat v1.0
+          target_commitish: harbor-heat-download
+          make_latest: true
+          body: |
+            **Harbor Heat** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            Download `HarborHeat.exe`, double-click, play. Nothing to install.
+            Weak laptop: Settings > Grafik > Leistungsmodus > "Maximal", then restart.
+            If Windows SmartScreen warns: "More info" > "Run anyway" (unsigned build).
+          files: HarborHeat.exe
