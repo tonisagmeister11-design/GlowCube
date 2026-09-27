@@ -27,6 +27,8 @@ var _fail_checks: Array = []       # [Callable, reason]
 var _spawned: Array = []
 var _markers: Array = []
 var _params := {}
+var stage := 0                     # checkpoint stage to (re)start from (params "stage")
+var checkpoint_data := {}          # {stage, pos, yaw, vehicle} of the last checkpoint reached
 
 
 func setup(mgr: Node, params := {}) -> void:
@@ -34,6 +36,16 @@ func setup(mgr: Node, params := {}) -> void:
 	world = GameWorld.instance
 	player = world.player as Player
 	_params = params
+	stage = int(params.get("stage", 0))
+
+
+## Mission checkpoint: failing later offers a restart from here (at `pos`, optionally in a
+## fresh vehicle of `vehicle_type`). Shown to the player like in the big games.
+func set_checkpoint(n: int, pos: Vector3, vehicle_type := "", yaw := 0.0) -> void:
+	stage = n
+	checkpoint_data = {"stage": n, "pos": pos, "vehicle": vehicle_type, "yaw": yaw}
+	Events.notify.emit("CHECKPOINT", 2.5)
+	AudioManager.play_ui("checkpoint", -2.0)
 
 
 ## Override: the mission script.

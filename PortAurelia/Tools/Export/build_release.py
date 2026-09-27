@@ -58,7 +58,8 @@ Steuerung (Tastatur & Maus, Xbox-Controller wird automatisch erkannt)
   WASD Bewegen · Shift Sprinten · Leertaste Springen/Klettern · Strg Ducken · Q Deckung
   Linke Maustaste Schießen · Rechte Maustaste Zielen · R Nachladen · 1-9 Waffen · TAB Waffenrad
   E Interagieren · F Fahrzeug · M Karte · Pfeil hoch Telefon · ESC Pause · F5 Schnellspeichern
-  Im Auto: W/S Gas/Bremse · A/D Lenken · Leertaste Handbremse · Shift Driften · H Hupe · L Licht · G Sirene
+  Im Auto: W/S Gas/Bremse · A/D Lenken · Leertaste Handbremse · Shift Driften · N Nitro · H Hupe · L Licht · G Sirene
+  Laden ausrauben: Waffe auf den Verkäufer richten · X bei der Polizei ergeben · K Mission abbrechen
   V Kamera wechseln (zu Fuß: Third/First Person, im Auto: nah, weit, Motorhaube, Cockpit)
 
 Kamera

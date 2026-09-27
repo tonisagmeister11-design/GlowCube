@@ -5,21 +5,21 @@ extends Node
 ## rewards, failure handling (death / arrest) and HUD blips.
 
 const STORY := [
-	{"id": "m01", "title": "Neuanfang", "script": "res://missions/story/m01_new_start.gd", "giver": "safehouse", "reward": 1000,
+	{"id": "m01", "title": "Neuanfang", "script": "res://missions/story/m01_new_start.gd", "giver": "safehouse", "reward": 15000,
 		"desc": "Marco hat einen Wagen für dich."},
-	{"id": "m02", "title": "Lieferservice", "script": "res://missions/story/m02_delivery.gd", "giver": "diner", "reward": 1500,
+	{"id": "m02", "title": "Lieferservice", "script": "res://missions/story/m02_delivery.gd", "giver": "diner", "reward": 25000,
 		"desc": "Eine eilige Lieferung aus dem Hafen."},
-	{"id": "m03", "title": "Schuldeneintreiber", "script": "res://missions/story/m03_debt.gd", "giver": "diner", "reward": 2000,
+	{"id": "m03", "title": "Schuldeneintreiber", "script": "res://missions/story/m03_debt.gd", "giver": "diner", "reward": 35000,
 		"desc": "Vince schuldet Marco Geld."},
-	{"id": "m04", "title": "Verfolgungsjagd", "script": "res://missions/story/m04_chase.gd", "giver": "diner", "reward": 3000,
+	{"id": "m04", "title": "Verfolgungsjagd", "script": "res://missions/story/m04_chase.gd", "giver": "diner", "reward": 50000,
 		"desc": "Ein Kurier hat Marcos Paket gestohlen."},
-	{"id": "m05", "title": "Eskorte", "script": "res://missions/story/m05_escort.gd", "giver": "landmark_grand_hotel", "reward": 4500,
+	{"id": "m05", "title": "Eskorte", "script": "res://missions/story/m05_escort.gd", "giver": "landmark_grand_hotel", "reward": 80000,
 		"desc": "Ein wichtiger Gast muss sicher zum Flughafen."},
-	{"id": "m06", "title": "Auftragsmord", "script": "res://missions/story/m06_hit.gd", "giver": "diner", "reward": 6000,
+	{"id": "m06", "title": "Auftragsmord", "script": "res://missions/story/m06_hit.gd", "giver": "diner", "reward": 120000,
 		"desc": "Viktor Sorel steht Marco im Weg."},
-	{"id": "m07", "title": "Gebrauchtwagen", "script": "res://missions/story/m07_steal.gd", "giver": "car_dealer", "reward": 5000,
+	{"id": "m07", "title": "Gebrauchtwagen", "script": "res://missions/story/m07_steal.gd", "giver": "car_dealer", "reward": 150000,
 		"desc": "Ein Kunde wünscht sich einen ganz bestimmten Sportwagen."},
-	{"id": "m08", "title": "Der große Coup", "script": "res://missions/story/m08_heist.gd", "giver": "property_business", "reward": 25000,
+	{"id": "m08", "title": "Der große Coup", "script": "res://missions/story/m08_heist.gd", "giver": "property_business", "reward": 750000,
 		"desc": "Die Meridian Bank. Alles oder nichts."},
 ]
 const SIDE := {
@@ -27,6 +27,15 @@ const SIDE := {
 	"courier": {"title": "Kurierjob", "script": "res://missions/side/courier.gd", "reward": 0, "desc": "4 Pakete gegen die Uhr."},
 	"vigilante": {"title": "Bürgerwehr", "script": "res://missions/side/vigilante.gd", "reward": 0, "desc": "Flüchtige Verdächtige stoppen."},
 	"race": {"title": "Straßenrennen", "script": "res://missions/side/street_race.gd", "reward": 0, "desc": "Drei Klassen, Preisgeld bis $140.000."},
+	"jewel_heist": {"title": "Juwelen für Dante", "script": "res://missions/contracts/jewel_heist.gd", "reward": 90000,
+		"desc": "Raube einen Juwelier aus und bring Dante die Steine. Er zahlt $90.000 – die Beute behältst du.",
+		"giver": "jewelry"},
+	"car_heist": {"title": "Heiße Ware", "script": "res://missions/contracts/car_heist.gd", "reward": 0,
+		"desc": "Ein nagelneuer Zenith R wird zum Händler geliefert. Klau ihn – der Käufer zahlt $200.000.",
+		"giver": "car_dealer"},
+	"armored_truck": {"title": "Geldtransporter", "script": "res://missions/contracts/armored_truck.gd", "reward": 25000,
+		"desc": "Überfalle einen gepanzerten Geldtransporter. Beute ca. $60.000 + $25.000 Bonus.",
+		"giver": "bank"},
 }
 const POSTCARDS := 25
 
@@ -38,6 +47,9 @@ var _giver_mission := {}
 var _race_markers: Array = []
 var _postcards: Array = []        # [{pos, node}]
 var _pc_timer := 0.0
+var _contract_markers: Array = []
+var _last_failed := {}            # {id, story, params, checkpoint} for "retry" after a failed mission
+var _aborting := false
 
 
 func _ready() -> void:
@@ -48,6 +60,7 @@ func _ready() -> void:
 	Events.player_busted.connect(func(): _fail_current("Du wurdest verhaftet."))
 	_refresh_giver()
 	_setup_races()
+	_setup_contracts()
 	_setup_postcards()
 	if Game.pending_mission != "":
 		var mid := Game.pending_mission
@@ -155,7 +168,9 @@ func _fail_current(reason: String) -> void:
 
 func abort_current() -> void:
 	if is_active():
+		_aborting = true
 		current.fail("Mission abgebrochen.")
+		_aborting = false
 
 
 func _on_finished(ok: bool, m: Mission) -> void:
@@ -177,10 +192,64 @@ func _on_finished(ok: bool, m: Mission) -> void:
 		get_tree().create_timer(4.5).timeout.connect(func(): SaveManager.autosave())
 	else:
 		AudioManager.play_ui("mission_failed")
+		if not _aborting:
+			_last_failed = {"id": m.id, "story": m.id.begins_with("m0"), "params": m._params.duplicate(),
+				"checkpoint": m.checkpoint_data.duplicate()}
+			get_tree().create_timer(5.5 if player_dead_or_busted() else 3.0).timeout.connect(_offer_retry)
 	current = null
 	current_id = ""
 	m.queue_free()
 	_refresh_giver()
+
+
+func player_dead_or_busted() -> bool:
+	var p := world.player as Player
+	return p != null and p.state in [Player.State.DEAD, Player.State.BUSTED]
+
+
+## After a failed mission: restart from the last checkpoint (or from the start).
+func _offer_retry() -> void:
+	if _last_failed.is_empty() or is_active():
+		return
+	var lf := _last_failed
+	var items := []
+	var cp: Dictionary = lf["checkpoint"]
+	if not cp.is_empty():
+		items.append({"label": "Ab Checkpoint neu starten", "action": func(): retry(true)})
+	items.append({"label": "Mission neu starten", "action": func(): retry(false)})
+	items.append({"label": "Beenden", "action": func(): _last_failed = {}})
+	MenuPanel.open("MISSION FEHLGESCHLAGEN", items, "Nochmal versuchen?")
+
+
+func retry(from_checkpoint: bool) -> void:
+	var lf := _last_failed
+	_last_failed = {}
+	if lf.is_empty():
+		return
+	var params: Dictionary = lf["params"].duplicate()
+	var cp: Dictionary = lf["checkpoint"]
+	if from_checkpoint and not cp.is_empty():
+		params["stage"] = int(cp["stage"])
+		var p := world.player as Player
+		var pos: Vector3 = cp["pos"]
+		world.streaming.load_area_blocking(pos, 250.0)
+		if p.vehicle:
+			p.exit_vehicle()
+		p.teleport(pos + Vector3.UP * 0.3)
+		if String(cp["vehicle"]) != "" and world.economy:
+			var dir := Vector3(sin(float(cp["yaw"])), 0, cos(float(cp["yaw"]))) * -1.0
+			var v := Vehicle.create(String(cp["vehicle"]))
+			v.transform = Transform3D(Basis.looking_at(dir if dir.length() > 0.1 else Vector3.FORWARD, Vector3.UP),
+				pos + Vector3.UP * 0.8)
+			world.add_child(v)
+			params["checkpoint_vehicle"] = v
+			p.enter_vehicle(v)
+	if bool(lf["story"]):
+		for m in STORY:
+			if m["id"] == lf["id"]:
+				_start(m["id"], m["script"], m["title"], int(m["reward"]), params)
+	else:
+		start_side(lf["id"], params)
 
 
 func _on_failed_reason(_mid: String, reason: String) -> void:
@@ -230,6 +299,30 @@ func _setup_races() -> void:
 		m.global_position = (p["entrance_v"] as Vector3) + (p["facing_v"] as Vector3) * 5.0
 		m.set_meta("tier", tier)
 		_race_markers.append(m)
+
+
+# ------------------------------------------------------------------ contracts (markers)
+func _setup_contracts() -> void:
+	for key in SIDE:
+		var sd: Dictionary = SIDE[key]
+		if not sd.has("giver"):
+			continue
+		var p := world.data.nearest_poi(sd["giver"], world.data.spawn)
+		if p.is_empty():
+			continue
+		var k: String = key
+		var m := InteractMarker.new()
+		m.prompt = "E: Auftrag – %s" % sd["title"]
+		m.color = Color(0.4, 1.0, 0.45)
+		m.interact_radius = 2.2
+		m.on_interact = func(_pl): MenuPanel.open(sd["title"], [
+			{"label": "Auftrag annehmen", "action": func(): start_side(k)},
+			{"label": "Später", "action": func(): pass}], sd["desc"])
+		m.condition = func(_pl): return not is_active()
+		world.add_child(m)
+		var f: Vector3 = p["facing_v"]
+		m.global_position = (p["entrance_v"] as Vector3) + f * 4.0 - f.cross(Vector3.UP) * 2.5
+		_contract_markers.append(m)
 
 
 # ------------------------------------------------------------------ collectibles
@@ -333,6 +426,9 @@ func blips() -> Array:
 		for m in _race_markers:
 			if is_instance_valid(m) and m.global_position.distance_to(pp) < 900.0:
 				out.append({"pos": m.global_position, "icon": "R", "color": m.color, "size": 8.0})
+		for m in _contract_markers:
+			if is_instance_valid(m) and m.global_position.distance_to(pp) < 1500.0:
+				out.append({"pos": m.global_position, "icon": "$", "color": Color(0.4, 1.0, 0.45), "size": 9.0})
 	return out
 
 

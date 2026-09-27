@@ -45,6 +45,8 @@ func _run() -> void:
 	await _test_nitro(p)
 	await _test_creative(p)
 	await _test_surrender(p)
+	await _test_car_heist(p)
+	await _test_contracts_start(p)
 
 
 func _test_auto_step(p: Player) -> void:
@@ -222,14 +224,20 @@ func _test_knock_lamp(p: Player) -> void:
 		await wait(0.5)
 	var car := Vehicle.create("sedan")
 	world.add_child(car)
-	# approach from 25 m away, along X, straight at the pole
-	car.global_transform = Transform3D(Basis(Vector3.UP, -PI / 2), lp + Vector3(-25, 1.0, 0))
+	# approach along the street direction (lamps stand on the sidewalk next to the lanes)
+	var cl := world.graph.closest_lane(lp, 60.0)
+	var dir := Vector3(1, 0, 0)
+	if not cl.is_empty():
+		dir = (world.graph.lanes[cl["lane"]] as RoadGraph.Lane).dir_at(cl["s"])
+		dir.y = 0.0
+		dir = dir.normalized()
+	car.global_transform = Transform3D(Basis.looking_at(dir, Vector3.UP), lp - dir * 14.0 + Vector3.UP * 1.0)
 	await wait(0.6)
 	p.enter_vehicle(car)
 	await wait(0.6)
 	var debris0 := world.get_children().filter(func(n): return n is RigidBody3D and not n is Vehicle).size()
-	for i in 40:
-		car.linear_velocity = Vector3(15, car.linear_velocity.y, 0)
+	for i in 30:
+		car.linear_velocity = dir * 15.0 + Vector3.UP * car.linear_velocity.y
 		await wait(0.05)
 	var broken: bool = world.streaming.broken_props.get(target[0], {}).has(target[1])
 	var debris1 := world.get_children().filter(func(n): return n is RigidBody3D and not n is Vehicle).size()
@@ -303,3 +311,65 @@ func _test_surrender(p: Player) -> void:
 	check("surrender keeps weapons", p.weapons.owned.size() > 1, str(p.weapons.owned.keys()))
 	Game.player_data.add_money(1000, "test")
 	check("income pays the debt off", Game.player_data.money == 700, "$%d" % Game.player_data.money)
+
+
+func _test_car_heist(p: Player) -> void:
+	world.police.call("clear_wanted")
+	p.teleport(world.data.spawn + Vector3.UP * 0.5)
+	await wait(1.0)
+	var ok: bool = world.missions.start_side("car_heist")
+	await wait(1.5)
+	var m = world.missions.current
+	check("car heist starts with a convoy", ok and m != null and is_instance_valid(m.car), "")
+	if m == null:
+		return
+	var car: Vehicle = m.car
+	var p0 := car.global_position
+	await wait(4.0)
+	check("convoy drives", car.global_position.distance_to(p0) > 10.0, "moved %.1f m" % car.global_position.distance_to(p0))
+	# steal it
+	if car.ai_driver and car.ai_driver.has_method("abandon_vehicle"):
+		car.ai_driver.abandon_vehicle(p)
+	p.teleport(car.global_position + Vector3(3, 0.5, 0))
+	await wait(0.3)
+	p.enter_vehicle(car)
+	await wait(1.5)
+	check("checkpoint after stealing the car", m.stage == 1 and not m.checkpoint_data.is_empty(), "stage %d" % m.stage)
+	# fail and restart from the checkpoint
+	m.fail("test")
+	await wait(0.5)
+	world.missions.retry(true)
+	await wait(1.5)
+	var m2 = world.missions.current
+	check("restart from checkpoint", m2 != null and m2.stage == 1 and is_instance_valid(m2.car) and p.vehicle == m2.car,
+		"stage %s" % (str(m2.stage) if m2 else "none"))
+	if m2 == null:
+		return
+	world.police.call("clear_wanted")
+	var money0 := Game.player_data.money
+	var dest: Vector3 = m2._markers[-1].global_position
+	world.streaming.load_area_blocking(dest, 200.0)
+	m2.car.global_position = dest + Vector3.UP * 0.8
+	m2.car.linear_velocity = Vector3.ZERO
+	for i in 40:
+		await wait(0.1)
+		world.police.call("clear_wanted")
+		if not world.missions.is_active():
+			break
+	check("buyer pays for the hypercar", Game.player_data.money >= money0 + 100000, "+$%d" % (Game.player_data.money - money0))
+
+
+func _test_contracts_start(p: Player) -> void:
+	for key in ["jewel_heist", "armored_truck"]:
+		world.police.call("clear_wanted")
+		if p.vehicle:
+			p.exit_vehicle()
+		p.teleport(world.data.spawn + Vector3.UP * 0.5)
+		await wait(0.8)
+		var ok: bool = world.missions.start_side(key)
+		await wait(3.0)
+		var active: bool = world.missions.is_active()
+		var blips: int = world.missions.current.blip_list.size() if active else 0
+		check("contract %s runs with a marked target" % key, ok and active and blips > 0, "blips %d" % blips)
+		world.missions.abort_current()
+		await wait(0.5)

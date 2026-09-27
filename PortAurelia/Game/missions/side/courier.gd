@@ -22,7 +22,7 @@ func run() -> void:
 		objective("Paket %d/4 zustellen." % (i + 1))
 		if not await reach(dest, 6.0):
 			return
-		pay += 150 + int(time_left * 4.0)
+		pay += 900 + int(time_left * 25.0)
 		time_left = -1.0
 		Events.notify.emit("Zugestellt! Bisher: $%d" % pay, 2.0)
 	reward = pay

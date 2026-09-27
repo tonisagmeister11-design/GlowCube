@@ -53,7 +53,7 @@ func run() -> void:
 		objective("Bring den Fahrgast zu: %s" % d["name"])
 		if not await reach(poi_pos(d, 6.0), 9.0, true):
 			return
-		var fare := 25 + int(dist / 12.0)
+		var fare := 150 + int(dist / 2.5)
 		var tip := int(fare * clampf(time_left / start_t, 0.0, 0.6))
 		time_left = -1.0
 		Game.player_data.add_money(fare + tip, "taxi")
@@ -64,8 +64,8 @@ func run() -> void:
 		drop.persistent = false
 		drop.start_walking()
 		if fares % 5 == 0:
-			Game.player_data.add_money(250, "taxi_bonus")
-			Events.notify.emit("Bonus für 5 Fahrten: $250", 3.0)
+			Game.player_data.add_money(2500, "taxi_bonus")
+			Events.notify.emit("Bonus für 5 Fahrten: $2500", 3.0)
 
 
 func fail(reason := "") -> void:

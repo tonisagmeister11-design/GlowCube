@@ -38,11 +38,12 @@ func _ready() -> void:
 	MenuPanel.current.close()
 	# property
 	var prop := world.data.nearest_poi("property_apartment", p.global_position)
-	pd.money = 50000
+	var price := eco.property_price(prop)
+	pd.money = price + 5000
 	eco._open_property(p, prop)
 	await get_tree().process_frame
 	MenuPanel.current._choose(MenuPanel.current.items[0])
-	check("buy property", eco._owns(prop) and pd.money == 5000, "money %d" % pd.money)
+	check("buy property", eco._owns(prop) and pd.money == 5000 and price >= 200000, "price %d, money %d" % [price, pd.money])
 	await get_tree().process_frame
 	if MenuPanel.is_open():
 		MenuPanel.current.close()

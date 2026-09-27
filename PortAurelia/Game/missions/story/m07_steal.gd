@@ -9,6 +9,7 @@ func run() -> void:
 	car.is_parked = true
 	var b := add_blip(car, Color(0.3, 0.7, 1.0), "", true)
 	objective("Stiehl den roten Stratos Vento an der Marina.")
+	Events.waypoint_set.emit(car.global_position)
 	fail_if(func(): return not is_instance_valid(car) or car.destroyed, "Der Wagen wurde zerstört.")
 	if not await until(func(): return player.vehicle == car):
 		return

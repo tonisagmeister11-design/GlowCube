@@ -13,7 +13,8 @@ func _ready() -> void:
 	await Events.world_ready
 	var im := InteriorManager.get_manager()
 	var p := world.player as Player
-	for t in ["safehouse", "shop_convenience", "shop_weapons", "bank"]:
+	var only := a.slice(2) if a.size() > 2 else []
+	for t in (only if not only.is_empty() else ["safehouse", "shop_convenience", "shop_weapons", "bank", "jewelry", "shop_clothing"]):
 		var poi := world.data.nearest_poi(t, p.global_position)
 		await im.enter(poi, true)
 		await get_tree().create_timer(6.0).timeout

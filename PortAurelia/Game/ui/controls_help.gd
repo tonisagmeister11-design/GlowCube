@@ -8,10 +8,11 @@ const TEXT := """Zu Fuß
   Linke Maustaste  Schießen / Schlagen     Rechte Maustaste  Zielen
   R  Nachladen            1–9  Waffe wählen      Mausrad  Waffe wechseln   TAB (halten)  Waffenrad
   F  Fahrzeug betreten / verlassen         V  Kameraperspektive
+  Waffe auf Verkäufer richten  Laden ausrauben    X  Bei der Polizei ergeben
 Fahrzeug
   W / S  Gas / Bremse & Rückwärts          A / D  Lenken
-  Leertaste  Handbremse   Shift  Driften (oder hart einlenken)   H  Hupe   L  Scheinwerfer   G  Sirene (Einsatzfahrzeuge)
+  Leertaste  Handbremse   Shift  Driften (oder hart einlenken)   N  Nitro   H  Hupe   L  Scheinwerfer   G  Sirene
   B  Zurückschauen        Maus  Kamera   (Zielen + Klick: aus dem Fenster schießen)
 Allgemein
-  M  Karte     Pfeil hoch  Telefon     ESC  Pause     F5  Schnellspeichern
+  M  Karte     Pfeil hoch  Telefon     ESC  Pause     F5  Schnellspeichern     K  Mission abbrechen
 Controller wird automatisch erkannt (Xbox-Layout)."""

@@ -43,7 +43,7 @@ func run() -> void:
 		remove_blip(b)
 		if drv.mode != TrafficDriver.Mode.ABANDONED and not crook.destroyed:
 			drv.abandon_vehicle(player)
-		var pay := 200 * level
+		var pay := 1500 * level
 		total += pay
 		Game.player_data.add_money(pay, "vigilante")
 		Events.notify.emit("Verdächtiger gestoppt! +$%d" % pay, 3.0)
