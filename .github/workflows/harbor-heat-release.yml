@@ -21,13 +21,21 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v2.5
-          name: Harbor Heat v2.5
+          tag_name: harbor-heat-v3.0
+          name: Harbor Heat v3.0
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v2.5** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v3.0** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            3.0: MULTIPLAYER (up to 8 players). Main menu > MULTIPLAYER > create a lobby and send the
+            code to your friends; they join with the code. The lobby creator's game is the server
+            and checks every message. Fight other players, send them money (O), chat (Enter),
+            see everyone on the map. Same Wi-Fi works right away; over the internet the router
+            is opened automatically (UPnP) - if that's not possible, forward UDP port 7777 or use
+            a VPN like Radmin VPN / ZeroTier. Windows may ask to allow the game in the firewall:
+            click "Allow". Everyone needs the same game version.
 
             2.5: saving never loses your money any more – the game saves every minute, right after
             you earn or spend money, after missions, when you close the window, and F5 always
