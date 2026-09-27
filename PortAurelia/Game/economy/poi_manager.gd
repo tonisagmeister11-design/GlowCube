@@ -16,7 +16,12 @@ const ICONS := {
 	"parking_garage": ["G", Color(0.6, 0.6, 0.7)], "airport_terminal": ["F", Color(0.8, 0.8, 0.9)],
 }
 const JEWELRY := [["Goldkette", 8500], ["Diamantring", 24000], ["Luxusuhr", 65000], ["Diamant-Collier", 180000]]
-const FOOD := [["Snack & Limo", 6, 20.0], ["Sandwich", 14, 45.0], ["Großes Menü", 28, 100.0]]
+const FOOD := [["Snack & Limo", 6, 20.0], ["Sandwich", 14, 45.0], ["Brot & Aufschnitt", 9, 35.0]]
+const MEALS := [["Burger & Pommes", 18, 60.0], ["Pancakes mit Sirup", 12, 40.0], ["Großes Menü", 28, 100.0],
+	["Steak mit Beilagen", 35, 100.0]]
+const GADGETS := [["Smartphone Pro", 1400, "Das neueste Modell."], ["Noise-Cancelling-Kopfhörer", 450, "Endlich Ruhe."],
+	["Gaming-Konsole", 650, "Für die Abende im Safehouse."], ["OLED-Fernseher 85\"", 4800, "Heimkino deluxe."],
+	["Drohne", 2200, "Luftaufnahmen von Port Aurelia."]]
 const INCOME := {"property_business": 45000, "property_garage": 1500, "property_apartment": 2500, "property_house": 4500,
 	"property_penthouse": 14000, "property_villa": 30000}
 ## Real estate is a serious investment.
@@ -239,22 +244,79 @@ func _enter_or(pl: Player, p: Dictionary, fallback: Callable) -> void:
 
 
 # ------------------------------------------------------------------ stores & robbery
+## Every kind of shop sells its own things (no more sandwiches at the electronics store).
 func _open_store(_pl: Player, p: Dictionary) -> void:
+	var t: String = p["type"]
 	var items := []
-	if p["type"] == "jewelry":
-		for j in JEWELRY:
-			items.append({"label": j[0], "price": j[1], "desc": "Reiner Luxus – gehört danach dir.",
-				"action": func(): Game.player_data.stat_add("jewelry_bought", 1); Events.notify.emit("%s gekauft." % j[0], 2.5),
-				"keep_open": true})
-	else:
-		for f in FOOD:
-			items.append({"label": f[0], "price": f[1], "desc": "Stellt %d Gesundheit wieder her." % int(f[2]),
-				"action": func(): (world.player as Player).health.heal(f[2]); Events.notify.emit("Guten Appetit!", 2.0),
-				"keep_open": true})
-	if p["type"] in ["gas_station", "shop_convenience"]:
-		items.append({"label": "Reparaturset", "price": 150, "desc": "Behebt kleinere Schäden am letzten Fahrzeug.",
-			"action": _quick_fix})
-	MenuPanel.open(p["name"], items, "Willkommen! Was darf es sein?   (Tipp: Mit gezogener Waffe auf den Verkäufer zielen = Überfall)")
+	var pl := world.player as Player
+	var greet := "Willkommen! Was darf es sein?"
+	match t:
+		"jewelry":
+			for j in JEWELRY:
+				items.append({"label": j[0], "price": j[1], "desc": "Reiner Luxus – gehört danach dir.",
+					"action": func(): Game.player_data.stat_add("jewelry_bought", 1); Events.notify.emit("%s gekauft." % j[0], 2.5),
+					"keep_open": true})
+			greet = "Willkommen bei %s. Nur das Feinste." % p["name"]
+		"electronics":
+			var has_scanner: bool = Game.player_data.world_state.get("scanner", false)
+			items.append({"label": "Polizeiscanner", "price": 18000, "enabled": not has_scanner,
+				"desc": "Hört den Polizeifunk ab: Du hängst die Polizei ein Drittel schneller ab." if not has_scanner else "Schon gekauft.",
+				"action": func(): Game.player_data.world_state["scanner"] = true; Events.notify.emit("Polizeiscanner gekauft.", 2.5)})
+			for g in GADGETS:
+				items.append({"label": g[0], "price": g[1], "desc": g[2], "keep_open": true,
+					"action": func(): Game.player_data.stat_add("gadgets_bought", 1); Events.notify.emit("%s gekauft." % g[0], 2.5)})
+			greet = "Pixel, Sound und Hightech – was darf's sein?"
+		"gas_station":
+			items.append(_food_item(FOOD[0]))
+			items.append({"label": "Reparaturset", "price": 150, "desc": "Behebt kleinere Schäden am letzten Fahrzeug.",
+				"action": _quick_fix})
+			items.append({"label": "Reifen-Flickset", "price": 120, "desc": "Repariert platte Reifen am letzten Fahrzeug.",
+				"action": _fix_tyres})
+			items.append({"label": "Nitro-Kartusche", "price": 3500, "desc": "+1 Nitro-Ladung für dein aktuelles Fahrzeug.",
+				"action": _add_nitro_charge})
+			greet = "Tanken, Snacks, Autozubehör."
+		"diner":
+			for f in MEALS:
+				items.append(_food_item(f))
+			greet = "Setz dich! Die Küche hat offen."
+		"shop_supermarket":
+			for f in FOOD + MEALS.slice(0, 2):
+				items.append(_food_item(f))
+			items.append({"label": "Verbandskasten", "price": 90, "enabled": pl.health.health < pl.health.max_health,
+				"desc": "Stellt 60 Gesundheit wieder her.", "action": func(): pl.health.heal(60.0), "keep_open": true})
+		_:
+			for f in FOOD:
+				items.append(_food_item(f))
+			items.append({"label": "Reparaturset", "price": 150, "desc": "Behebt kleinere Schäden am letzten Fahrzeug.",
+				"action": _quick_fix})
+	MenuPanel.open(p["name"], items, greet + "   (Tipp: Mit gezogener Waffe auf den Verkäufer zielen = Überfall)")
+
+
+func _food_item(f: Array) -> Dictionary:
+	return {"label": f[0], "price": f[1], "desc": "Stellt %d Gesundheit wieder her." % int(f[2]),
+		"action": func(): (world.player as Player).health.heal(f[2]); Events.notify.emit("Guten Appetit!", 2.0),
+		"keep_open": true}
+
+
+func _fix_tyres() -> void:
+	var v := _last_vehicle()
+	if v:
+		v._flat = [false, false, false, false]
+		for w in v._wheels:
+			if w["node"]:
+				(w["node"] as Node3D).scale = Vector3.ONE
+		Events.notify.emit("Reifen geflickt.", 2.0)
+
+
+func _add_nitro_charge() -> void:
+	var v := _last_vehicle()
+	if v == null:
+		Events.notify.emit("Kein Fahrzeug in der Nähe.", 2.0)
+		return
+	v.nitro = mini(v.nitro + 1, 9)
+	v.upgrades["nitro"] = v.nitro
+	_save_upgrades(v)
+	Events.notify.emit("Nitro: %d Ladungen." % v.nitro, 2.0)
 
 
 func _quick_fix() -> void:

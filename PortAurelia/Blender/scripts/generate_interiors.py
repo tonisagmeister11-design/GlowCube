@@ -316,6 +316,65 @@ def boutique():
     return r
 
 
+def tech():
+    """Electronics store: display tables with lit screens, a wall of TVs, counter."""
+    r = Room("tech", 14.0, 12.0, 3.4, floor_mat="concrete", floor_col=(0.85, 0.86, 0.88, 1),
+             wall_col=(0.92, 0.93, 0.95, 1))
+    screen_cols = [(0.2, 0.55, 1.0, 1), (1.0, 0.35, 0.6, 1), (0.3, 0.95, 0.6, 1), (1.0, 0.8, 0.3, 1)]
+    k = 3
+    for tx in (-4.0, 0.0):
+        for tz in (-4.0, -7.5):
+            box(r.mb, (tx, 0.45, tz), (2.6, 0.9, 1.1), "wood", col=(0.95, 0.95, 0.95, 1))
+            r.collide("wood", (tx, 0.45, tz), (2.6, 0.9, 1.1))
+            for i in range(3):
+                k = (k * 1103515245 + 12345) & 0x7FFFFFFF
+                x = tx - 0.8 + i * 0.8
+                box(r.mb, (x, 0.95, tz), (0.5, 0.02, 0.35), "metal_dark")                 # laptop base
+                box(r.mb, (x, 1.12, tz - 0.17), (0.5, 0.32, 0.02), "metal_dark")          # lid
+                box(r.mb, (x, 1.12, tz - 0.155), (0.46, 0.28, 0.005), "light_always", col=screen_cols[k % 4])
+    # TV wall on the back
+    for row in range(2):
+        for i in range(5):
+            x = -5.2 + i * 2.2
+            y = 1.3 + row * 1.15
+            box(r.mb, (x, y, -11.85), (2.0, 1.05, 0.08), "metal_dark")
+            box(r.mb, (x, y, -11.8), (1.9, 0.95, 0.01), "light_always", col=screen_cols[(i + row) % 4])
+    counter(r, 4.8, -2.4, 3.2, rot=math.pi / 2, col=(0.15, 0.15, 0.18, 1))
+    box(r.mb, (0, 3.0, -0.3), (5.0, 0.5, 0.05), "sign_emissive", col=(0.3, 0.7, 1.0, 1))
+    for x in (-4.5, 0.0, 4.5):
+        for z in (-2.5, -6.0, -9.5):
+            r.ceiling_light(x, z, energy=1.4, color=(0.9, 0.95, 1.0))
+    r.points.update(counter=[3.9, 0.05, -2.4], clerk=[5.9, 0.05, -2.4, math.pi / 2])
+    return r
+
+
+def diner():
+    """Diner: booths along the wall, long counter with stools, checkered floor strip."""
+    r = Room("diner", 14.0, 12.0, 3.2, floor_mat="interior_floor", floor_col=(0.95, 0.95, 0.93, 1),
+             wall_col=(0.95, 0.9, 0.82, 1))
+    red = (0.75, 0.08, 0.08, 1)
+    for i in range(4):
+        z = -2.2 - i * 2.4
+        box(r.mb, (-5.9, 0.4, z - 0.75), (1.6, 0.8, 0.4), "leather", col=red)          # bench
+        box(r.mb, (-5.9, 0.4, z + 0.75), (1.6, 0.8, 0.4), "leather", col=red)
+        box(r.mb, (-5.9, 0.75, z), (1.2, 0.05, 0.9), "metal", col=(0.9, 0.9, 0.9, 1))  # table top
+        cylinder(r.mb, (-5.9, 0, z), 0.05, 0.75, "chrome", segs=8)
+        r.collide("wood", (-5.9, 0.4, z), (1.6, 0.8, 2.0))
+    # counter across the back with stools
+    counter(r, 1.5, -9.0, 8.0, col=(0.75, 0.08, 0.08, 1))
+    for i in range(7):
+        x = -2.0 + i * 1.1
+        cylinder(r.mb, (x, 0, -8.1), 0.04, 0.7, "chrome", segs=8)
+        cylinder(r.mb, (x, 0.7, -8.1), 0.2, 0.06, "leather", segs=12, col=red)
+    box(r.mb, (1.5, 1.6, -11.8), (7.0, 0.8, 0.3), "metal", col=(0.85, 0.85, 0.85, 1))    # kitchen hatch
+    box(r.mb, (0, 2.8, -0.3), (5.0, 0.5, 0.05), "sign_emissive", col=(0.2, 0.8, 1.0, 1))
+    for x in (-4.5, 0.0, 4.5):
+        for z in (-2.5, -6.0, -9.5):
+            r.ceiling_light(x, z, energy=1.4, color=(1.0, 0.92, 0.8))
+    r.points.update(counter=[1.5, 0.05, -8.0], clerk=[1.5, 0.05, -10.0, math.pi])
+    return r
+
+
 def bank():
     r = Room("bank", 20.0, 18.0, 5.0, floor_mat="concrete", floor_col=(0.92, 0.9, 0.86, 1),
              wall_col=(0.88, 0.84, 0.76, 1))
@@ -349,7 +408,7 @@ def main():
     reset_scene()
     os.makedirs(OUT, exist_ok=True)
     meta = {}
-    for fn in (safehouse, store, gunshop, bank, jewelry, boutique):
+    for fn in (safehouse, store, gunshop, bank, jewelry, boutique, tech, diner):
         r = fn()
         meta[r.name] = r.export()
         print(f"[interiors] {r.name}: {r.mb.tri_count()} tris")

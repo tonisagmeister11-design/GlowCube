@@ -37,6 +37,7 @@ func _flat_spot(p: Player) -> Vector3:
 func _run() -> void:
 	var p := world.player as Player
 	p.health.invulnerable = true
+	await _test_shop_menus(p)
 	await _test_auto_step(p)
 	await _test_rocket(p)
 	await _test_near_miss(p)
@@ -373,3 +374,39 @@ func _test_contracts_start(p: Player) -> void:
 		check("contract %s runs with a marked target" % key, ok and active and blips > 0, "blips %d" % blips)
 		world.missions.abort_current()
 		await wait(0.5)
+
+
+func _menu_labels() -> Array:
+	var out := []
+	if MenuPanel.current:
+		for it in MenuPanel.current.items:
+			out.append(String(it.get("label", "")))
+		MenuPanel.current.close()
+	await get_tree().process_frame
+	return out
+
+
+func _test_shop_menus(p: Player) -> void:
+	var eco := world.economy as PoiManager
+	var food := ["Snack & Limo", "Sandwich", "Brot & Aufschnitt"]
+	var results := {}
+	for t in ["electronics", "gas_station", "diner", "jewelry", "shop_convenience"]:
+		var poi := world.data.nearest_poi(t, p.global_position)
+		eco._open_store(p, poi)
+		await get_tree().process_frame
+		results[t] = await _menu_labels()
+	eco._open_weapons(p, world.data.nearest_poi("shop_weapons", p.global_position))
+	await get_tree().process_frame
+	results["shop_weapons"] = await _menu_labels()
+	eco._open_dealer(p, world.data.nearest_poi("car_dealer", p.global_position))
+	await get_tree().process_frame
+	results["car_dealer"] = await _menu_labels()
+	var no_food := true
+	for t in ["electronics", "jewelry", "shop_weapons", "car_dealer"]:
+		for f in food:
+			if f in results[t]:
+				no_food = false
+	check("no food at electronics / jeweler / gun shop / car dealer", no_food, str(results["electronics"]))
+	check("gas station sells car stuff", "Nitro-Kartusche" in results["gas_station"] and "Reparaturset" in results["gas_station"])
+	check("diner serves meals", "Burger & Pommes" in results["diner"])
+	check("convenience store sells bread", "Brot & Aufschnitt" in results["shop_convenience"])

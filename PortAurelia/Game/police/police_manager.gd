@@ -191,7 +191,9 @@ func _physics_process(delta: float) -> void:
 		for u in units:
 			if u["state"] != U.BLOCK:
 				_set_unit(u, U.SEARCH)
-	if searching and time_unseen > hide_after + EVADE_TIME[wanted_level]:
+	# a police scanner (electronics store) tells you where they search: escape a third faster
+	var evade: float = EVADE_TIME[wanted_level] * (0.65 if Game.player_data and Game.player_data.world_state.get("scanner", false) else 1.0)
+	if searching and time_unseen > hide_after + evade:
 		Events.notify.emit("Du hast die Polizei abgehängt.", 3.0)
 		clear_wanted()
 		return

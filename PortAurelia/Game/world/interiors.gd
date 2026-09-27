@@ -18,8 +18,8 @@ const TYPE_MAP := {
 	"safehouse": "safehouse", "property_apartment": "safehouse", "property_house": "safehouse",
 	"property_penthouse": "safehouse", "property_villa": "safehouse", "property_garage": "safehouse",
 	"property_business": "safehouse",
-	"shop_convenience": "store", "shop_supermarket": "store", "gas_station": "store", "diner": "store",
-	"electronics": "store", "jewelry": "jewelry", "shop_clothing": "boutique",
+	"shop_convenience": "store", "shop_supermarket": "store", "gas_station": "store", "diner": "diner",
+	"electronics": "tech", "jewelry": "jewelry", "shop_clothing": "boutique",
 	"shop_weapons": "gunshop", "bank": "bank",
 }
 
@@ -169,7 +169,7 @@ func _build(poi: Dictionary, kind: String) -> void:
 			_add_marker(point("bed"), "E: Schlafen", Color(0.35, 0.95, 0.5), func(_pl): eco._sleep())
 			_add_marker(point("wardrobe"), "E: Garderobe", Color(0.75, 0.5, 0.95), func(_pl): eco._open_wardrobe())
 			_add_marker(point("save"), "E: Spiel speichern", Color(0.35, 0.95, 0.5), func(_pl): eco._open_save_menu())
-		"store":
+		"store", "tech", "diner":
 			_shopkeeper()
 			_add_marker(point("counter"), "E: Einkaufen", Color(0.3, 0.8, 0.35), func(pl): eco._open_store(pl, poi))
 		"jewelry":

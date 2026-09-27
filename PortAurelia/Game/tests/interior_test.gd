@@ -14,7 +14,7 @@ func _ready() -> void:
 	await Events.world_ready
 	var im := InteriorManager.get_manager()
 	var p := world.player as Player
-	check("interior manager with 6 interiors", im != null and im.meta.size() == 6, str(im.meta.keys() if im else []))
+	check("interior manager with 8 interiors", im != null and im.meta.size() == 8, str(im.meta.keys() if im else []))
 	var shop := world.data.nearest_poi("shop_convenience", p.global_position)
 	await im.enter(shop)
 	await wait(1.0)
