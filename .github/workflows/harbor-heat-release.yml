@@ -21,13 +21,17 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v2.0
-          name: Harbor Heat v2.0
+          tag_name: harbor-heat-v2.1
+          name: Harbor Heat v2.1
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v2.0** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v2.1** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            2.1: every shop now sells its own goods (gadgets and a police scanner at the
+            electronics store, car parts and nitro at gas stations, meals at the diner) and has a
+            matching interior.
 
             New in 2.0: rob every shop (aim at the shopkeeper), jewelry stores and a gun shop that
             fights back · sports cars up to ~290 km/h, nitro (N), street races in three classes ·
