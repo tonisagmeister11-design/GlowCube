@@ -21,13 +21,19 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v2.1
-          name: Harbor Heat v2.1
+          tag_name: harbor-heat-v2.2
+          name: Harbor Heat v2.2
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v2.1** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v2.2** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            2.2: car radio with three songs (+/- volume), chase music when the police are on your
+            heels, roads over the hills are drivable everywhere, no stars for missed shots or for
+            stopping thieves, reverse up to 50 km/h, slower police cars, own aiming per weapon,
+            endless rockets, keep stolen cars (J) and call your cars from the map (T), new legal and
+            illegal jobs, no more black speckles indoors, safe return to the main menu.
 
             2.1: every shop now sells its own goods (gadgets and a police scanner at the
             electronics store, car parts and nitro at gas stations, meals at the diner) and has a
