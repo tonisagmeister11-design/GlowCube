@@ -370,7 +370,7 @@ func _test_car_heist(p: Player) -> void:
 
 
 func _test_contracts_start(p: Player) -> void:
-	for key in ["jewel_heist", "armored_truck"]:
+	for key in ["jewel_heist", "armored_truck", "pizza", "car_sales", "smuggling", "chop_shop"]:
 		world.police.call("clear_wanted")
 		if p.vehicle:
 			p.exit_vehicle()
@@ -380,7 +380,8 @@ func _test_contracts_start(p: Player) -> void:
 		await wait(3.0)
 		var active: bool = world.missions.is_active()
 		var blips: int = world.missions.current.blip_list.size() if active else 0
-		check("contract %s runs with a marked target" % key, ok and active and blips > 0, "blips %d" % blips)
+		var has_goal: bool = blips > 0 or (active and world.missions.current._markers.size() > 0)
+		check("contract/job %s runs with a marked target" % key, ok and active and has_goal, "blips %d" % blips)
 		world.missions.abort_current()
 		await wait(0.5)
 

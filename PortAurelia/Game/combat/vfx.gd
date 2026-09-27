@@ -416,7 +416,7 @@ static func explosion(pos: Vector3, radius := 6.0) -> void:
 		tw.tween_property(fb, "scale", Vector3.ONE * size, 0.35).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
 		tw.tween_property(fb, "global_position", fb.global_position + Vector3.UP * (1.5 + rng.randf() * 1.5) * s, life)\
 			.set_ease(Tween.EASE_OUT)
-		tw.tween_method(func(v: float): fb.set_instance_shader_parameter("age", v), 0.0, 1.0, life)
+		tw.tween_method(func(v: float): if is_instance_valid(fb): fb.set_instance_shader_parameter("age", v), 0.0, 1.0, life)
 		tw.chain().tween_callback(fb.queue_free)
 	# ---------------------------------------------------------------- smoke column (lit puffs)
 	var smoke_mat := _shader_material("smoke_puff")
@@ -443,14 +443,14 @@ static func explosion(pos: Vector3, radius := 6.0) -> void:
 		var rise := Vector3(rng.randf_range(-1.5, 1.5), 7.0 + k * 9.0, rng.randf_range(-1.5, 1.5)) * s
 		var tw2 := sp.create_tween()
 		tw2.tween_interval(delay)
-		tw2.tween_callback(func(): sp.set_instance_shader_parameter("age", 0.0))
+		tw2.tween_callback(func(): if is_instance_valid(sp): sp.set_instance_shader_parameter("age", 0.0))
 		tw2.set_parallel(true)
 		tw2.tween_property(sp, "scale", Vector3.ONE * rng.randf_range(2.6, 4.2) * s * (1.0 + k * 0.6), life2)\
 			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 		tw2.tween_property(sp, "global_position", sp.global_position + rise, life2).set_ease(Tween.EASE_OUT)\
 			.set_trans(Tween.TRANS_QUAD)
-		tw2.tween_method(func(v: float): sp.set_instance_shader_parameter("glow", v), 1.0, 0.0, 1.2)
-		tw2.tween_method(func(v: float): sp.set_instance_shader_parameter("age", v), 0.0, 1.0, life2)\
+		tw2.tween_method(func(v: float): if is_instance_valid(sp): sp.set_instance_shader_parameter("glow", v), 1.0, 0.0, 1.2)
+		tw2.tween_method(func(v: float): if is_instance_valid(sp): sp.set_instance_shader_parameter("age", v), 0.0, 1.0, life2)\
 			.set_ease(Tween.EASE_IN)
 		tw2.chain().tween_callback(sp.queue_free)
 	# ---------------------------------------------------------------- particles
@@ -474,7 +474,7 @@ static func explosion(pos: Vector3, radius := 6.0) -> void:
 	var rt := ring.create_tween()
 	rt.set_parallel(true)
 	rt.tween_property(ring, "scale", Vector3.ONE * radius * 2.6, 0.55).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	rt.tween_method(func(v: float): ring.set_instance_shader_parameter("age", v), 0.0, 1.0, 0.6)
+	rt.tween_method(func(v: float): if is_instance_valid(ring): ring.set_instance_shader_parameter("age", v), 0.0, 1.0, 0.6)
 	rt.chain().tween_callback(ring.queue_free)
 	# ---------------------------------------------------------------- scorch mark
 	var dec := Decal.new()

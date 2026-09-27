@@ -419,10 +419,11 @@ func _update_driver_models(pp: Vector3) -> void:
 func _release_model(v) -> void:
 	if not _driver_models.has(v):
 		return
-	var m: CharacterModel = _driver_models[v]
+	var mm = _driver_models[v]
 	_driver_models.erase(v)
-	if not is_instance_valid(m):
+	if not is_instance_valid(mm):
 		return
+	var m := mm as CharacterModel
 	if _model_pool.size() < 10:
 		m.get_parent().remove_child(m)
 		m.visible = false

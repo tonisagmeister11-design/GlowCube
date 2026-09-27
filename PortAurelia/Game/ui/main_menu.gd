@@ -5,7 +5,8 @@ extends Control
 const STORY_EN := {"m01": "A New Start", "m02": "Special Delivery", "m03": "Debt Collector", "m04": "The Chase",
 	"m05": "Escort", "m06": "The Hit", "m07": "Pre-Owned", "m08": "The Big Score"}
 const SIDE_EN := {"taxi": "Taxi Shift", "courier": "Courier Run", "vigilante": "Vigilante", "race": "Street Race",
-	"jewel_heist": "Jewels for Dante", "car_heist": "Hot Wheels ($200,000)", "armored_truck": "Armored Truck"}
+	"jewel_heist": "Jewels for Dante", "car_heist": "Hot Wheels ($200,000)", "armored_truck": "Armored Truck",
+	"pizza": "Job: Pizza Delivery", "car_sales": "Job: Car Sales", "smuggling": "Job: Smuggling", "chop_shop": "Job: Cars to Order"}
 
 var _box: VBoxContainer
 var _missions: Control

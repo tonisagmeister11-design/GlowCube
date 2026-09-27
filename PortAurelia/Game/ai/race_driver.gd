@@ -228,12 +228,19 @@ func _avoid(delta: float, spd: float) -> void:
 		_dodge = move_toward(_dodge, 0.0, 1.2)
 		return
 	var right := vehicle.global_basis.x
-	var r_free := not _ray(space, from + right * 2.8, from + right * 2.8 + fwd * reach)
-	var l_free := not _ray(space, from - right * 2.8, from - right * 2.8 + fwd * reach)
+	# look down both sides over a shorter distance: a gap next to the car in front is enough
+	var side_reach := minf(reach, 18.0)
+	var r_d := _ray_dist(space, from + right * 2.9, from + right * 2.9 + fwd * side_reach)
+	var l_d := _ray_dist(space, from - right * 2.9, from - right * 2.9 + fwd * side_reach)
+	var r_free := r_d == INF
+	var l_free := l_d == INF
 	if r_free and (not l_free or _dodge >= 0.0):
-		_dodge = 3.0
+		_dodge = 3.2
 	elif l_free:
-		_dodge = -3.0
+		_dodge = -3.2
+	elif maxf(r_d, l_d) > hit + 3.0:
+		# neither side clear, but one gives more room than staying behind: squeeze through
+		_dodge = 3.2 if r_d > l_d else -3.2
 	else:
 		_block_dist = hit
 

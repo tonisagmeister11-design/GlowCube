@@ -33,6 +33,16 @@ const SIDE := {
 	"car_heist": {"title": "Heiße Ware", "script": "res://missions/contracts/car_heist.gd", "reward": 0,
 		"desc": "Ein nagelneuer Zenith R wird zum Händler geliefert. Klau ihn – der Käufer zahlt $200.000.",
 		"giver": "car_dealer"},
+	"pizza": {"title": "Job: Pizzabote", "script": "res://missions/jobs/pizza.gd", "reward": 0,
+		"desc": "Legal · 5 Pizzen mit dem Roller ausliefern. Ca. $250-350 pro Lieferung.", "giver": "diner", "slot": 1},
+	"car_sales": {"title": "Job: Autoverkäufer", "script": "res://missions/jobs/car_sales.gd", "reward": 0,
+		"desc": "Legal · Kunden beraten und Autos verkaufen. Provision je nach Verhandlung.", "giver": "car_dealer", "slot": 1},
+	"smuggling": {"title": "Job: Schmuggel", "script": "res://missions/jobs/smuggling.gd", "reward": 0,
+		"desc": "Illegal · Heißes Paket vom Hafen zum Käufer bringen. $18.000 – Polizeistreifen unterwegs.",
+		"giver": "property_business"},
+	"chop_shop": {"title": "Job: Autos auf Bestellung", "script": "res://missions/jobs/chop_shop.gd", "reward": 0,
+		"desc": "Illegal · Drei bestimmte Autos klauen und zur Werkstatt bringen. $2.500-45.000 pro Auto.",
+		"giver": "mechanic"},
 	"armored_truck": {"title": "Geldtransporter", "script": "res://missions/contracts/armored_truck.gd", "reward": 25000,
 		"desc": "Überfalle einen gepanzerten Geldtransporter. Beute ca. $60.000 + $25.000 Bonus.",
 		"giver": "bank"},
@@ -321,7 +331,8 @@ func _setup_contracts() -> void:
 		m.condition = func(_pl): return not is_active()
 		world.add_child(m)
 		var f: Vector3 = p["facing_v"]
-		m.global_position = (p["entrance_v"] as Vector3) + f * 4.0 - f.cross(Vector3.UP) * 2.5
+		var slot := int(sd.get("slot", 0))
+		m.global_position = (p["entrance_v"] as Vector3) + f * 4.0 - f.cross(Vector3.UP) * (2.5 - slot * 5.0)
 		_contract_markers.append(m)
 
 
