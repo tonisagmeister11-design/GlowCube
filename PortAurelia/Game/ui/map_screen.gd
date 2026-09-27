@@ -227,6 +227,13 @@ func _draw_map() -> void:
 	if world.missions:
 		for b in world.missions.call("blips"):
 			_icon(c, font, _w2s(Vector2(b["pos"].x, b["pos"].z)), b.get("icon", ""), b["color"])
+	# other players (multiplayer) with their names
+	for b in Net.map_blips():
+		var bp := _w2s(Vector2(b["pos"].x, b["pos"].z))
+		c.draw_circle(bp, 11.0, Color.BLACK)
+		c.draw_circle(bp, 9.0, b["color"])
+		c.draw_string_outline(font, bp + Vector2(13, 6), b["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color(0, 0, 0, 0.9))
+		c.draw_string(font, bp + Vector2(13, 6), b["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, b["color"])
 	# player
 	var p := world.player
 	var pp := _w2s(Vector2(p.global_position.x, p.global_position.z))

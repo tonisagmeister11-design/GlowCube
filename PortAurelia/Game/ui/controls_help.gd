@@ -17,4 +17,6 @@ Fahrzeug
   Im Auto:  1–9 / Mausrad  Waffe wechseln (Pistolen, MPs, Gewehre, Schrotflinten)   R  Nachladen
 Allgemein
   M  Karte     T  eigenes Auto rufen   Pfeil hoch  Telefon     ESC  Pause     F5  Schnellspeichern     K  Mission abbrechen
+Multiplayer
+  Enter  Chat     O  Spielerliste (Geld senden, Host: rauswerfen)     M  Karte zeigt alle Mitspieler
 Controller wird automatisch erkannt (Xbox-Layout)."""

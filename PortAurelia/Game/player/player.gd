@@ -418,7 +418,7 @@ func _try_enter_vehicle() -> void:
 	var bd := 4.5
 	for v in get_tree().get_nodes_in_group("vehicles"):
 		var n := v as Node3D
-		if n == null or not n.has_method("get_entry_point"):
+		if n == null or not n.has_method("get_entry_point") or n.has_meta("net_proxy"):
 			continue
 		var d := global_position.distance_to(n.get_entry_point())
 		if d < bd and n.get("destroyed") != true:

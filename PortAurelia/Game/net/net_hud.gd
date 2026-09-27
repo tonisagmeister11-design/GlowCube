@@ -1,0 +1,159 @@
+class_name NetHud
+extends CanvasLayer
+## Multiplayer overlay in the world: player count, chat (Enter), kill feed and the player list (O)
+## with "send money" and, for the host, "kick".
+
+var _count: Label
+var _log: RichTextLabel
+var _input: LineEdit
+var _typing := false
+var _log_alpha := 0.0
+
+
+func _ready() -> void:
+	layer = 15
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_count = Label.new()
+	_count.anchor_left = 1.0
+	_count.anchor_right = 1.0
+	_count.offset_left = -360
+	_count.offset_right = -24
+	_count.offset_top = 150
+	_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_count.add_theme_font_size_override("font_size", 17)
+	_count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_count.add_theme_constant_override("outline_size", 5)
+	add_child(_count)
+	_log = RichTextLabel.new()
+	_log.bbcode_enabled = true
+	_log.scroll_active = false
+	_log.fit_content = true
+	_log.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_log.anchor_top = 0.35
+	_log.anchor_bottom = 0.35
+	_log.offset_left = 24
+	_log.offset_right = 560
+	_log.add_theme_font_size_override("normal_font_size", 17)
+	_log.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_log.add_theme_constant_override("outline_size", 5)
+	add_child(_log)
+	_input = LineEdit.new()
+	_input.placeholder_text = "Nachricht an alle – Enter senden, ESC abbrechen"
+	_input.max_length = 120
+	_input.anchor_top = 0.35
+	_input.anchor_bottom = 0.35
+	_input.offset_left = 24
+	_input.offset_right = 560
+	_input.offset_top = -44
+	_input.offset_bottom = -8
+	_input.visible = false
+	_input.text_submitted.connect(_on_submit)
+	add_child(_input)
+	Net.chat_received.connect(func(_s, _t): _refresh_log(); _log_alpha = 10.0)
+	Net.roster_changed.connect(_refresh_count)
+	_refresh_count()
+	_refresh_log()
+
+
+func _process(delta: float) -> void:
+	if not Net.is_online():
+		queue_free()
+		return
+	_log_alpha = maxf(0.0, _log_alpha - delta)
+	_log.modulate.a = 1.0 if _typing else clampf(_log_alpha, 0.0, 1.0)
+
+
+func _refresh_count() -> void:
+	if _count == null:
+		return
+	var n := Net.players.size()
+	_count.text = "ONLINE: %d Spieler%s   (O: Spieler, Enter: Chat)" % [n, "  ·  Host" if Net.is_host() else ""]
+
+
+func _refresh_log() -> void:
+	var lines: Array = Net.chat_log().slice(-7)
+	var t := ""
+	for l in lines:
+		var col: Color = l[2]
+		if String(l[0]) == "":
+			t += "[color=#%s]%s[/color]\n" % [col.to_html(false), l[1]]
+		else:
+			t += "[color=#%s][b]%s:[/b][/color] %s\n" % [col.to_html(false), l[0], l[1]]
+	_log.text = t
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _typing:
+		if event.is_action_pressed("ui_cancel"):
+			get_viewport().set_input_as_handled()
+			_close_chat()
+		return
+	if Game.state != Game.State.PLAYING or MenuPanel.is_open():
+		return
+	if event.is_action_pressed("chat"):
+		get_viewport().set_input_as_handled()
+		_open_chat()
+	elif event.is_action_pressed("players_menu"):
+		get_viewport().set_input_as_handled()
+		open_players_menu()
+
+
+func _open_chat() -> void:
+	_typing = true
+	_input.visible = true
+	_input.text = ""
+	_input.grab_focus()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var p := GameWorld.instance.player as Player if GameWorld.instance else null
+	if p:
+		p.input_enabled = false
+
+
+func _close_chat() -> void:
+	_typing = false
+	_input.visible = false
+	_input.release_focus()
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	var p := GameWorld.instance.player as Player if GameWorld.instance else null
+	if p:
+		p.input_enabled = true
+	_log_alpha = 6.0
+
+
+func _on_submit(t: String) -> void:
+	Net.send_chat(t)
+	_close_chat()
+
+
+func open_players_menu() -> void:
+	var items := []
+	if Net.is_host() and Net.lobby_code != "":
+		items.append({"label": "Lobby-Code: %s" % Net.lobby_code, "desc": "Code in die Zwischenablage kopieren",
+			"action": func(): DisplayServer.clipboard_set(Net.lobby_code); Events.notify.emit("Code kopiert.", 2.0),
+			"keep_open": true})
+	for id in Net.players:
+		var pid: int = id
+		if pid == Net.my_id():
+			items.append({"label": "%s (du)" % Net.player_name(pid), "enabled": false, "action": func(): pass})
+			continue
+		var d := ""
+		var pr = Net.proxies().get(pid)
+		var me := GameWorld.instance.player as Node3D if GameWorld.instance else null
+		if pr and is_instance_valid(pr) and me:
+			d = "%d m entfernt" % int((pr as Node3D).global_position.distance_to(me.global_position))
+		items.append({"label": Net.player_name(pid), "right": "Geld senden", "desc": d,
+			"action": func(): _money_menu(pid)})
+		if Net.is_host():
+			items.append({"label": "   %s rauswerfen" % Net.player_name(pid), "action": func():
+				Net.kick(pid)
+				Events.notify.emit("%s wurde entfernt." % Net.player_name(pid), 2.5)})
+	MenuPanel.open("Online-Spieler", items, "Geld teilen, Spieler finden (siehe Karte M)")
+
+
+func _money_menu(pid: int) -> void:
+	var items := []
+	for a in [100, 500, 1000, 5000, 10000, 50000]:
+		var amount: int = a
+		items.append({"label": "$%d" % amount, "enabled": Game.player_data.money >= amount,
+			"action": func(): Net.send_money(pid, amount)})
+	MenuPanel.open("Geld an %s" % Net.player_name(pid), items, "Du hast $%d" % Game.player_data.money)

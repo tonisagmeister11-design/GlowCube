@@ -36,6 +36,8 @@ func _enter_tree() -> void:
 	else:
 		base_dir = ProjectSettings.globalize_path("user://")
 	saves_dir = base_dir.path_join("Saves")
+	if OS.has_environment("HH_SAVES_DIR"):   # tests: separate save folders per process
+		saves_dir = OS.get_environment("HH_SAVES_DIR")
 	config_dir = base_dir.path_join("Config")
 	screenshots_dir = base_dir.path_join("Screenshots")
 	# music: prefer the folder next to the executable even if saves fall back

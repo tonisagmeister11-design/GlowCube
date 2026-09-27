@@ -309,6 +309,8 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 				(c as RigidBody3D).apply_impulse(dir * float(d["damage"]) * 0.6, end - (c as RigidBody3D).global_position)
 		if p == 0 or randf() < 0.3:
 			VFX.tracer(from, end)
+		if p == 0 and is_player and Net.is_online():
+			Net.local_shot(from, end, current)
 	VFX.muzzle_flash(from, base_dir, 1.4 if d["kind"] in ["shotgun", "sniper", "rifle", "launcher", "heavy"] else 1.0)
 	AudioManager.play_weapon(String(d.get("sound", "pistol")), from, is_player)
 	Events.gunshot.emit(from, owner_body, 1.0)

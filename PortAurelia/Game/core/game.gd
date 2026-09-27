@@ -118,6 +118,7 @@ func to_main_menu() -> void:
 	_leaving = true
 	if state == State.PLAYING or state == State.PAUSED:
 		SaveManager.save_on_exit()
+	Net.leave("")
 	state = State.MENU
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -154,7 +155,10 @@ func set_paused(p: bool) -> void:
 	if state != State.PLAYING and state != State.PAUSED:
 		return
 	state = State.PAUSED if p else State.PLAYING
-	get_tree().paused = p
+	get_tree().paused = p and not Net.is_online()
+	if Net.is_online() and GameWorld.instance and GameWorld.instance.player:
+		# multiplayer: the world keeps running behind the menu, only your controls stop
+		(GameWorld.instance.player as Player).input_enabled = not p
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if p else Input.MOUSE_MODE_CAPTURED
 
 
@@ -211,6 +215,8 @@ func _on_player_busted() -> void:
 
 
 func _respawn_at(poi: Dictionary, note: String, skip_hours := 6.0) -> void:
+	if Net.is_online():
+		skip_hours = 0.0   # the host keeps one clock for everybody
 	var w := GameWorld.instance
 	var pos: Vector3 = poi.get("entrance_v", w.data.spawn) if not poi.is_empty() else w.data.spawn
 	var f: Vector3 = poi.get("facing_v", Vector3.FORWARD) if not poi.is_empty() else Vector3.FORWARD

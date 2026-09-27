@@ -1,5 +1,5 @@
 extends Control
-## Start screen on the HARBOR HEAT cover: CONTINUE / START GAME / FREE ROAM / CREATIVE MODE / MISSIONS /
+## Start screen on the HARBOR HEAT cover: CONTINUE / START GAME / FREE ROAM / MULTIPLAYER / CREATIVE MODE / MISSIONS /
 ## LOAD GAME / SETTINGS / QUIT. No music is played (players can add their own in Audio/Music).
 
 const STORY_EN := {"m01": "A New Start", "m02": "Special Delivery", "m03": "Debt Collector", "m04": "The Chase",
@@ -30,6 +30,7 @@ func _ready() -> void:
 		_button(_box, "CONTINUE", func(): Game.continue_game())
 	_button(_box, "START GAME", func(): Game.new_game())
 	_button(_box, "FREE ROAM", func(): Game.start_free_roam())
+	_button(_box, "MULTIPLAYER", func(): _open_sub(MultiplayerMenu.new()))
 	_button(_box, "CREATIVE MODE", func(): Game.start_creative())
 	_button(_box, "MISSIONS", _show_missions)
 	var load_b := _button(_box, "LOAD GAME", _load)

@@ -537,6 +537,8 @@ func _collect_blips() -> Array:
 			out.append_array(sys.call("blips"))
 	if gps.active():
 		out.append({"pos": gps.target, "icon": "", "color": Color(0.8, 0.35, 1.0), "size": 9.0, "edge": true})
+	if Net.is_online():
+		out.append_array(Net.map_blips())
 	if world.police:
 		var flash := fmod(_t, 0.5) < 0.25
 		for u in world.police.units:

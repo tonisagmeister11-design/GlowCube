@@ -176,7 +176,7 @@ func _build_visual() -> void:
 			_siren_mesh = mi
 		elif n.begins_with("Bumper"):
 			_bumpers[n] = {"node": mi, "damage": 0.0, "attached": true}
-	for mi in _paint_meshes:
+	for mi in _paint_meshes.filter(func(m): return is_instance_valid(m)):
 		mi.set_instance_shader_parameter("paint", paint)
 		mi.set_instance_shader_parameter("dirt", randf_range(0.0, 0.35))
 	if livery.is_empty():
@@ -198,7 +198,7 @@ func apply_livery() -> void:
 		zc = L * 0.18
 	var dims := Vector4(L, float(meta.get("width", 1.8)), float(meta.get("hood", 0.9)), float(meta.get("height", 1.4)))
 	var dec := Vector4(float(livery.get("s", -1)), float(livery.get("n", -1)), float(livery.get("s2", -1)), zc)
-	for mi in _paint_meshes:
+	for mi in _paint_meshes.filter(func(m): return is_instance_valid(m)):
 		mi.set_instance_shader_parameter("livery", float(lv))
 		mi.set_instance_shader_parameter("finish", float(fin))
 		mi.set_instance_shader_parameter("paint2", Vector3(c2.r, c2.g, c2.b))
@@ -818,7 +818,7 @@ func _collision_damage(impulse: float, local_pos: Vector3, other: Object) -> voi
 	VFX.burst(global_transform * local_pos, Vector3.UP, "sparks")
 	Events.vehicle_collision.emit(self, other, impulse, global_transform * local_pos)
 	_deform(local_pos, clampf(sev * 0.012, 0.0, 0.18))
-	for mi in _paint_meshes:
+	for mi in _paint_meshes.filter(func(m): return is_instance_valid(m)):
 		mi.set_instance_shader_parameter("damage", clampf(1.0 - body_health / 1000.0, 0.0, 1.0))
 	# bumpers
 	var key := "BumperF" if local_pos.z < 0.0 else "BumperR"
@@ -899,6 +899,8 @@ func break_glass() -> void:
 
 
 func on_hit(damage: float, source: Node, pos: Vector3, dir: Vector3) -> void:
+	if has_meta("net_proxy"):
+		return   # another player's car: only a copy, it is damaged in his game
 	var local := to_local(pos)
 	# tyres
 	for i in mini(4, _wheels.size()):
@@ -914,7 +916,7 @@ func on_hit(damage: float, source: Node, pos: Vector3, dir: Vector3) -> void:
 	body_health = maxf(0.0, body_health - damage)
 	if local.y > float(meta.get("hood", 1.0)) and randf() < 0.3:
 		break_glass()
-	for mi in _paint_meshes:
+	for mi in _paint_meshes.filter(func(m): return is_instance_valid(m)):
 		mi.set_instance_shader_parameter("damage", clampf(1.0 - body_health / 1000.0, 0.0, 1.0))
 	if source and source.is_in_group("player") and (driver != null or ai_driver != null) and not outlaw:
 		Events.crime_committed.emit("shoot_vehicle", pos, 1 if not is_police else 2, source)
@@ -961,7 +963,7 @@ func explode() -> void:
 			wreck_fire.queue_free()
 		if is_instance_valid(wreck_smoke):
 			wreck_smoke.emitting = false)
-	for mi in _paint_meshes:
+	for mi in _paint_meshes.filter(func(m): return is_instance_valid(m)):
 		mi.set_instance_shader_parameter("paint", Color(0.06, 0.05, 0.05))
 		mi.set_instance_shader_parameter("dirt", 1.0)
 	break_glass()
@@ -992,7 +994,7 @@ func repair() -> void:
 	if _smoke:
 		_smoke.queue_free()
 		_smoke = null
-	for mi in _paint_meshes:
+	for mi in _paint_meshes.filter(func(m): return is_instance_valid(m)):
 		mi.set_instance_shader_parameter("damage", 0.0)
 		mi.set_instance_shader_parameter("dirt", 0.0)
 	# restore the original body shape
@@ -1007,7 +1009,7 @@ func repair() -> void:
 
 func set_paint(c: Color) -> void:
 	paint = c
-	for mi in _paint_meshes:
+	for mi in _paint_meshes.filter(func(m): return is_instance_valid(m)):
 		mi.set_instance_shader_parameter("paint", c)
 
 

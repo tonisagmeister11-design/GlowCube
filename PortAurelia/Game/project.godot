@@ -29,6 +29,7 @@ Settings="*res://core/settings.gd"
 AudioManager="*res://audio/audio_manager.gd"
 SaveManager="*res://save/save_manager.gd"
 Game="*res://core/game.gd"
+Net="*res://net/net.gd"
 
 [debug]
 

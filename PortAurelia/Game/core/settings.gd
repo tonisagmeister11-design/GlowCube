@@ -39,6 +39,9 @@ const DEFAULTS := {
 		"controller_sensitivity": 1.0,
 		"vibration": true,
 	},
+	"multiplayer": {
+		"name": "",
+	},
 	"gameplay": {
 		"subtitles": true,
 		"minimap_rotate": true,
