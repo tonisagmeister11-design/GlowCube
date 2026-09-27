@@ -26,6 +26,10 @@ var horn := false
 
 # state
 var driver: Node3D = null
+var drift_input := false           # Shift / LB: throw the car into a drift
+var drift_amount := 0.0            # 0 grip .. 1 full drift (rear tyres let go)
+var _drift_prev_dir := Vector3.ZERO
+var auto_drift := false           # hard-corner drifting for non-player drivers (AI traffic keeps grip)
 var ai_driver: Node = null
 var owner_npc: Node = null
 var player_owned := false
@@ -297,6 +301,7 @@ func _player_input(delta: float) -> void:
 		brake_input = back if v_long > 0.5 else 0.0
 	steer_input = Input.get_axis("steer_right", "steer_left")
 	handbrake = Input.is_action_pressed("handbrake")
+	drift_input = Input.is_action_pressed("drift")
 	if Input.is_action_just_pressed("horn"):
 		_horn_audio.play()
 	if Input.is_action_just_pressed("headlights"):
@@ -316,8 +321,12 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var v_long_body := v.dot(fwd)
 	speed_kmh = v_long_body * 3.6
 	var spd := v.length()
-	# steering (reduced at speed)
-	var max_steer := deg_to_rad(float(def["steer"])) * lerpf(1.0, 0.28, clampf(spd / 45.0, 0.0, 1.0))
+	# drifting: Shift, or leaning hard into a corner at speed with the throttle on
+	var hard_turn := (driver is Player or auto_drift) and absf(steer_input) > 0.85 and spd > 13.0 and throttle > 0.5
+	var want_drift: bool = (drift_input or hard_turn) and spd > 6.0 and not def.get("bike", false)
+	drift_amount = move_toward(drift_amount, 1.0 if want_drift else 0.0, dt * (4.0 if want_drift else 1.6))
+	# steering (reduced at speed, but full counter-steer lock while drifting)
+	var max_steer := deg_to_rad(float(def["steer"])) * lerpf(1.0, lerpf(0.28, 0.62, drift_amount), clampf(spd / 45.0, 0.0, 1.0))
 	_steer = move_toward(_steer, steer_input * max_steer, dt * 2.6)
 	var space := state.get_space_state()
 	var grip := float(def["grip"]) * (0.78 if ShaderGlobals.get_value("wetness", 0.0) > 0.4 else 1.0)
@@ -376,9 +385,11 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		if flat_i < 4 and _flat[flat_i]:
 			surf_grip *= 0.55
 		var mu := grip * surf_grip * f_s * 1.05
-		var lat_grip := 1.0
+		var lat_grip := lerpf(1.0, 0.8, drift_amount)
+		if not w["front"]:
+			lat_grip = lerpf(1.0, 0.3, drift_amount)
 		if handbrake and not w["front"]:
-			lat_grip = 0.32
+			lat_grip = minf(lat_grip, 0.32)
 		var f_lat := -v_lat * mass * 0.25 / dt / float(_wheels.size()) * 0.35
 		f_lat = clampf(f_lat, -mu * lat_grip, mu * lat_grip)
 		var f_long := 0.0
@@ -409,6 +420,31 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		w["slip"] = maxf(slip, absf(v_lat) / 8.0 if absf(v_lat) > 2.5 else 0.0)
 		state.apply_force(wf * total.x + wr * total.y, contact - xf.origin)
 		w["spin"] = float(w["spin"]) + v_long / R * dt
+	# drift assist (arcade): hold a slide angle set by the steering (up to ~35 deg) instead of
+	# spinning out, let the car carry its speed through the slide, and straighten it when the
+	# stick is released
+	if drift_amount > 0.01 and n_contact >= 3:
+		var fwd_flat := (fwd - up * fwd.dot(up)).normalized()
+		var v_flat := v - up * v.dot(up)
+		if v_flat.length() > 3.0:
+			var vdir := v_flat.normalized()
+			var slip_angle := fwd_flat.signed_angle_to(vdir, up)
+			var path_rate := 0.0
+			if _drift_prev_dir != Vector3.ZERO:
+				path_rate = clampf(_drift_prev_dir.signed_angle_to(vdir, up) / maxf(dt, 0.001), -3.0, 3.0)
+			_drift_prev_dir = vdir
+			var k := drift_amount * clampf(spd / 10.0, 0.0, 1.0)
+			var target := -steer_input * deg_to_rad(35.0)
+			var yaw_rate := state.angular_velocity.dot(up)
+			var want_rate := path_rate + clampf((slip_angle - target) * 3.2, -2.5, 2.5)
+			state.angular_velocity += up * (want_rate - yaw_rate) * clampf(dt * 9.0, 0.0, 1.0) * k
+			# the tyres pull the path round towards the nose, keeping most of the speed
+			var turn := clampf(-slip_angle, -1.1 * dt, 1.1 * dt) * k
+			state.linear_velocity = v_flat.rotated(up, turn) + up * v.dot(up)
+			var keep := mass * 11.0 * absf(sin(slip_angle)) * k * (1.0 if throttle > 0.1 else 0.35)
+			state.apply_central_force(vdir * keep)
+	else:
+		_drift_prev_dir = Vector3.ZERO
 	# aerodynamic drag and downforce
 	var drag := -v * spd * 0.42
 	state.apply_central_force(drag)
@@ -494,7 +530,7 @@ func _update_effects(delta: float) -> void:
 			_skid_audio.play()
 		_skid_audio.volume_db = linear_to_db(_skid_amount) - 2.0
 		_smoke_timer -= delta
-		if _smoke_timer <= 0.0 and _skid_amount > 0.4:
+		if _smoke_timer <= 0.0 and _skid_amount > 0.4 and not Settings.ultra():
 			_smoke_timer = 0.12
 			for w in _wheels:
 				if not w["front"] and w["contact"] and not w.get("aux", false):
@@ -532,7 +568,7 @@ func _set_light(n: String, v: float) -> void:
 
 
 func _update_headlight_spots(on: bool) -> void:
-	var want := on and (driver is Player or is_police or _near_player(60.0))
+	var want := on and (driver is Player or (not Settings.ultra() and (is_police or _near_player(60.0))))
 	if want and _head_spots.is_empty():
 		var L := float(meta.get("length", 4.5))
 		var W := float(meta.get("width", 1.8))
@@ -800,13 +836,16 @@ func explode() -> void:
 	# the blast throws the car up and tumbles it
 	apply_central_impulse(Vector3.UP * mass * 7.5 + Vector3(randf() - 0.5, 0, randf() - 0.5) * mass * 3.0)
 	apply_torque_impulse(Vector3(randf() - 0.5, (randf() - 0.5) * 0.4, randf() - 0.5) * mass * 4.0)
-	# burning wreck: big fire in the cabin, engine fire, dark smoke column
-	var wreck_fire := VFX.fire(self, Vector3(0, float(meta.get("hood", 1.0)) * 0.8, 0.2), 1.9)
-	var wreck_smoke := VFX.engine_smoke(self, Vector3(0, float(meta.get("height", 1.4)) + 0.3, 0), true)
-	wreck_smoke.amount = 26
-	wreck_smoke.lifetime = 5.0
-	wreck_smoke.scale_amount_max = 4.5
-	if _fire == null:
+	# burning wreck: big fire in the cabin, engine fire, dark smoke column (not in PERFORMANCE MODE)
+	var wreck_fire: Node3D = null
+	var wreck_smoke: CPUParticles3D = null
+	if not Settings.ultra():
+		wreck_fire = VFX.fire(self, Vector3(0, float(meta.get("hood", 1.0)) * 0.8, 0.2), 1.9)
+		wreck_smoke = VFX.engine_smoke(self, Vector3(0, float(meta.get("height", 1.4)) + 0.3, 0), true)
+		wreck_smoke.amount = 26
+		wreck_smoke.lifetime = 5.0
+		wreck_smoke.scale_amount_max = 4.5
+	if _fire == null and not Settings.ultra():
 		_fire = VFX.fire(self, Vector3(0, float(meta.get("hood", 1.0)), -float(meta.get("length", 4.5)) * 0.35))
 	get_tree().create_timer(30.0).timeout.connect(func():
 		if is_instance_valid(wreck_fire):

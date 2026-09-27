@@ -194,7 +194,10 @@ func _move_on_foot(delta: float) -> void:
 	model.set_locomotion(move_speed)
 	var ranged := weapons.current_is_ranged()
 	var up := "" if not ranged else weapons.upper_anim()
-	model.set_upper(up, 1.0 if (aiming or weapons.is_firing()) and ranged else (0.35 if ranged else 0.0))
+	# armed but not aiming: dedicated ready pose (weapon held straight forward, not a half-blended aim)
+	if ranged and not (aiming or weapons.is_firing()):
+		up = up.replace("aim_", "ready_")
+	model.set_upper(up, 1.0 if ranged else 0.0)
 	model.set_aim_pitch(cam.pitch * 0.85 if aiming else 0.0)
 	if cam:
 		cam.aiming = aiming

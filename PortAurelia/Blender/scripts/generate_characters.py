@@ -226,7 +226,7 @@ def key_pose(arm, frame, pose, hips_offset=(0, 0, 0)):
     for pb in arm.pose.bones:
         e = pose.get(pb.name, (0, 0, 0))
         pb.rotation_mode = "QUATERNION"
-        pb.rotation_quaternion = pose_to_local(arm, pb.name, e)
+        pb.rotation_quaternion = e if isinstance(e, Quaternion) else pose_to_local(arm, pb.name, e)
         pb.keyframe_insert("rotation_quaternion", frame=frame)
     hp = arm.pose.bones["Hips"]
     R = arm.data.bones["Hips"].matrix_local.to_3x3()
@@ -332,18 +332,95 @@ def _guard():
     return merge(IDLE, sym({"UpperArm.L": (0, -40, -55), "LowerArm.L": (0, 0, -125)}), {"Spine": (-6, 0, 0)})
 
 
+# ------------------------------------------------------------------ weapon poses (solved from directions)
+# Directions are armature space: +X character right, +Y forward, +Z up. Each arm bone is turned so
+# it points along the given direction; the right hand keeps its Z axis up (as in the rest pose) so a held gun has
+# its grip down and its barrel along the hand (forward).
+_ARM = None
+
+
+def _rest(bn):
+    return _ARM.data.bones[bn].matrix_local.to_3x3()
+
+
+def _basis(pose, bn):
+    v = pose.get(bn, (0, 0, 0))
+    return v.to_matrix() if isinstance(v, Quaternion) else pose_to_local(_ARM, bn, v).to_matrix()
+
+
+def _pose_rot(pose, bn):
+    b = _ARM.data.bones[bn]
+    if b.parent is None:
+        return _rest(bn) @ _basis(pose, bn)
+    rel = _rest(b.parent.name).inverted() @ _rest(bn)
+    return _pose_rot(pose, b.parent.name) @ rel @ _basis(pose, bn)
+
+
+def _frame(ydir, zhint):
+    y = Vector(ydir).normalized()
+    z = Vector(zhint)
+    z = z - y * z.dot(y)
+    if z.length < 1e-4:
+        z = Vector((0, 1, 0)) - y * y.y
+    z.normalize()
+    x = y.cross(z)
+    return Matrix((x, y, z)).transposed()
+
+
+def arm_solve(pose, side, upper, fore, hand, hand_up=None):
+    for bn, d, zh in ((f"UpperArm.{side}", upper, None), (f"LowerArm.{side}", fore, None),
+                      (f"Hand.{side}", hand, hand_up)):
+        parent = _ARM.data.bones[bn].parent.name
+        rel = _rest(parent).inverted() @ _rest(bn)
+        if zh is None:
+            zh = (0, 0, 1) if abs(Vector(d).normalized().z) < 0.85 else (0, 1, 0)
+        want = _frame(d, zh)
+        pose[bn] = ((_pose_rot(pose, parent) @ rel).inverted() @ want).to_quaternion()
+    return pose
+
+
+GRIP_DOWN = (0, 0, 1)
+
+
+def _pistol_pose(aim, b=0.0):
+    p = merge(IDLE, {"Chest": (0, 0, -4), "Head": (0, 0, 4)})
+    if aim:
+        arm_solve(p, "R", (-0.2, 0.98, 0.02 + b), (-0.1, 0.99, 0.02 + b), (0.0, 1.0, 0.0 + b), GRIP_DOWN)
+        arm_solve(p, "L", (0.55, 0.83, 0.0 + b), (0.8, 0.58, 0.05 + b), (0.6, 0.8, 0.0))
+    else:
+        # low ready: both hands on the gun, muzzle forward and a bit down
+        arm_solve(p, "R", (-0.18, 0.62, -0.76 + b), (-0.28, 0.9, -0.3 + b), (-0.05, 0.97, -0.24), GRIP_DOWN)
+        arm_solve(p, "L", (0.45, 0.55, -0.7 + b), (0.8, 0.5, -0.3 + b), (0.6, 0.78, -0.2))
+    return p
+
+
+def _rifle_pose(aim, b=0.0):
+    p = merge(IDLE, {"Spine": (0, 0, -5), "Chest": (0, 0, -7), "Head": (2 if aim else 4, 0, 10)})
+    if aim:
+        # shouldered: grip hand just below and in front of the shoulder, barrel level
+        arm_solve(p, "R", (0.3, 0.5, -0.8 + b), (-0.35, 0.6, 0.72 + b), (0.0, 1.0, 0.0), GRIP_DOWN)
+        arm_solve(p, "L", (0.3, 0.62, -0.6 + b), (0.35, 0.9, 0.25 + b), (0.3, 0.95, 0.0))
+    else:
+        # low ready: right hand on the grip under the shoulder, muzzle forward and slightly down
+        arm_solve(p, "R", (0.12, 0.12, -0.98 + b), (-0.35, 0.93, -0.02 + b), (0.0, 1.0, -0.28), GRIP_DOWN)
+        arm_solve(p, "L", (0.3, 0.72, -0.62 + b), (0.42, 0.9, -0.07 + b), (0.3, 0.95, -0.28))
+    return p
+
+
 def _aim_pistol(ph):
-    b = 1.2 * math.sin(2 * math.pi * ph)
-    return merge(IDLE, {"UpperArm.R": R_((0, -6 + b, -86)), "LowerArm.R": R_((0, 0, -6)),
-                        "UpperArm.L": (0, -8 + b, -62), "LowerArm.L": (0, 0, -38),
-                        "Chest": (0, 0, -6), "Head": (0, 0, 6)})
+    return _pistol_pose(True, 0.012 * math.sin(2 * math.pi * ph))
 
 
 def _aim_rifle(ph):
-    b = 1.0 * math.sin(2 * math.pi * ph)
-    return merge(IDLE, {"UpperArm.R": R_((0, -50 + b, -35)), "LowerArm.R": R_((0, 0, -105)), "Hand.R": R_((0, 0, -10)),
-                        "UpperArm.L": (0, -18 + b, -72), "LowerArm.L": (0, 0, -30),
-                        "Spine": (0, 0, -12), "Chest": (0, 0, -14), "Head": (4, 0, 24)})
+    return _rifle_pose(True, 0.01 * math.sin(2 * math.pi * ph))
+
+
+def _ready_pistol(ph):
+    return _pistol_pose(False, 0.012 * math.sin(2 * math.pi * ph))
+
+
+def _ready_rifle(ph):
+    return _rifle_pose(False, 0.012 * math.sin(2 * math.pi * ph))
 
 
 def _seated(hands_on_wheel):
@@ -388,6 +465,8 @@ def _panic(ph):
 
 
 def build_animations(arm):
+    global _ARM
+    _ARM = arm
     tau = 2 * math.pi
     cycle(arm, "idle", 3.0, lambda ph: (merge(IDLE, {"Chest": (-1.2 * math.sin(tau * ph), 0, 0),
                                                         "Head": (2 * math.sin(tau * ph), 0, 4 * math.sin(math.pi * ph)),
@@ -423,6 +502,8 @@ def build_animations(arm):
     cycle(arm, "panic_run", 0.7, _panic)
     cycle(arm, "aim_pistol", 2.0, lambda ph: (_aim_pistol(ph), (0, 0, 0)), 6)
     cycle(arm, "aim_rifle", 2.0, lambda ph: (_aim_rifle(ph), (0, 0, 0)), 6)
+    cycle(arm, "ready_pistol", 2.0, lambda ph: (_ready_pistol(ph), (0, 0, 0)), 6)
+    cycle(arm, "ready_rifle", 2.0, lambda ph: (_ready_rifle(ph), (0, 0, 0)), 6)
     cycle(arm, "idle_armed", 3.0, lambda ph: (merge(IDLE, {"UpperArm.R": R_((15, -74, 0)), "LowerArm.R": R_((0, 0, -30))}),
                                                (0, 0, 0)), 6)
     keys(arm, "jump", [(0.0, IDLE, (0, 0, 0)),
@@ -454,7 +535,7 @@ def build_animations(arm):
                                (0, 0, 0)),
                               (0.6, _guard(), (0, 0, 0))])
     keys(arm, "shoot_pistol", [(0.0, _aim_pistol(0), (0, 0, 0)),
-                               (0.05, merge(_aim_pistol(0), {"UpperArm.R": R_((0, 6, -86)), "UpperArm.L": (0, 4, -62)}), (0, 0, 0)),
+                               (0.05, _pistol_pose(True, 0.06) | {"Chest": (4, 0, -4)}, (0, 0, 0)),
                                (0.2, _aim_pistol(0), (0, 0, 0))])
     keys(arm, "shoot_rifle", [(0.0, _aim_rifle(0), (0, 0, 0)),
                               (0.04, merge(_aim_rifle(0), {"Chest": (5, 0, -14)}), (0, -0.01, 0)),

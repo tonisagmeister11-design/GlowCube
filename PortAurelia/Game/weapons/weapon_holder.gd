@@ -152,7 +152,7 @@ func _update_visual() -> void:
 	mi.mesh = mesh_node.mesh
 	inst.free()
 	# the hand bone points along the arm (+Y); the weapon barrel should point forward from the fist
-	var off := Transform3D(Basis(Vector3(0, 0, 1), deg_to_rad(90)) * Basis(Vector3(1, 0, 0), deg_to_rad(-90)), Vector3(0, 0.08, 0.02))
+	var off := Transform3D(Basis(Vector3(0, 0, 1), deg_to_rad(90)) * Basis(Vector3(1, 0, 0), deg_to_rad(-90)) * Basis(Vector3(0, 0, 1), PI), Vector3(0, 0.11, -0.07))
 	_attach = model.attach(mi, "Hand.R", off)
 	_visual = mi
 

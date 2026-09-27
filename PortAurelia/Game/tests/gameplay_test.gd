@@ -107,8 +107,15 @@ func _run() -> void:
 	await hold("steer_left", 1.0)
 	Input.action_release("accelerate")
 	check("vehicle steers", absf(angle_difference(yaw0, v.global_rotation.y)) > 0.2, "dyaw=%.2f" % angle_difference(yaw0, v.global_rotation.y))
-	await hold("brake", 2.5)
-	check("vehicle brakes", absf(v.speed_kmh) < 20.0, "%.0f km/h" % v.speed_kmh)
+	# holding brake stops the car and then reverses, so check that the forward speed reached zero
+	var before := v.speed_kmh
+	var slowest := before
+	Input.action_press("brake")
+	for i in 25:
+		await wait(0.1)
+		slowest = minf(slowest, v.speed_kmh)
+	Input.action_release("brake")
+	check("vehicle brakes", slowest < 2.0, "%.0f -> %.0f km/h" % [before, slowest])
 	check("vehicle upright", v.global_basis.y.dot(Vector3.UP) > 0.8)
 	await wait(0.5)
 	await hold("vehicle_enter", 0.1)

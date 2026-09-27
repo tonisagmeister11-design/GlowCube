@@ -18,7 +18,8 @@ const RANGES := {
 }
 
 const LOOPING := ["idle", "walk", "run", "sprint", "crouch_walk", "crouch_idle", "fall", "swim", "swim_idle",
-	"drive", "sit", "phone", "talk", "hands_up", "cower", "panic_run", "aim_pistol", "aim_rifle", "idle_armed"]
+	"drive", "sit", "phone", "talk", "hands_up", "cower", "panic_run", "aim_pistol", "aim_rifle", "idle_armed",
+	"ready_pistol", "ready_rifle"]
 
 var _cache := {}
 

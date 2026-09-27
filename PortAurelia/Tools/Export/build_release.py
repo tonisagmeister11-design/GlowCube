@@ -58,22 +58,23 @@ Steuerung (Tastatur & Maus, Xbox-Controller wird automatisch erkannt)
   WASD Bewegen · Shift Sprinten · Leertaste Springen/Klettern · Strg Ducken · Q Deckung
   Linke Maustaste Schießen · Rechte Maustaste Zielen · R Nachladen · 1-9 Waffen · TAB Waffenrad
   E Interagieren · F Fahrzeug · M Karte · Pfeil hoch Telefon · ESC Pause · F5 Schnellspeichern
-  Im Auto: W/S Gas/Bremse · A/D Lenken · Leertaste Handbremse · H Hupe · L Licht · G Sirene
+  Im Auto: W/S Gas/Bremse · A/D Lenken · Leertaste Handbremse · Shift Driften · H Hupe · L Licht · G Sirene
   V Kamera wechseln (zu Fuß: Third/First Person, im Auto: nah, weit, Motorhaube, Cockpit)
 
 Kamera
   Einstellungen -> Kamera: Standard-Perspektive zu Fuß und im Auto, Abstand, Höhe, Sichtfeld,
   Kamerawackeln, automatische Zentrierung, Fadenkreuz, Minikarte, HUD.
 
-Schwacher Laptop? -> LEISTUNGSMODUS
-  Einstellungen -> Grafik -> Leistungsmodus "Maximal (schwache Laptops)" wählen und das Spiel
-  neu starten. Dann läuft es mit dem sparsamen OpenGL-Renderer, 60 % Renderauflösung, ohne
-  Schatten und teure Effekte, mit kürzerer Sichtweite, weniger Passanten/Verkehr und 30-FPS-Limit
-  (spart Strom und Akku). "Ausgewogen" ist der Mittelweg. Die Wahl wird in override.cfg neben
-  StartGame.exe gespeichert (Datei löschen = zurück zum Standard-Renderer).
+Schwacher Laptop? -> PERFORMANCE MODE
+  Einstellungen öffnen: ganz oben steht der Kasten "PERFORMANCE MODE" -> AN, dann das Spiel neu
+  starten. Dann läuft es mit dem sparsamen OpenGL-Renderer, 50 % Renderauflösung, ohne Schatten,
+  ohne Explosionen/Rauch/Reifenqualm, mit kurzer Sichtweite und 30 % Passanten/Verkehr.
+  Unter Grafik -> Leistungsmodus gibt es außerdem die Zwischenstufen "Ausgewogen" und "Maximal"
+  (30-FPS-Limit, spart Akku). Die Wahl wird in override.cfg neben StartGame.exe gespeichert
+  (Datei löschen = zurück zum Standard-Renderer).
 
 Systemvoraussetzungen: Windows 10/11 64-bit. Volle Grafik: Vulkan-fähige Grafikkarte
-(DirectX-12-Klasse), 8 GB RAM. Leistungsmodus "Maximal": OpenGL-3.3-fähige Grafik
+(DirectX-12-Klasse), 8 GB RAM. PERFORMANCE MODE: OpenGL-3.3-fähige Grafik
 (auch ältere Intel-Onboard-Grafik), 4-8 GB RAM. Ca. 1 GB Speicherplatz.
 """
 MUSIC_README = """Eigene Musik

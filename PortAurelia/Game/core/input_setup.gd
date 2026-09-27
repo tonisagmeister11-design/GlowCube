@@ -9,7 +9,7 @@ const KEYS := {
 	"map": [KEY_M], "pause": [KEY_ESCAPE], "weapon_wheel": [KEY_TAB],
 	"phone": [KEY_UP, KEY_P], "horn": [KEY_H], "headlights": [KEY_L], "siren": [KEY_G],
 	"camera_mode": [KEY_V], "look_behind": [KEY_B], "cover": [KEY_Q],
-	"handbrake": [KEY_SPACE], "accelerate": [KEY_W], "brake": [KEY_S],
+	"handbrake": [KEY_SPACE], "drift": [KEY_SHIFT], "accelerate": [KEY_W], "brake": [KEY_S],
 	"steer_left": [KEY_A], "steer_right": [KEY_D],
 	"ui_phone_up": [KEY_UP], "ui_phone_down": [KEY_DOWN],
 	"quick_save": [KEY_F5],
@@ -32,7 +32,7 @@ const PAD_BUTTONS := {
 	"map": JOY_BUTTON_DPAD_DOWN, "pause": JOY_BUTTON_START, "weapon_wheel": JOY_BUTTON_LEFT_SHOULDER,
 	"phone": JOY_BUTTON_DPAD_UP, "horn": JOY_BUTTON_LEFT_STICK, "handbrake": JOY_BUTTON_RIGHT_SHOULDER,
 	"camera_mode": JOY_BUTTON_BACK, "cover": JOY_BUTTON_RIGHT_SHOULDER, "look_behind": JOY_BUTTON_RIGHT_STICK,
-	"headlights": JOY_BUTTON_DPAD_RIGHT, "weapon_prev": JOY_BUTTON_DPAD_LEFT,
+	"headlights": JOY_BUTTON_DPAD_RIGHT, "weapon_prev": JOY_BUTTON_DPAD_LEFT, "drift": JOY_BUTTON_LEFT_SHOULDER,
 }
 
 const PAD_AXES := {

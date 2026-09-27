@@ -35,6 +35,7 @@ func _ready() -> void:
 	title.text = "EINSTELLUNGEN"
 	title.add_theme_font_size_override("font_size", 36)
 	v.add_child(title)
+	v.add_child(_performance_banner())
 	var tabs := TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(tabs)
@@ -158,6 +159,76 @@ func _hint(g: GridContainer, text: String, col := Color(0.7, 0.72, 0.78)) -> Lab
 	return l
 
 
+## Big PERFORMANCE MODE switch shown first, above all tabs.
+func _performance_banner() -> Control:
+	var box := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.35, 0.03, 0.14, 0.9)
+	sb.border_color = Color(1.0, 0.2, 0.5)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(6)
+	sb.set_content_margin_all(14)
+	box.add_theme_stylebox_override("panel", sb)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 18)
+	box.add_child(h)
+	var t := VBoxContainer.new()
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(t)
+	var head := Label.new()
+	head.text = "PERFORMANCE MODE"
+	head.add_theme_font_size_override("font_size", 28)
+	head.add_theme_color_override("font_color", Color(1, 1, 1))
+	t.add_child(head)
+	var info := Label.new()
+	info.text = ("Maximale FPS für schwache Laptops: OpenGL-Renderer, 50 % Auflösung, keine Schatten, keine " +
+		"Explosionen/Rauch/Reifenqualm, kaum Regen, kurze Sichtweite, 30 % Passanten und Verkehr. " +
+		"Renderer wechselt nach Neustart.")
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.add_theme_font_size_override("font_size", 15)
+	info.add_theme_color_override("font_color", Color(1, 0.85, 0.9))
+	t.add_child(info)
+	var btn := Button.new()
+	btn.toggle_mode = true
+	btn.custom_minimum_size = Vector2(170, 56)
+	btn.add_theme_font_size_override("font_size", 24)
+	var on_sb := StyleBoxFlat.new()
+	on_sb.bg_color = Color(1.0, 0.15, 0.45)
+	on_sb.set_corner_radius_all(6)
+	var off_sb := StyleBoxFlat.new()
+	off_sb.bg_color = Color(0.1, 0.1, 0.12)
+	off_sb.set_corner_radius_all(6)
+	var refresh := func():
+		var on := Settings.perf_mode() == 3
+		btn.set_pressed_no_signal(on)
+		btn.text = "AN" if on else "AUS"
+		for st in ["normal", "hover", "pressed", "focus"]:
+			btn.add_theme_stylebox_override(st, on_sb if on else off_sb)
+	refresh.call()
+	btn.toggled.connect(func(on):
+		Settings.set_value("graphics", "performance_mode", 3 if on else 0)
+		refresh.call()
+		if _perf_option:
+			_perf_option.selected = Settings.perf_mode()
+		if _perf_hint:
+			_perf_hint.text = PERF_TEXT[Settings.perf_mode()]
+		if _restart_hint:
+			_restart_hint.text = _restart_text())
+	h.add_child(btn)
+	return box
+
+
+func _restart_text() -> String:
+	if Settings.renderer_restart_needed():
+		return "⚠ Neustart erforderlich: Das Spiel startet beim nächsten Mal mit dem Renderer „%s“." % Settings.wanted_renderer()
+	return "Aktueller Renderer: %s" % RenderingServer.get_current_rendering_method()
+
+
+var _perf_option: OptionButton
+var _perf_hint: Label
+var _restart_hint: Label
+
+
 const PERF_TEXT := [
 	"Volle Grafik: Forward+-Renderer, alle Effekte und Schatten nach den Einstellungen unten.",
 	"Ausgewogen: 80 % Renderauflösung mit FSR-Schärfung, höchstens mittlere Qualität und Effekte, " +
@@ -166,6 +237,8 @@ const PERF_TEXT := [
 		"keine Schatten, kein SSAO/Glow/Reflexionen, kurze Sichtweite, starke LOD-Stufen, ohne Haut-/Stoffdetails, " +
 		"etwa halb so viele Passanten und Autos, einfache Explosionen und 30-FPS-Limit (spart Strom und Akku). " +
 		"Der Renderer wechselt nach einem Neustart des Spiels.",
+	"PERFORMANCE MODE: alles aus Maximal plus 50 % Renderauflösung, keine Explosionen, kein Rauch oder Reifenqualm, " +
+		"kaum Regen, nur 4 Straßenlichter, noch kürzere Sichtweite, 30 % Passanten und Verkehr, 60-FPS-Limit.",
 ]
 
 
@@ -173,12 +246,14 @@ func _graphics_tab() -> Control:
 	var g := _grid("Grafik")
 	_row_label(g, "LEISTUNGSMODUS")
 	var pm := OptionButton.new()
-	for t in ["Aus (volle Grafik)", "Ausgewogen", "Maximal (schwache Laptops)"]:
+	for t in ["Aus (volle Grafik)", "Ausgewogen", "Maximal (schwache Laptops)", "PERFORMANCE MODE (Ultra)"]:
 		pm.add_item(t)
+	_perf_option = pm
 	pm.custom_minimum_size = Vector2(420, 42)
 	pm.selected = Settings.perf_mode()
 	g.add_child(pm)
 	var perf_hint := _hint(g, PERF_TEXT[Settings.perf_mode()])
+	_perf_hint = perf_hint
 	_row_label(g, "Renderer")
 	var rn := OptionButton.new()
 	for t in ["Automatisch (nach Leistungsmodus)", "Forward+ (Vulkan, beste Grafik)", "Mobile (Vulkan, schneller)",
@@ -188,6 +263,7 @@ func _graphics_tab() -> Control:
 	rn.selected = clampi(int(Settings.get_value("graphics", "renderer")), 0, 3)
 	g.add_child(rn)
 	var restart := _hint(g, "", Color(1.0, 0.75, 0.3))
+	_restart_hint = restart
 	var upd := func():
 		perf_hint.text = PERF_TEXT[Settings.perf_mode()]
 		restart.text = ("⚠ Neustart erforderlich: Das Spiel startet beim nächsten Mal mit dem Renderer „%s“." %

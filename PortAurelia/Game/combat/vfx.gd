@@ -331,6 +331,19 @@ static func _hole_texture() -> Texture2D:
 ## Detail scales with the effects setting (performance mode keeps only the essentials).
 static func explosion(pos: Vector3, radius := 6.0) -> void:
 	var fx: int = Settings.effects()
+	if Settings.ultra():
+		# PERFORMANCE MODE: no fireball, smoke, debris or decals - one cheap burst and a flash
+		burst(pos + Vector3.UP * 0.5, Vector3.UP, "explosion")
+		var fl := OmniLight3D.new()
+		fl.light_color = Color(1.0, 0.6, 0.3)
+		fl.light_energy = 10.0
+		fl.omni_range = radius * 3.0
+		root().add_child(fl)
+		fl.global_position = pos + Vector3.UP * 1.5
+		var ftw := fl.create_tween()
+		ftw.tween_property(fl, "light_energy", 0.0, 0.4)
+		ftw.tween_callback(fl.queue_free)
+		return
 	var s := clampf(radius / 7.0, 0.4, 2.0)
 	var r := root()
 	var rng := RandomNumberGenerator.new()

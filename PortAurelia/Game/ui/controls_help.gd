@@ -10,7 +10,7 @@ const TEXT := """Zu Fuß
   F  Fahrzeug betreten / verlassen         V  Kameraperspektive
 Fahrzeug
   W / S  Gas / Bremse & Rückwärts          A / D  Lenken
-  Leertaste  Handbremse   H  Hupe   L  Scheinwerfer   G  Sirene (Einsatzfahrzeuge)
+  Leertaste  Handbremse   Shift  Driften (oder hart einlenken)   H  Hupe   L  Scheinwerfer   G  Sirene (Einsatzfahrzeuge)
   B  Zurückschauen        Maus  Kamera   (Zielen + Klick: aus dem Fenster schießen)
 Allgemein
   M  Karte     Pfeil hoch  Telefon     ESC  Pause     F5  Schnellspeichern

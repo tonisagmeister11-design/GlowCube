@@ -13,7 +13,7 @@ var active := false
 
 func setup(s: StreamingManager) -> void:
 	streaming = s
-	pool_size = [12, 20, 28, 40][clampi(Settings.quality(), 0, 3)] if Settings else 28
+	pool_size = ([12, 20, 28, 40][clampi(Settings.quality(), 0, 3)] if not Settings.ultra() else 4) if Settings else 28
 	for i in pool_size:
 		var l := SpotLight3D.new()
 		l.light_color = Color(1.0, 0.82, 0.58)

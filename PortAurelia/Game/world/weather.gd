@@ -151,7 +151,7 @@ func _under_roof(cam: Camera3D) -> bool:
 func _build_rain() -> void:
 	_rain = GPUParticles3D.new()
 	_rain.name = "Rain"
-	_rain.amount = 6000 if Settings.quality() >= 2 else 2500
+	_rain.amount = 6000 if Settings.quality() >= 2 else (600 if Settings.ultra() else 2500)
 	_rain.lifetime = 0.9
 	_rain.visibility_aabb = AABB(Vector3(-30, -30, -30), Vector3(60, 60, 60))
 	_rain.local_coords = false

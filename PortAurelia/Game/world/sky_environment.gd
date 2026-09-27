@@ -100,7 +100,7 @@ func apply_quality(q: int) -> void:
 	# performance modes: smaller sky reflection map, updated over several frames
 	var perf: int = Settings.perf_mode() if Settings else 0
 	if env and env.sky:
-		env.sky.radiance_size = [Sky.RADIANCE_SIZE_256, Sky.RADIANCE_SIZE_128, Sky.RADIANCE_SIZE_64][perf]
+		env.sky.radiance_size = [Sky.RADIANCE_SIZE_256, Sky.RADIANCE_SIZE_128, Sky.RADIANCE_SIZE_64, Sky.RADIANCE_SIZE_32][perf]
 		env.sky.process_mode = Sky.PROCESS_MODE_REALTIME if perf == 0 else Sky.PROCESS_MODE_INCREMENTAL
 
 

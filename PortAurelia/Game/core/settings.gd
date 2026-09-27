@@ -16,7 +16,7 @@ const DEFAULTS := {
 		"anti_aliasing": 1,        # 0 off, 1 FXAA, 2 TAA, 3 MSAA 4x
 		"fps_limit": 0,
 		"fov": 70.0,
-		"performance_mode": 0,     # 0 off, 1 balanced, 2 maximum (weak laptops)
+		"performance_mode": 0,     # 0 off, 1 balanced, 2 maximum, 3 PERFORMANCE MODE (ultra)
 		"renderer": 0,             # 0 auto (by performance mode), 1 Forward+, 2 Mobile, 3 Compatibility (OpenGL)
 		"render_scale": 1.0,       # 3D resolution scale (upscaled)
 	},
@@ -156,12 +156,12 @@ func _apply_rendering() -> void:
 	vp.use_taa = aa == 2 and not compat
 	vp.msaa_3d = Viewport.MSAA_4X if aa == 3 else Viewport.MSAA_DISABLED
 	# 3D resolution: performance modes render fewer pixels and upscale (FSR where available)
-	var scale := minf(float(get_value("graphics", "render_scale")), [1.0, 0.8, 0.6][perf])
+	var scale := minf(float(get_value("graphics", "render_scale")), [1.0, 0.8, 0.6, 0.5][perf])
 	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR if compat or scale >= 0.999 else Viewport.SCALING_3D_MODE_FSR
 	vp.scaling_3d_scale = scale
 	vp.fsr_sharpness = 0.35
 	var q := quality()
-	vp.mesh_lod_threshold = [4.0, 2.5, 1.5, 1.0][q] * [1.0, 1.4, 2.4][perf]
+	vp.mesh_lod_threshold = [4.0, 2.5, 1.5, 1.0][q] * [1.0, 1.4, 2.4, 4.0][perf]
 	var sq := shadow_quality()
 	RenderingServer.directional_shadow_atlas_set_size([1024, 1024, 2048, 4096][clampi(sq, 0, 3)] if perf == 0 else
 		[1024, 1024, 2048, 2048][clampi(sq, 0, 3)], true)
@@ -171,12 +171,12 @@ func _apply_rendering() -> void:
 		if perf < 2 else Viewport.ANISOTROPY_2X
 	# FPS limit: maximum performance caps at 30 FPS unless the player picked a limit (saves power)
 	var fps := int(get_value("graphics", "fps_limit"))
-	Engine.max_fps = fps if fps > 0 or perf < 2 else 30
+	Engine.max_fps = fps if fps > 0 or perf < 2 else (30 if perf == 2 else 60)
 	# character micro detail (pores, weave, strands) off in the performance modes
 	for m in ["char_skin", "char_cloth", "char_hair"]:
 		var mat := load("res://assets/materials/%s.tres" % m) as ShaderMaterial
 		if mat:
-			mat.set_shader_parameter("detail", [1.0, 0.6, 0.0][perf])
+			mat.set_shader_parameter("detail", [1.0, 0.6, 0.0, 0.0][perf])
 	apply_effects()
 	_write_renderer_override()
 	if is_inside_tree():
@@ -204,14 +204,14 @@ func apply_effects() -> void:
 
 # ------------------------------------------------------------------ performance mode
 func perf_mode() -> int:
-	return clampi(int(get_value("graphics", "performance_mode")), 0, 2)
+	return clampi(int(get_value("graphics", "performance_mode")), 0, 3)
 
 
 ## Renderer the game should start with ("forward_plus", "mobile", "gl_compatibility").
 func wanted_renderer() -> String:
 	var r := clampi(int(get_value("graphics", "renderer")), 0, 3)
 	if r == 0:
-		return "gl_compatibility" if perf_mode() == 2 else "forward_plus"
+		return "gl_compatibility" if perf_mode() >= 2 else "forward_plus"
 	return RENDERERS[r]
 
 
@@ -238,9 +238,14 @@ func _write_renderer_override() -> void:
 	f.close()
 
 
+## PERFORMANCE MODE (ultra): explosions, tyre smoke, rain and extra lights are stripped.
+func ultra() -> bool:
+	return perf_mode() == 3
+
+
 ## Population multiplier for pedestrians and traffic.
 func population_scale() -> float:
-	var s: float = [1.0, 0.8, 0.55][perf_mode()]
+	var s: float = [1.0, 0.8, 0.55, 0.3][perf_mode()]
 	# the OpenGL renderer has a small per-instance shader parameter buffer
 	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
 		s = minf(s, 0.55)
@@ -249,23 +254,23 @@ func population_scale() -> float:
 
 func shadow_quality() -> int:
 	var sq := int(get_value("graphics", "shadow_quality"))
-	return [sq, mini(sq, 1), 0][perf_mode()]
+	return [sq, mini(sq, 1), 0, 0][perf_mode()]
 
 
 ## Streaming radius for world chunks in metres (view distance setting)
 func view_distance() -> float:
 	var vd := clampi(int(get_value("graphics", "view_distance")), 0, 2)
-	vd = [vd, mini(vd, 1), 0][perf_mode()]
-	return [380.0, 520.0, 760.0][vd] * (0.8 if perf_mode() == 2 else 1.0)
+	vd = [vd, mini(vd, 1), 0, 0][perf_mode()]
+	return [380.0, 520.0, 760.0][vd] * [1.0, 1.0, 0.8, 0.62][perf_mode()]
 
 
 ## Effective graphics quality (0 low .. 3 ultra), capped by the performance mode.
 func quality() -> int:
 	var q := clampi(int(get_value("graphics", "quality")), 0, 3)
-	return [q, mini(q, 1), 0][perf_mode()]
+	return [q, mini(q, 1), 0, 0][perf_mode()]
 
 
 ## Effective effects level (0 low .. 2 high), capped by the performance mode.
 func effects() -> int:
 	var fx := clampi(int(get_value("graphics", "effects")), 0, 2)
-	return [fx, mini(fx, 1), 0][perf_mode()]
+	return [fx, mini(fx, 1), 0, 0][perf_mode()]
