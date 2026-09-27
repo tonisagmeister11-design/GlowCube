@@ -21,13 +21,18 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v2.4
-          name: Harbor Heat v2.4
+          tag_name: harbor-heat-v2.5
+          name: Harbor Heat v2.5
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v2.4** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v2.5** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            2.5: saving never loses your money any more – the game saves every minute, right after
+            you earn or spend money, after missions, when you close the window, and F5 always
+            works (also during missions or while wanted) · the chase music stops as soon as no cop
+            is after you any more and no longer plays over the car radio.
 
             2.4: much less lag when driving fast across the city · going back to the main menu or
             quitting saves automatically (position, money, your cars) · T calls your car anytime ·
