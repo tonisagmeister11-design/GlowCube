@@ -21,13 +21,21 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v2.2
-          name: Harbor Heat v2.2
+          tag_name: harbor-heat-v2.3
+          name: Harbor Heat v2.3
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v2.2** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v2.3** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            2.3 (big texture update): smooth, natural people (no more bulging muscles or lumpy
+            faces, clothes without clipping) · buildings with real 3D facades: window frames, sills,
+            shutters, flower boxes, AC units, glass fins on towers and balconies that stick out ·
+            redesigned street lamps (LED masts, classic lanterns, highway masts) · cars with random
+            paint jobs: racing stripes, two-tone, fades, race numbers, company and sponsor logos,
+            metallic/pearl/matte/candy paint · new ground textures: asphalt, sidewalks, grass, brick,
+            plaster, concrete.
 
             2.2: car radio with three songs (+/- volume), chase music when the police are on your
             heels, roads over the hills are drivable everywhere, no stars for missed shots or for
