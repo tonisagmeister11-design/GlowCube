@@ -149,6 +149,11 @@ def write_presets():
     txt += preset(3, "City Data", "Windows Desktop", "resources", city, CITY_INCLUDE, "", "", "", win_options(False, False))
     txt += preset(4, "Linux Smoke", "Linux", "exclude", core_excl, "", "",
                   "../Export/Test/MyOpenWorldGame/StartGame.x86_64", "debug_tools", linux_options())
+    # one self-contained executable (everything embedded) for easy sharing
+    txt += preset(5, "Windows Single", "Windows Desktop", "all_resources", [], GAME_INCLUDE + "," + CITY_INCLUDE,
+                  "tests/*", "../Export/Single/HarborHeat.exe", "release_build", win_options(False))
+    txt += preset(6, "Linux Single Smoke", "Linux", "all_resources", [], GAME_INCLUDE + "," + CITY_INCLUDE, "tests/*",
+                  "../Export/Single/HarborHeat.x86_64", "debug_tools", linux_options())
     with open(os.path.join(GAME, "export_presets.cfg"), "w", encoding="utf-8") as f:
         f.write(txt)
     print(f"[export] presets written: core excludes {len(core_excl)}, game pack {len(game)}, city pack {len(city)} files")
@@ -226,7 +231,7 @@ def smoke(packs_dir):
 
 def main():
     args = sys.argv[1:]
-    all_ = not any(a in args for a in ("--release", "--development", "--smoke"))
+    all_ = not any(a in args for a in ("--release", "--development", "--smoke", "--single"))
     write_presets()
     packs = os.path.join(EXPORT, "packs")
     os.makedirs(packs, exist_ok=True)
@@ -237,6 +242,11 @@ def main():
         ok = smoke(packs)
     if all_ or "--development" in args:
         build("Development", packs)
+    if "--single" in args:
+        single = os.path.join(EXPORT, "Single")
+        os.makedirs(single, exist_ok=True)
+        godot("--export-release", "Windows Single", os.path.join(single, "HarborHeat.exe"))
+        godot("--export-debug", "Linux Single Smoke", os.path.join(single, "HarborHeat.x86_64"))
     if all_ or "--release" in args:
         rel = build("Release", packs)
         if all_ or "--zip" in args:
