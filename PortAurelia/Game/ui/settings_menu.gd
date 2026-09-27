@@ -332,6 +332,7 @@ func _audio_tab() -> Control:
 	_slider(g, "Effekte", "audio", "sfx")
 	_slider(g, "Waffen", "audio", "weapons")
 	_slider(g, "Fahrzeuge", "audio", "vehicles")
+	_slider(g, "Autoradio & Verfolgungsmusik  (+ / - im Auto)", "audio", "radio")
 	_slider(g, "Umgebung", "audio", "environment")
 	_slider(g, "Stimmen", "audio", "voice")
 	_slider(g, "Oberfläche", "audio", "ui")

@@ -2,9 +2,9 @@ extends Node
 ## Central audio: pooled 3D one-shots, footsteps, weapons, UI, ambience layers
 ## (city, wind, rain, ocean, birds, night) and the MusicManager.
 ##
-## MUSIC RULE: no music is generated or started automatically. The MusicManager
-## only plays the player's own files from <game folder>/Audio/Music/ and only when
-## "Musik aktivieren" is switched on in the settings.
+## MUSIC: nothing is generated. The MusicManager plays the player's own files from
+## <game folder>/Audio/Music/ only when "Musik aktivieren" is on; the CarRadio plays the
+## songs the player supplied for the car radio and the police chase (bus "Radio").
 
 const MANIFEST := "res://Audio/SFX/manifest.json"
 const POOL_3D := 40
@@ -19,6 +19,7 @@ var _pool_i := 0
 var _ui: AudioStreamPlayer
 var ambience := {}      # name -> AudioStreamPlayer
 var music: MusicManager
+var radio: CarRadio
 var _last_start := {}   # stream name -> [msec, position] of the last start (anti-stacking)
 
 
@@ -49,6 +50,8 @@ func _ready() -> void:
 	music = MusicManager.new()
 	music.name = "MusicManager"
 	add_child(music)
+	radio = CarRadio.new()
+	add_child(radio)
 
 
 func get_stream(n: String) -> AudioStream:
@@ -180,6 +183,14 @@ func set_ambience(levels: Dictionary, delta: float) -> void:
 			a.volume_db = linear_to_db(cur)
 			if not a.playing:
 				a.play(randf() * 3.0)
+
+
+## Silence everything that belongs to the running game (back to the main menu).
+func stop_all() -> void:
+	for q in _pool:
+		q.stop()
+	if radio:
+		radio.stop()
 
 
 func stop_ambience() -> void:

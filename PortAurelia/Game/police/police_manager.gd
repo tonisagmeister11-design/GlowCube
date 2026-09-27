@@ -129,6 +129,7 @@ func set_wanted(lvl: int) -> void:
 	level_changed.emit(lvl)
 	if lvl == 0:
 		Events.wanted_cleared.emit()
+		AudioManager.radio.stop_chase()   # got away (or it's over): the chase track fades out
 
 
 func clear_wanted() -> void:
@@ -170,6 +171,7 @@ func _physics_process(delta: float) -> void:
 	if wanted_level == 0:
 		_cleanup_units()
 		return
+	_chase_music()
 	# sight
 	_sight_timer -= delta
 	if _sight_timer <= 0.0:
@@ -517,6 +519,26 @@ func _cop_attack(cop: NPC, p: Player) -> void:
 		if cop.state != NPC.S.CHASE:
 			cop.hostile = false
 			cop.chase(p)
+
+
+## The police are right on you and you are on foot (or standing behind/at a parked car):
+## start the chase track. It keeps playing until the wanted level is gone.
+func _chase_music() -> void:
+	var p := world.player as Player
+	if p.state in [Player.State.DEAD, Player.State.BUSTED]:
+		AudioManager.radio.stop_chase(true)
+		return
+	if AudioManager.radio.is_chasing():
+		return
+	var on_foot := not p.is_in_vehicle() or (p.vehicle as Vehicle).speed() < 2.0
+	if not on_foot:
+		return
+	for u in units:
+		for c in u["cops"]:
+			if is_instance_valid(c) and not (c as NPC).is_dead() \
+					and (c as Node3D).global_position.distance_to(p.global_position) < 9.0:
+				AudioManager.radio.start_chase()
+				return
 
 
 func _check_arrest(delta: float) -> void:

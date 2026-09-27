@@ -60,6 +60,18 @@ func _run() -> void:
 	Game.to_main_menu()
 	await wait(1.0)
 	check("back to main menu", get_tree().current_scene.name == "MainMenu")
+	# the classic crash path: menu -> free roam -> drive around a bit -> menu, twice
+	for round in 2:
+		Game.start_free_roam()
+		await Events.world_ready
+		await wait(2.0)
+		var w := GameWorld.instance
+		var p := w.player as Player
+		p.teleport(p.global_position + Vector3(120, 0, 60))   # trigger chunk streaming right before leaving
+		await wait(0.3)
+		Game.to_main_menu()
+		await wait(1.5)
+	check("menu -> game -> menu twice without crash", get_tree().current_scene.name == "MainMenu" and GameWorld.instance == null)
 	var failed := results.filter(func(x): return not x[1]).size()
 	print("=== %d checks, %d failed ===" % [results.size(), failed])
 	get_tree().quit(1 if failed > 0 else 0)

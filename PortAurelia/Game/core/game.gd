@@ -109,12 +109,39 @@ func _go_loading() -> void:
 	get_tree().change_scene_to_file(LOADING_SCENE)
 
 
+var _leaving := false
+
+
 func to_main_menu() -> void:
+	if _leaving:
+		return
+	_leaving = true
 	state = State.MENU
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	AudioManager.stop_ambience()
+	AudioManager.stop_all()
+	# black cover while the world is torn down (no frozen half-frame)
+	var cover := CanvasLayer.new()
+	cover.layer = 100
+	cover.process_mode = Node.PROCESS_MODE_ALWAYS
+	var black := ColorRect.new()
+	black.color = Color(0, 0, 0)
+	black.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.add_child(black)
+	get_tree().root.add_child(cover)
+	var w := GameWorld.instance
+	if w and is_instance_valid(w):
+		w.shutdown()
+	MenuPanel.current = null
+	await get_tree().process_frame
+	await get_tree().process_frame
+	VFX.reset()
 	get_tree().change_scene_to_file(MENU_SCENE)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	cover.queue_free()
+	_leaving = false
 
 
 func is_new_game() -> bool:

@@ -38,6 +38,7 @@ func _run() -> void:
 	var p := world.player as Player
 	p.health.invulnerable = true
 	await _test_shop_menus(p)
+	await _test_radio(p)
 	await _test_auto_step(p)
 	await _test_rocket(p)
 	await _test_near_miss(p)
@@ -410,3 +411,35 @@ func _test_shop_menus(p: Player) -> void:
 	check("gas station sells car stuff", "Nitro-Kartusche" in results["gas_station"] and "Reparaturset" in results["gas_station"])
 	check("diner serves meals", "Burger & Pommes" in results["diner"])
 	check("convenience store sells bread", "Brot & Aufschnitt" in results["shop_convenience"])
+
+
+func _test_radio(p: Player) -> void:
+	var r: CarRadio = AudioManager.radio
+	var car := Vehicle.create("sedan")
+	world.add_child(car)
+	car.global_position = p.global_position + Vector3(4, 0.8, 0)
+	await wait(0.5)
+	p.enter_vehicle(car)
+	await wait(1.5)
+	var playing := r.radio.playing
+	var track := r._track
+	check("radio plays a song when getting in", playing and track >= 0, "track %d" % track)
+	p.exit_vehicle()
+	await wait(0.5)
+	var pos_out := r.radio.get_playback_position()
+	check("radio stops when getting out", not r.radio.playing)
+	p.enter_vehicle(car)
+	await wait(0.8)
+	check("same car resumes the same song", r.radio.playing and r._track == track, "track %d" % r._track)
+	p.exit_vehicle()
+	await wait(0.5)
+	car.queue_free()
+	# chase track
+	world.police.call("set_wanted", 2)
+	r.start_chase()
+	await wait(0.5)
+	check("chase track starts at 0:10", r.is_chasing() and r.chase.get_playback_position() >= 10.0 and not r.radio.playing,
+		"pos %.1f" % r.chase.get_playback_position())
+	world.police.call("clear_wanted")
+	await wait(2.2)
+	check("chase track stops after escaping", not r.is_chasing())

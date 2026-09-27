@@ -184,6 +184,19 @@ func _update_requests() -> void:
 			_pending[c] = p
 
 
+## Leaving the world: wait for the background chunk loads to finish (freeing the world while
+## loader threads still work on its chunks crashed the game on the way to the main menu).
+func shutdown() -> void:
+	set_process(false)
+	set_physics_process(false)
+	for c in _pending.keys():
+		var p: String = _pending[c]
+		if ResourceLoader.load_threaded_get_status(p) != ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+			ResourceLoader.load_threaded_get(p)   # blocks until that load is done
+	_pending.clear()
+	_ready_queue.clear()
+
+
 func _poll_pending() -> void:
 	for c in _pending.keys():
 		var p: String = _pending[c]

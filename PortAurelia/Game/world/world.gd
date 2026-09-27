@@ -53,6 +53,20 @@ func _exit_tree() -> void:
 		instance = null
 
 
+## Called before the scene is changed back to the main menu: stop every system first so the
+## huge scene tree can be freed without anything still running on it.
+func shutdown() -> void:
+	if streaming:
+		streaming.shutdown()
+	for s in [traffic, peds, police, missions, events, economy, weather, day_night]:
+		if s is Node and is_instance_valid(s):
+			(s as Node).process_mode = Node.PROCESS_MODE_DISABLED
+	for v in get_tree().get_nodes_in_group("vehicles"):
+		(v as Node).process_mode = Node.PROCESS_MODE_DISABLED
+	process_mode = Node.PROCESS_MODE_DISABLED
+	visible = false
+
+
 ## Loads static data and the initial area. Call from the loading screen.
 func initialize(start_pos: Vector3, progress: Callable = Callable()) -> void:
 	_progress(progress, 0.02, "Stadtplan wird geladen")

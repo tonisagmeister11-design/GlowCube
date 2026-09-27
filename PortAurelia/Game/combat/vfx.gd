@@ -19,6 +19,14 @@ static func root() -> Node3D:
 	return _root
 
 
+## Drop all pooled effects (on the way back to the main menu).
+static func reset() -> void:
+	if _root and is_instance_valid(_root):
+		_root.queue_free()
+	_root = null
+	_pools.clear()
+
+
 static func _soft_texture() -> Texture2D:
 	if _mats.has("soft_tex"):
 		return _mats["soft_tex"]

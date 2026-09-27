@@ -13,6 +13,8 @@ const KEYS := {
 	"steer_left": [KEY_A], "steer_right": [KEY_D],
 	"ui_phone_up": [KEY_UP], "ui_phone_down": [KEY_DOWN],
 	"quick_save": [KEY_F5], "nitro": [KEY_N], "surrender": [KEY_X], "mission_abort": [KEY_K],
+	"radio_up": [KEY_EQUAL, KEY_KP_ADD, KEY_PLUS], "radio_down": [KEY_MINUS, KEY_KP_SUBTRACT],
+	"radio_next": [KEY_PERIOD], "radio_toggle": [KEY_COMMA],
 	"debug_hud": [KEY_F1], "debug_spawn_vehicle": [KEY_F2], "debug_spawn_npc": [KEY_F3],
 	"debug_give_weapon": [KEY_F4], "debug_wanted": [KEY_F6], "debug_teleport": [KEY_F7],
 	"debug_mission": [KEY_F8], "debug_toggle_ai": [KEY_F9], "debug_perf": [KEY_F10],

@@ -27,8 +27,9 @@ const DEFAULTS := {
 		"vehicles": 1.0,
 		"environment": 1.0,
 		"voice": 1.0,
-		"music": 0.0,              # music is disabled until the player enables it
+		"music": 0.0,              # own music files (Audio/Music) are off until the player enables them
 		"music_enabled": false,
+		"radio": 0.7,              # car radio and the police-chase track (built-in songs)
 		"ui": 0.8,
 	},
 	"controls": {
@@ -125,6 +126,10 @@ func _apply_display() -> void:
 	Engine.max_fps = int(get_value("graphics", "fps_limit"))
 
 
+func apply_audio_only() -> void:
+	_apply_audio()
+
+
 func _apply_audio() -> void:
 	_bus("Master", get_value("audio", "master"))
 	_bus("SFX", get_value("audio", "sfx"))
@@ -135,6 +140,11 @@ func _apply_audio() -> void:
 	_bus("UI", get_value("audio", "ui"))
 	var music_on: bool = get_value("audio", "music_enabled")
 	_bus("Music", get_value("audio", "music") if music_on else 0.0)
+	if AudioServer.get_bus_index("Radio") < 0:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, "Radio")
+		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
+	_bus("Radio", float(get_value("audio", "radio")))
 
 
 func _bus(name: String, linear: float) -> void:
@@ -195,11 +205,15 @@ func apply_effects() -> void:
 	var fx := effects()
 	var q := quality()
 	var fplus := RenderingServer.get_current_rendering_method() == "forward_plus"
+	# inside shops and flats the bright ceiling panels over pale floors made screen-space
+	# reflections / indirect light break up into black speckles and halos: off indoors
+	var gw = GameWorld.instance
+	var indoors: bool = gw != null and is_instance_valid(gw) and bool(gw.get_meta("in_interior", false))
 	env.ssao_enabled = fx >= 1 and fplus
-	env.ssr_enabled = fx >= 2 and q >= 2 and fplus
-	env.ssil_enabled = fx >= 2 and q >= 3 and fplus
+	env.ssr_enabled = fx >= 2 and q >= 2 and fplus and not indoors
+	env.ssil_enabled = fx >= 2 and q >= 3 and fplus and not indoors
 	env.glow_enabled = perf_mode() < 2
-	env.volumetric_fog_enabled = fx >= 2 and q >= 3 and fplus
+	env.volumetric_fog_enabled = fx >= 2 and q >= 3 and fplus and not indoors
 
 
 # ------------------------------------------------------------------ performance mode

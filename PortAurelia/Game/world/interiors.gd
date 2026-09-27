@@ -69,6 +69,7 @@ func _discard() -> void:
 	current_poi = {}
 	current_kind = ""
 	world.set_meta("in_interior", false)
+	Settings.apply_effects()
 
 
 static func get_manager() -> InteriorManager:
@@ -153,6 +154,10 @@ func _build(poi: Dictionary, kind: String) -> void:
 	probe.size = Vector3(float(size[0]) + 1.0, float(size[1]) + 1.0, float(size[2]) + 1.0)
 	probe.position = Vector3(0, float(size[1]) * 0.5, -float(size[2]) * 0.5)
 	probe.update_mode = ReflectionProbe.UPDATE_ONCE
+	# the probe only supplies the indoor ambient light: its captured reflections came out with
+	# black / NaN texels that showed up as black speckles on floors and around characters
+	probe.cull_mask = 0
+	probe.intensity = 0.25
 	current.add_child(probe)
 	# player
 	var p := world.player as Player
@@ -162,6 +167,7 @@ func _build(poi: Dictionary, kind: String) -> void:
 	if p.cam:
 		p.cam.yaw = p.rotation.y
 	world.set_meta("in_interior", true)
+	Settings.apply_effects()
 	_add_marker(point("exit") + current.global_basis.z * -0.2, "E: Verlassen", Color(0.9, 0.9, 0.9), func(_pl): leave())
 	var eco := world.economy as PoiManager
 	match kind:
@@ -220,6 +226,7 @@ func _teardown() -> void:
 	current_poi = {}
 	current_kind = ""
 	world.set_meta("in_interior", false)
+	Settings.apply_effects()
 
 
 func _add_marker(pos: Vector3, prompt: String, col: Color, cb: Callable) -> void:
