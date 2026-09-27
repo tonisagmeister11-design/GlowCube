@@ -289,6 +289,9 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 			InputSetup.rumble(0.3, clampf(float(d.get("recoil", 1.0)) * 0.1, 0.05, 0.7), 0.08)
 		_emit_ammo()
 	fired.emit(current)
+	# empty magazine: reload on its own
+	if int(st["clip"]) <= 0:
+		reload()
 	return true
 
 
@@ -309,7 +312,7 @@ func reload() -> void:
 		return
 	var d := WeaponData.get_def(current)
 	var st: Dictionary = owned[current]
-	if int(st["clip"]) >= int(d["mag"]) or int(st["reserve"]) <= 0:
+	if int(st["clip"]) >= int(d["mag"]) or (int(st["reserve"]) <= 0 and not d.get("infinite", false)):
 		return
 	_reloading = float(d["reload"])
 	if model:
@@ -321,6 +324,10 @@ func _finish_reload() -> void:
 	var d := WeaponData.get_def(current)
 	var st: Dictionary = owned[current]
 	var need := int(d["mag"]) - int(st["clip"])
+	if d.get("infinite", false):
+		st["clip"] = int(d["mag"])     # endless ammo (rocket launcher)
+		_emit_ammo()
+		return
 	var take := mini(need, int(st["reserve"]))
 	st["clip"] = int(st["clip"]) + take
 	st["reserve"] = int(st["reserve"]) - take

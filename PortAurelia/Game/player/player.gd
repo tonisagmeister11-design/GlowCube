@@ -44,7 +44,8 @@ var _enter_timer := 0.0
 var _step_timer := 0.0
 var _interact_target: Node = null
 var _prompt_timer := 0.0
-var surrendered := false      # gave up to the police with X (lighter sentence)
+var surrendered := false
+var _claim_hint := 0.0      # gave up to the police with X (lighter sentence)
 
 
 func _ready() -> void:
@@ -205,6 +206,7 @@ func _move_on_foot(delta: float) -> void:
 	if cam:
 		cam.aiming = aiming
 		cam.sprinting = sprinting
+		cam.aim_profile = WeaponData.aim_profile(weapons.current_id())
 		var scope := aiming and bool(WeaponData.get_def(weapons.current_id()).get("scope", false))
 		if scope != cam.scoped:
 			cam.scoped = scope
@@ -492,6 +494,19 @@ func _vehicle_update(delta: float) -> void:
 	# drive-by: aiming from the car
 	if input_enabled:
 		weapons.handle_vehicle_input()
+	# stolen car: make it your own once the police have lost you
+	var v := vehicle as Vehicle
+	var pol = GameWorld.instance.police
+	var claimable: bool = v != null and not v.player_owned and not v.is_police and not v.def.get("siren", false) \
+		and (pol == null or int(pol.get("wanted_level")) == 0)
+	_claim_hint -= delta
+	if claimable and _claim_hint <= 0.0:
+		_claim_hint = 12.0
+		Events.notify.emit("J: Dieses Auto zu deinem machen (danach über die Karte rufbar)", 4.0)
+	if claimable and input_enabled and Input.is_action_just_pressed("claim_vehicle"):
+		var eco = GameWorld.instance.economy
+		if eco:
+			eco.call("claim_vehicle", v)
 
 
 # ------------------------------------------------------------------ interaction

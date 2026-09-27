@@ -58,9 +58,10 @@ func _ready() -> void:
 
 
 # ------------------------------------------------------------------ crime reporting
-func _on_gunshot(pos: Vector3, shooter: Node, _loud: float) -> void:
-	if shooter is Player and enabled:
-		Events.crime_committed.emit("shots_fired", pos, 1, shooter)
+func _on_gunshot(_pos: Vector3, _shooter: Node, _loud: float) -> void:
+	# firing into the air / at nothing is no crime by itself: stars only come from hitting
+	# people, cops or cars (assault, murder, shoot_vehicle) and from explosions
+	pass
 
 
 func _on_vehicle_destroyed(v: Node) -> void:

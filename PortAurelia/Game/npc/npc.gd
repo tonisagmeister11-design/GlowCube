@@ -37,6 +37,7 @@ var near := true
 var persistent := false         # not despawned by the ped manager (mission / police)
 var crime_reported := false
 var money := 0
+var outlaw := false              # street thief / fleeing criminal: stopping them is no crime
 var shop_role := ""            # "clerk" / "gunshop": shopkeeper inside an interior (robbable)
 
 var _graph: PedGraph
@@ -823,7 +824,7 @@ func _on_damaged(amount: float, source: Node, _pos: Vector3, dir: Vector3) -> vo
 		model.play_oneshot("hit_react")
 		if randf() < 0.5:
 			AudioManager.play_voice("pain", global_position)
-	if source is Player and not _assault_reported and role != "gang":
+	if source is Player and not _assault_reported and role != "gang" and not outlaw:
 		_assault_reported = true
 		Events.crime_committed.emit("assault_cop" if role == "cop" else "assault", global_position,
 			2 if role == "cop" else 1, source)
@@ -855,7 +856,7 @@ func _on_died(source: Node) -> void:
 	if source is Vehicle:
 		killer = (source as Vehicle).driver
 	Events.npc_killed.emit(self, killer)
-	if killer is Player:
+	if killer is Player and not outlaw:
 		Events.crime_committed.emit("murder_cop" if role == "cop" else "murder", global_position,
 			4 if role == "cop" else 3, killer)
 	died.emit(self)

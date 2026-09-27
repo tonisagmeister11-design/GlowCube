@@ -43,12 +43,33 @@ const WEAPONS := {
 	"rpg": {"name": "Raketenwerfer RPG", "slot": 8, "kind": "launcher", "damage": 900.0, "rate": 1.6, "auto": false,
 		"mag": 1, "reserve": 12, "reload": 2.2, "spread": 0.6, "aim_spread": 0.1, "recoil": 7.0, "range": 400.0,
 		"model": "rpg", "anim": "aim_rifle", "sound": "rocket_launch", "price": 85000, "ammo_price": 2500,
-		"projectile": "rocket", "blast": 7.5},
+		"projectile": "rocket", "blast": 7.5, "infinite": true},
 	"minigun": {"name": "Minigun", "slot": 9, "kind": "heavy", "damage": 26.0, "rate": 0.045, "auto": true,
 		"mag": 500, "reserve": 1500, "reload": 4.5, "spread": 3.6, "aim_spread": 2.4, "recoil": 0.5, "range": 180.0,
 		"model": "minigun", "anim": "aim_rifle", "sound": "minigun", "price": 150000, "ammo_price": 3000,
 		"spinup": 0.45},
 }
+
+
+## How each weapon aims: camera arm/height/shoulder offset, extra zoom (FOV degrees) and
+## the reticle drawn by the HUD. The sniper keeps its first-person scope.
+const AIM := {
+	"pistol": {"arm": 1.55, "height": 1.6, "side": 0.55, "zoom": 12.0, "reticle": "dot"},
+	"revolver": {"arm": 1.45, "height": 1.6, "side": 0.55, "zoom": 15.0, "reticle": "dot"},
+	"deagle": {"arm": 1.4, "height": 1.6, "side": 0.55, "zoom": 16.0, "reticle": "dot"},
+	"smg": {"arm": 1.5, "height": 1.58, "side": 0.6, "zoom": 12.0, "reticle": "cross"},
+	"shotgun": {"arm": 1.7, "height": 1.58, "side": 0.6, "zoom": 6.0, "reticle": "circle"},
+	"rifle": {"arm": 1.3, "height": 1.62, "side": 0.55, "zoom": 20.0, "reticle": "cross"},
+	"lmg": {"arm": 1.6, "height": 1.6, "side": 0.62, "zoom": 14.0, "reticle": "cross"},
+	"sniper": {"arm": 1.3, "height": 1.62, "side": 0.55, "zoom": 20.0, "reticle": "scope"},
+	"rpg": {"arm": 2.1, "height": 1.95, "side": 0.8, "zoom": 22.0, "reticle": "rocket"},
+	"grenade_launcher": {"arm": 2.0, "height": 1.9, "side": 0.75, "zoom": 10.0, "reticle": "arc"},
+	"minigun": {"arm": 2.4, "height": 1.75, "side": 0.8, "zoom": 4.0, "reticle": "heavy"},
+}
+
+
+static func aim_profile(id: String) -> Dictionary:
+	return AIM.get(id, AIM["pistol"])
 
 
 static func get_def(id: String) -> Dictionary:

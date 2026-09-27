@@ -345,7 +345,7 @@ func _process(delta: float) -> void:
 	_weapon.text = wd["name"] if wid != "unarmed" else ""
 	if WeaponData.is_ranged(wid):
 		var st: Dictionary = p.weapons.owned[wid]
-		_ammo.text = "%d / %d" % [st["clip"], st["reserve"]]
+		_ammo.text = ("%d / ∞" % st["clip"]) if wd.get("infinite", false) else "%d / %d" % [st["clip"], st["reserve"]]
 	else:
 		_ammo.text = ""
 	# wanted stars
@@ -584,13 +584,59 @@ func _draw_crosshair() -> void:
 	if p and p.cam:
 		var h := p.cam.aim_hit(120.0, [p.get_rid()])
 		var col = h.get("collider")
-		hit = col is NPC and not (col as NPC).is_dead()
+		hit = (col is NPC and not (col as NPC).is_dead()) or col is Vehicle
 	if hit:
 		c = Color(1, 0.25, 0.2, 0.95)
 	var cc := _crosshair
-	cc.draw_circle(Vector2.ZERO, 2.2, c)
-	var g := 6.0
-	var l := 7.0
-	for d in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
-		cc.draw_line(d * g, d * (g + l), Color(0, 0, 0, 0.6), 4.0)
-		cc.draw_line(d * g, d * (g + l), c, 2.0)
+	var sh := Color(0, 0, 0, 0.6)
+	var wid := p.weapons.current_id() if p else ""
+	var d := WeaponData.get_def(wid)
+	var reticle: String = WeaponData.aim_profile(wid).get("reticle", "cross")
+	# current spread in pixels (so the circle shows where pellets / bullets can land)
+	var vh := get_viewport().get_visible_rect().size.y
+	var fov := p.cam.camera.fov if p and p.cam else 70.0
+	var spread := float(d.get("aim_spread" if p and p.aiming else "spread", 1.0)) + p.weapons._spread_bloom if p else 1.0
+	var px := tan(deg_to_rad(spread)) / tan(deg_to_rad(fov * 0.5)) * vh * 0.5
+	match reticle:
+		"dot":
+			cc.draw_circle(Vector2.ZERO, 3.2, sh)
+			cc.draw_circle(Vector2.ZERO, 2.2, c)
+		"circle":
+			var r := maxf(px, 14.0)
+			cc.draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, sh, 4.0)
+			cc.draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, c, 2.0)
+			cc.draw_circle(Vector2.ZERO, 2.0, c)
+		"rocket":
+			# bracket frame with range ticks below the centre
+			var w := 34.0
+			for sx in [-1, 1]:
+				var x: float = sx * w
+				cc.draw_polyline(PackedVector2Array([Vector2(x - sx * 10, -22), Vector2(x, -22), Vector2(x, 22), Vector2(x - sx * 10, 22)]), sh, 4.0)
+				cc.draw_polyline(PackedVector2Array([Vector2(x - sx * 10, -22), Vector2(x, -22), Vector2(x, 22), Vector2(x - sx * 10, 22)]), c, 2.0)
+			for i in 4:
+				var y := 8.0 + i * 9.0
+				cc.draw_line(Vector2(-6 - i * 2, y), Vector2(6 + i * 2, y), c, 1.5)
+			cc.draw_circle(Vector2.ZERO, 2.5, c)
+		"arc":
+			# grenade launcher: drop marks for 25 / 50 / 75 m
+			cc.draw_circle(Vector2.ZERO, 2.2, c)
+			for i in 3:
+				var y := 10.0 + i * 12.0 + i * i * 3.0
+				cc.draw_line(Vector2(-10, y), Vector2(10, y), sh, 4.0)
+				cc.draw_line(Vector2(-10, y), Vector2(10, y), c, 2.0)
+			cc.draw_line(Vector2(0, 4), Vector2(0, 60), Color(c.r, c.g, c.b, 0.5), 1.0)
+		"heavy":
+			var r2 := maxf(px, 26.0)
+			cc.draw_arc(Vector2.ZERO, r2, 0.0, TAU, 48, sh, 5.0)
+			cc.draw_arc(Vector2.ZERO, r2, 0.0, TAU, 48, c, 2.5)
+			# spin-up ring
+			var spin := clampf(p.weapons._spin / maxf(float(d.get("spinup", 0.4)), 0.01), 0.0, 1.0) if p else 0.0
+			cc.draw_arc(Vector2.ZERO, r2 + 7.0, -PI / 2, -PI / 2 + TAU * spin, 48, Color(1.0, 0.75, 0.2, 0.9), 3.0)
+			cc.draw_circle(Vector2.ZERO, 2.5, c)
+		_:
+			cc.draw_circle(Vector2.ZERO, 2.2, c)
+			var g := maxf(6.0, px * 0.6)
+			var l := 7.0
+			for dv in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+				cc.draw_line(dv * g, dv * (g + l), sh, 4.0)
+				cc.draw_line(dv * g, dv * (g + l), c, 2.0)

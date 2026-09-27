@@ -84,8 +84,10 @@ func _update_active(delta: float) -> void:
 			if not is_instance_valid(thief):
 				_end()
 			elif thief.is_dead() or thief.state == NPC.S.KNOCKED or thief.health.health < 50.0:
-				Pickup.spawn(world, thief.global_position + Vector3(0.6, 0, 0), "money", rng.randi_range(150, 450))
-				_end("Du hast den Taschendieb gestellt! Die Beute gehört dir.")
+				var loot := rng.randi_range(200, 450)
+				Game.player_data.add_money(loot, "thief")
+				AudioManager.play_ui("money", -2.0)
+				_end("Du hast den Taschendieb gestellt! +$%d" % loot)
 			elif thief.global_position.distance_to(pp) > 170.0 or float(active["timer"]) > 90.0:
 				_end("Der Dieb ist entkommen.")
 			elif thief.state != NPC.S.FLEE:
@@ -134,6 +136,8 @@ func _purse() -> bool:
 	var victim := pm.spawn_npc(sp["pos"], "civilian", {}, false)
 	var thief := pm.spawn_npc(sp["pos"] + Vector3(1.2, 0, 0.5), "civilian", Outfits.random("gang", rng), true)
 	thief.bravery = 0.0
+	thief.outlaw = true     # knocking him down or shooting him gives no wanted stars
+	thief.money = 0         # the reward comes from the stolen purse, not his own pockets
 	victim.cower(4.0)
 	thief.flee_from(world.player.global_position, 30.0)
 	AudioManager.play_voice("scream", victim.global_position)
@@ -161,6 +165,7 @@ func _police_chase() -> bool:
 		var dir := l.dir_at(s)
 		var crook := Vehicle.create(["sports", "sedan", "compact"][rng.randi() % 3])
 		crook.transform = Transform3D(Basis.looking_at(dir, Vector3.UP), p + Vector3.UP * 0.5)
+		crook.outlaw = true
 		world.add_child(crook)
 		var drv := tm.make_driver(crook, Outfits.random("gang", rng))
 		if drv == null:

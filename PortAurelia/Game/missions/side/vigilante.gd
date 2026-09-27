@@ -23,6 +23,7 @@ func run() -> void:
 			await wait(1.0)
 			continue
 		var crook := spawn_vehicle(["sedan", "sports", "suv", "compact"][randi() % 4], rp["pos"], rp["dir"])
+		crook.outlaw = true
 		var drv := drive(crook, Outfits.random("gang", RandomNumberGenerator.new()))
 		if drv == null:
 			continue
@@ -42,7 +43,9 @@ func run() -> void:
 		time_left = -1.0
 		remove_blip(b)
 		if drv.mode != TrafficDriver.Mode.ABANDONED and not crook.destroyed:
-			drv.abandon_vehicle(player)
+			var fled = drv.abandon_vehicle(player)
+			if fled is NPC:
+				(fled as NPC).outlaw = true
 		var pay := 1500 * level
 		total += pay
 		Game.player_data.add_money(pay, "vigilante")

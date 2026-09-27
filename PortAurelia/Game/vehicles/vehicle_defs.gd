@@ -49,7 +49,7 @@ const DEFS := {
 	"taxi":      {"mass": 1450.0, "power": 115000.0, "top": 52.0, "grip": 1.05, "drive": "rwd", "steer": 34.0,
 		"spring": 42000.0, "damp": 3800.0, "travel": 0.2, "brake": 11000.0, "sound": "engine_loop", "pitch": 1.0,
 		"price": 0, "category": "service", "cam": 6.0},
-	"police":    {"mass": 1650.0, "power": 230000.0, "top": 64.0, "grip": 1.18, "drive": "rwd", "steer": 34.0,
+	"police":    {"mass": 1650.0, "power": 160000.0, "top": 40.0, "grip": 1.18, "drive": "rwd", "steer": 34.0,
 		"spring": 50000.0, "damp": 4800.0, "travel": 0.2, "brake": 15000.0, "sound": "engine_sport_loop",
 		"pitch": 0.9, "price": 0, "category": "emergency", "cam": 6.2, "siren": true},
 	"ambulance": {"mass": 2800.0, "power": 170000.0, "top": 44.0, "grip": 0.95, "drive": "rwd", "steer": 34.0,

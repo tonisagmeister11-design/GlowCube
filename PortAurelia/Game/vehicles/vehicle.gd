@@ -32,6 +32,8 @@ var nitro := 0                     # nitro charges (N / A button), 2.5 s boost e
 var _nitro_t := 0.0
 var _nitro_fx_t := 0.0
 var _drift_prev_dir := Vector3.ZERO
+var top_factor := 1.0             # per-car spread of the top speed (police cars differ)
+var outlaw := false               # getaway car of a criminal: shooting it is no crime
 var auto_drift := false           # hard-corner drifting for non-player drivers (AI traffic keeps grip)
 var ai_driver: Node = null
 var owner_npc: Node = null
@@ -98,6 +100,8 @@ func _ready() -> void:
 	meta = VehicleDefs.meta(type_id)
 	is_police = type_id == "police"
 	nitro = int(def.get("nitro", {"sports": 1, "muscle": 1, "supercar": 2}.get(type_id, 0)))
+	if is_police:
+		top_factor = randf_range(0.92, 1.04)   # every patrol car is a little different
 	camera_distance = float(def.get("cam", 6.0))
 	mass = float(def["mass"])
 	collision_layer = 1 << 2
@@ -309,7 +313,7 @@ func _player_input(delta: float) -> void:
 	var back := Input.get_action_strength("brake")
 	var v_long := -linear_velocity.dot(global_basis.z)
 	if v_long < 1.0 and back > 0.1 and fwd < 0.1:
-		throttle = -back * 0.55   # reverse
+		throttle = -back * 0.85   # reverse (up to ~50 km/h)
 		brake_input = 0.0
 	else:
 		throttle = fwd
@@ -419,14 +423,14 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		if is_driven and not destroyed and not in_water:
 			var n_driven := 4 if drive_mode == "awd" else 2
 			var power := float(def["power"]) * (0.45 if engine_health < 150.0 else 1.0) * (1.0 + 0.12 * int(upgrades["engine"]))
-			var top := float(def["top"]) * (1.3 if _nitro_t > 0.0 else 1.0)
+			var top := float(def["top"]) * top_factor * (1.3 if _nitro_t > 0.0 else 1.0)
 			var eng := 0.0
 			if throttle > 0.0:
 				eng = minf(mass * 6.5, power / maxf(absf(v_long_body), 4.0)) * throttle
 				# full pull until close to the top speed, then a steep fall-off
 				eng *= clampf(1.0 - pow(maxf(v_long_body, 0.0) / top, 3.0), 0.0, 1.0) * 1.15
 			elif throttle < 0.0:
-				eng = throttle * mass * 3.5 * clampf(1.0 + v_long_body / 8.0, 0.0, 1.0)
+				eng = throttle * mass * 3.5 * clampf(1.0 + v_long_body / 16.0, 0.0, 1.0)
 			f_long += eng / n_driven
 		if brake_input > 0.0:
 			f_long -= signf(v_long) * float(def["brake"]) * (1.0 + 0.15 * int(upgrades["brakes"])) * brake_input / 4.0 * clampf(absf(v_long) * 2.0, 0.0, 1.0)
@@ -858,7 +862,7 @@ func on_hit(damage: float, source: Node, pos: Vector3, dir: Vector3) -> void:
 		break_glass()
 	for mi in _paint_meshes:
 		mi.set_instance_shader_parameter("damage", clampf(1.0 - body_health / 1000.0, 0.0, 1.0))
-	if source and source.is_in_group("player") and (driver != null or ai_driver != null):
+	if source and source.is_in_group("player") and (driver != null or ai_driver != null) and not outlaw:
 		Events.crime_committed.emit("shoot_vehicle", pos, 1 if not is_police else 2, source)
 	if ai_driver and ai_driver.has_method("on_vehicle_attacked"):
 		ai_driver.call("on_vehicle_attacked", source)

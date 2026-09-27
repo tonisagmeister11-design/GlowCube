@@ -19,6 +19,7 @@ var look_behind := false
 var locked := false
 var shake := 0.0
 var scoped := false                 # sniper scope: first-person zoom
+var aim_profile := {}               # per-weapon aiming (WeaponData.AIM): arm, height, side, zoom
 var scope_fov := 20.0
 
 var camera: Camera3D
@@ -186,10 +187,11 @@ func _process(delta: float) -> void:
 				pitch = lerp_angle(pitch, deg_to_rad(-9.0), clampf(delta * 1.5, 0.0, 1.0))
 			fov += clampf(absf(spd) / 200.0, 0.0, 1.0) * 12.0
 	elif aiming:
-		arm_len = 1.55 * lerpf(1.0, dist_mul, 0.4)
-		height = 1.6
-		side = 0.55
-		fov -= 12.0
+		var ap := aim_profile
+		arm_len = float(ap.get("arm", 1.55)) * lerpf(1.0, dist_mul, 0.4)
+		height = float(ap.get("height", 1.6))
+		side = float(ap.get("side", 0.55))
+		fov -= float(ap.get("zoom", 12.0))
 	elif sprinting:
 		arm_len = 3.9 * dist_mul
 		fov += 6.0

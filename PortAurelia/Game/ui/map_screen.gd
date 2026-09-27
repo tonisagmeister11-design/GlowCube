@@ -64,6 +64,24 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif is_open and (event.is_action_pressed("ui_cancel") or event.is_action_pressed("pause")):
 		close()
 		get_viewport().set_input_as_handled()
+	elif is_open and event.is_action_pressed("summon_vehicle"):
+		get_viewport().set_input_as_handled()
+		_summon_menu()
+
+
+## T on the map: pick one of your cars, it is brought to you.
+func _summon_menu() -> void:
+	var cars: Array = Game.player_data.owned_vehicles
+	if cars.is_empty():
+		Events.notify.emit("Du hast noch kein eigenes Auto. Kauf eins oder übernimm ein gestohlenes (J).", 3.0)
+		return
+	var items := []
+	for e in cars:
+		items.append({"label": VehicleDefs.display_name(e["type"]), "desc": "Wird an die nächste Straße gebracht.",
+			"action": func():
+				close()
+				world.economy.call("summon_vehicle", e)})
+	MenuPanel.open("Fahrzeug rufen", items, "Welches Auto soll zu dir kommen?")
 
 
 func open() -> void:
@@ -91,7 +109,8 @@ func _update_legend() -> void:
 	var story: Vector2i = mm.call("story_progress") if mm else Vector2i.ZERO
 	var pcs: int = mm.call("postcards_found") if mm else 0
 	_legend.text = "H Safehouse   M Mission   R Rennen   $ Laden   W Waffen   K Kleidung   A Autohändler\n" + \
-		"G Tankstelle   + Krankenhaus   P Polizei   € Immobilie   B Bank   J Juwelier\n\n" + \
+		"G Tankstelle   + Krankenhaus   P Polizei   € Immobilie   B Bank   J Juwelier\n" + \
+		"T: eigenes Auto zu dir rufen\n\n" + \
 		"Story: %d/%d   ·   Postkarten: %d/%d   ·   Geld: $%d" % [story.x, story.y, pcs, 25, Game.player_data.money]
 
 

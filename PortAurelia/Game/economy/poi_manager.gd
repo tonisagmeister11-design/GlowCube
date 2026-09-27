@@ -515,6 +515,46 @@ func _buy_vehicle(p: Dictionary, id: String) -> void:
 		Events.waypoint_set.emit(v.global_position)
 
 
+## Keep a stolen car: it becomes a personal vehicle (garage, summon from the map).
+func claim_vehicle(v: Vehicle) -> void:
+	if v == null or v.player_owned:
+		return
+	var entry := {"id": "veh_%d" % Time.get_ticks_usec(), "type": v.type_id, "color": v.paint.to_html(),
+		"upgrades": v.upgrades.duplicate()}
+	Game.player_data.owned_vehicles.append(entry)
+	v.player_owned = true
+	v.owned_id = entry["id"]
+	if world.traffic:
+		(world.traffic as TrafficManager).keep[v] = true
+	Game.player_data.stat_add("vehicles_claimed", 1)
+	Events.big_message.emit("AUTO GEHÖRT DIR", "%s – rufbar über die Karte (T)" % VehicleDefs.display_name(v.type_id), 3.5)
+	AudioManager.play_ui("mission_passed", -6.0)
+
+
+## Bring a personal vehicle to the player (from the map): it appears on the nearest road.
+func summon_vehicle(entry: Dictionary) -> Vehicle:
+	var p := world.player as Player
+	if p.is_in_vehicle() and (p.vehicle as Vehicle).owned_id == entry["id"]:
+		Events.notify.emit("Du sitzt schon drin.", 2.0)
+		return p.vehicle
+	for v in get_tree().get_nodes_in_group("vehicles"):
+		if (v as Vehicle).owned_id == entry["id"]:
+			if (v as Vehicle).driver != null:
+				return null
+			v.queue_free()
+	var pos := p.global_position + p.global_basis.z * -6.0
+	var dir := -p.global_basis.z
+	var cl := world.graph.closest_lane(p.global_position, 40.0)
+	if not cl.is_empty():
+		pos = cl["pos"]
+		dir = (world.graph.lanes[cl["lane"]] as RoadGraph.Lane).dir_at(cl["s"])
+	dir.y = 0.0
+	var v := spawn_owned_vehicle(entry, pos, dir.cross(Vector3.UP) * -1.0)
+	Events.notify.emit("%s steht für dich bereit." % VehicleDefs.display_name(entry["type"]), 3.0)
+	Events.waypoint_set.emit(v.global_position)
+	return v
+
+
 func spawn_owned_vehicle(entry: Dictionary, pos: Vector3, facing: Vector3) -> Vehicle:
 	var v := Vehicle.create(entry["type"], Color.html(entry["color"]))
 	v.player_owned = true
