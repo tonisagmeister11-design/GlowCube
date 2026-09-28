@@ -1,7 +1,5 @@
 package de.gtacity.block;
 
-import de.gtacity.gameplay.Robbery;
-import de.gtacity.item.GunItem;
 import de.gtacity.network.ModNetworking;
 import de.gtacity.shop.ShopType;
 import net.minecraft.core.BlockPos;
@@ -28,15 +26,10 @@ public class ShopCounterBlock extends Block {
         return type;
     }
 
+    /** Robbing (sneak + right click with a gun) is handled in {@link de.gtacity.gameplay.CityEvents}. */
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player,
                                           InteractionHand hand, BlockHitResult hit) {
-        if (stack.getItem() instanceof GunItem && player.isShiftKeyDown()) {
-            if (player instanceof ServerPlayer serverPlayer) {
-                Robbery.robCounter(serverPlayer, pos, type);
-            }
-            return InteractionResult.SUCCESS;
-        }
         return InteractionResult.TRY_WITH_EMPTY_HAND;
     }
 

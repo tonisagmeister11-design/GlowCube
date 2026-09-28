@@ -66,6 +66,14 @@ public final class CityEvents {
                 return InteractionResult.PASS;
             }
             Block block = level.getBlockState(hit.getBlockPos()).getBlock();
+            // Hold-up: sneak + right click on a counter. Vanilla skips block interactions while sneaking with
+            // something in hand, so the counter itself never hears about it - it has to happen here.
+            if (block instanceof ShopCounterBlock counter && player.isShiftKeyDown()) {
+                if (player instanceof ServerPlayer serverPlayer) {
+                    Robbery.robCounter(serverPlayer, hit.getBlockPos(), counter.type());
+                }
+                return InteractionResult.SUCCESS;
+            }
             boolean ours = block instanceof ShopCounterBlock || block instanceof BankVaultBlock
                     || block instanceof ElevatorBlock || block instanceof AtmBlock;
             return ours ? InteractionResult.PASS : InteractionResult.FAIL;
@@ -94,6 +102,10 @@ public final class CityEvents {
     private static void onJoin(ServerPlayer player) {
         if (!isCity(player.level())) {
             return;
+        }
+        if (!player.hasAttached(ModAttachments.MONEY)) {
+            // Only values that are actually set get synced - without this the HUD shows $0 instead of $500.
+            Economy.set(player, Economy.get(player));
         }
         Boolean hasKit = player.getAttached(ModAttachments.STARTER_KIT);
         if (hasKit != null && hasKit) {
