@@ -21,13 +21,25 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v3.1
-          name: Harbor Heat v3.1
+          tag_name: harbor-heat-v3.2
+          name: Harbor Heat v3.2
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v3.1** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v3.2** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            3.2: PLAY WITH FRIENDS ANYWHERE - no router settings. Create a lobby, send the code (e.g. via
+            WhatsApp), your friend joins from his own Wi-Fi anywhere: the games find each other through
+            public meeting servers, open a direct connection through both home routers (hole punching,
+            like video calls) and, if the routers are too strict (mobile internet, some providers),
+            automatically send the game through a relay instead. The lobby shows "Internet bereit",
+            each player's connection (WLAN / Internet / Relay) and ping.
+            SHARED WORLD: near the host everybody sees the same city - the same traffic, parked cars,
+            pedestrians and police, in the same places. Take any of those cars (the driver flees for
+            everyone), crash into them, shoot pedestrians, blow cars up with rockets - everyone sees it.
+            A car you leave stays there for everyone. Far away from the host you get your own traffic,
+            and the shared world comes back when you return. Everyone needs version 3.2.
 
             3.1: CO-OP MISSIONS + much more precise multiplayer. Press O in the game (host) and
             start a co-op mission - they can only be done together and everyone gets the money:
