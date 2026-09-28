@@ -166,7 +166,16 @@ func quit() -> void:
 	if state == State.PLAYING or state == State.PAUSED:
 		SaveManager.save_on_exit()
 	Settings.save_settings()
+	stop_world()
 	get_tree().quit()
+
+
+## Before the program ends: let the background chunk loads finish first (freeing the world while
+## loader threads still work on it can crash on exit).
+func stop_world() -> void:
+	var w := GameWorld.instance
+	if w and is_instance_valid(w):
+		w.shutdown()
 
 
 # ------------------------------------------------------------------ death / arrest

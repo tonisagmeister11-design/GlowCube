@@ -68,6 +68,7 @@ func _finish() -> void:
 	var failed := results.filter(func(r): return not r[1]).size()
 	print("[%s] === %d checks, %d failed ===" % [role, results.size(), failed])
 	Net.leave("")
+	Game.stop_world()
 	get_tree().quit(1 if failed > 0 else 0)
 
 
@@ -180,7 +181,10 @@ func _host() -> void:
 		check("I saw his rocket explode", booms[0] > 0)
 	# he drives far away and comes back
 	await await_arg("far", 90.0)
-	check("far friend: no longer shared", await wait_until(func(): return not Net._world_share.is_shared(cid), 10.0))
+	var okf: bool = await wait_until(func(): return not Net._world_share.is_shared(cid), 10.0)
+	var st: Array = Net.players[cid]["st"] if Net.players.has(cid) else []
+	check("far friend: no longer shared", okf, "his last state: pos %s car %s sent %d ms ago" % [st[0] if st.size() > 6 else "-",
+		st[6] if st.size() > 6 and String(st[5]) != "" else "-", Time.get_ticks_msec() - int(st[15]) if st.size() > 15 else -1])
 	await await_arg("back", 120.0)
 	check("friend back: shared again", await wait_until(func(): return Net._world_share.is_shared(cid), 20.0),
 		"friend %.0f m away" % me().global_position.distance_to((Net.proxies()[cid] as Node3D).global_position) if Net.proxies().has(cid) else "gone")
@@ -356,7 +360,8 @@ func _client() -> void:
 	w.streaming.load_area_blocking(far, 220.0)
 	p.teleport(far + Vector3.UP * 1.0)
 	step("far")
-	check("far away: host's world switches off", await wait_until(func(): return not Net.world_shared, 10.0))
+	check("far away: host's world switches off", await wait_until(func(): return not Net.world_shared, 10.0),
+		"me at %s, in car %s" % [p.global_position, p.is_in_vehicle()])
 	check("far away: host's cars disappear", await wait_until(func(): return _amb_cars().is_empty() and _amb_peds().is_empty(), 10.0),
 		"%d cars, %d peds" % [_amb_cars().size(), _amb_peds().size()])
 	check("far away: my own traffic comes back", await wait_until(func(): return _local_ambient() > 3, 60.0), str(_local_ambient()))

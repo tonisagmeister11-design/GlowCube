@@ -672,9 +672,20 @@ func _on_connected() -> void:
 	_set_status("Verbunden (%s) – warte auf den Host ..." % link_kind)
 
 
+## ENet slows down unreliable packets (the positions) when the latency jumps for a moment - over
+## the relay that happens often. The game sends little data, so keep every update flowing.
+func _no_throttle(pp: ENetPacketPeer) -> void:
+	if pp:
+		pp.throttle_configure(5000, 32, 0)
+
+
 func _on_peer_connected(id: int) -> void:
+	if mode == Mode.CLIENT and id == 1 and _peer:
+		_no_throttle(_peer.get_peer(1))
 	if mode != Mode.HOST:
 		return
+	if _peer:
+		_no_throttle(_peer.get_peer(id))
 	if not _pending_join.has(id):
 		_peer.disconnect_peer(id)
 		return
@@ -866,6 +877,13 @@ func _process(delta: float) -> void:
 		_status_t = 1.0
 		if mode == Mode.HOST and not _drop_info.is_empty():
 			_expire_drops()
+		if OS.has_environment("HH_NET_DEBUG") and _peer:
+			for id in players:
+				var pp := _peer.get_peer(id) if (is_host() and id != 1) or (not is_host() and id == 1) else null
+				if pp:
+					print("NETDBG peer %d rtt %d var %d throttle %d loss %d" % [id, pp.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME),
+						pp.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME_VARIANCE), pp.get_statistic(ENetPacketPeer.PEER_PACKET_THROTTLE),
+						pp.get_statistic(ENetPacketPeer.PEER_PACKET_LOSS)])
 		if mode == Mode.HOST:
 			_update_internet_status()
 		elif not _returning.is_empty():

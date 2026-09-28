@@ -89,8 +89,9 @@ func _physics_process(delta: float) -> void:
 		var step := car.global_position.distance_to(pos)
 		if step > 0.8 and (drt <= 0.5 or step / (drt / 1000.0) > 70.0):
 			debug_jumps += 1
-			print("NETDBG car path jump %.1f m in %.0f ms host time (interp %.0f gap %.0f snaps %d seg %.1f)" % [step, drt, _interp, _gap,
-				_snaps.size(), (a[1] as Vector3).distance_to(b[1])])
+			if debug_jumps <= 5:
+				print("NETDBG car path jump %.1f m in %.0f ms host time (interp %.0f gap %.0f snaps %d seg %.1f)" % [step, drt, _interp, _gap,
+					_snaps.size(), (a[1] as Vector3).distance_to(b[1])])
 	_prev_rt = rt
 	# a late update that changed the path is blended in over a few frames instead of popping
 	if car.visible and car.global_position.distance_to(pos) < 30.0 and car.global_position.y > -300.0:

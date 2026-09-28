@@ -55,6 +55,7 @@ func _finish() -> void:
 	var failed := results.filter(func(r): return not r[1]).size()
 	print("[%s] === %d checks, %d failed ===" % [role, results.size(), failed])
 	Net.leave("")
+	Game.stop_world()
 	get_tree().quit(1 if failed > 0 else 0)
 
 

@@ -32,6 +32,30 @@ static func set_enabled(on: bool) -> void:
 		Events.notify.emit("Kreativmodus aus.", 2.5)
 
 
+## Creative money (O key): only in creative mode, alone or as the lobby owner. Only the player
+## himself sees this menu.
+static func open_money_menu() -> void:
+	var items := []
+	for a in [10000, 100000, 1000000, 10000000]:
+		var amount: int = a
+		items.append({"label": "+$%d" % amount, "keep_open": true, "action": func():
+			if Game.player_data.is_creative() and allowed():
+				Game.player_data.add_money(amount, "creative")
+				AudioManager.play_ui("money", -4.0)
+				Events.notify.emit("+$%d  (jetzt $%d)" % [amount, Game.player_data.money], 2.0)})
+	MenuPanel.open("Geld nehmen", items, "Kreativmodus – du hast $%d" % Game.player_data.money)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# alone: O opens the creative money menu (online the player menu has it)
+	if Net.is_online() or not event.is_action_pressed("players_menu"):
+		return
+	if Game.player_data == null or not Game.player_data.is_creative() or Game.state != Game.State.PLAYING or MenuPanel.is_open():
+		return
+	get_viewport().set_input_as_handled()
+	open_money_menu()
+
+
 func _ready() -> void:
 	name = "CreativeMode"
 	process_mode = Node.PROCESS_MODE_PAUSABLE

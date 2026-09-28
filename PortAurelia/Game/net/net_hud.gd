@@ -226,15 +226,7 @@ static func _amounts() -> Array:
 
 
 func _take_money_menu() -> void:
-	var items := []
-	for a in [10000, 100000, 1000000, 10000000]:
-		var amount: int = a
-		items.append({"label": "+$%d" % amount, "keep_open": true, "action": func():
-			if Game.player_data.is_creative() and Net.is_host():
-				Game.player_data.add_money(amount, "creative")
-				AudioManager.play_ui("money", -4.0)
-				Events.notify.emit("+$%d  (jetzt $%d)" % [amount, Game.player_data.money], 2.0)})
-	MenuPanel.open("Geld nehmen", items, "Kreativmodus – nur für dich")
+	CreativeMode.open_money_menu()
 
 
 func _drop_money_menu() -> void:

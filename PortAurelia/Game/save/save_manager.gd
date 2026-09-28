@@ -43,6 +43,7 @@ func _notification(what: int) -> void:
 		if Game.state == Game.State.PLAYING or Game.state == Game.State.PAUSED:
 			save_on_exit()
 		Settings.save_settings()
+		Game.stop_world()
 
 
 func _path(slot: int) -> String:
