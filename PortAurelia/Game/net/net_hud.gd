@@ -188,6 +188,9 @@ func open_players_menu() -> void:
 		var me := GameWorld.instance.player as Node3D if GameWorld.instance else null
 		if pr and is_instance_valid(pr) and me:
 			d = "%d m entfernt" % int((pr as Node3D).global_position.distance_to(me.global_position))
+		var link := Net.peer_link_text(pid)
+		if link != "":
+			d = (d + "  ·  " if d != "" else "") + link
 		items.append({"label": Net.player_name(pid), "right": "Geld senden", "desc": d,
 			"action": func(): _money_menu(pid)})
 		if Net.is_host():

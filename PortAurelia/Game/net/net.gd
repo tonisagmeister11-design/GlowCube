@@ -1631,6 +1631,8 @@ func _ent_spawn(eid: int, kind: String, data: Dictionary) -> void:
 			v.livery = (data["livery"] as Dictionary).duplicate()
 		v.set_meta("net_proxy", 0)
 		v.set_meta("net_entity", eid)
+		if bool(data.get("amb", false)):
+			v.set_meta("net_shared_car", true)   # a car of the host's world: can be taken
 		v.freeze = true
 		w.add_child(v)
 		v.global_position = Vector3(0, -400, 0)

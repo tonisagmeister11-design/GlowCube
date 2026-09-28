@@ -10,7 +10,8 @@ const SHARE_ENTER := 250.0
 const SHARE_EXTRA := 80.0       # hysteresis: leave only beyond enter + this
 const VIEW_R := 210.0
 const TICK := 0.1
-const MAX_SPAWNS := 10          # new things per friend and tick (spreads bursts)
+const MAX_SPAWNS := 7           # new things per friend and tick (spreads bursts)
+const MAX_NPC_SPAWNS := 3       # characters are the expensive part for the friend's game
 const MAX_PACKET := 1000
 
 var _clients := {}              # peer id -> {"shared": bool, "known": {eid: {t, sig, snap, w}}}
@@ -136,21 +137,29 @@ func _update_client(id: int, c: Dictionary, pos: Vector3, ents: Array) -> void:
 	var now := Time.get_ticks_msec()
 	var seen := {}
 	var spawns := 0
+	var npc_spawns := 0
 	var buf := StreamPeerBuffer.new()
 	buf.put_u32(now)
+	# nearest first: close things appear first, far ones a moment later (no hitch on arrival)
+	var near: Array = []
 	for n in ents:
 		var node := n as Node3D
-		var p := node.global_position
-		var d := p.distance_to(pos)
+		var d := node.global_position.distance_to(pos)
+		if d <= VIEW_R + (30.0 if known.has(int(node.get_meta("net_eid", 0))) else 0.0):
+			near.append([d, node])
+	near.sort_custom(func(x, y): return x[0] < y[0])
+	for e in near:
+		var node: Node3D = e[1]
+		var d: float = e[0]
 		var eid := int(node.get_meta("net_eid", 0))
-		if d > VIEW_R + (30.0 if known.has(eid) else 0.0):
-			continue
 		if eid == 0:
 			eid = _ensure_eid(node)
 		if not known.has(eid):
-			if spawns >= MAX_SPAWNS:
+			if spawns >= MAX_SPAWNS or (node is NPC and npc_spawns >= MAX_NPC_SPAWNS):
 				continue
 			spawns += 1
+			if node is NPC:
+				npc_spawns += 1
 			Net._ent_spawn.rpc_id(id, eid, "npc" if node is NPC else "vehicle", _spawn_data(node, id))
 			known[eid] = {"t": -100000, "sig": null, "snap": null, "w": null}
 		seen[eid] = true
