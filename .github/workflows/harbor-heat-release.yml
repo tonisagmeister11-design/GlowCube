@@ -21,18 +21,22 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v3.5
-          name: Harbor Heat v3.5
+          tag_name: harbor-heat-v3.6
+          name: Harbor Heat v3.6
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v3.5** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v3.6** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            3.6: Louder music: the car radio plays at full volume, and the police chase music is very
+            loud on its own channel (engines and city noise step back while it plays). Everyone needs
+            version 3.6.
 
             3.5: Nobody gets stuck in the ground any more: joining players land on the sidewalk next to
             the host, spawns are checked, and whoever falls into the ground is put back automatically.
             Emergency key U (also in the pause menu): back onto the nearest sidewalk outdoors - never
-            into a building; in a car onto the nearest road. Everyone needs version 3.5.
+            into a building; in a car onto the nearest road.
 
             3.4: Creative mode alone: press O to take money. Steadier relay connections (mobile
             internet), no crash when closing the game.
