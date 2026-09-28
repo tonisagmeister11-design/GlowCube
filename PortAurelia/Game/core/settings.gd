@@ -29,7 +29,8 @@ const DEFAULTS := {
 		"voice": 1.0,
 		"music": 0.0,              # own music files (Audio/Music) are off until the player enables them
 		"music_enabled": false,
-		"radio": 0.7,              # car radio and the police-chase track (built-in songs)
+		"radio": 1.0,              # car radio (built-in songs); the police-chase track has its own loud bus
+		"music_v36": false,
 		"ui": 0.8,
 	},
 	"controls": {
@@ -88,6 +89,13 @@ func set_value(section: String, key: String, value, apply_now := true) -> void:
 	changed.emit(section, key)
 
 
+func _migrate_music() -> void:
+	# 3.6: music is louder - the old default radio volume moves up once
+	if not bool(get_value("audio", "music_v36")) and float(get_value("audio", "radio")) <= 0.75:
+		set_value("audio", "radio", 1.0, false)
+	set_value("audio", "music_v36", true, false)
+
+
 func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(_path) != OK:
@@ -96,6 +104,7 @@ func load_settings() -> void:
 		for key in DEFAULTS[section]:
 			if cfg.has_section_key(section, key):
 				data[section][key] = cfg.get_value(section, key)
+	_migrate_music()
 
 
 func save_settings() -> void:
@@ -143,11 +152,25 @@ func _apply_audio() -> void:
 	_bus("UI", get_value("audio", "ui"))
 	var music_on: bool = get_value("audio", "music_enabled")
 	_bus("Music", get_value("audio", "music") if music_on else 0.0)
-	if AudioServer.get_bus_index("Radio") < 0:
-		AudioServer.add_bus()
-		AudioServer.set_bus_name(AudioServer.bus_count - 1, "Radio")
-		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
+	# music buses: loud but never distorted (a limiter lifts the level and catches the peaks)
+	_music_bus("Radio", 6.0)
+	_music_bus("Chase", 12.0)
 	_bus("Radio", float(get_value("audio", "radio")))
+	_bus("Chase", 1.0)   # always loud (the master volume still applies)
+
+
+func _music_bus(name: String, boost_db: float) -> void:
+	var idx := AudioServer.get_bus_index(name)
+	if idx < 0:
+		AudioServer.add_bus()
+		idx = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(idx, name)
+		AudioServer.set_bus_send(idx, "Master")
+	if AudioServer.get_bus_effect_count(idx) == 0:
+		var lim := AudioEffectHardLimiter.new()
+		lim.pre_gain_db = boost_db
+		lim.ceiling_db = -0.3
+		AudioServer.add_bus_effect(idx, lim)
 
 
 func _bus(name: String, linear: float) -> void:

@@ -33,7 +33,7 @@ func _ready() -> void:
 	add_child(radio)
 	radio.finished.connect(_next_song)
 	chase = AudioStreamPlayer.new()
-	chase.bus = "Radio"
+	chase.bus = "Chase"   # own, very loud bus
 	add_child(chase)
 	Events.player_entered_vehicle.connect(_on_enter)
 	Events.player_exited_vehicle.connect(_on_exit)
@@ -142,6 +142,7 @@ func start_chase() -> void:
 	chase.stream = s
 	chase.volume_db = 0.0
 	chase.play(CHASE_START)
+	_duck(true)
 	# never on top of other music: the car radio pauses while the chase track plays
 	radio.stream_paused = true
 	if AudioManager.music and AudioManager.music.player:
@@ -165,7 +166,18 @@ func stop_chase(now := false) -> void:
 		_resume_after_chase())
 
 
+## During a chase engines, traffic and city noise step back so the music is clearly heard.
+func _duck(on: bool) -> void:
+	for b in ["Vehicles", "Environment"]:
+		var idx := AudioServer.get_bus_index(b)
+		if idx < 0:
+			continue
+		var base := linear_to_db(maxf(float(Settings.get_value("audio", String(b).to_lower())), 0.0001))
+		AudioServer.set_bus_volume_db(idx, base - (6.0 if on else 0.0))
+
+
 func _resume_after_chase() -> void:
+	_duck(false)
 	radio.stream_paused = false
 	if AudioManager.music and AudioManager.music.player:
 		AudioManager.music.player.stream_paused = false
