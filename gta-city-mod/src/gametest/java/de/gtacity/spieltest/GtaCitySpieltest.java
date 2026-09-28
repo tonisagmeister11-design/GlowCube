@@ -92,11 +92,26 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         return false;
     }
 
+    private ClientGameTestContext game;
+
+    /** If an earlier check got the player killed, press "Respawn" so the next check starts alive. */
+    private void ensureAlive() {
+        if (game == null || !game.computeOnClient(mc -> mc.gui.screen() instanceof DeathScreen)) {
+            return;
+        }
+        System.out.println("GTACITY-TEST Hinweis: Spieler war tot, wird wiederbelebt");
+        game.waitTicks(30);
+        game.clickScreenButton("deathScreen.respawn");
+        game.waitFor(mc -> mc.gui.screen() == null && mc.player != null && mc.player.isAlive(), 200);
+        game.waitTicks(20);
+    }
+
     private void check(String name, Step step) {
         if (!selected(name)) {
             return;
         }
         try {
+            ensureAlive();
             step.run();
         } catch (Throwable t) {
             fail(name + ": Ausnahme " + t);
@@ -106,6 +121,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext ctx) {
+        game = ctx;
         ctx.runOnClient(mc -> {
             mc.options.renderDistance().set(ONLY == null ? 6 : 4);
             mc.options.simulationDistance().set(6);
@@ -233,6 +249,14 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         });
         ctx.getInput().lookAt(rot[0], rot[1]);
         ctx.waitTicks(3);
+    }
+
+    /** Rounds in the magazine of the held gun plus matching ammunition in the inventory. */
+    private static int rounds(ServerPlayer p) {
+        if (!(p.getMainHandItem().getItem() instanceof GunItem gun)) {
+            return 0;
+        }
+        return GunItem.ammo(p.getMainHandItem()) + de.gtacity.item.AmmoItem.count(p, gun.type.ammo);
     }
 
     private static int wanted(TestServerContext server) {
@@ -691,6 +715,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
 
     private void patrolCar(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
         reset(server);
+        server.runCommand("gamemode creative @a"); // the chase takes a while - officers must not shoot us dead
         teleport(server, 9.5, CityLayout.GROUND + 1.0, 9.5, 0.0F, 0.0F);
         server.runOnServer(s -> WantedSystem.setLevel(player(s), 2));
         int carId = server.computeOnServer(s -> {
@@ -744,6 +769,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 c.despawn();
             }
         });
+        server.runCommand("gamemode survival @a");
         reset(server);
     }
 
@@ -814,6 +840,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 && ((PoliceEntity) s.overworld().getEntity(patrol)).getTarget() == null);
         expect(calm, "Streife lässt unbescholtene Bürger in Ruhe");
         server.runCommand("kill @e[type=gtacity:police]");
+        server.runCommand("gamemode creative @a"); // stars count in creative too, and the backup cannot kill us
 
         int cop = server.computeOnServer(s -> {
             PoliceEntity c = PoliceDispatch.spawnCop(s.overworld(), spawn.south(5), false);
@@ -838,6 +865,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         int afterKill = wanted(server);
         expect(health(server, cop) == 0, "Polizist geht zu Boden");
         expect(afterKill >= 3, "Polizist getötet: mindestens 3 Sterne (" + afterKill + ")");
+        server.runCommand("gamemode survival @a");
         reset(server);
     }
 
@@ -1047,7 +1075,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             ctx.waitTicks(45); // longest fire delay
             boolean head = gun[0].equals("sniper");
             aim(ctx, new Vec3(px, spawn.getY() + (head ? 1.62 : 1.0), pz + dist));
-            int ammo0 = server.computeOnServer(s -> GunItem.ammo(player(s).getMainHandItem()));
+            int rounds0 = server.computeOnServer(s -> rounds(player(s)));
             boolean automatic = gun[0].equals("smg") || gun[0].equals("carbine") || gun[0].equals("minigun");
             if (automatic) {
                 ctx.getInput().holdKeyFor(o -> o.keyAttack, 12);
@@ -1055,14 +1083,14 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 ctx.getInput().pressKey(o -> o.keyAttack);
             }
             ctx.waitTicks(gun[0].equals("rpg") ? 30 : 8);
-            int ammo1 = server.computeOnServer(s -> GunItem.ammo(player(s).getMainHandItem()));
+            int rounds1 = server.computeOnServer(s -> rounds(player(s)));
             float hp = health(server, target);
-            String detail = gun[2] + ": Magazin " + ammo0 + " -> " + ammo1 + ", Ziel " + hp + " HP";
-            boolean fired = ammo1 < ammo0 || (ammo0 == 1 && ammo1 >= 0);
+            String detail = gun[2] + ": " + (rounds0 - rounds1) + " Schuss, Ziel " + hp + " HP";
+            boolean fired = rounds1 < rounds0;
             if (head || gun[0].equals("rpg")) {
                 expect(fired && hp == 0, detail + (head ? " (Kopfschuss tödlich)" : " (Explosion tödlich)"));
             } else if (automatic) {
-                expect(ammo0 - ammo1 >= 3 && hp < 20, detail + " (Dauerfeuer)");
+                expect(rounds0 - rounds1 >= 3 && hp < 20, detail + " (Dauerfeuer)");
             } else {
                 expect(fired && hp < 20, detail);
             }
