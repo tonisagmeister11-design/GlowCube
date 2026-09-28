@@ -93,8 +93,8 @@ func _update_active(delta: float) -> void:
 			elif thief.state != NPC.S.FLEE:
 				thief.flee_from(pp, 30.0)
 		"police_chase":
-			var crook: Vehicle = active["crook"]
-			if not is_instance_valid(crook) or crook.destroyed or crook.global_position.distance_to(pp) > 350.0 \
+			var crook = active["crook"]
+			if not is_instance_valid(crook) or (crook as Vehicle).destroyed or crook.global_position.distance_to(pp) > 350.0 \
 					or float(active["timer"]) > 120.0:
 				for c in active["cops"]:
 					if is_instance_valid(c) and (c as Vehicle).ai_driver:
@@ -103,13 +103,17 @@ func _update_active(delta: float) -> void:
 				_end()
 		"gang_fight":
 			var alive := 0
+			var near := false
 			for n in active["nodes"]:
-				if is_instance_valid(n) and not (n as NPC).is_dead():
-					alive += 1
-			if alive <= 1 or float(active["timer"]) > 90.0 or (active["nodes"][0] as Node3D).global_position.distance_to(pp) > 250.0:
+				if is_instance_valid(n):
+					if not (n as NPC).is_dead():
+						alive += 1
+					if (n as Node3D).global_position.distance_to(pp) < 250.0:
+						near = true
+			if alive <= 1 or float(active["timer"]) > 90.0 or not near:
 				_end()
 		"armored_van":
-			var van: Vehicle = active["van"]
+			var van = active["van"]
 			if not is_instance_valid(van):
 				_end()
 			elif van.destroyed or van.engine_health < 250.0 or (van.ai_driver == null and not active.get("looted", false)):

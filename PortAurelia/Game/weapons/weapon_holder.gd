@@ -311,6 +311,8 @@ func fire_at(target: Vector3, aimed := true) -> bool:
 			VFX.tracer(from, end)
 		if p == 0 and is_player and Net.is_online():
 			Net.local_shot(from, end, current)
+		elif p == 0 and Net.is_host() and owner_body.has_meta("net_eid"):
+			Net.host_entity_shot(int(owner_body.get_meta("net_eid")), from, end, current)
 	VFX.muzzle_flash(from, base_dir, 1.4 if d["kind"] in ["shotgun", "sniper", "rifle", "launcher", "heavy"] else 1.0)
 	AudioManager.play_weapon(String(d.get("sound", "pistol")), from, is_player)
 	Events.gunshot.emit(from, owner_body, 1.0)

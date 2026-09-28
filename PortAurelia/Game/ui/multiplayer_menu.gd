@@ -14,6 +14,7 @@ var _status: Label
 var _list: Label
 var _start: Button
 var _msg: Label
+var _extra: Label
 
 
 func _ready() -> void:
@@ -55,6 +56,7 @@ func _ready() -> void:
 		DisplayServer.clipboard_set(Net.lobby_code)
 		_status.text = "Code kopiert – schick ihn deinen Freunden.")
 	_status = _text(_lobby, "", 16, Color(1, 0.85, 0.5))
+	_extra = _text(_lobby, "", 14, Color(1, 1, 1, 0.7))
 	_text(_lobby, "SPIELER", 15, Color(1, 0.3, 0.6))
 	_list = _text(_lobby, "", 20, Color(1, 1, 1))
 	_start = _button(_lobby, "SPIEL STARTEN", func(): Net.start_session())
@@ -170,6 +172,12 @@ func _refresh() -> void:
 	if not is_inside_tree():
 		return
 	_code_label.text = Net.lobby_code if Net.lobby_code != "" else "—"
+	var ex := ""
+	for e in Net.extra_codes():
+		ex += "%s:  %s\n" % [e[0], e[1]]
+	_extra.text = ("Andere Codes (wenn ihr ein VPN benutzt oder im selben Netz seid):\n" + ex) if ex != "" else ""
+	if Net.is_host() and Net.status != "":
+		_status.text = Net.status
 	var t := ""
 	for id in Net.players:
 		t += "●  %s%s\n" % [Net.player_name(id), "  (Host)" if id == 1 else ""]

@@ -4,9 +4,13 @@ extends CanvasLayer
 ## with "send money" and, for the host, "kick".
 
 var _count: Label
+var _code: Label
+var _timer: Label
 var _log: RichTextLabel
 var _input: LineEdit
 var _typing := false
+var _coop_left := 0.0
+var _coop_stamp := 0
 var _log_alpha := 0.0
 
 
@@ -24,6 +28,30 @@ func _ready() -> void:
 	_count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_count.add_theme_constant_override("outline_size", 5)
 	add_child(_count)
+	# the lobby code stays on screen the whole time (to send it to friends)
+	_code = Label.new()
+	_code.anchor_left = 1.0
+	_code.anchor_right = 1.0
+	_code.offset_left = -360
+	_code.offset_right = -24
+	_code.offset_top = 174
+	_code.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_code.add_theme_font_size_override("font_size", 22)
+	_code.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	_code.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_code.add_theme_constant_override("outline_size", 6)
+	add_child(_code)
+	_timer = Label.new()
+	_timer.anchor_left = 0.5
+	_timer.anchor_right = 0.5
+	_timer.offset_left = -120
+	_timer.offset_right = 120
+	_timer.offset_top = 70
+	_timer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_timer.add_theme_font_size_override("font_size", 30)
+	_timer.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_timer.add_theme_constant_override("outline_size", 7)
+	add_child(_timer)
 	_log = RichTextLabel.new()
 	_log.bbcode_enabled = true
 	_log.scroll_active = false
@@ -61,13 +89,22 @@ func _process(delta: float) -> void:
 		return
 	_log_alpha = maxf(0.0, _log_alpha - delta)
 	_log.modulate.a = 1.0 if _typing else clampf(_log_alpha, 0.0, 1.0)
+	_code.text = "Lobby-Code: %s" % Net.lobby_code if Net.lobby_code != "" else ""
+	var st := Net.coop_state
+	if bool(st.get("active", false)) and st.has("timer"):
+		_coop_left = float(st["timer"]) if _coop_stamp != st.hash() else maxf(0.0, _coop_left - delta)
+		_coop_stamp = st.hash()
+		_timer.text = "%d:%02d" % [int(_coop_left) / 60, int(_coop_left) % 60]
+		_timer.modulate = Color(1, 0.35, 0.3) if _coop_left < 30.0 else Color(1, 1, 1)
+	else:
+		_timer.text = ""
 
 
 func _refresh_count() -> void:
 	if _count == null:
 		return
 	var n := Net.players.size()
-	_count.text = "ONLINE: %d Spieler%s   (O: Spieler, Enter: Chat)" % [n, "  ·  Host" if Net.is_host() else ""]
+	_count.text = "ONLINE: %d Spieler%s   (O: Spieler & Koop-Missionen, Enter: Chat)" % [n, "  ·  Host" if Net.is_host() else ""]
 
 
 func _refresh_log() -> void:
@@ -131,6 +168,16 @@ func open_players_menu() -> void:
 		items.append({"label": "Lobby-Code: %s" % Net.lobby_code, "desc": "Code in die Zwischenablage kopieren",
 			"action": func(): DisplayServer.clipboard_set(Net.lobby_code); Events.notify.emit("Code kopiert.", 2.0),
 			"keep_open": true})
+	if Net.is_host():
+		if Net.coop and is_instance_valid(Net.coop):
+			items.append({"label": "Koop-Mission abbrechen", "right": String(CoopMissions.MISSIONS[Net.coop.mission_id]["title"]),
+				"action": func(): Net.coop.cancel("Der Host hat die Mission abgebrochen.")})
+		else:
+			items.append({"label": "Koop-Mission starten", "right": "%d Spieler" % Net.players.size(),
+				"action": _coop_menu})
+	elif bool(Net.coop_state.get("active", false)):
+		items.append({"label": "Koop-Mission läuft", "right": String(Net.coop_state.get("title", "")), "enabled": false,
+			"action": func(): pass})
 	for id in Net.players:
 		var pid: int = id
 		if pid == Net.my_id():
@@ -148,6 +195,17 @@ func open_players_menu() -> void:
 				Net.kick(pid)
 				Events.notify.emit("%s wurde entfernt." % Net.player_name(pid), 2.5)})
 	MenuPanel.open("Online-Spieler", items, "Geld teilen, Spieler finden (siehe Karte M)")
+
+
+func _coop_menu() -> void:
+	var items := []
+	for k in CoopMissions.MISSIONS:
+		var id: String = k
+		var m: Dictionary = CoopMissions.MISSIONS[id]
+		items.append({"label": m["title"], "right": "$%d pro Spieler" % m["reward"], "desc": m["desc"],
+			"enabled": Net.players.size() >= 2 or OS.has_environment("HH_COOP_SOLO"),
+			"action": func(): CoopMissions.start(id)})
+	MenuPanel.open("Koop-Missionen", items, "Nur zusammen zu schaffen – alle bekommen die Belohnung.")
 
 
 func _money_menu(pid: int) -> void:

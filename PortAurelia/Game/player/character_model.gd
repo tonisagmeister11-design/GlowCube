@@ -48,6 +48,14 @@ var _track_prefix := "Skeleton:"
 var prune_hidden := false
 var first_person := false
 var _fp_shadow := {}
+# last animation inputs, mirrored to other players in multiplayer (net_snapshot / net_apply)
+var _net_loco := 0.0
+var _net_custom := ""
+var _net_upper := ""
+var _net_upper_w := 0.0
+var _net_oneshot_seq := 0
+var _net_pitch := 0.0
+var _net_seen_seq := -1
 
 
 func _ready() -> void:
@@ -264,6 +272,7 @@ func _build_tree() -> void:
 
 
 func set_locomotion(speed: float) -> void:
+	_net_loco = speed
 	if tree == null:
 		return
 	if mode == "crouch":
@@ -299,11 +308,14 @@ func play_loop(anim: String) -> void:
 	if tree == null:
 		return
 	_custom_anim.animation = anim
+	_net_custom = anim
 	mode = ""
 	set_mode("custom")
 
 
 func set_upper(anim: String, weight: float) -> void:
+	_net_upper = anim
+	_net_upper_w = weight
 	if tree == null:
 		return
 	if anim != "" and _upper_anim.animation != StringName(anim):
@@ -316,6 +328,7 @@ func play_oneshot(anim: String, fade_in := 0.08) -> void:
 		return
 	_oneshot_anim.animation = anim
 	_oneshot_name = anim
+	_net_oneshot_seq += 1
 	tree.set("parameters/oneshot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 
@@ -329,8 +342,34 @@ func _on_anim_finished(anim: StringName) -> void:
 
 
 func set_aim_pitch(p: float) -> void:
+	_net_pitch = p
 	if aim_mod:
 		aim_mod.pitch = p
+
+
+## Everything the animation tree is doing right now, compact, for other players' copies:
+## [mode, custom loop, locomotion speed, upper-body anim, upper weight, one-shot anim, one-shot seq, aim pitch]
+func net_snapshot() -> Array:
+	return [mode, _net_custom if mode == "custom" else "", _net_loco, _net_upper, _net_upper_w, _oneshot_name,
+		_net_oneshot_seq, _net_pitch]
+
+
+func net_apply(a: Array) -> void:
+	if a.size() != 8 or ragdolled:
+		return
+	var m := String(a[0])
+	if m == "custom":
+		if String(a[1]) != "" and (_net_custom != String(a[1]) or mode != "custom"):
+			play_loop(String(a[1]))
+	elif m in MODES:
+		set_mode(m)
+	set_locomotion(float(a[2]))
+	set_upper(String(a[3]), float(a[4]))
+	var seq := int(a[6])
+	if _net_seen_seq >= 0 and seq != _net_seen_seq and String(a[5]) != "":
+		play_oneshot(String(a[5]), 0.05)
+	_net_seen_seq = seq
+	set_aim_pitch(float(a[7]))
 
 
 func anim_length(anim: String) -> float:

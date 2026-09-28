@@ -229,6 +229,9 @@ func _draw_map() -> void:
 			_icon(c, font, _w2s(Vector2(b["pos"].x, b["pos"].z)), b.get("icon", ""), b["color"])
 	# other players (multiplayer) with their names
 	for b in Net.map_blips():
+		if not b.has("name"):
+			_icon(c, font, _w2s(Vector2(b["pos"].x, b["pos"].z)), "", b["color"])
+			continue
 		var bp := _w2s(Vector2(b["pos"].x, b["pos"].z))
 		c.draw_circle(bp, 11.0, Color.BLACK)
 		c.draw_circle(bp, 9.0, b["color"])

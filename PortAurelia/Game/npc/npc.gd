@@ -794,6 +794,8 @@ func _fight(delta: float) -> void:
 
 
 func _target_dead() -> bool:
+	if target.has_method("is_dead") and not target is NPC:
+		return bool(target.call("is_dead"))
 	var h = target.get_node_or_null("Health")
 	return h is Health and (h as Health).dead
 
@@ -807,7 +809,8 @@ func _has_los(to: Vector3) -> bool:
 	if r.is_empty():
 		return true
 	var c = r["collider"]
-	return c == target or (target is Player and c == (target as Player).vehicle)
+	return c == target or (target is Player and c == (target as Player).vehicle) \
+		or (target is RemotePlayer and c == (target as RemotePlayer).car)
 
 
 ## Samples nearby points and returns one that blocks the line of fire at crouch height.

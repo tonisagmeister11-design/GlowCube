@@ -308,8 +308,51 @@ func _build_audio() -> void:
 
 
 # ------------------------------------------------------------------ driving
+## Multiplayer: this car is the copy of another player's car (moved by the network).
+var net_driven := false
+var _net_bump_t := 0
+
+
+func net_driven_range() -> float:
+	return 60.0 if net_driven else 38.0
+
+
+func net_steer() -> float:
+	return _steer
+
+
+## Visual state of another player's car: steering, rolling wheels, lights, engine sound.
+func net_visual(steer: float, kmh: float, flags: int, delta: float) -> void:
+	net_driven = true
+	_steer = steer
+	speed_kmh = kmh
+	headlights_on = flags & 1 != 0
+	siren_on = flags & 4 != 0
+	brake_input = 1.0 if flags & 2 != 0 else 0.0
+	throttle = 1.0 if flags & 8 != 0 else (-1.0 if flags & 16 != 0 else 0.0)
+	for w in _wheels:
+		w["contact"] = true
+		w["compress"] = 0.0
+		w["spin"] = float(w["spin"]) + kmh / 3.6 / maxf(float(w["radius"]), 0.1) * delta
+	var ratios := [0.0, 11.0, 7.5, 5.4, 4.2, 3.4, 2.9]
+	var wheel_rpm := absf(kmh / 3.6) / 0.33 * 60.0 / TAU
+	gear = clampi(1 + int(absf(kmh) / 38.0), 1, 6)
+	rpm = clampf(wheel_rpm * ratios[gear], 850.0, 7200.0)
+
+
+## Multiplayer: another player's car crashed into this (our real) car.
+func net_bump(impulse: Vector3, at: Vector3) -> void:
+	if kinematic_mode or destroyed or not impulse.is_finite():
+		return
+	impulse = impulse.limit_length(mass * 14.0)
+	apply_impulse(impulse, at - global_position)
+	call_deferred("_collision_damage", impulse.length() * 1.2, to_local(at), null)
+
+
 func _physics_process(delta: float) -> void:
 	if kinematic_mode:
+		if net_driven:
+			_update_effects(delta)
 		return
 	if driver is Player and (driver as Player).input_enabled and not destroyed:
 		_player_input(delta)
@@ -542,8 +585,21 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		var total_imp := 0.0
 		var imp_pos := Vector3.ZERO
 		for i in state.get_contact_count():
-			if state.get_contact_collider_object(i) == driver:
+			var other := state.get_contact_collider_object(i)
+			if other == driver:
 				continue
+			# crashed into another player's car: he feels it in his game
+			if other is Vehicle and (other as Vehicle).has_meta("net_proxy") and driver is Player:
+				var now := Time.get_ticks_msec()
+				if now > _net_bump_t:
+					_net_bump_t = now + 300
+					var rel := (state.linear_velocity).length()
+					if OS.has_environment("HH_NET_DEBUG"):
+						print("NETDBG car contact with player car, speed %.1f" % rel)
+					if rel > 2.0:
+						var push := state.linear_velocity * mass * 0.55
+						Net.call_deferred("send_car_bump", int((other as Vehicle).get_meta("net_proxy")),
+							push, state.get_contact_local_position(i))
 			var imp := state.get_contact_impulse(i).length()
 			if imp > total_imp:
 				total_imp = imp
@@ -583,7 +639,7 @@ func _process(delta: float) -> void:
 func _update_effects(delta: float) -> void:
 	# lights
 	var night: float = ShaderGlobals.get_value("city_lights", 0.0)
-	var occupied := driver != null or ai_driver != null
+	var occupied := driver != null or ai_driver != null or net_driven
 	var head_on := (headlights_on or night > 0.4) and occupied and not destroyed
 	_set_light("LightHead", 1.0 if head_on else 0.0)
 	var braking := (brake_input > 0.1 or (throttle < 0.0 and speed_kmh > 1.0)) and occupied
@@ -596,7 +652,7 @@ func _update_effects(delta: float) -> void:
 	_update_headlight_spots(head_on)
 	# engine audio
 	# AI engines only close by: dozens of identical engine loops phase into a droning echo
-	if occupied and not destroyed and (driver is Player or _near_player(38.0)):
+	if occupied and not destroyed and (driver is Player or _near_player(net_driven_range())):
 		if not _engine_audio.playing:
 			_engine_audio.play(randf())
 		_engine_audio.pitch_scale = float(def.get("pitch", 1.0)) * (0.55 + rpm / 7000.0 * 1.35)
@@ -899,6 +955,12 @@ func break_glass() -> void:
 
 
 func on_hit(damage: float, source: Node, pos: Vector3, dir: Vector3) -> void:
+	if has_meta("net_entity"):
+		# a co-op mission vehicle simulated by the host: report the hit
+		if source is Player or (source is Vehicle and (source as Vehicle).driver is Player) \
+				or (source is Projectile and (source as Projectile).shooter is Player):
+			Net.send_entity_hit(int(get_meta("net_entity")), damage)
+		return
 	if has_meta("net_proxy"):
 		return   # another player's car: only a copy, it is damaged in his game
 	var local := to_local(pos)

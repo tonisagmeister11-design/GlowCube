@@ -26,8 +26,8 @@ signal left(reason: String)
 const PORT := 7777
 const DISCOVERY_PORT := 7778
 const MAX_PLAYERS := 8
-const PROTOCOL := 3
-const STATE_HZ := 15.0
+const PROTOCOL := 4
+const STATE_HZ := 20.0
 const MAX_HIT := 260.0          # one hit never takes more than this (a rocket still kills a 250 hp player)
 const MAX_HIT_RANGE := 260.0
 const MAX_TRANSFER := 50000
@@ -44,6 +44,8 @@ var status := ""
 var in_game := false            # the host has started the session (late joiners go straight in)
 var players := {}               # peer id -> {name, color, world(bool), outfit, st(Array)}
 var upnp_ok := false
+var public_ip := ""
+var internet_state := ""       # "ok", "manual", "cgnat" (host, after the internet check)
 
 var _peer: ENetMultiplayerPeer
 var _secret := 0
@@ -63,6 +65,15 @@ var _pending_join := {}         # id -> name (authenticated, waiting for the con
 var _join_secret := 0
 var _join_target := ""
 var _chat_log: Array = []       # [[name, text, color]]
+# host-simulated entities (co-op mission enemies and vehicles), replicated to every client
+var _ents := {}                 # eid -> {node, kind, data}   (host)
+var _ent_proxies := {}          # eid -> Node3D               (client)
+var _next_eid := 1
+var _ent_t := 0.0
+# co-op mission state from the host (objective, markers, timer) - shown by every client
+var coop_state := {}
+var coop: Node = null           # host: running CoopMissions node
+signal coop_changed
 
 
 func _ready() -> void:
@@ -70,7 +81,7 @@ func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected)
-	multiplayer.connection_failed.connect(func(): _fail.call_deferred("Keine Verbindung zum Host. Code richtig? Läuft die Lobby noch?"))
+	multiplayer.connection_failed.connect(func(): _fail.call_deferred("Keine Verbindung zum Host. Ist der Code richtig und die Lobby noch offen? Wenn ihr nicht im gleichen WLAN seid: Beim Host muss in der Lobby „Internet bereit“ stehen – sonst soll der andere die Lobby erstellen oder ihr nutzt Radmin VPN / ZeroTier."))
 	multiplayer.server_disconnected.connect(func(): _fail.call_deferred("Die Verbindung zum Host wurde getrennt."))
 	multiplayer.peer_authenticating.connect(_on_authenticating)
 	multiplayer.peer_authentication_failed.connect(func(_id): if mode == Mode.CLIENT: _fail.call_deferred("Beitritt abgelehnt."))
@@ -123,6 +134,8 @@ func host(player_name: String) -> bool:
 	players = {1: {"name": my_name, "color": COLORS[0], "world": false, "outfit": {}, "st": []}}
 	_host_ip = _lan_ip()
 	lobby_code = encode_code(_host_ip, _secret)
+	internet_state = ""
+	public_ip = ""
 	_set_status("Lobby offen. Im gleichen WLAN funktioniert der Code sofort. Internet wird eingerichtet ...")
 	_disc_send = PacketPeerUDP.new()
 	_disc_send.set_broadcast_enabled(true)
@@ -143,6 +156,9 @@ func _setup_multiplayer() -> void:
 	sm.auth_timeout = 5.0
 
 
+## Internet setup (worker thread): open the port on the router (UPnP) and find the public
+## address (router answer, else a public STUN server - the standard way games and video calls
+## learn their own address). Detects connections without an own public address (CGNAT).
 func _upnp_setup() -> void:
 	var u := UPNP.new()
 	var ok := false
@@ -151,10 +167,11 @@ func _upnp_setup() -> void:
 		if u.add_port_mapping(PORT, PORT, "Harbor Heat", "UDP", 0) == UPNP.UPNP_RESULT_SUCCESS:
 			ext = u.query_external_address()
 			ok = ext != "" and ext.count(".") == 3
-	call_deferred("_upnp_done", u, ok, ext)
+	var pub := stun_public_ip()
+	call_deferred("_upnp_done", u, ok, ext, pub)
 
 
-func _upnp_done(u: UPNP, ok: bool, ext: String) -> void:
+func _upnp_done(u: UPNP, ok: bool, ext: String, pub: String) -> void:
 	if _upnp_thread:
 		_upnp_thread.wait_to_finish()
 		_upnp_thread = null
@@ -162,14 +179,110 @@ func _upnp_done(u: UPNP, ok: bool, ext: String) -> void:
 		if ok:
 			u.delete_port_mapping(PORT, "UDP")
 		return
-	upnp_ok = ok
+	upnp_ok = ok and not is_private_ip(ext)
+	var cgnat := (ok and is_private_ip(ext)) or (ok and pub != "" and pub != ext)
+	public_ip = pub if pub != "" else (ext if ok and not is_private_ip(ext) else "")
 	if ok:
 		_upnp = u
-		lobby_code = encode_code(ext, _secret)
-		_set_status("Lobby offen – der Code funktioniert im Internet und im gleichen WLAN.")
+	if public_ip != "":
+		lobby_code = encode_code(public_ip, _secret)
+	if upnp_ok and not cgnat:
+		internet_state = "ok"
+		_set_status("✔ Internet bereit: Der Router wurde automatisch geöffnet. Der Code funktioniert überall – auch wenn dein Freund ganz woanders sitzt.")
+	elif cgnat:
+		internet_state = "cgnat"
+		_set_status("✖ Dein Internetanschluss hat keine eigene öffentliche Adresse (CGNAT) – über das Internet kann niemand zu dir. Im gleichen WLAN klappt der Code. Übers Internet: Dein Freund erstellt die Lobby, oder ihr nutzt Radmin VPN / ZeroTier (dann den VPN-Code unten).")
 	else:
-		_set_status("Lobby offen – der Code funktioniert im gleichen WLAN. Für Internet: im Router Port %d (UDP) freigeben oder ein VPN wie Radmin VPN / ZeroTier benutzen." % PORT)
+		internet_state = "manual"
+		_set_status("⚠ Der Router ließ sich nicht automatisch öffnen. Im gleichen WLAN klappt der Code sofort. Übers Internet: im Router UDP-Port %d an diesen PC weiterleiten, oder dein Freund erstellt die Lobby, oder ihr nutzt Radmin VPN / ZeroTier (VPN-Code unten)." % PORT)
 	roster_changed.emit()
+
+
+## Public IPv4 address via STUN (RFC 5389 binding request). "" if nothing answered.
+static func stun_public_ip() -> String:
+	var servers := [["stun.l.google.com", 19302], ["stun.cloudflare.com", 3478], ["stun1.l.google.com", 19302]]
+	for sv in servers:
+		var ip := IP.resolve_hostname(String(sv[0]), IP.TYPE_IPV4)
+		if ip == "" or not ip.is_valid_ip_address():
+			continue
+		var udp := PacketPeerUDP.new()
+		if udp.connect_to_host(ip, int(sv[1])) != OK:
+			continue
+		var req := PackedByteArray([0x00, 0x01, 0x00, 0x00, 0x21, 0x12, 0xA4, 0x42])
+		for i in 12:
+			req.append(randi() % 256)
+		for attempt in 3:
+			udp.put_packet(req)
+			var t0 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - t0 < 700:
+				if udp.get_available_packet_count() > 0:
+					var r := udp.get_packet()
+					var got := _parse_stun(r, req)
+					if got != "":
+						udp.close()
+						return got
+				OS.delay_msec(20)
+		udp.close()
+	return ""
+
+
+static func _parse_stun(r: PackedByteArray, req: PackedByteArray) -> String:
+	if r.size() < 20 or r[0] != 0x01 or r[1] != 0x01:
+		return ""
+	for i in range(8, 20):
+		if r[i] != req[i]:
+			return ""
+	var pos := 20
+	while pos + 4 <= r.size():
+		var t := (r[pos] << 8) | r[pos + 1]
+		var ln := (r[pos + 2] << 8) | r[pos + 3]
+		var v := pos + 4
+		if v + ln > r.size():
+			break
+		if (t == 0x0020 or t == 0x0001) and ln >= 8 and r[v + 1] == 0x01:
+			var a := [r[v + 4], r[v + 5], r[v + 6], r[v + 7]]
+			if t == 0x0020:
+				a = [a[0] ^ 0x21, a[1] ^ 0x12, a[2] ^ 0xA4, a[3] ^ 0x42]
+			return "%d.%d.%d.%d" % a
+		pos = v + ln + ((4 - ln % 4) % 4)
+	return ""
+
+
+static func is_private_ip(ip: String) -> bool:
+	var p := ip.split(".")
+	if p.size() != 4:
+		return true
+	var a := int(p[0])
+	var b := int(p[1])
+	return a == 10 or a == 127 or (a == 172 and b >= 16 and b <= 31) or (a == 192 and b == 168) \
+		or (a == 100 and b >= 64 and b <= 127) or (a == 169 and b == 254) or a == 0
+
+
+## Extra codes for the other network adapters (VPNs like Radmin VPN, ZeroTier, Hamachi, Tailscale
+## and the home network): [label, code].
+func extra_codes() -> Array:
+	var out := []
+	if mode != Mode.HOST:
+		return out
+	for a in IP.get_local_addresses():
+		if a.count(".") != 3 or a.begins_with("127.") or a.begins_with("169.254."):
+			continue
+		var c := encode_code(a, _secret)
+		if c == lobby_code:
+			continue
+		var label := "Heimnetz"
+		if a.begins_with("26."):
+			label = "Radmin VPN"
+		elif a.begins_with("25."):
+			label = "Hamachi"
+		elif a.begins_with("100.") and int(a.split(".")[1]) >= 64 and int(a.split(".")[1]) <= 127:
+			label = "Tailscale"
+		elif not is_private_ip(a):
+			label = "VPN / Netzwerk"
+		elif a.begins_with("10.") or a.begins_with("172."):
+			label = "VPN / Heimnetz"
+		out.append([label, c, a])
+	return out
 
 
 ## Host: start the game for everyone in the lobby.
@@ -202,17 +315,23 @@ func join(player_name: String, code: String) -> void:
 		return
 	_join_secret = int(d["secret"])
 	_join_target = String(d["ip"])
+	var join_port := PORT
+	if OS.has_environment("HH_JOIN_ADDR"):   # tests: route through a latency/loss simulator
+		var hp := OS.get_environment("HH_JOIN_ADDR").split(":")
+		_join_target = hp[0]
+		join_port = int(hp[1]) if hp.size() > 1 else PORT
 	mode = Mode.CLIENT
 	_set_status("Suche Lobby ...")
 	# same network? the host announces its key by broadcast
-	var lan := await _discover(_join_secret, 1.6)
+	var lan := "" if OS.has_environment("HH_JOIN_ADDR") else await _discover(_join_secret, 1.6)
 	if mode != Mode.CLIENT:
 		return
 	if lan != "":
 		_join_target = lan
+		join_port = PORT
 	_set_status("Verbinde mit %s ..." % ("Lobby im WLAN" if lan != "" else "Lobby"))
 	_peer = ENetMultiplayerPeer.new()
-	if _peer.create_client(_join_target, PORT) != OK:
+	if _peer.create_client(_join_target, join_port) != OK:
 		_fail("Verbindung konnte nicht gestartet werden.")
 		return
 	_setup_multiplayer()
@@ -333,6 +452,16 @@ func leave(reason := "") -> void:
 		return
 	for id in _proxies.keys():
 		_remove_proxy(id)
+	for eid in _ent_proxies.keys():
+		var n = _ent_proxies[eid]
+		if n and is_instance_valid(n):
+			n.queue_free()
+	_ent_proxies.clear()
+	_ents.clear()
+	if coop and is_instance_valid(coop):
+		coop.queue_free()
+	coop = null
+	coop_state = {}
 	if _upnp:
 		_upnp.delete_port_mapping(PORT, "UDP")
 		_upnp = null
@@ -423,6 +552,10 @@ func _process(delta: float) -> void:
 		if _clock_t <= 0.0:
 			_clock_t = 5.0
 			_broadcast_clock()
+		_ent_t -= delta
+		if _ent_t <= 0.0 and not _ents.is_empty():
+			_ent_t = 1.0 / 15.0
+			_send_entity_states()
 
 
 func _send_state() -> void:
@@ -439,7 +572,14 @@ func _send_state() -> void:
 		_state.rpc_id(1, st)
 
 
-## [pos, yaw, anim, speed, weapon, vehicle type, vehicle pos, vehicle rot (quat), paint, health, max health, livery]
+## State of the local player, 20 times a second:
+##  0 pos  1 yaw  2 state (0 ground 1 air 2 vehicle 3 dead 4 swim)  3 animation snapshot (CharacterModel)
+##  4 weapon  5 vehicle type  6 vehicle pos  7 vehicle rotation  8 paint  9 health  10 max health
+##  11 livery  12 steering  13 vehicle km/h  14 vehicle flags (1 lights 2 brake 4 siren 8 throttle 16 reverse)
+##  15 sender clock (ms)  16 velocity  17 armor
+const STATE_SIZE := 18
+
+
 static func pack_state(p: Player) -> Array:
 	var anim := 0
 	match p.state:
@@ -456,6 +596,10 @@ static func pack_state(p: Player) -> Array:
 	var vq := Quaternion.IDENTITY
 	var paint := Color.WHITE
 	var liv := {}
+	var steer := 0.0
+	var kmh := 0.0
+	var flags := 0
+	var vel := p.velocity
 	if p.is_in_vehicle() and p.vehicle is Vehicle:
 		var v := p.vehicle as Vehicle
 		vt = v.type_id
@@ -463,30 +607,45 @@ static func pack_state(p: Player) -> Array:
 		vq = v.global_basis.get_rotation_quaternion()
 		paint = v.paint
 		liv = v.livery
-	var sp := Vector2(p.velocity.x, p.velocity.z).length()
-	return [p.global_position, p.rotation.y, anim, sp, p.weapons.current_id(), vt, vp, vq, paint,
-		p.health.health, p.health.max_health, liv]
+		steer = v.net_steer()
+		kmh = v.speed_kmh
+		vel = v.linear_velocity
+		flags = (1 if v.headlights_on else 0) | (2 if v.brake_input > 0.1 else 0) | (4 if v.siren_on else 0) \
+			| (8 if v.throttle > 0.1 else 0) | (16 if v.throttle < -0.1 else 0)
+	return [p.global_position, p.rotation.y, anim, p.model.net_snapshot(), p.weapons.current_id(), vt, vp, vq, paint,
+		p.health.health, p.health.max_health, liv, steer, kmh, flags, Time.get_ticks_msec(), vel, p.health.armor]
+
+
+static func _finite_vec(v: Vector3, lim: float) -> bool:
+	return v.is_finite() and absf(v.x) < lim and absf(v.y) < lim and absf(v.z) < lim
 
 
 static func valid_state(st) -> bool:
-	if not st is Array or st.size() != 12:
+	if not st is Array or st.size() != STATE_SIZE:
 		return false
-	var types := [TYPE_VECTOR3, TYPE_FLOAT, TYPE_INT, TYPE_FLOAT, TYPE_STRING, TYPE_STRING, TYPE_VECTOR3,
-		TYPE_QUATERNION, TYPE_COLOR, TYPE_FLOAT, TYPE_FLOAT, TYPE_DICTIONARY]
+	var types := [TYPE_VECTOR3, TYPE_FLOAT, TYPE_INT, TYPE_ARRAY, TYPE_STRING, TYPE_STRING, TYPE_VECTOR3,
+		TYPE_QUATERNION, TYPE_COLOR, TYPE_FLOAT, TYPE_FLOAT, TYPE_DICTIONARY, TYPE_FLOAT, TYPE_FLOAT, TYPE_INT,
+		TYPE_INT, TYPE_VECTOR3, TYPE_FLOAT]
 	for i in types.size():
 		if typeof(st[i]) != types[i]:
 			return false
-	for v in [st[0], st[6]]:
-		var vv: Vector3 = v
-		if not vv.is_finite() or absf(vv.x) > 20000.0 or absf(vv.y) > 5000.0 or absf(vv.z) > 20000.0:
-			return false
-	if not is_finite(st[1]) or not is_finite(st[3]) or not is_finite(st[9]) or not is_finite(st[10]):
+	if not _finite_vec(st[0], 20000.0) or not _finite_vec(st[6], 20000.0) or not _finite_vec(st[16], 400.0):
 		return false
+	for k in [1, 9, 10, 12, 13, 17]:
+		if not is_finite(st[k]) or absf(st[k]) > 100000.0:
+			return false
 	if not (st[7] as Quaternion).is_finite():
 		return false
-	if String(st[4]).length() > 24 or (String(st[4]) != "" and WeaponData.get_def(st[4]).is_empty()):
+	var a: Array = st[3]
+	if a.size() != 8:
 		return false
-	if String(st[5]) != "" and not VehicleDefs.meta(st[5]) is Dictionary:
+	var at := [TYPE_STRING, TYPE_STRING, TYPE_FLOAT, TYPE_STRING, TYPE_FLOAT, TYPE_STRING, TYPE_INT, TYPE_FLOAT]
+	for i in at.size():
+		if typeof(a[i]) != at[i] or (at[i] == TYPE_STRING and String(a[i]).length() > 32):
+			return false
+		if at[i] == TYPE_FLOAT and not is_finite(a[i]):
+			return false
+	if String(st[4]).length() > 24 or (String(st[4]) != "" and WeaponData.get_def(st[4]).is_empty()):
 		return false
 	if String(st[5]) != "" and (VehicleDefs.meta(st[5]) as Dictionary).is_empty():
 		return false
@@ -547,6 +706,11 @@ func _hello_world(outfit: Dictionary) -> void:
 		_in_world.rpc_id(id, other, players[other]["outfit"])
 	_spawn_proxy(id, players[id]["outfit"])
 	_broadcast_roster()
+	for eid in _ents:
+		var e: Dictionary = _ents[eid]
+		_ent_spawn.rpc_id(id, eid, e["kind"], e["data"])
+	if not coop_state.is_empty():
+		_coop.rpc_id(id, coop_state)
 	var p := _local_player()
 	if p:
 		_meet.rpc_id(id, p.global_position)
@@ -599,7 +763,7 @@ func _hit(target: int, dmg: float) -> void:
 	# attacker must be near the victim (last known positions)
 	var a: Array = players[id]["st"]
 	var b: Array = players[target]["st"]
-	if a.size() == 12 and b.size() == 12 and (a[0] as Vector3).distance_to(b[0]) > MAX_HIT_RANGE:
+	if a.size() == STATE_SIZE and b.size() == STATE_SIZE and (a[0] as Vector3).distance_to(b[0]) > MAX_HIT_RANGE:
 		return
 	if target == 1:
 		_receive_hit(id, dmg)
@@ -611,7 +775,7 @@ func _hit(target: int, dmg: float) -> void:
 ## bullets up to a headshot, launchers and cars up to MAX_HIT.
 func _max_hit_for(id: int) -> float:
 	var st: Array = players.get(id, {}).get("st", [])
-	if st.size() != 12:
+	if st.size() != STATE_SIZE:
 		return 60.0
 	if String(st[5]) != "" or int(st[2]) == 2:
 		return MAX_HIT                      # in a car: running someone over
@@ -621,6 +785,42 @@ func _max_hit_for(id: int) -> float:
 	if String(d.get("kind", "")) == "launcher" or d.has("projectile"):
 		return MAX_HIT
 	return minf(float(d.get("damage", 20.0)) * Combat.HEADSHOT_MULT * 1.1, MAX_HIT)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _car_bump(target: int, impulse: Vector3, at: Vector3) -> void:
+	var id := _sender_ok()
+	if OS.has_environment("HH_NET_DEBUG"):
+		print("NETDBG car bump from %d to %d imp %.0f at %s" % [id, target, impulse.length(), at])
+	if id == 0 or target == id or not players.has(target) or not _allow(id, "bump", 6):
+		return
+	if not impulse.is_finite() or not at.is_finite() or impulse.length() > 200000.0:
+		return
+	var a: Array = players[id]["st"]
+	if a.size() == STATE_SIZE and (a[6] as Vector3).distance_to(at) > 12.0:
+		return   # must be next to his own car
+	if target == 1:
+		_apply_bump(impulse, at)
+	else:
+		_car_bump_in.rpc_id(target, id, impulse, at)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _car_bump_in(_from: int, impulse: Vector3, at: Vector3) -> void:
+	if not _from_host() or not impulse.is_finite() or not at.is_finite():
+		return
+	_apply_bump(impulse, at)
+
+
+func _apply_bump(impulse: Vector3, at: Vector3) -> void:
+	var p := _local_player()
+	if OS.has_environment("HH_NET_DEBUG"):
+		print("NETDBG apply bump: in car %s dist %.1f" % [p.is_in_vehicle() if p else false,
+			(p.vehicle as Node3D).global_position.distance_to(at) if p and p.is_in_vehicle() else -1.0])
+	if p and p.is_in_vehicle() and p.vehicle is Vehicle:
+		var v := p.vehicle as Vehicle
+		if v.global_position.distance_to(at) < 8.0:
+			v.net_bump(impulse, at)
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -805,6 +1005,23 @@ func send_hit(target: int, dmg: float) -> void:
 		_hit.rpc_id(1, target, dmg)
 
 
+## Our car crashed into another player's car copy: push his real car in his game.
+func send_car_bump(target: int, impulse: Vector3, at: Vector3) -> void:
+	if not _world_connected or not players.has(target) or target == my_id():
+		return
+	if is_host():
+		_car_bump_in.rpc_id(target, 1, impulse, at)
+	else:
+		_car_bump.rpc_id(1, target, impulse, at)
+
+
+## Host only: a host-simulated NPC (mission enemy) hit a remote player.
+func host_npc_hit(target: int, dmg: float) -> void:
+	if not is_host() or not players.has(target) or target == 1:
+		return
+	_take_hit.rpc_id(target, 0, minf(dmg, MAX_HIT))
+
+
 func send_money(target: int, amount: int) -> bool:
 	if not _world_connected or not players.has(target) or target == my_id():
 		return false
@@ -851,9 +1068,9 @@ func chat_log() -> Array:
 # ------------------------------------------------------------------ receiving
 func _receive_hit(attacker: int, dmg: float) -> void:
 	var p := _local_player()
-	if p == null or p.health.dead:
+	if p == null or p.health.dead or p.health.invulnerable:
 		return
-	var src: Node3D = _proxies.get(attacker)
+	var src: Node3D = _proxies.get(attacker) if attacker != 0 else null
 	var pos := p.global_position + Vector3.UP * 1.2
 	var dir := Vector3.ZERO
 	if src and is_instance_valid(src):
@@ -925,6 +1142,303 @@ func _show_shot(id: int, from: Vector3, to: Vector3, weapon: String) -> void:
 	pr.on_fired()
 
 
+# ================================================================== replicated entities
+## Host: make a node (mission NPC or vehicle) visible to every client. kind "npc" data {outfit},
+## kind "vehicle" data {type, paint, livery}. Returns the entity id.
+func host_add_entity(node: Node3D, kind: String, data: Dictionary) -> int:
+	if not is_host():
+		return 0
+	var eid := _next_eid
+	_next_eid += 1
+	_ents[eid] = {"node": node, "kind": kind, "data": data}
+	node.set_meta("net_eid", eid)
+	for id in players:
+		if id != 1 and players[id]["world"]:
+			_ent_spawn.rpc_id(id, eid, kind, data)
+	node.tree_exiting.connect(func(): host_remove_entity(eid))
+	return eid
+
+
+func host_remove_entity(eid: int) -> void:
+	if not _ents.has(eid):
+		return
+	_ents.erase(eid)
+	if is_host():
+		for id in players:
+			if id != 1 and players[id]["world"]:
+				_ent_remove.rpc_id(id, eid)
+
+
+func _send_entity_states() -> void:
+	var npcs := []
+	var cars := []
+	var now := Time.get_ticks_msec()
+	for eid in _ents:
+		var e: Dictionary = _ents[eid]
+		var n = e["node"]
+		if n == null or not is_instance_valid(n):
+			continue
+		if e["kind"] == "npc":
+			var npc := n as NPC
+			npcs.append([eid, npc.global_position, npc.rotation.y, npc.model.net_snapshot(), npc.weapons.current_id(),
+				npc.is_dead(), now])
+		else:
+			var v := n as Vehicle
+			cars.append([eid, v.global_position, v.global_basis.get_rotation_quaternion(), v.net_steer(), v.speed_kmh,
+				(1 if v.headlights_on else 0) | (4 if v.siren_on else 0), v.destroyed, now, v.body_health])
+	# small packets (under the ~1400 byte MTU): 4 characters or 6 cars per message
+	var chunks := []
+	for i in range(0, npcs.size(), 4):
+		chunks.append([npcs.slice(i, i + 4), []])
+	for i in range(0, cars.size(), 6):
+		chunks.append([[], cars.slice(i, i + 6)])
+	for id in players:
+		if id != 1 and players[id]["world"]:
+			for c in chunks:
+				_ent_states.rpc_id(id, c[0], c[1])
+
+
+## Host: an entity (mission enemy) fired - tracers for the clients.
+func host_entity_shot(eid: int, from: Vector3, to: Vector3, weapon: String) -> void:
+	for id in players:
+		if id != 1 and players[id]["world"]:
+			_ent_shot.rpc_id(id, eid, from, to, weapon)
+
+
+## Client: the local player hit a host entity.
+func send_entity_hit(eid: int, dmg: float) -> void:
+	if mode == Mode.CLIENT and _world_connected:
+		_ent_hit.rpc_id(1, eid, dmg)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _ent_spawn(eid: int, kind: String, data: Dictionary) -> void:
+	if not _from_host() or not _world_connected or _ent_proxies.has(eid):
+		return
+	var w := GameWorld.instance
+	if w == null:
+		return
+	if kind == "npc":
+		var r := RemoteEntity.new()
+		r.eid = eid
+		r.outfit = _clean_outfit(data.get("outfit", {}) if data.get("outfit") is Dictionary else {})
+		w.add_child(r)
+		r.global_position = Vector3(0, -400, 0)
+		_ent_proxies[eid] = r
+	elif kind == "vehicle":
+		var vt := String(data.get("type", "sedan"))
+		if (VehicleDefs.meta(vt) as Dictionary).is_empty():
+			return
+		var col = data.get("paint", Color.WHITE)
+		var v := Vehicle.create(vt, col if col is Color else Color.WHITE)
+		v.set_meta("net_proxy", 0)
+		v.set_meta("net_entity", eid)
+		v.freeze = true
+		w.add_child(v)
+		v.global_position = Vector3(0, -400, 0)
+		v.set_kinematic(true)
+		_ent_proxies[eid] = v
+
+
+@rpc("authority", "call_remote", "reliable")
+func _ent_remove(eid: int) -> void:
+	if not _from_host():
+		return
+	var n = _ent_proxies.get(eid)
+	if n and is_instance_valid(n):
+		n.queue_free()
+	_ent_proxies.erase(eid)
+
+
+@rpc("authority", "call_remote", "unreliable_ordered", 3)
+func _ent_states(npcs: Array, cars: Array) -> void:
+	if not _from_host() or npcs.size() > 64 or cars.size() > 32:
+		return
+	for s in npcs:
+		if not (s is Array and s.size() == 7 and typeof(s[0]) == TYPE_INT and typeof(s[1]) == TYPE_VECTOR3
+				and typeof(s[3]) == TYPE_ARRAY and typeof(s[6]) == TYPE_INT and (s[1] as Vector3).is_finite()):
+			continue
+		var r = _ent_proxies.get(s[0])
+		if r is RemoteEntity and is_instance_valid(r):
+			(r as RemoteEntity).push(s)
+	for s in cars:
+		if not (s is Array and s.size() == 9 and typeof(s[1]) == TYPE_VECTOR3 and typeof(s[2]) == TYPE_QUATERNION
+				and (s[1] as Vector3).is_finite() and (s[2] as Quaternion).is_finite()):
+			continue
+		var v = _ent_proxies.get(s[0])
+		if v is Vehicle and is_instance_valid(v):
+			var veh := v as Vehicle
+			var target := Transform3D(Basis(s[2] as Quaternion), s[1])
+			if veh.global_position.distance_to(s[1]) > 20.0:
+				veh.global_transform = target
+			else:
+				veh.global_transform = veh.global_transform.interpolate_with(target, 0.5)
+			veh.net_visual(float(s[3]), float(s[4]), int(s[5]), 1.0 / 15.0)
+			veh.body_health = float(s[8])
+			if bool(s[6]) and not veh.destroyed:
+				veh.call("explode")
+
+
+@rpc("authority", "call_remote", "unreliable_ordered", 2)
+func _ent_shot(eid: int, from: Vector3, to: Vector3, weapon: String) -> void:
+	if not _from_host() or not from.is_finite() or not to.is_finite() or WeaponData.get_def(weapon).is_empty():
+		return
+	var d := WeaponData.get_def(weapon)
+	VFX.tracer(from, to)
+	VFX.muzzle_flash(from, (to - from).normalized(), 1.0)
+	AudioManager.play_weapon(String(d.get("sound", "pistol")), from, false)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _ent_hit(eid: int, dmg: float) -> void:
+	var id := _sender_ok()
+	if OS.has_environment("HH_NET_DEBUG"):
+		print("NETDBG entity hit from %d on %d dmg %.0f (known %s)" % [id, eid, dmg, _ents.has(eid)])
+	if id == 0 or not _ents.has(eid) or not _allow(id, "ehit", 20) or not is_finite(dmg) or dmg <= 0.0:
+		return
+	dmg = minf(dmg, _max_hit_for(id))
+	var n = _ents[eid]["node"]
+	if n == null or not is_instance_valid(n):
+		return
+	var a: Array = players[id]["st"]
+	if a.size() == STATE_SIZE and (a[0] as Vector3).distance_to((n as Node3D).global_position) > MAX_HIT_RANGE:
+		return
+	var src: Node = _proxies.get(id)
+	var pos := (n as Node3D).global_position + Vector3.UP
+	var dir := Vector3.ZERO
+	if src and is_instance_valid(src):
+		dir = ((n as Node3D).global_position - (src as Node3D).global_position).normalized()
+	if n is Vehicle:
+		(n as Vehicle).on_hit(dmg, src, pos, dir)
+	else:
+		Combat.apply_damage(n, dmg, src, pos, dir)
+
+
+# ================================================================== co-op missions (state from the host)
+## Host: publish the co-op mission state to everybody (also applied locally).
+func host_coop_state(st: Dictionary) -> void:
+	coop_state = st
+	for id in players:
+		if id != 1 and players[id]["world"]:
+			_coop.rpc_id(id, st)
+	_apply_coop(st)
+
+
+func host_coop_reward(amount: int, text: String) -> void:
+	for id in players:
+		if id != 1 and players[id]["world"]:
+			_coop_reward.rpc_id(id, amount, text)
+	_receive_coop_reward(amount, text)
+
+
+func host_coop_wanted(level: int) -> void:
+	for id in players:
+		if id != 1 and players[id]["world"]:
+			_coop_wanted.rpc_id(id, level)
+	_set_local_wanted(level)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _coop(st: Dictionary) -> void:
+	if not _from_host() or var_to_bytes(st).size() > 8000:
+		return
+	coop_state = st
+	_apply_coop(st)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _coop_reward(amount: int, text: String) -> void:
+	if not _from_host() or amount < 0 or amount > 250000:
+		return
+	_receive_coop_reward(amount, clean_text(text))
+
+
+@rpc("authority", "call_remote", "reliable")
+func _coop_wanted(level: int) -> void:
+	if _from_host():
+		_set_local_wanted(clampi(level, 0, 5))
+
+
+func _set_local_wanted(level: int) -> void:
+	var w := GameWorld.instance
+	if w and w.police:
+		if level <= 0:
+			w.police.call("clear_wanted")
+		else:
+			w.police.call("set_wanted", maxi(level, int(w.police.get("wanted_level"))))
+
+
+func _receive_coop_reward(amount: int, text: String) -> void:
+	if amount > 0:
+		Game.player_data.add_money(amount, "coop")
+	Events.big_message.emit("KOOP-MISSION GESCHAFFT" if amount > 0 else "KOOP-MISSION GESCHEITERT", text, 5.0)
+	AudioManager.play_ui("mission_passed" if amount > 0 else "wasted", -4.0)
+
+
+var _coop_markers: Array = []
+var _coop_last_gps := Vector3.INF
+
+
+func _apply_coop(st: Dictionary) -> void:
+	for m in _coop_markers:
+		if is_instance_valid(m):
+			m.queue_free()
+	_coop_markers.clear()
+	var w := GameWorld.instance
+	if w == null:
+		return
+	if st.is_empty() or not bool(st.get("active", false)):
+		Events.mission_objective.emit("")
+		if _coop_last_gps != Vector3.INF:
+			Events.waypoint_set.emit(Vector3.INF)
+			_coop_last_gps = Vector3.INF
+		coop_changed.emit()
+		return
+	var obj := clean_text(String(st.get("objective", "")))
+	var mine: Dictionary = (st.get("per_player", {}) as Dictionary).get(my_id(), {}) if st.get("per_player") is Dictionary else {}
+	if mine.has("objective"):
+		obj = clean_text(String(mine["objective"]))
+	Events.mission_objective.emit("[KOOP] " + obj)
+	var markers: Array = st.get("markers", []) if st.get("markers") is Array else []
+	if mine.has("markers") and mine["markers"] is Array:
+		markers = markers + mine["markers"]
+	for mk in markers.slice(0, 12):
+		if not (mk is Array and mk.size() >= 2 and mk[0] is Vector3 and (mk[0] as Vector3).is_finite()):
+			continue
+		var m := InteractMarker.new()
+		m.vehicle_marker = true
+		m.interact_radius = clampf(float(mk[1]), 1.0, 30.0)
+		m.color = mk[2] if mk.size() > 2 and mk[2] is Color else Color(0.3, 0.8, 1.0)
+		m.prompt = ""
+		w.add_child(m)
+		m.global_position = mk[0]
+		_coop_markers.append(m)
+	var gps = mine.get("gps", st.get("gps", null))
+	if gps is Vector3 and (gps as Vector3).is_finite():
+		if _coop_last_gps == Vector3.INF or (gps as Vector3).distance_to(_coop_last_gps) > 8.0:
+			Events.waypoint_set.emit(gps)
+			_coop_last_gps = gps
+	coop_changed.emit()
+
+
+## Map / minimap blips for the co-op mission (markers and the enemies).
+func coop_blips() -> Array:
+	var out := []
+	if coop_state.is_empty() or not bool(coop_state.get("active", false)):
+		return out
+	for m in _coop_markers:
+		if is_instance_valid(m):
+			out.append({"pos": (m as Node3D).global_position, "icon": "", "color": Color(0.3, 0.8, 1.0), "size": 9.0, "edge": true})
+	var ents: Array = _ent_proxies.values() if not is_host() else _ents.values().map(func(e): return e["node"])
+	for n in ents:
+		if n and is_instance_valid(n) and n is Node3D and not (n.has_method("is_dead") and n.call("is_dead")):
+			if n is Vehicle and (n as Vehicle).destroyed:
+				continue
+			out.append({"pos": (n as Node3D).global_position, "icon": "", "color": Color(1.0, 0.25, 0.25), "size": 7.0,
+				"edge": n is Vehicle})
+	return out
+
+
 # ------------------------------------------------------------------ proxies
 func _spawn_proxy(id: int, outfit: Dictionary) -> void:
 	var w := GameWorld.instance
@@ -939,7 +1453,7 @@ func _spawn_proxy(id: int, outfit: Dictionary) -> void:
 	pr.outfit = outfit
 	w.add_child(pr)
 	var st: Array = players.get(id, {}).get("st", [])
-	if st.size() == 12:
+	if st.size() == STATE_SIZE:
 		pr.global_position = st[0]
 		pr.apply_state(st, true)
 	else:
@@ -970,9 +1484,9 @@ func proxies() -> Dictionary:
 	return _proxies
 
 
-## Blips for the minimap / map: every other player in his colour.
+## Blips for the minimap / map: every other player in his colour, plus the co-op mission.
 func map_blips() -> Array:
-	var out := []
+	var out := coop_blips()
 	for id in _proxies:
 		var pr = _proxies[id]
 		if pr and is_instance_valid(pr) and (pr as Node3D).global_position.y > -100.0:
