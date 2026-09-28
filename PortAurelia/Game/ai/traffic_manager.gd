@@ -126,7 +126,7 @@ func _physics_process(delta: float) -> void:
 			drivers.erase(v)
 			continue
 		var d: TrafficDriver = drivers[v]
-		var dist := (v as Node3D).global_position.distance_to(pp)
+		var dist := Net.dist_to_players((v as Node3D).global_position, pp)
 		var near := dist < NEAR_PHYSICS and world.streaming.is_loaded_at((v as Node3D).global_position)
 		d.tick(delta, near)
 	# sirens make traffic pull over
@@ -166,17 +166,22 @@ func _density_factor(p: Vector3) -> float:
 
 
 func _maintain_population(pp: Vector3) -> void:
-	var dens := _density_factor(pp)
-	var want_moving := int(target_moving * dens)
+	# multiplayer host: friends far from us need traffic around them, too
+	var centers := Net.sim_centers(pp)
+	var want_moving := 0
+	var want_parked := 0
 	# parked cars: more at night and in the evening (everyone is home), fewer at midday
 	var h := float(world.day_night.get("hour")) if world.day_night else 12.0
 	var night := 1.6 if (h < 6.0 or h > 21.0) else (1.3 if (h < 7.5 or h > 18.5) else 1.0)
-	var district := float(world.data.district_at(pp).get("traffic", 0.6))
-	var want_parked := int(target_parked * clampf(district + 0.35, 0.45, 1.0) * night)
+	for c in centers:
+		want_moving += int(target_moving * _density_factor(c[0]))
+		var district := float(world.data.district_at(c[0]).get("traffic", 0.6))
+		want_parked += int(target_parked * clampf(district + 0.35, 0.45, 1.0) * night)
+	var center: Vector3 = centers[rng.randi() % centers.size()][0]
 	if drivers.size() < want_moving:
-		_spawn_moving(pp)
+		_spawn_moving(center)
 	if parked.size() < want_parked:
-		_spawn_parked(pp)
+		_spawn_parked(center)
 
 
 ## Sports cars are rare everywhere (a bit less rare in the rich districts).
@@ -222,7 +227,7 @@ func _spawn_moving(pp: Vector3) -> void:
 			continue
 		if not world.streaming.is_loaded_at(p):
 			continue
-		if cam and d < 160.0 and cam.is_position_in_frustum(p):
+		if Net.dist_to_players(p, world.player.global_position) < SPAWN_MIN or Net.seen_by_players(p, cam, 160.0):
 			continue
 		if not vehicles_near(p, 14.0).is_empty():
 			continue
@@ -264,7 +269,7 @@ func _spawn_parked(pp: Vector3) -> void:
 			var d := p.distance_to(pp)
 			if d < 35.0 or d > 150.0:
 				continue
-			if cam and d < 90.0 and cam.is_position_in_frustum(p):
+			if Net.dist_to_players(p, world.player.global_position) < 35.0 or Net.seen_by_players(p, cam, 90.0):
 				continue
 			if not vehicles_near(p, 4.0).is_empty():
 				continue
@@ -293,7 +298,7 @@ func _process_despawns(pp: Vector3) -> void:
 		if not is_instance_valid(v):
 			continue
 		var p: Vector3 = (v as Node3D).global_position
-		var d := p.distance_to(pp)
+		var d := Net.dist_to_players(p, pp)
 		if d > DESPAWN or (d > 180.0 and cam and not cam.is_position_in_frustum(p)):
 			_despawn(v)
 	for v in parked.keys():
@@ -310,7 +315,7 @@ func _process_despawns(pp: Vector3) -> void:
 			veh.set_kinematic(false)   # allow physical interaction up close
 		elif veh.global_position.distance_to(pp) > 60.0 and not veh.kinematic_mode and veh.speed() < 0.1:
 			veh.set_kinematic(true)
-		if veh.global_position.distance_to(pp) > 200.0:
+		if Net.dist_to_players(veh.global_position, pp) > 200.0:
 			world.data.parking[parked[v]]["occupied"] = false
 			_despawn(v)
 

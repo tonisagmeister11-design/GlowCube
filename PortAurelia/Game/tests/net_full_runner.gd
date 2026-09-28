@@ -239,6 +239,8 @@ func _host() -> void:
 		await wait(1.0)
 		# the host finishes the wave off
 		for e in Net._ents.values():
+			if e.get("amb", false):
+				continue
 			var n = e["node"]
 			if n is NPC and is_instance_valid(n) and not (n as NPC).is_dead():
 				(n as NPC).health.take_damage(9999.0, p, (n as Node3D).global_position, Vector3.FORWARD)
@@ -260,7 +262,7 @@ func _host() -> void:
 	var holder := {"van": null}
 	await wait_until(func():
 		for e in Net._ents.values():
-			if e["node"] is Vehicle and is_instance_valid(e["node"]):
+			if e["node"] is Vehicle and is_instance_valid(e["node"]) and not e.get("amb", false):
 				holder["van"] = e["node"]
 		return holder["van"] != null, 60.0)
 	var van: Vehicle = holder["van"]
@@ -277,12 +279,14 @@ func _host() -> void:
 	step("guards %d" % _alive_ents())
 	await await_step("guards_seen", 40.0)
 	for e in Net._ents.values():
+		if e.get("amb", false):
+			continue
 		var n = e["node"]
 		if n is NPC and is_instance_valid(n) and not (n as NPC).is_dead():
 			(n as NPC).health.take_damage(9999.0, p, (n as Node3D).global_position, Vector3.FORWARD)
 	# bags then hideout
 	await wait_until(func(): return (Net.coop_state.get("markers", []) as Array).size() == 2, 30.0)
-	var bags: Array = Net.coop_state["markers"]
+	var bags: Array = (Net.coop_state["markers"] as Array).duplicate(true)
 	p.teleport((bags[0][0] as Vector3) + Vector3(0, 0.3, 0))
 	step("bag " + var_to_str(bags[1][0]))
 	await wait_until(func():
@@ -300,6 +304,8 @@ func _host() -> void:
 func _alive_ents() -> int:
 	var k := 0
 	for e in Net._ents.values():
+		if e.get("amb", false):
+			continue
 		var n = e["node"]
 		if n is NPC and is_instance_valid(n) and not (n as NPC).is_dead():
 			k += 1
@@ -444,7 +450,7 @@ func _client() -> void:
 	p.health.health = 5000.0
 	for wave in 3:
 		await await_arg("wave_%d" % wave, 120.0)
-		var ents := Net._ent_proxies.values().filter(func(n): return n is RemoteEntity and is_instance_valid(n) and not n.is_dead())
+		var ents := Net._ent_proxies.values().filter(func(n): return n is RemoteEntity and is_instance_valid(n) and not n.is_dead() and not n.amb)
 		check("wave %d: friend sees the host's enemies" % (wave + 1), ents.size() > 0, "%d enemies" % ents.size())
 		if ents.size() > 0:
 			p.weapons.give("rifle", 200)
@@ -454,7 +460,7 @@ func _client() -> void:
 			for i in 30:
 				if i % 6 == 0 or not is_instance_valid(e) or e.is_dead():
 					# the nearest enemy in clear view (others hide behind houses and cars)
-					ents = Net._ent_proxies.values().filter(func(n): return n is RemoteEntity and is_instance_valid(n) and not n.is_dead())
+					ents = Net._ent_proxies.values().filter(func(n): return n is RemoteEntity and is_instance_valid(n) and not n.is_dead() and not n.amb)
 					if ents.is_empty():
 						break
 					e = _visible_nearest(p, ents)
@@ -500,7 +506,7 @@ func _client() -> void:
 	step("van_shot")
 	var ng: int = await await_arg("guards", 60.0)
 	check("heist: friend sees the guards", await wait_until(func():
-		return Net._ent_proxies.values().filter(func(n): return n is RemoteEntity and is_instance_valid(n) and not n.is_dead()).size() > 0, 20.0),
+		return Net._ent_proxies.values().filter(func(n): return n is RemoteEntity and is_instance_valid(n) and not n.is_dead() and not n.amb).size() > 0, 20.0),
 		"host has %d" % ng)
 	step("guards_seen")
 	var bag: Vector3 = await await_arg("bag", 60.0)

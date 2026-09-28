@@ -13,6 +13,7 @@ Router types (RFC 4787 terms):
   portrestricted  endpoint-independent mapping + address+port-dependent filtering (most homes)
   symmetric       address+port-dependent mapping + filtering (strict / some mobile carriers)
   blocked         no UDP at all
+  append "-rand" for routers that pick random public ports (carrier-grade NAT), e.g. portrestricted-rand
 
   natsim.py --router 127.0.1.:127.0.101.1:portrestricted --router 127.0.2.:127.0.102.1:symmetric \
             --stun 127.0.50.1:3478 --stun 127.0.50.2:3478 [--delay 20] [--jitter 5] [--loss 1]
@@ -40,6 +41,9 @@ class Mapping:
 class Router:
     def __init__(self, spec):
         prefix, pub, kind = spec.split(":")
+        # "-rand": the router does not keep the port (typical for carrier-grade NAT)
+        self.rand = kind.endswith("-rand")
+        kind = kind.replace("-rand", "")
         self.prefix, self.pub, self.kind = prefix, pub, kind
         self.maps = {}      # key -> Mapping
         self.by_port = {}   # public port -> Mapping
@@ -54,7 +58,7 @@ class Router:
             key = (src,)
         m = self.maps.get(key)
         if m is None:
-            port = src[1] if self.kind != "symmetric" else 0
+            port = src[1] if self.kind != "symmetric" and not self.rand else 0
             if port == 0 or port in self.by_port or not sim.can_bind((self.pub, port)):
                 while True:
                     port = random.randint(20000, 60000)

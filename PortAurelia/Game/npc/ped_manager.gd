@@ -136,9 +136,13 @@ func _physics_process(delta: float) -> void:
 	_spawn_timer -= delta
 	if _spawn_timer <= 0.0 and enabled:
 		_spawn_timer = 0.3
-		var want := int(target_count * _density(pp))
+		# multiplayer host: friends far from us need pedestrians around them, too
+		var centers := Net.sim_centers(pp)
+		var want := 0
+		for c in centers:
+			want += int(target_count * _density(c[0]))
 		if _living() < want:
-			_spawn_ambient(pp)
+			_spawn_ambient(centers[rng.randi() % centers.size()][0])
 		_despawn_far(pp)
 	_aim_timer -= delta
 	if _aim_timer <= 0.0:
@@ -211,7 +215,8 @@ func _spawn_ambient(pp: Vector3) -> void:
 		if not b.is_empty():
 			var bp: Vector3 = b["xform"].origin
 			var d := bp.distance_to(pp)
-			if d > SPAWN_MIN and d < SPAWN_MAX and not (cam and d < 60.0 and cam.is_position_in_frustum(bp)):
+			if d > SPAWN_MIN and d < SPAWN_MAX and Net.dist_to_players(bp, world.player.global_position) > SPAWN_MIN \
+					and not Net.seen_by_players(bp, cam, 60.0):
 				var n := spawn_npc(bp, _pick_role(bp))
 				_take_bench(n, b["key"])
 				n.sit_at(b["xform"], rng.randf_range(30.0, 90.0))
@@ -222,7 +227,7 @@ func _spawn_ambient(pp: Vector3) -> void:
 	var pos: Vector3 = sp["pos"]
 	if not world.streaming.is_loaded_at(pos):
 		return
-	if cam and pos.distance_to(pp) < 65.0 and cam.is_position_in_frustum(pos + Vector3.UP):
+	if Net.dist_to_players(pos, world.player.global_position) < SPAWN_MIN or Net.seen_by_players(pos + Vector3.UP, cam, 65.0):
 		return
 	if not peds_near(pos, 2.0).is_empty():
 		return
@@ -248,7 +253,7 @@ func _despawn_far(pp: Vector3) -> void:
 		var npc := n as NPC
 		if npc.persistent:
 			continue
-		var d := npc.global_position.distance_to(pp)
+		var d := Net.dist_to_players(npc.global_position, pp)
 		var limit := 80.0 if npc.is_dead() else DESPAWN
 		if d > limit or (d > 90.0 and cam and not cam.is_position_in_frustum(npc.global_position + Vector3.UP)):
 			if npc.state == NPC.S.FIGHT and npc.target == world.player and d < 120.0:

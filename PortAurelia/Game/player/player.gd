@@ -418,13 +418,18 @@ func _try_enter_vehicle() -> void:
 	var bd := 4.5
 	for v in get_tree().get_nodes_in_group("vehicles"):
 		var n := v as Node3D
-		if n == null or not n.has_method("get_entry_point") or n.has_meta("net_proxy"):
+		if n == null or not n.has_method("get_entry_point") or (n.has_meta("net_proxy") and not n.has_meta("net_entity")):
 			continue
 		var d := global_position.distance_to(n.get_entry_point())
 		if d < bd and n.get("destroyed") != true:
 			bd = d
 			best = n
 	if best:
+		if best.has_meta("net_entity"):
+			# a car of the host's world: it becomes our own car
+			best = Net.take_entity_car(best as Vehicle)
+			if best == null:
+				return
 		enter_vehicle(best)
 
 

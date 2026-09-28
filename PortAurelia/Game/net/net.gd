@@ -80,6 +80,10 @@ var _ent_proxies := {}          # eid -> Node3D               (client)
 var _next_eid := 1
 var _ent_t := 0.0
 # co-op mission state from the host (objective, markers, timer) - shown by every client
+var share_centers: Array = []   # host: [[pos, yaw], ...] friends who see the host's world
+var world_shared := false       # client: we see the host's traffic, pedestrians and police
+var _world_share: WorldShare
+var _taken_cars := {}           # client: eid -> our own copy of a shared car we took
 var coop_state := {}
 var coop: Node = null           # host: running CoopMissions node
 signal coop_changed
@@ -689,6 +693,8 @@ func _on_peer_disconnected(id: int) -> void:
 		var n: String = players[id]["name"]
 		players.erase(id)
 		_remove_proxy(id)
+		if _world_share:
+			_world_share.forget(id)
 		for other in players:
 			if other != 1:
 				_player_left.rpc_id(other, id)
@@ -747,6 +753,14 @@ func leave(reason := "") -> void:
 	_attempts.clear()
 	_attempt_deadline = 0
 	_nat_mapped = []
+	if _world_share:
+		_world_share.queue_free()
+		_world_share = null
+	share_centers = []
+	if world_shared:
+		world_shared = false
+		_apply_share_mode(false)
+	_taken_cars.clear()
 	lobby_ready = true
 	link_kind = ""
 	mode = Mode.OFFLINE
@@ -797,8 +811,13 @@ func _on_world_ready() -> void:
 			if id != 1:
 				_in_world.rpc_id(id, 1, outfit)
 		_broadcast_roster()
+		if _world_share == null:
+			_world_share = WorldShare.new()
+			add_child(_world_share)
 	else:
 		_hello_world.rpc_id(1, outfit)
+		if world_shared:
+			_apply_share_mode(true)
 	_ensure_hud()
 
 
@@ -997,7 +1016,8 @@ func _hello_world(outfit: Dictionary) -> void:
 	_broadcast_roster()
 	for eid in _ents:
 		var e: Dictionary = _ents[eid]
-		_ent_spawn.rpc_id(id, eid, e["kind"], e["data"])
+		if not e.get("amb", false):
+			_ent_spawn.rpc_id(id, eid, e["kind"], e["data"])
 	if not coop_state.is_empty():
 		_coop.rpc_id(id, coop_state)
 	var p := _local_player()
@@ -1453,6 +1473,7 @@ func _show_shot(id: int, from: Vector3, to: Vector3, weapon: String) -> void:
 	VFX.muzzle_flash(from, (to - from).normalized(), 1.0)
 	AudioManager.play_weapon(String(d.get("sound", "pistol")), from, false)
 	pr.on_fired()
+	Events.gunshot.emit(from, pr, 1.0)   # pedestrians flee, gang members fight back
 
 
 # ================================================================== replicated entities
@@ -1472,6 +1493,58 @@ func host_add_entity(node: Node3D, kind: String, data: Dictionary) -> int:
 	return eid
 
 
+## Host: an entity of the shared world (traffic, pedestrians) - sent only to friends near it,
+## by WorldShare.
+func host_register_ambient(node: Node3D, kind: String) -> int:
+	var eid := _next_eid
+	_next_eid += 1
+	_ents[eid] = {"node": node, "kind": kind, "data": {}, "amb": true}
+	node.set_meta("net_eid", eid)
+	node.set_meta("net_amb", true)
+	node.tree_exiting.connect(func(): _ents.erase(eid))
+	return eid
+
+
+## Distance from `p` to the nearest player whose surroundings this game simulates (the host
+## simulates the city around the friends who see his world, too).
+func dist_to_players(p: Vector3, local: Vector3) -> float:
+	var d := p.distance_to(local)
+	for c in share_centers:
+		d = minf(d, p.distance_to(c[0]))
+	return d
+
+
+## Would a new car / pedestrian at `p` pop up in front of a player? (host camera, and the view
+## direction of the friends who see the host's world)
+func seen_by_players(p: Vector3, cam: Camera3D, near_r: float) -> bool:
+	if cam and cam.global_position.distance_to(p) < near_r and cam.is_position_in_frustum(p):
+		return true
+	for c in share_centers:
+		var to: Vector3 = p - (c[0] as Vector3)
+		to.y = 0.0
+		var d := to.length()
+		if d < near_r:
+			var fwd := Vector3(-sin(float(c[1])), 0.0, -cos(float(c[1])))
+			if d < 10.0 or fwd.dot(to / d) > 0.3:
+				return true
+	return false
+
+
+## Spawn centres for the city simulation: the local player plus friends far enough away to need
+## their own surroundings. [[pos, is_local], ...]
+func sim_centers(local: Vector3, merge := 120.0) -> Array:
+	var out := [[local, true]]
+	for c in share_centers:
+		var far := true
+		for o in out:
+			if (o[0] as Vector3).distance_to(c[0]) < merge:
+				far = false
+				break
+		if far:
+			out.append([c[0], false])
+	return out
+
+
 func host_remove_entity(eid: int) -> void:
 	if not _ents.has(eid):
 		return
@@ -1489,7 +1562,7 @@ func _send_entity_states() -> void:
 	for eid in _ents:
 		var e: Dictionary = _ents[eid]
 		var n = e["node"]
-		if n == null or not is_instance_valid(n):
+		if n == null or not is_instance_valid(n) or e.get("amb", false):
 			continue
 		if e["kind"] == "npc":
 			var npc := n as NPC
@@ -1534,6 +1607,7 @@ func _ent_spawn(eid: int, kind: String, data: Dictionary) -> void:
 	if kind == "npc":
 		var r := RemoteEntity.new()
 		r.eid = eid
+		r.amb = bool(data.get("amb", false))
 		r.outfit = _clean_outfit(data.get("outfit", {}) if data.get("outfit") is Dictionary else {})
 		w.add_child(r)
 		r.global_position = Vector3(0, -400, 0)
@@ -1544,12 +1618,21 @@ func _ent_spawn(eid: int, kind: String, data: Dictionary) -> void:
 			return
 		var col = data.get("paint", Color.WHITE)
 		var v := Vehicle.create(vt, col if col is Color else Color.WHITE)
+		if data.get("livery") is Dictionary:
+			v.livery = (data["livery"] as Dictionary).duplicate()
 		v.set_meta("net_proxy", 0)
 		v.set_meta("net_entity", eid)
 		v.freeze = true
 		w.add_child(v)
 		v.global_position = Vector3(0, -400, 0)
 		v.set_kinematic(true)
+		v.net_driven = true
+		var m := RemoteCarMotion.new()
+		m.name = "NetMotion"
+		m.car = v
+		if data.get("drv") is Dictionary:
+			m.driver_outfit = _clean_outfit(data["drv"])
+		v.add_child(m)
 		_ent_proxies[eid] = v
 
 
@@ -1581,12 +1664,9 @@ func _ent_states(npcs: Array, cars: Array) -> void:
 		var v = _ent_proxies.get(s[0])
 		if v is Vehicle and is_instance_valid(v):
 			var veh := v as Vehicle
-			var target := Transform3D(Basis(s[2] as Quaternion), s[1])
-			if veh.global_position.distance_to(s[1]) > 20.0:
-				veh.global_transform = target
-			else:
-				veh.global_transform = veh.global_transform.interpolate_with(target, 0.5)
-			veh.net_visual(float(s[3]), float(s[4]), int(s[5]), 1.0 / 15.0)
+			var m := veh.get_node_or_null("NetMotion") as RemoteCarMotion
+			if m:
+				m.push(int(s[7]), s[1], s[2], float(s[3]), float(s[4]), int(s[5]) | 16)
 			veh.body_health = float(s[8])
 			if bool(s[6]) and not veh.destroyed:
 				veh.call("explode")
@@ -1600,6 +1680,167 @@ func _ent_shot(eid: int, from: Vector3, to: Vector3, weapon: String) -> void:
 	VFX.tracer(from, to)
 	VFX.muzzle_flash(from, (to - from).normalized(), 1.0)
 	AudioManager.play_weapon(String(d.get("sound", "pistol")), from, false)
+
+
+## Host -> client: you are (not) close enough to see the host's world.
+@rpc("authority", "call_remote", "reliable")
+func _share_mode(on: bool) -> void:
+	if not _from_host():
+		return
+	world_shared = on
+	_apply_share_mode(on)
+
+
+## Client: switch our own traffic and pedestrians off while we see the host's.
+func _apply_share_mode(on: bool) -> void:
+	var w := GameWorld.instance
+	if w == null or not is_instance_valid(w):
+		return
+	if w.traffic and is_instance_valid(w.traffic):
+		var tm := w.traffic as TrafficManager
+		tm.enabled = not on
+		if on:
+			for v in tm.drivers.keys() + tm.parked.keys():
+				if is_instance_valid(v):
+					tm._despawn(v)
+	if w.peds and is_instance_valid(w.peds):
+		(w.peds as PedManager).set_enabled(not on)
+	if OS.has_environment("HH_NET_DEBUG"):
+		print("NETDBG shared world ", on)
+
+
+## Host -> client: the shared world around you (compact records, see WorldShare).
+@rpc("authority", "call_remote", "unreliable_ordered", 3)
+func _amb_states(b: PackedByteArray) -> void:
+	if not _from_host() or not _world_connected or b.size() < 5 or b.size() > 1600:
+		return
+	var sp := StreamPeerBuffer.new()
+	sp.data_array = b
+	var ms := sp.get_u32()
+	while sp.get_position() < b.size():
+		var kind := sp.get_u8()
+		if kind == 1:
+			if b.size() - sp.get_position() < 19:
+				return
+			var eid := sp.get_u32()
+			var pos := Vector3(sp.get_float(), sp.get_float(), sp.get_float())
+			var yaw := sp.get_16() / 32767.0 * PI
+			var fl := sp.get_u8()
+			var r = _ent_proxies.get(eid)
+			var snap: Array = (r as RemoteEntity).last_snap if r is RemoteEntity and is_instance_valid(r) else []
+			var wid: String = (r as RemoteEntity).last_weapon if r is RemoteEntity and is_instance_valid(r) else ""
+			if fl & 2:
+				var n := sp.get_u16()
+				if n > 400 or b.size() - sp.get_position() < n:
+					return
+				var got = bytes_to_var(sp.get_data(n)[1])
+				if got is Array:
+					snap = got
+			if fl & 4:
+				var n := sp.get_u8()
+				if n > 40 or b.size() - sp.get_position() < n:
+					return
+				wid = (sp.get_data(n)[1] as PackedByteArray).get_string_from_utf8()
+			if pos.is_finite() and r is RemoteEntity and is_instance_valid(r):
+				(r as RemoteEntity).push([eid, pos, yaw, snap, wid, bool(fl & 1), ms])
+		elif kind == 2:
+			if b.size() - sp.get_position() < 30:
+				return
+			var eid := sp.get_u32()
+			var pos := Vector3(sp.get_float(), sp.get_float(), sp.get_float())
+			var q := Quaternion(sp.get_16() / 32767.0, sp.get_16() / 32767.0, sp.get_16() / 32767.0, sp.get_16() / 32767.0)
+			var steer := sp.get_8() / 100.0
+			var kmh := sp.get_16() / 10.0
+			var fl := sp.get_u8()
+			var hp := float(sp.get_u16())
+			var v = _ent_proxies.get(eid)
+			if not (v is Vehicle and is_instance_valid(v)) or not pos.is_finite() or q.length() < 0.5:
+				continue
+			var veh := v as Vehicle
+			var m := veh.get_node_or_null("NetMotion") as RemoteCarMotion
+			if m:
+				m.push(ms, pos, q, steer, kmh, fl)
+			veh.body_health = hp
+			if fl & 8 and not veh.destroyed:
+				veh.call("explode")
+		else:
+			return
+
+
+## Client: we get into a car of the shared world - it becomes our own car right away, the host
+## removes his (and lets the driver flee).
+func take_entity_car(proxy: Vehicle) -> Vehicle:
+	var eid := int(proxy.get_meta("net_entity", 0))
+	var w := GameWorld.instance
+	if mode != Mode.CLIENT or eid == 0 or proxy.destroyed or w == null:
+		return null
+	var v := Vehicle.create(proxy.type_id, proxy.paint)
+	v.livery = proxy.livery.duplicate()
+	var xf := proxy.global_transform
+	_ent_proxies.erase(eid)
+	proxy.queue_free()
+	w.add_child(v)
+	v.global_transform = xf
+	v.body_health = proxy.body_health
+	_taken_cars[eid] = v
+	_ent_take.rpc_id(1, eid)
+	return v
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _ent_take(eid: int) -> void:
+	var id := _sender_ok()
+	if id == 0 or not _allow(id, "take", 4):
+		return
+	var e: Dictionary = _ents.get(eid, {})
+	var v = e.get("node")
+	if not e.get("amb", false) or not (v is Vehicle) or not is_instance_valid(v):
+		_ent_take_denied.rpc_id(id, eid)
+		return
+	var a: Array = players[id]["st"]
+	if (v as Vehicle).driver is Player or (a.size() == STATE_SIZE and (a[0] as Vector3).distance_to((v as Vehicle).global_position) > 40.0):
+		_ent_take_denied.rpc_id(id, eid)
+		return
+	if _world_share:
+		_world_share.host_take_vehicle(v, id)
+
+
+## Host -> client: that car was not free (the host got in first) - give it back.
+@rpc("authority", "call_remote", "reliable")
+func _ent_take_denied(eid: int) -> void:
+	if not _from_host():
+		return
+	var v = _taken_cars.get(eid)
+	_taken_cars.erase(eid)
+	if v and is_instance_valid(v):
+		var p := _local_player()
+		if p and p.vehicle == v:
+			p.exit_vehicle()
+		(v as Node).queue_free()
+		Events.notify.emit("Das Auto war schon besetzt.", 2.5)
+
+
+## Client: our car crashed into a car of the shared world - push it in the host's game.
+func send_entity_bump(eid: int, impulse: Vector3, at: Vector3) -> void:
+	if mode == Mode.CLIENT and _world_connected:
+		_ent_bump.rpc_id(1, eid, impulse, at)
+
+
+@rpc("any_peer", "call_remote", "unreliable")
+func _ent_bump(eid: int, impulse: Vector3, at: Vector3) -> void:
+	var id := _sender_ok()
+	if id == 0 or not _allow(id, "ebump", 8) or not impulse.is_finite() or not at.is_finite():
+		return
+	var e: Dictionary = _ents.get(eid, {})
+	var v = e.get("node")
+	if not (v is Vehicle) or not is_instance_valid(v) or (v as Vehicle).driver is Player:
+		return
+	var veh := v as Vehicle
+	if veh.global_position.distance_to(at) > 8.0:
+		return
+	if veh.kinematic_mode:
+		veh.set_kinematic(false)
+	veh.net_bump(impulse, at)
 
 
 @rpc("any_peer", "call_remote", "reliable")

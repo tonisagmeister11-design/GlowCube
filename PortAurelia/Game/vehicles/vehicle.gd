@@ -598,8 +598,12 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 						print("NETDBG car contact with player car, speed %.1f" % rel)
 					if rel > 2.0:
 						var push := state.linear_velocity * mass * 0.55
-						Net.call_deferred("send_car_bump", int((other as Vehicle).get_meta("net_proxy")),
-							push, state.get_contact_local_position(i))
+						if (other as Vehicle).has_meta("net_entity"):   # a car of the host's world
+							Net.call_deferred("send_entity_bump", int((other as Vehicle).get_meta("net_entity")),
+								push, state.get_contact_local_position(i))
+						else:
+							Net.call_deferred("send_car_bump", int((other as Vehicle).get_meta("net_proxy")),
+								push, state.get_contact_local_position(i))
 			var imp := state.get_contact_impulse(i).length()
 			if imp > total_imp:
 				total_imp = imp

@@ -356,7 +356,9 @@ func _physics_process(delta: float) -> void:
 		return
 	var p := GameWorld.instance.player if GameWorld.instance else null
 	var dist := p.global_position.distance_to(global_position) if p else 0.0
-	near = dist < NEAR_DIST or persistent or state in [S.FIGHT, S.FLEE, S.KNOCKED, S.CHASE]
+	# physics near any player (the multiplayer host also simulates around his friends)
+	var sim_dist := Net.dist_to_players(global_position, p.global_position) if p else 0.0
+	near = sim_dist < NEAR_DIST or persistent or state in [S.FIGHT, S.FLEE, S.KNOCKED, S.CHASE]
 	_dodge_cd -= delta
 	_scream_cd -= delta
 	_say_cd -= delta

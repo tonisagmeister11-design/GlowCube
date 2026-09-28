@@ -7,11 +7,15 @@ extends CharacterBody3D
 const INTERP_MS := 120.0
 
 var eid := 0
+var amb := false                # part of the shared world (pedestrian, cop) - not a mission enemy
 var outfit := {}
 var model: CharacterModel
 var _snaps: Array = []
 var _delays: Array = []
 var _offset := 0.0
+var _gap := 100.0               # time between updates (far characters get fewer)
+var last_snap: Array = []       # shared-world records only carry the animation when it changed
+var last_weapon := ""
 var _dead := false
 var _weapon := ""
 var _weapon_vis: WeaponHolder
@@ -45,8 +49,12 @@ func push(s: Array) -> void:
 	if _delays.size() > 60:
 		_delays.pop_front()
 	_offset = _delays.min()
-	if not _snaps.is_empty() and sent <= int(_snaps[-1][0]):
-		return
+	if not _snaps.is_empty():
+		if sent <= int(_snaps[-1][0]):
+			return
+		_gap = lerpf(_gap, float(sent - int(_snaps[-1][0])), 0.3)
+	last_snap = s[3]
+	last_weapon = s[4]
 	_snaps.append([sent, s])
 	while _snaps.size() > 30:
 		_snaps.pop_front()
@@ -58,7 +66,7 @@ func push(s: Array) -> void:
 func _physics_process(_delta: float) -> void:
 	if _snaps.is_empty():
 		return
-	var rt := float(Time.get_ticks_msec()) - _offset - INTERP_MS
+	var rt := float(Time.get_ticks_msec()) - _offset - clampf(_gap * 1.6, INTERP_MS, 900.0)
 	var a: Array = _snaps[0]
 	var b: Array = _snaps[0]
 	for i in _snaps.size():
@@ -85,7 +93,7 @@ func _physics_process(_delta: float) -> void:
 		_col.disabled = dead
 		if dead:
 			model.start_ragdoll(Vector3.UP * 8.0)
-	if not _dead:
+	if not _dead and sa[3] is Array and (sa[3] as Array).size() >= 8:
 		model.net_apply(sa[3])
 
 
