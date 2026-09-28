@@ -16,6 +16,7 @@ const KEYS := {
 	"radio_up": [KEY_EQUAL, KEY_KP_ADD, KEY_PLUS], "radio_down": [KEY_MINUS, KEY_KP_SUBTRACT],
 	"radio_next": [KEY_PERIOD], "radio_toggle": [KEY_COMMA],
 	"claim_vehicle": [KEY_J], "summon_vehicle": [KEY_T], "chat": [KEY_ENTER, KEY_KP_ENTER], "players_menu": [KEY_O],
+	"unstuck": [KEY_U],
 	"debug_hud": [KEY_F1], "debug_spawn_vehicle": [KEY_F2], "debug_spawn_npc": [KEY_F3],
 	"debug_give_weapon": [KEY_F4], "debug_wanted": [KEY_F6], "debug_teleport": [KEY_F7],
 	"debug_mission": [KEY_F8], "debug_toggle_ai": [KEY_F9], "debug_perf": [KEY_F10],

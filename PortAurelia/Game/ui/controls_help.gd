@@ -17,7 +17,7 @@ Fahrzeug
   Im Auto:  1–9 / Mausrad  Waffe wechseln (Pistolen, MPs, Gewehre, Schrotflinten)   R  Nachladen
 Allgemein
   M  Karte     T  eigenes Auto rufen   Pfeil hoch  Telefon     ESC  Pause     F5  Schnellspeichern     K  Mission abbrechen
-  Kreativmodus:  O  Geld nehmen
+  U  Festgesteckt / im Boden? Befreien (zurück auf den Gehsteig)     Kreativmodus:  O  Geld nehmen
 Multiplayer
   Enter  Chat     O  Spieler: Geld / Waffen geben oder fallen lassen, Host: Koop-Missionen, rauswerfen     M  Karte zeigt alle Mitspieler
 Controller wird automatisch erkannt (Xbox-Layout)."""

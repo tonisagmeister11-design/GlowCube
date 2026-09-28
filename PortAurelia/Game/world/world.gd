@@ -138,9 +138,18 @@ func boot() -> void:
 	Events.world_ready.emit()
 
 
+func _no_floor(pos: Vector3) -> bool:
+	var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP * 1.0, pos + Vector3.DOWN * 12.0)
+	q.collision_mask = 1
+	return get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+
+
 func _spawn_player() -> void:
 	var pd := Game.player_data
 	var pos := spawn_position()
+	# never start inside the ground: no floor under the saved spot -> nearest sidewalk
+	if pos.y > -30.0 and (SafeSpot.is_under_ground(pos + Vector3.UP * 0.2, []) or _no_floor(pos)):
+		pos = SafeSpot.find(pos)
 	var p := Player.new()
 	p.name = "Player"
 	add_child(p)

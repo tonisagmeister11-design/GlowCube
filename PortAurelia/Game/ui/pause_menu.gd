@@ -30,11 +30,11 @@ func _ready() -> void:
 	_box.custom_minimum_size = Vector2(420, 0)
 	_box.add_theme_constant_override("separation", 8)
 	_root.add_child(_box)
-	var items := [["FORTSETZEN", _resume], ["KARTE", _map], ["MISSION ABBRECHEN", _abort_mission],
+	var items := [["FORTSETZEN", _resume], ["FESTGESTECKT? BEFREIEN (U)", _unstuck], ["KARTE", _map], ["MISSION ABBRECHEN", _abort_mission],
 			["KREATIVMODUS AN/AUS", _toggle_creative], ["SPIEL SPEICHERN", _save], ["SPIEL LADEN", _load],
 			["EINSTELLUNGEN", _settings], ["STEUERUNG", _controls], ["HAUPTMENÜ", _main_menu], ["SPIEL BEENDEN", _quit]]
 	if not CreativeMode.allowed():
-		items.remove_at(3)   # in someone else's lobby: only the host has the creative mode
+		items.remove_at(4)   # in someone else's lobby: only the host has the creative mode
 	# multiplayer: the lobby code stays visible here too
 	_code = Label.new()
 	_code.position = Vector2(560, 90)
@@ -94,6 +94,12 @@ func _abort_mission() -> void:
 	_confirm("Mission wirklich abbrechen?", func():
 		_resume()
 		mm.call("abort_current"))
+
+
+func _unstuck() -> void:
+	_resume()
+	if world and world.player:
+		(world.player as Player).rescue()
 
 
 func _toggle_creative() -> void:

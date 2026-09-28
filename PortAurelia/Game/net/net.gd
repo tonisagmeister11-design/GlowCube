@@ -1269,8 +1269,11 @@ func _meet(pos: Vector3) -> void:
 	if not _from_host() or not pos.is_finite():
 		return
 	var p := _local_player()
-	if p and p.state == Player.State.GROUND:
-		p.teleport(pos + Vector3(2.5, 0.3, 2.5))
+	if p and p.state in [Player.State.GROUND, Player.State.AIR]:
+		# the city around the host is loaded first, then we stand on the nearest sidewalk
+		# (teleporting before the ground existed left players stuck inside it)
+		var spot := SafeSpot.find(pos + Vector3(2.5, 0.0, 2.5))
+		p.teleport(spot)
 		Events.notify.emit("Du bist beim Host gelandet.", 3.0)
 
 

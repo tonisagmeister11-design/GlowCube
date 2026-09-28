@@ -45,7 +45,10 @@ var _step_timer := 0.0
 var _interact_target: Node = null
 var _prompt_timer := 0.0
 var surrendered := false
-var _claim_hint := 0.0      # gave up to the police with X (lighter sentence)
+var _claim_hint := 0.0
+var _rescue_ms := -100000
+var _stuck_t := 0.0
+var _stuck_check := 0.0      # gave up to the police with X (lighter sentence)
 
 
 func _ready() -> void:
@@ -92,6 +95,7 @@ func set_camera(c: CameraRig) -> void:
 
 # ------------------------------------------------------------------ physics
 func _physics_process(delta: float) -> void:
+	_stuck_watch(delta)
 	if in_cover and state != State.GROUND:
 		_leave_cover()
 	match state:
@@ -545,6 +549,10 @@ func _update_interaction(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
+	if event.is_action_pressed("unstuck"):
+		get_viewport().set_input_as_handled()
+		rescue()
+		return
 	if event.is_action_pressed("interact") and _interact_target and state == State.GROUND:
 		_interact_target.call("interact", self)
 	elif event.is_action_pressed("camera_mode") and cam:
@@ -677,6 +685,79 @@ func respawn(pos: Vector3, yaw := 0.0) -> void:
 	Events.player_respawned.emit("respawn")
 
 
+## Emergency (U key, pause menu, and automatically when fallen through the ground): back onto the
+## nearest sidewalk outdoors - never into or onto a building.
+func rescue(auto := false) -> void:
+	if state == State.DEAD or state == State.BUSTED:
+		return
+	var now := Time.get_ticks_msec()
+	if now - _rescue_ms < 1500:
+		return
+	_rescue_ms = now
+	var w := GameWorld.instance
+	if w == null:
+		return
+	var inter := w.get_node_or_null("Interiors")
+	if inter and bool(inter.call("is_inside")) and not auto:
+		inter.call("leave")   # inside a shop / flat: out through the door
+		Events.notify.emit("Befreit.", 2.0)
+		return
+	var from := global_position
+	if is_in_vehicle() and vehicle is Vehicle:
+		# with the car: onto the nearest road, upright
+		var v := vehicle as Vehicle
+		var lane: Dictionary = w.graph.closest_lane(Vector3(from.x, maxf(from.y, 0.0), from.z), 300.0) if w.graph else {}
+		if not lane.is_empty():
+			if not w.streaming.is_loaded_at(lane["pos"]):
+				w.streaming.load_area_blocking(lane["pos"], 120.0)
+			var g := SafeSpot.ground_at(lane["pos"])
+			var dir: Vector3 = w.graph.lanes[int(lane["lane"])].dir_at(float(lane["s"]))
+			var xf := Transform3D(Basis.looking_at(dir, Vector3.UP), g + Vector3.UP * 0.9)
+			# move the physics body itself too (a plain transform change can be undone by the next step)
+			v.global_transform = xf
+			v.linear_velocity = Vector3.ZERO
+			v.angular_velocity = Vector3.ZERO
+			PhysicsServer3D.body_set_state(v.get_rid(), PhysicsServer3D.BODY_STATE_TRANSFORM, xf)
+			PhysicsServer3D.body_set_state(v.get_rid(), PhysicsServer3D.BODY_STATE_LINEAR_VELOCITY, Vector3.ZERO)
+			PhysicsServer3D.body_set_state(v.get_rid(), PhysicsServer3D.BODY_STATE_ANGULAR_VELOCITY, Vector3.ZERO)
+			Events.notify.emit("Befreit – du bist wieder auf der Straße.", 2.5)
+			return
+		exit_vehicle()
+	var spot := SafeSpot.find(from)
+	global_position = spot
+	velocity = Vector3.ZERO
+	_fall_speed = 0.0
+	_air_time = 0.0
+	if state in [State.AIR, State.CLIMB, State.SWIM, State.LOCKED]:
+		state = State.GROUND
+		model.set_mode("ground")
+	Events.notify.emit("Befreit – du stehst wieder auf dem Gehsteig." if not auto
+		else "Du bist durch den Boden gefallen – zurück auf die Straße.", 3.0)
+
+
+## Fell through the ground (or spawned inside it)? Get out automatically.
+func _stuck_watch(delta: float) -> void:
+	_stuck_check -= delta
+	if _stuck_check > 0.0:
+		return
+	_stuck_check = 0.5
+	if state not in [State.GROUND, State.AIR, State.SWIM]:
+		_stuck_t = 0.0
+		return
+	var w := GameWorld.instance
+	var inter := w.get_node_or_null("Interiors") if w else null
+	var inside := inter != null and bool(inter.call("is_inside"))
+	var bad := false
+	if global_position.y < -30.0:
+		bad = not inside and global_position.y < -40.0   # below the whole city
+	elif w and w.streaming.is_loaded_at(global_position):
+		bad = SafeSpot.is_under_ground(global_position, [get_rid()])
+	_stuck_t = _stuck_t + 0.5 if bad else 0.0
+	if _stuck_t >= 1.0:
+		_stuck_t = 0.0
+		rescue(true)
+
+
 func is_in_vehicle() -> bool:
 	return state == State.VEHICLE
 
@@ -689,6 +770,9 @@ func teleport(p: Vector3) -> void:
 	if vehicle:
 		vehicle.global_position = p + Vector3.UP
 		vehicle.set("linear_velocity", Vector3.ZERO)
+		if vehicle is RigidBody3D:
+			PhysicsServer3D.body_set_state((vehicle as RigidBody3D).get_rid(), PhysicsServer3D.BODY_STATE_TRANSFORM, vehicle.global_transform)
+			PhysicsServer3D.body_set_state((vehicle as RigidBody3D).get_rid(), PhysicsServer3D.BODY_STATE_LINEAR_VELOCITY, Vector3.ZERO)
 	else:
 		global_position = p
 		velocity = Vector3.ZERO
