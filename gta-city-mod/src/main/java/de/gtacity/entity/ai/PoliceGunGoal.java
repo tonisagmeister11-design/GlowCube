@@ -26,7 +26,13 @@ public class PoliceGunGoal extends Goal {
     }
 
     @Override
+    public void start() {
+        cop.setAggressive(true); // synced to the client: the renderer raises the arms to aim
+    }
+
+    @Override
     public void stop() {
+        cop.setAggressive(false);
         cop.getNavigation().stop();
     }
 

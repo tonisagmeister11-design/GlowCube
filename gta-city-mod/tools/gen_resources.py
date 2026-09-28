@@ -64,11 +64,15 @@ ENTITY_NAMES = {
     "grenade": ("Grenade", "Granate"),
 }
 
+# The gun sprites point right (muzzle at +x, grip bottom left). Rotating 90 degrees around Y turns +x into -z:
+# forward in first person, and along the arm towards the hand in third person - so a hanging arm carries the gun
+# pointed at the ground and an arm raised to aim points it forward. Minecraft mirrors the left hand itself
+# (it negates the Y/Z rotation and the X translation), so the left hand entries are the negated right ones.
 GUN_DISPLAY = {
-    "thirdperson_righthand": {"rotation": [0, -90, 0], "translation": [0, 3.0, 3.0], "scale": [0.95, 0.95, 0.95]},
-    "thirdperson_lefthand": {"rotation": [0, 90, 0], "translation": [0, 3.0, 3.0], "scale": [0.95, 0.95, 0.95]},
-    "firstperson_righthand": {"rotation": [0, -90, 3], "translation": [1.5, 3.4, 2.5], "scale": [0.85, 0.85, 0.85]},
-    "firstperson_lefthand": {"rotation": [0, 90, -3], "translation": [1.5, 3.4, 2.5], "scale": [0.85, 0.85, 0.85]},
+    "thirdperson_righthand": {"rotation": [0, 90, 0], "translation": [0, 3.5, -1.5], "scale": [0.85, 0.85, 0.85]},
+    "thirdperson_lefthand": {"rotation": [0, -90, 0], "translation": [0, 3.5, -1.5], "scale": [0.85, 0.85, 0.85]},
+    "firstperson_righthand": {"rotation": [0, 90, 2], "translation": [1.5, 3.2, 1.0], "scale": [0.85, 0.85, 0.85]},
+    "firstperson_lefthand": {"rotation": [0, -90, -2], "translation": [1.5, 3.2, 1.0], "scale": [0.85, 0.85, 0.85]},
     "ground": {"rotation": [0, 0, 0], "translation": [0, 2, 0], "scale": [0.5, 0.5, 0.5]},
     "head": {"rotation": [0, 180, 0], "translation": [0, 13, 7], "scale": [1, 1, 1]},
     "fixed": {"rotation": [0, 180, 0], "translation": [0, 0, 0], "scale": [1, 1, 1]},

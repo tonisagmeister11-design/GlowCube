@@ -4,11 +4,13 @@ import de.gtacity.GtaCity;
 import de.gtacity.client.GtaCityClient;
 import de.gtacity.entity.NpcEntity;
 import de.gtacity.entity.PoliceEntity;
+import de.gtacity.item.GunItem;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.HumanoidArm;
 
 /** Renders pedestrians and police with the player model and the mod's own skins. */
 public class NpcRenderer extends HumanoidMobRenderer<NpcEntity, NpcRenderer.State, HumanoidModel<NpcRenderer.State>> {
@@ -49,6 +51,15 @@ public class NpcRenderer extends HumanoidMobRenderer<NpcEntity, NpcRenderer.Stat
         } else {
             state.texture = CIVILIANS[skin % CIVILIANS.length];
         }
+    }
+
+    /** Officers who are after someone hold their gun up with both hands, like a loaded crossbow. */
+    @Override
+    protected HumanoidModel.ArmPose getArmPose(NpcEntity npc, HumanoidArm arm) {
+        if (npc.isAggressive() && npc.getMainArm() == arm && npc.getMainHandItem().getItem() instanceof GunItem) {
+            return HumanoidModel.ArmPose.CROSSBOW_HOLD;
+        }
+        return super.getArmPose(npc, arm);
     }
 
     @Override
