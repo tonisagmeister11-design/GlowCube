@@ -267,9 +267,14 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         expect(moving[2] > 0 && moving[0] * 2 >= moving[1],
                 "KI-Autos fahren (" + moving[0] + " von " + moving[1] + " tickenden Autos in 3 s bewegt, "
                         + moving[2] + " insgesamt)");
-        int stranded = server.computeOnServer(s -> s.overworld().getEntities(ModEntities.CAR,
-                car -> car.isStrandedTraffic(s.overworld())).size());
-        expect(stranded == 0, "Kein eingefrorener Verkehr am Rand der Simulationsdistanz (" + stranded + ")");
+        // Cars that just left the simulated area are removed by the next clean-up round (every 2 s).
+        List<Integer> stranded = server.computeOnServer(s -> s.overworld().getEntities(ModEntities.CAR,
+                car -> car.isStrandedTraffic(s.overworld())).stream().map(CarEntity::getId).toList());
+        ctx.waitTicks(50);
+        long left = server.computeOnServer(s -> stranded.stream()
+                .filter(id -> s.overworld().getEntity(id) != null).count());
+        expect(left == 0, "Eingefrorener Verkehr am Rand der Simulationsdistanz wird entfernt ("
+                + stranded.size() + " gefunden, " + left + " übrig)");
 
         // A car and a pedestrian right in front of the camera for the screenshot.
         server.runOnServer(s -> {
