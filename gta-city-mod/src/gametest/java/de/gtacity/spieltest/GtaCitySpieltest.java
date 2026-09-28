@@ -189,7 +189,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
     private void skyline(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
         server.runCommand("gamemode spectator @a");
         ctx.runOnClient(mc -> mc.options.renderDistance().set(8));
-        teleport(server, -90.5, 170, -90.5, -45.0F, 20.0F);
+        teleport(server, -40.5, 275, -40.5, -45.0F, 40.0F);
         settle(ctx, conn);
         ctx.takeScreenshot("gtacity-02-skyline");
         ctx.runOnClient(mc -> mc.options.renderDistance().set(6));
