@@ -54,7 +54,7 @@ public final class CitySpawns {
             int dist = minDist + random.nextInt(Math.max(1, maxDist - minDist));
             int x = center.getX() + Mth.floor(Math.cos(angle) * dist);
             int z = center.getZ() + Mth.floor(Math.sin(angle) * dist);
-            if (!CityLayout.isSidewalk(x, z) || !level.hasChunkAt(new BlockPos(x, 0, z))) {
+            if (!CityLayout.isSidewalk(x, z) || !level.isPositionEntityTicking(new BlockPos(x, 0, z))) {
                 continue;
             }
             BlockPos feet = new BlockPos(x, CityLayout.GROUND + 2, z);
@@ -75,7 +75,9 @@ public final class CitySpawns {
             int dist = minDist + random.nextInt(Math.max(1, maxDist - minDist));
             int x = center.getX() + Mth.floor(Math.cos(angle) * dist);
             int z = center.getZ() + Mth.floor(Math.sin(angle) * dist);
-            if (!CityLayout.insideCity(x, z) || !level.hasChunkAt(new BlockPos(x, 0, z))) {
+            // Only where entities tick: a car spawned beyond the simulation distance stands frozen
+            // in its lane and blocks all traffic behind it.
+            if (!CityLayout.insideCity(x, z) || !level.isPositionEntityTicking(new BlockPos(x, 0, z))) {
                 continue;
             }
             int lx = CityLayout.local(x), lz = CityLayout.local(z);
