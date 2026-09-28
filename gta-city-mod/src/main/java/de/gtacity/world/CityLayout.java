@@ -174,17 +174,17 @@ public final class CityLayout {
                     : r < 6 ? LotType.AMMU_NATION
                     : r < 10 ? LotType.STORE
                     : r < 12 ? LotType.POCKET_PARK
-                    : r < 14 ? LotType.HOSPITAL
+                    : r < 13 ? LotType.HOSPITAL
                     : LotType.SKYSCRAPER;
             case MIDTOWN -> r < 4 ? LotType.BANK
                     : r < 9 ? LotType.AMMU_NATION
                     : r < 16 ? LotType.STORE
-                    : r < 19 ? LotType.POLICE
-                    : r < 21 ? LotType.HOSPITAL
-                    : r < 29 ? LotType.PARKING
-                    : r < 34 ? LotType.GAS_STATION
-                    : r < 36 ? LotType.CAR_DEALER
-                    : r < 40 ? LotType.POCKET_PARK
+                    : r < 18 ? LotType.POLICE
+                    : r < 19 ? LotType.HOSPITAL
+                    : r < 27 ? LotType.PARKING
+                    : r < 32 ? LotType.GAS_STATION
+                    : r < 34 ? LotType.CAR_DEALER
+                    : r < 38 ? LotType.POCKET_PARK
                     : LotType.OFFICE;
             case RESIDENTIAL -> (qx == 1 && qz == 1) ? LotType.COURTYARD
                     : r < 5 ? LotType.STORE
