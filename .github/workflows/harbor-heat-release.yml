@@ -21,13 +21,19 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v3.2
-          name: Harbor Heat v3.2
+          tag_name: harbor-heat-v3.3
+          name: Harbor Heat v3.3
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v3.2** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v3.3** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            3.3: In multiplayer only the lobby owner can use the creative mode (the others always play
+            normally, and nobody is told when the owner switches it on). Creative owner: take money
+            and gift up to $10,000,000. Everybody (O menu): drop money or weapons for anyone to pick
+            up, give weapons to a player. The lobby code is also shown in the pause and O menus.
+            Everyone needs version 3.3.
 
             3.2: PLAY WITH FRIENDS ANYWHERE - no router settings. Create a lobby, send the code (e.g. via
             WhatsApp), your friend joins from his own Wi-Fi anywhere: the games find each other through
@@ -39,7 +45,7 @@ jobs:
             pedestrians and police, in the same places. Take any of those cars (the driver flees for
             everyone), crash into them, shoot pedestrians, blow cars up with rockets - everyone sees it.
             A car you leave stays there for everyone. Far away from the host you get your own traffic,
-            and the shared world comes back when you return. Everyone needs version 3.2.
+            and the shared world comes back when you return. 
 
             3.1: CO-OP MISSIONS + much more precise multiplayer. Press O in the game (host) and
             start a co-op mission - they can only be done together and everyone gets the money:
