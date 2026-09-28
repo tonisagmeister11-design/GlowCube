@@ -88,6 +88,7 @@ func _road_point(near: Vector3, rmin: float, rmax: float) -> Vector3:
 func _host() -> void:
 	Game.player_data = PlayerData.new()
 	Net.host("Toni")
+	await wait_until(func(): return Net.lobby_ready, 20.0)   # internet mode: code final after the check
 	var f := FileAccess.open(args["file"], FileAccess.WRITE)
 	f.store_string(Net.lobby_code)
 	f.close()

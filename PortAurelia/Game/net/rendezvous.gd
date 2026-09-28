@@ -544,6 +544,8 @@ static func parse_stun(r: PackedByteArray) -> Array:
 ## Our own addresses for the other side to try: public (STUN), home network and IPv6.
 static func local_cands(port: int) -> Array:
 	var out := []
+	if OS.has_environment("HH_FAKE_V6"):   # tests: an IPv6 address that is not reachable must not hurt
+		out.append([OS.get_environment("HH_FAKE_V6"), port])
 	if OS.has_environment("HH_NO_LAN") or OS.has_environment("HH_BIND_IP"):
 		return out
 	var v6 := 0

@@ -117,6 +117,7 @@ func _flat(center: Vector3, size: Vector3) -> StaticBody3D:
 func _host() -> void:
 	Game.player_data = PlayerData.new()
 	check("lobby created", Net.host("Toni"))
+	await wait_until(func(): return Net.lobby_ready, 20.0)   # internet mode: code final after the check
 	var f := FileAccess.open(args["file"], FileAccess.WRITE)
 	f.store_string(Net.lobby_code)
 	f.close()
