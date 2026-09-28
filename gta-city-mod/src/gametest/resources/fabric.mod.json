@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "gtacity-spieltest",
+  "version": "1.0.0",
+  "name": "GTA City Spieltest",
+  "description": "Startet das echte Spiel und prueft die GTA-City-Mod.",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["de.gtacity.spieltest.GtaCitySpieltest"]
+  },
+  "depends": {
+    "gtacity": "*"
+  }
+}

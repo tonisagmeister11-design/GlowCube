@@ -43,3 +43,25 @@ java {
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
 }
+
+// Spieltest: startet das echte Spiel, legt eine Stadtwelt an und spielt die Mod durch
+// (Fabric Client-Gametests, Quelltext in src/gametest). Nur mit -Pspieltest, normale Builds
+// bleiben unberuehrt:  xvfb-run gradle runClientGameTest -Pspieltest
+if (project.hasProperty('spieltest')) {
+    fabricApi {
+        configureTests {
+            createSourceSet = true
+            modId = 'gtacity-spieltest'
+            enableGameTests = false
+            enableClientGameTests = true
+            eula = true
+        }
+    }
+    loom {
+        runs {
+            configureEach {
+                vmArg '-Xmx4G'
+            }
+        }
+    }
+}

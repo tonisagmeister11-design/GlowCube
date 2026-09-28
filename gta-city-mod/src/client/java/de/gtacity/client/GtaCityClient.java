@@ -13,13 +13,14 @@ import de.gtacity.shop.ShopType;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.builders.CubeDeformation;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.client.renderer.entity.ThrownItemRenderer;
 
 public class GtaCityClient implements ClientModInitializer {
@@ -33,11 +34,11 @@ public class GtaCityClient implements ClientModInitializer {
             ModelLayerRegistry.registerModelLayer(CarModel.layer(shape), () -> CarModel.create(shape));
         }
 
-        EntityRendererRegistry.register(ModEntities.PEDESTRIAN, NpcRenderer::new);
-        EntityRendererRegistry.register(ModEntities.POLICE, NpcRenderer::new);
-        EntityRendererRegistry.register(ModEntities.CAR, CarRenderer::new);
-        EntityRendererRegistry.register(ModEntities.ROCKET, ThrownItemRenderer::new);
-        EntityRendererRegistry.register(ModEntities.GRENADE, ThrownItemRenderer::new);
+        EntityRenderers.register(ModEntities.PEDESTRIAN, NpcRenderer::new);
+        EntityRenderers.register(ModEntities.POLICE, NpcRenderer::new);
+        EntityRenderers.register(ModEntities.CAR, CarRenderer::new);
+        EntityRenderers.register(ModEntities.ROCKET, ThrownItemRenderer::new);
+        EntityRenderers.register(ModEntities.GRENADE, ThrownItemRenderer::new);
 
         ClientPlayNetworking.registerGlobalReceiver(Payloads.OpenShop.TYPE, (payload, context) -> {
             ShopType[] types = ShopType.values();
@@ -54,7 +55,8 @@ public class GtaCityClient implements ClientModInitializer {
             }
         });
 
-        HudElementRegistry.addLast(GtaCity.id("hud"), CityHud::render);
+        // Before the chat, so chat lines are drawn over the minimap instead of disappearing behind it.
+        HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, GtaCity.id("hud"), CityHud::render);
         ClientInput.init();
     }
 }

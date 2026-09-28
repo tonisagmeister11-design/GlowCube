@@ -62,17 +62,32 @@ Story-Missionen folgen später.
 
 ## Bauen
 
-Du brauchst Java 25. Dann:
+Du brauchst Java 25. Gradle musst du nicht installieren, der Wrapper lädt die passende Fassung (9.8) selbst:
 
 ```
 cd gta-city-mod
-gradle build
+./gradlew build          # Windows: gradlew.bat build
 ```
 
-Die fertige Mod liegt danach in `build/libs/gta-city-0.1.0.jar`. Kopier sie zusammen mit der
-[Fabric API](https://modrinth.com/mod/fabric-api) (0.160.5+26.3) in den `mods`-Ordner einer
-Fabric-Installation (Loader 0.19.5) für Minecraft 26.3. Erstell dann eine neue Welt mit dem Welttyp
-„Standard“: Der ist durch die Stadt ersetzt.
+Die fertige Mod liegt danach in `build/libs/gta-city-0.1.0.jar`. Eine fertig gebaute Fassung liegt auch
+in `dist/`. Kopier sie zusammen mit der [Fabric API](https://modrinth.com/mod/fabric-api) (0.160.5+26.3
+oder neuer) in den `mods`-Ordner einer Fabric-Installation (Loader 0.19.5) für Minecraft 26.3. Erstell dann
+eine neue Welt mit dem Welttyp „Standard“: Der ist durch die Stadt ersetzt.
+
+## Spieltest
+
+Ein automatischer Test startet das echte Minecraft 26.3, legt eine Stadtwelt an und spielt die Mod durch:
+Stadt und Weltgrenze, Startausrüstung, Passanten und Verkehr, Auto klauen und fahren, Schießen, Nachladen,
+Fahndung und Polizei, Laden und Überfall, Raketenwerfer und Granate, Geldautomat und Aufzug, „WASTED“ mit
+Aufwachen im Krankenhaus. Zu jeder Station entsteht ein Screenshot unter
+`build/run/clientGameTest/screenshots/`, im Protokoll steht pro Prüfung eine Zeile `GTACITY-TEST OK|FEHLER`.
+
+```
+./gradlew runClientGameTest -Pspieltest
+```
+
+Ohne Bildschirm (Server, CI) mit einem virtuellen: `xvfb-run -a ./gradlew runClientGameTest -Pspieltest`.
+Ohne Grafikkarte braucht Minecraft 26.3 dafür einen Software-Vulkan-Treiber (unter Ubuntu `mesa-vulkan-drivers`).
 
 ## Werkzeuge
 
