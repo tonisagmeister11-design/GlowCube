@@ -21,13 +21,24 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v3.0
-          name: Harbor Heat v3.0
+          tag_name: harbor-heat-v3.1
+          name: Harbor Heat v3.1
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v3.0** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v3.1** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
+
+            3.1: CO-OP MISSIONS + much more precise multiplayer. Press O in the game (host) and
+            start a co-op mission - they can only be done together and everyone gets the money:
+            Armored Van Heist ($40,000), Double Delivery ($15,000), Street War ($25,000). The enemies
+            and vehicles in co-op missions are the same for everyone. Other players now move
+            exactly like on their own screen (walking, running, crouching, aiming, every animation),
+            their cars roll, steer and light up, and crashing into another player's car really
+            pushes and damages it. The lobby code stays in the top right the whole time.
+            Internet: the lobby shows if your router could be opened automatically. If it says
+            "CGNAT" (common with mobile internet), let your friend host or both install Radmin VPN -
+            the lobby then also shows a Radmin code. Everyone needs version 3.1.
 
             3.0: MULTIPLAYER (up to 8 players). Main menu > MULTIPLAYER > create a lobby and send the
             code to your friends; they join with the code. The lobby creator's game is the server
