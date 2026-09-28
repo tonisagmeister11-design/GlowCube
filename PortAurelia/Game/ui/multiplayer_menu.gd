@@ -26,7 +26,7 @@ func _ready() -> void:
 	add_child(shade)
 	_pick = _panel()
 	_title(_pick, "MULTIPLAYER")
-	_text(_pick, "Wer die Lobby erstellt, ist der Server: sein Laptop verbindet alle Spieler und prüft jede Nachricht. Freunde treten mit dem Code bei (max. 8 Spieler).", 16, Color(1, 1, 1, 0.8))
+	_text(_pick, "Wer die Lobby erstellt, ist der Server: sein Laptop verbindet alle Spieler und prüft jede Nachricht. Freunde treten mit dem Code bei – im gleichen WLAN oder von überall übers Internet (max. 8 Spieler).", 16, Color(1, 1, 1, 0.8))
 	_text(_pick, "DEIN NAME", 15, Color(1, 0.3, 0.6))
 	_name = LineEdit.new()
 	_name.max_length = 16
@@ -53,8 +53,10 @@ func _ready() -> void:
 	_title(_lobby, "LOBBY")
 	_code_label = _text(_lobby, "", 38, Color(1, 1, 1))
 	_button(_lobby, "CODE KOPIEREN", func():
+		if Net.lobby_code == "" or (Net.is_host() and not Net.lobby_ready):
+			return
 		DisplayServer.clipboard_set(Net.lobby_code)
-		_status.text = "Code kopiert – schick ihn deinen Freunden.")
+		_status.text = "Code kopiert – schick ihn deinen Freunden (z. B. per WhatsApp).")
 	_status = _text(_lobby, "", 16, Color(1, 0.85, 0.5))
 	_extra = _text(_lobby, "", 14, Color(1, 1, 1, 0.7))
 	_text(_lobby, "SPIELER", 15, Color(1, 0.3, 0.6))
@@ -171,21 +173,36 @@ func _show_pick() -> void:
 func _refresh() -> void:
 	if not is_inside_tree():
 		return
-	_code_label.text = Net.lobby_code if Net.lobby_code != "" else "—"
+	if Net.is_host() and not Net.lobby_ready:
+		_code_label.text = "Code wird erstellt ..."
+	else:
+		_code_label.text = Net.lobby_code if Net.lobby_code != "" else "—"
 	var ex := ""
-	for e in Net.extra_codes():
-		ex += "%s:  %s\n" % [e[0], e[1]]
-	_extra.text = ("Andere Codes (wenn ihr ein VPN benutzt oder im selben Netz seid):\n" + ex) if ex != "" else ""
+	if Net.lobby_ready:
+		for e in Net.extra_codes():
+			ex += "%s:  %s\n" % [e[0], e[1]]
+	_extra.text = ("Andere Codes (nur nötig, wenn ihr ein VPN benutzt):\n" + ex) if ex != "" else ""
 	if Net.is_host() and Net.status != "":
 		_status.text = Net.status
 	var t := ""
 	for id in Net.players:
-		t += "●  %s%s\n" % [Net.player_name(id), "  (Host)" if id == 1 else ""]
+		var info := Net.peer_link_text(id)
+		t += "●  %s%s%s\n" % [Net.player_name(id), "  (Host)" if id == 1 else "", ("   · " + info) if info != "" else ""]
 	_list.text = t if t != "" else "..."
 	_start.visible = Net.is_host()
 	_start.disabled = not Net.is_host()
 	if _status.text == "":
 		_status.text = Net.status
+
+
+var _refresh_t := 0.0
+
+
+func _process(delta: float) -> void:
+	_refresh_t -= delta
+	if _refresh_t <= 0.0 and _lobby.is_visible_in_tree():
+		_refresh_t = 1.0
+		_refresh()   # ping and connection type
 
 
 func _back() -> void:

@@ -26,7 +26,7 @@ signal left(reason: String)
 const PORT := 7777
 const DISCOVERY_PORT := 7778
 const MAX_PLAYERS := 8
-const PROTOCOL := 4
+const PROTOCOL := 5
 const STATE_HZ := 20.0
 const MAX_HIT := 260.0          # one hit never takes more than this (a rocket still kills a 250 hp player)
 const MAX_HIT_RANGE := 260.0
@@ -50,6 +50,15 @@ var internet_state := ""       # "ok", "manual", "cgnat" (host, after the intern
 var _peer: ENetMultiplayerPeer
 var _secret := 0
 var _host_ip := ""
+var _rdv: Rendezvous
+var _nat_mapped: Array = []
+var _internet_t0 := 0
+var lobby_ready := true         # host: the lobby code is final (after the internet check)
+var link_kind := ""             # client: "LAN", "direkt" or "Relay"
+var _attempts: Array = []       # client: connection attempts still to try
+var _attempt_deadline := 0
+var _attempt_kind := ""
+var _status_t := 0.0
 var _upnp: UPNP
 var _upnp_thread: Thread
 var _disc_send: PacketPeerUDP
@@ -81,7 +90,7 @@ func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected)
-	multiplayer.connection_failed.connect(func(): _fail.call_deferred("Keine Verbindung zum Host. Ist der Code richtig und die Lobby noch offen? Wenn ihr nicht im gleichen WLAN seid: Beim Host muss in der Lobby „Internet bereit“ stehen – sonst soll der andere die Lobby erstellen oder ihr nutzt Radmin VPN / ZeroTier."))
+	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(func(): _fail.call_deferred("Die Verbindung zum Host wurde getrennt."))
 	multiplayer.peer_authenticating.connect(_on_authenticating)
 	multiplayer.peer_authentication_failed.connect(func(_id): if mode == Mode.CLIENT: _fail.call_deferred("Beitritt abgelehnt."))
@@ -120,14 +129,12 @@ func _set_status(t: String) -> void:
 func host(player_name: String) -> bool:
 	leave("")
 	my_name = clean_name(player_name)
-	_peer = ENetMultiplayerPeer.new()
-	var err := _peer.create_server(PORT, MAX_PLAYERS - 1)
-	if err != OK:
+	# reserve the game port first: the internet check learns the router's mapping of exactly
+	# this port, then the game server takes it over
+	var probe := PacketPeerUDP.new()
+	if probe.bind(PORT, bind_ip()) != OK:
 		_set_status("Port %d ist belegt – läuft das Spiel schon ein zweites Mal?" % PORT)
-		_peer = null
 		return false
-	_setup_multiplayer()
-	multiplayer.multiplayer_peer = _peer
 	mode = Mode.HOST
 	in_game = false
 	_secret = randi_range(1, 65535)
@@ -136,16 +143,125 @@ func host(player_name: String) -> bool:
 	lobby_code = encode_code(_host_ip, _secret)
 	internet_state = ""
 	public_ip = ""
-	_set_status("Lobby offen. Im gleichen WLAN funktioniert der Code sofort. Internet wird eingerichtet ...")
+	_internet_t0 = Time.get_ticks_msec()
 	_disc_send = PacketPeerUDP.new()
 	_disc_send.set_broadcast_enabled(true)
-	if not OS.has_environment("HH_NO_UPNP") and not "--no-upnp" in OS.get_cmdline_user_args():
-		_upnp_thread = Thread.new()
-		_upnp_thread.start(_upnp_setup)
+	if internet_enabled():
+		lobby_ready = false
+		_set_status("Lobby wird erstellt ...")
+		_host_internet(probe)
 	else:
+		probe.close()
+		if not _host_server():
+			return false
+		lobby_ready = true
 		_set_status("Lobby offen (nur lokales Netzwerk).")
 	roster_changed.emit()
+	return mode == Mode.HOST
+
+
+## Internet features on? (off only in the automatic tests that run on one machine)
+static func internet_enabled() -> bool:
+	return OS.has_environment("HH_STUN") or not (OS.has_environment("HH_NO_UPNP") or "--no-upnp" in OS.get_cmdline_user_args())
+
+
+static func bind_ip() -> String:
+	return OS.get_environment("HH_BIND_IP") if OS.has_environment("HH_BIND_IP") else "*"
+
+
+func _host_server() -> bool:
+	_peer = ENetMultiplayerPeer.new()
+	if bind_ip() != "*":
+		_peer.set_bind_ip(bind_ip())
+	var err := _peer.create_server(PORT, MAX_PLAYERS - 1)
+	if err != OK:
+		_peer = null
+		_fail("Port %d ist belegt – läuft das Spiel schon ein zweites Mal?" % PORT)
+		return false
+	_setup_multiplayer()
+	multiplayer.multiplayer_peer = _peer
 	return true
+
+
+func _host_internet(probe: PacketPeerUDP) -> void:
+	var st := await stun_phase(probe, 1600)
+	probe.close()
+	if mode != Mode.HOST:
+		return
+	if not _host_server():
+		return
+	_nat_mapped = st["mapped"]
+	if not _nat_mapped.is_empty() and not is_private_ip(String(_nat_mapped[0])):
+		public_ip = String(_nat_mapped[0])
+		lobby_code = encode_code(public_ip, _secret)
+	_rdv = Rendezvous.new()
+	add_child(_rdv)
+	_rdv.enet = _peer.host
+	if not (st["server"] as Array).is_empty():
+		_rdv.set_stun_keepalive(st["server"])
+	_rdv.host_begin(lobby_code, host_cands())
+	lobby_ready = true
+	_set_status("Lobby offen. Internet wird eingerichtet ...")
+	if not OS.has_environment("HH_NO_UPNP"):
+		_upnp_thread = Thread.new()
+		_upnp_thread.start(_upnp_setup)
+	roster_changed.emit()
+
+
+## Addresses the joining players can try, best first.
+func host_cands() -> Array:
+	var out := []
+	if not _nat_mapped.is_empty():
+		out.append([String(_nat_mapped[0]), int(_nat_mapped[1])])
+	if upnp_ok and public_ip != "" and not out.has([public_ip, PORT]):
+		out.append([public_ip, PORT])
+	for c in Rendezvous.local_cands(PORT):
+		if not out.has(c):
+			out.append(c)
+	return out.slice(0, 10)
+
+
+## STUN on a socket (without blocking the game): the public address and port the router gives
+## this socket, and whether the router hands out a different port per destination ("symmetric").
+func stun_phase(udp: PacketPeerUDP, timeout_ms: int) -> Dictionary:
+	var res := {"mapped": [], "server": [], "symmetric": false}
+	var rs := Rendezvous.Resolver.new()
+	rs.start(Rendezvous.stun_servers())
+	var t0 := Time.get_ticks_msec()
+	var sent := {}      # "ip:port" -> [last send ms, tries, request]
+	var got := {}       # "ip:port" -> [ip, port]
+	while Time.get_ticks_msec() - t0 < timeout_ms:
+		await get_tree().process_frame
+		rs.poll()
+		for sv in rs.servers():
+			var k := "%s:%d" % sv
+			if got.has(k):
+				continue
+			var e: Array = sent.get(k, [0, 0, PackedByteArray()])
+			if int(e[1]) < 4 and Time.get_ticks_msec() - int(e[0]) > 350:
+				var req := Rendezvous.stun_request()
+				udp.set_dest_address(String(sv[0]), int(sv[1]))
+				udp.put_packet(req)
+				sent[k] = [Time.get_ticks_msec(), int(e[1]) + 1, req]
+		while udp.get_available_packet_count() > 0:
+			var pkt := udp.get_packet()
+			var k := "%s:%d" % [udp.get_packet_ip(), udp.get_packet_port()]
+			if sent.has(k) and pkt.size() >= 20 and pkt.slice(8, 20) == (sent[k][2] as PackedByteArray).slice(8, 20):
+				var m := Rendezvous.parse_stun(pkt)
+				if not m.is_empty():
+					got[k] = m
+					if (res["server"] as Array).is_empty():
+						res["server"] = [udp.get_packet_ip(), udp.get_packet_port()]
+						res["mapped"] = m
+		if got.size() >= 2 or (got.size() == 1 and Time.get_ticks_msec() - t0 > 900):
+			break
+	var ports := {}
+	for k in got:
+		ports[int(got[k][1])] = true
+	res["symmetric"] = ports.size() > 1
+	if OS.has_environment("HH_NET_DEBUG"):
+		print("NETDBG stun ", res, " all ", got)
+	return res
 
 
 func _setup_multiplayer() -> void:
@@ -156,9 +272,8 @@ func _setup_multiplayer() -> void:
 	sm.auth_timeout = 5.0
 
 
-## Internet setup (worker thread): open the port on the router (UPnP) and find the public
-## address (router answer, else a public STUN server - the standard way games and video calls
-## learn their own address). Detects connections without an own public address (CGNAT).
+## Router port opening via UPnP (worker thread). Optional: the meeting point + hole punching
+## works without it, but an opened port makes the direct connection even more likely.
 func _upnp_setup() -> void:
 	var u := UPNP.new()
 	var ok := false
@@ -167,11 +282,10 @@ func _upnp_setup() -> void:
 		if u.add_port_mapping(PORT, PORT, "Harbor Heat", "UDP", 0) == UPNP.UPNP_RESULT_SUCCESS:
 			ext = u.query_external_address()
 			ok = ext != "" and ext.count(".") == 3
-	var pub := stun_public_ip()
-	call_deferred("_upnp_done", u, ok, ext, pub)
+	call_deferred("_upnp_done", u, ok, ext)
 
 
-func _upnp_done(u: UPNP, ok: bool, ext: String, pub: String) -> void:
+func _upnp_done(u: UPNP, ok: bool, ext: String) -> void:
 	if _upnp_thread:
 		_upnp_thread.wait_to_finish()
 		_upnp_thread = null
@@ -179,76 +293,46 @@ func _upnp_done(u: UPNP, ok: bool, ext: String, pub: String) -> void:
 		if ok:
 			u.delete_port_mapping(PORT, "UDP")
 		return
-	upnp_ok = ok and not is_private_ip(ext)
-	var cgnat := (ok and is_private_ip(ext)) or (ok and pub != "" and pub != ext)
-	public_ip = pub if pub != "" else (ext if ok and not is_private_ip(ext) else "")
 	if ok:
 		_upnp = u
-	if public_ip != "":
+	upnp_ok = ok and not is_private_ip(ext)
+	if upnp_ok and public_ip == "":
+		public_ip = ext
 		lobby_code = encode_code(public_ip, _secret)
-	if upnp_ok and not cgnat:
-		internet_state = "ok"
-		_set_status("✔ Internet bereit: Der Router wurde automatisch geöffnet. Der Code funktioniert überall – auch wenn dein Freund ganz woanders sitzt.")
-	elif cgnat:
-		internet_state = "cgnat"
-		_set_status("✖ Dein Internetanschluss hat keine eigene öffentliche Adresse (CGNAT) – über das Internet kann niemand zu dir. Im gleichen WLAN klappt der Code. Übers Internet: Dein Freund erstellt die Lobby, oder ihr nutzt Radmin VPN / ZeroTier (dann den VPN-Code unten).")
-	else:
-		internet_state = "manual"
-		_set_status("⚠ Der Router ließ sich nicht automatisch öffnen. Im gleichen WLAN klappt der Code sofort. Übers Internet: im Router UDP-Port %d an diesen PC weiterleiten, oder dein Freund erstellt die Lobby, oder ihr nutzt Radmin VPN / ZeroTier (VPN-Code unten)." % PORT)
+	if _rdv:
+		_rdv.host_update(lobby_code, host_cands())
+	_update_internet_status()
 	roster_changed.emit()
 
 
-## Public IPv4 address via STUN (RFC 5389 binding request). "" if nothing answered.
-static func stun_public_ip() -> String:
-	var servers := [["stun.l.google.com", 19302], ["stun.cloudflare.com", 3478], ["stun1.l.google.com", 19302]]
-	for sv in servers:
-		var ip := IP.resolve_hostname(String(sv[0]), IP.TYPE_IPV4)
-		if ip == "" or not ip.is_valid_ip_address():
-			continue
-		var udp := PacketPeerUDP.new()
-		if udp.connect_to_host(ip, int(sv[1])) != OK:
-			continue
-		var req := PackedByteArray([0x00, 0x01, 0x00, 0x00, 0x21, 0x12, 0xA4, 0x42])
-		for i in 12:
-			req.append(randi() % 256)
-		for attempt in 3:
-			udp.put_packet(req)
-			var t0 := Time.get_ticks_msec()
-			while Time.get_ticks_msec() - t0 < 700:
-				if udp.get_available_packet_count() > 0:
-					var r := udp.get_packet()
-					var got := _parse_stun(r, req)
-					if got != "":
-						udp.close()
-						return got
-				OS.delay_msec(20)
-		udp.close()
-	return ""
-
-
-static func _parse_stun(r: PackedByteArray, req: PackedByteArray) -> String:
-	if r.size() < 20 or r[0] != 0x01 or r[1] != 0x01:
-		return ""
-	for i in range(8, 20):
-		if r[i] != req[i]:
-			return ""
-	var pos := 20
-	while pos + 4 <= r.size():
-		var t := (r[pos] << 8) | r[pos + 1]
-		var ln := (r[pos + 2] << 8) | r[pos + 3]
-		var v := pos + 4
-		if v + ln > r.size():
-			break
-		if (t == 0x0020 or t == 0x0001) and ln >= 8 and r[v + 1] == 0x01:
-			var a := [r[v + 4], r[v + 5], r[v + 6], r[v + 7]]
-			if t == 0x0020:
-				a = [a[0] ^ 0x21, a[1] ^ 0x12, a[2] ^ 0xA4, a[3] ^ 0x42]
-			return "%d.%d.%d.%d" % a
-		pos = v + ln + ((4 - ln % 4) % 4)
-	return ""
+## Host: lobby status line about the internet readiness.
+func _update_internet_status() -> void:
+	if mode != Mode.HOST or not lobby_ready or not internet_enabled():
+		return
+	var links := _rdv.ready_links() if _rdv else 0
+	var waited := Time.get_ticks_msec() - _internet_t0
+	var st := ""
+	var text := ""
+	if links > 0:
+		st = "ok"
+		text = "✔ Internet bereit: Dein Freund kann mit dem Code von überall beitreten – auch aus einem anderen WLAN. Keine Router-Einstellungen nötig."
+	elif upnp_ok:
+		st = "ok"
+		text = "✔ Internet bereit: Der Router wurde automatisch geöffnet. Der Code funktioniert auch aus einem anderen WLAN."
+	elif waited < 12000:
+		st = ""
+		text = "Lobby offen. Internet wird eingerichtet ..."
+	else:
+		st = "offline"
+		text = "⚠ Der Online-Vermittlungsdienst ist nicht erreichbar (Internet oder Firewall?). Im gleichen WLAN klappt der Code. Prüfe die Internetverbindung – das Spiel versucht es automatisch weiter."
+	if st != internet_state or text != status:
+		internet_state = st
+		_set_status(text)
 
 
 static func is_private_ip(ip: String) -> bool:
+	if OS.has_environment("HH_TEST_PUBLIC") and ip.begins_with(OS.get_environment("HH_TEST_PUBLIC")):
+		return false   # tests: the simulated internet uses loopback addresses
 	var p := ip.split(".")
 	if p.size() != 4:
 		return true
@@ -315,27 +399,201 @@ func join(player_name: String, code: String) -> void:
 		return
 	_join_secret = int(d["secret"])
 	_join_target = String(d["ip"])
-	var join_port := PORT
+	mode = Mode.CLIENT
+	link_kind = ""
+	_attempts.clear()
 	if OS.has_environment("HH_JOIN_ADDR"):   # tests: route through a latency/loss simulator
 		var hp := OS.get_environment("HH_JOIN_ADDR").split(":")
-		_join_target = hp[0]
-		join_port = int(hp[1]) if hp.size() > 1 else PORT
-	mode = Mode.CLIENT
+		_attempts = [{"kind": "direkt", "ip": hp[0], "port": int(hp[1]) if hp.size() > 1 else PORT, "local": 0, "t": 12000}]
+		_set_status("Verbinde mit Lobby ...")
+		_next_attempt()
+		return
 	_set_status("Suche Lobby ...")
-	# same network? the host announces its key by broadcast
-	var lan := "" if OS.has_environment("HH_JOIN_ADDR") else await _discover(_join_secret, 1.6)
+	_join_internet(code)
+
+
+## Finds the host: same network (broadcast), otherwise over the internet via the meeting point
+## with hole punching; relay as the last resort.
+func _join_internet(code: String) -> void:
+	var lan: PacketPeerUDP = null
+	if not OS.has_environment("HH_NO_LAN"):
+		lan = PacketPeerUDP.new()
+		if lan.bind(DISCOVERY_PORT) != OK:
+			lan = null
+	var udp := PacketPeerUDP.new()
+	if udp.bind(0, bind_ip()) != OK:
+		_fail("Netzwerkfehler: kein freier Port.")
+		return
+	var lport := udp.get_local_port()
+	var internet := internet_enabled()
+	if internet:
+		_rdv = Rendezvous.new()
+		add_child(_rdv)
+		_rdv.client_begin(code)
+	var rs := Rendezvous.Resolver.new()
+	if internet:
+		rs.start(Rendezvous.stun_servers())
+	var stun_sent := {}
+	var mapped: Array = []
+	var published := not internet
+	var direct: Array = []
+	var lan_ip := ""
+	var probe_t := 0
+	var t0 := Time.get_ticks_msec()
+	var code_cand := [_join_target, PORT]
+	while true:
+		await get_tree().process_frame
+		if mode != Mode.CLIENT:
+			udp.close()
+			if lan:
+				lan.close()
+			return
+		var now := Time.get_ticks_msec()
+		var el := now - t0
+		# 1. same network?
+		if lan:
+			while lan.get_available_packet_count() > 0:
+				var parts := lan.get_packet().get_string_from_ascii().split("|")
+				if parts.size() >= 2 and parts[0] == "HH%d" % PROTOCOL and parts[1].is_valid_int() and int(parts[1]) == _join_secret:
+					lan_ip = lan.get_packet_ip()
+		if lan_ip != "":
+			break
+		# 2. our public address (STUN) -> tell the host where to punch
+		if internet:
+			rs.poll()
+			for sv in rs.servers():
+				var k := "%s:%d" % sv
+				var e: Array = stun_sent.get(k, [0, 0, PackedByteArray()])
+				if mapped.is_empty() and int(e[1]) < 4 and now - int(e[0]) > 350:
+					var req := Rendezvous.stun_request()
+					udp.set_dest_address(String(sv[0]), int(sv[1]))
+					udp.put_packet(req)
+					stun_sent[k] = [now, int(e[1]) + 1, req]
+		if not published and (not mapped.is_empty() or el > 1600):
+			published = true
+			var cands := []
+			if not mapped.is_empty():
+				cands.append(mapped)
+			for c in Rendezvous.local_cands(lport):
+				if not cands.has(c):
+					cands.append(c)
+			_rdv.client_publish_join(cands)
+		# 3. probe every known host address; the host's punch packet proves a direct path
+		if now - probe_t > 150:
+			probe_t = now
+			var tries := [code_cand]
+			if _rdv:
+				for c in _rdv.found_cands:
+					if not tries.has(c):
+						tries.append(c)
+			var pkt := ("HHQ" + (_rdv.nonce if _rdv else "")).to_ascii_buffer()
+			for c in tries:
+				udp.set_dest_address(String(c[0]), int(c[1]))
+				udp.put_packet(pkt)
+		while udp.get_available_packet_count() > 0:
+			var pkt := udp.get_packet()
+			var src := [udp.get_packet_ip(), udp.get_packet_port()]
+			if _rdv and pkt.size() == 19 and pkt.slice(0, 3).get_string_from_ascii() == "HHP" \
+					and pkt.slice(3).get_string_from_ascii() == _rdv.nonce:
+				direct = src
+			elif mapped.is_empty() and stun_sent.has("%s:%d" % src):
+				var req: PackedByteArray = stun_sent["%s:%d" % src][2]
+				if pkt.size() >= 20 and pkt.slice(8, 20) == req.slice(8, 20):
+					mapped = Rendezvous.parse_stun(pkt)
+		if not direct.is_empty():
+			break
+		if _rdv:
+			if _rdv.host_protocol > 0 and _rdv.host_protocol != PROTOCOL:
+				udp.close()
+				if lan:
+					lan.close()
+				_fail("Der Host hat eine andere Spielversion – ihr braucht beide dieselbe Version von Harbor Heat.")
+				return
+			if _rdv.host_alive:
+				_set_status("Host gefunden – baue direkte Verbindung auf ...")
+			elif _rdv.ready_links() > 0:
+				_set_status("Suche Lobby über das Internet ...")
+		# give up on hole punching: host answered but no punch arrived, or nobody answered at all
+		if _rdv and _rdv.host_alive and el > (4500 if _rdv.host_alive_ms > 0 and now - _rdv.host_alive_ms > 3500 else 9000):
+			break
+		if el > (9000 if (_rdv and _rdv.contact_slot >= 0) else 14000):
+			break
+	udp.close()
+	if lan:
+		lan.close()
+	if OS.has_environment("HH_NET_DEBUG"):
+		print("NETDBG join: lan=%s direct=%s mapped=%s found=%s alive=%s slot=%d" % [lan_ip, str(direct), str(mapped),
+			str(_rdv.found_cands if _rdv else []), _rdv.host_alive if _rdv else false, _rdv.contact_slot if _rdv else -1])
+	_attempts.clear()
+	if lan_ip != "":
+		_attempts.append({"kind": "LAN", "ip": lan_ip, "port": PORT, "local": 0, "t": 8000})
+	elif not direct.is_empty():
+		_attempts.append({"kind": "direkt", "ip": String(direct[0]), "port": int(direct[1]), "local": lport, "t": 8000})
+	else:
+		# no punch came back: try the host's public addresses directly (works when only our side
+		# is strict), then the relay
+		var tries := []
+		if _rdv:
+			for c in _rdv.found_cands:
+				if not is_private_ip(String(c[0])) and tries.size() < 1:
+					tries.append(c)
+		if not tries.has(code_cand) and not is_private_ip(String(code_cand[0])):
+			tries.append(code_cand)
+		for c in tries.slice(0, 1 if (_rdv and _rdv.contact_slot >= 0) else 2):
+			_attempts.append({"kind": "direkt", "ip": String(c[0]), "port": int(c[1]), "local": lport, "t": 3000})
+		if _rdv and _rdv.contact_slot >= 0:
+			_attempts.append({"kind": "Relay", "t": 15000})
+		if _attempts.is_empty():
+			_attempts.append({"kind": "direkt", "ip": String(code_cand[0]), "port": PORT, "local": lport, "t": 5000})
+	_next_attempt()
+
+
+func _next_attempt() -> void:
 	if mode != Mode.CLIENT:
 		return
-	if lan != "":
-		_join_target = lan
-		join_port = PORT
-	_set_status("Verbinde mit %s ..." % ("Lobby im WLAN" if lan != "" else "Lobby"))
-	_peer = ENetMultiplayerPeer.new()
-	if _peer.create_client(_join_target, join_port) != OK:
-		_fail("Verbindung konnte nicht gestartet werden.")
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	if _peer:
+		_peer.close()
+		_peer = null
+	if _rdv and _rdv.relay_active():
+		_rdv.stop_relay()
+	if _attempts.is_empty():
+		_attempt_deadline = 0
+		_fail("Keine Verbindung zum Host. Ist der Code richtig und die Lobby noch offen? Beide brauchen Internet und dieselbe Spielversion. Tipp: Beim Host muss in der Lobby „Internet bereit“ stehen.")
 		return
+	var a: Dictionary = _attempts.pop_front()
+	_attempt_kind = String(a["kind"])
+	_peer = ENetMultiplayerPeer.new()
+	var err := OK
+	if _attempt_kind == "Relay":
+		var port := _rdv.start_relay()
+		if port == 0:
+			_next_attempt.call_deferred()
+			return
+		_set_status("Direkte Verbindung blockiert – verbinde über den Relay-Server ...")
+		err = _peer.create_client("127.0.0.1", port)
+	else:
+		if bind_ip() != "*":
+			_peer.set_bind_ip(bind_ip())
+		_set_status("Verbinde mit Lobby%s ..." % (" im WLAN" if _attempt_kind == "LAN" else ""))
+		err = _peer.create_client(String(a["ip"]), int(a["port"]), 0, 0, 0, int(a["local"]))
+	if err != OK:
+		_next_attempt.call_deferred()
+		return
+	if OS.has_environment("HH_NET_DEBUG"):
+		print("NETDBG attempt ", a)
 	_setup_multiplayer()
 	multiplayer.multiplayer_peer = _peer
+	_attempt_deadline = Time.get_ticks_msec() + int(a["t"])
+
+
+func _on_connection_failed() -> void:
+	if mode == Mode.CLIENT and _attempt_deadline > 0 and not _attempts.is_empty():
+		_next_attempt.call_deferred()
+		return
+	_attempt_deadline = 0
+	_attempts.clear()
+	_fail.call_deferred("Keine Verbindung zum Host. Ist der Code richtig und die Lobby noch offen? Beide brauchen Internet und dieselbe Spielversion. Tipp: Beim Host muss in der Lobby „Internet bereit“ stehen.")
 
 
 func _discover(secret: int, timeout: float) -> String:
@@ -391,7 +649,14 @@ func _auth_received(id: int, data: PackedByteArray) -> void:
 
 
 func _on_connected() -> void:
-	_set_status("Verbunden – warte auf den Host ...")
+	_attempt_deadline = 0
+	_attempts.clear()
+	link_kind = _attempt_kind
+	if _rdv:
+		_rdv.stop_join_repeats()
+		if link_kind != "Relay":
+			_rdv.client_end()   # the meeting point is not needed any more
+	_set_status("Verbunden (%s) – warte auf den Host ..." % link_kind)
 
 
 func _on_peer_connected(id: int) -> void:
@@ -472,6 +737,18 @@ func leave(reason := "") -> void:
 	if _peer:
 		_peer.close()
 		_peer = null
+	if _rdv:
+		if mode == Mode.HOST:
+			_rdv.host_end()
+		else:
+			_rdv.client_end()
+		_rdv.queue_free()
+		_rdv = null
+	_attempts.clear()
+	_attempt_deadline = 0
+	_nat_mapped = []
+	lobby_ready = true
+	link_kind = ""
 	mode = Mode.OFFLINE
 	players.clear()
 	_pending_join.clear()
@@ -535,6 +812,18 @@ func _local_player() -> Player:
 func _process(delta: float) -> void:
 	if mode == Mode.OFFLINE:
 		return
+	if mode == Mode.CLIENT and _attempt_deadline > 0 and Time.get_ticks_msec() > _attempt_deadline:
+		_attempt_deadline = 0
+		if OS.has_environment("HH_NET_DEBUG"):
+			print("NETDBG attempt timed out: ", _attempt_kind)
+		if _attempts.is_empty():
+			_on_connection_failed()
+		else:
+			_next_attempt()
+	_status_t -= delta
+	if mode == Mode.HOST and _status_t <= 0.0:
+		_status_t = 1.0
+		_update_internet_status()
 	if mode == Mode.HOST and _disc_send:
 		_disc_t -= delta
 		if _disc_t <= 0.0:
@@ -1055,6 +1344,30 @@ func send_chat(text: String) -> void:
 
 func player_name(id: int) -> String:
 	return String(players.get(id, {}).get("name", "?"))
+
+
+## Connection type and ping of a player, e.g. "Internet · 34 ms" ("" for yourself / unknown).
+func peer_link_text(id: int) -> String:
+	if _peer == null or id == my_id():
+		return ""
+	var pp: ENetPacketPeer = null
+	var kind := ""
+	if is_host() and id != 1:
+		pp = _peer.get_peer(id)
+		if pp:
+			var addr := pp.get_remote_address()
+			if addr == Rendezvous.local_game_ip() or (not OS.has_environment("HH_BIND_IP") and (addr.begins_with("127.") or addr == "::1")):
+				kind = "Relay"
+			elif is_private_ip(addr) or addr.begins_with("fe80") or addr.begins_with("fd"):
+				kind = "WLAN"
+			else:
+				kind = "Internet"
+	elif not is_host() and id == 1:
+		pp = _peer.get_peer(1)
+		kind = {"LAN": "WLAN", "direkt": "Internet", "Relay": "Relay"}.get(link_kind, link_kind)
+	if pp == null:
+		return ""
+	return "%s · %d ms" % [kind, int(pp.get_statistic(ENetPacketPeer.PEER_ROUND_TRIP_TIME))]
 
 
 func player_color(id: int) -> Color:
