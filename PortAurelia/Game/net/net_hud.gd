@@ -164,10 +164,16 @@ func _on_submit(t: String) -> void:
 
 func open_players_menu() -> void:
 	var items := []
-	if Net.is_host() and Net.lobby_code != "":
+	if Net.lobby_code != "":
 		items.append({"label": "Lobby-Code: %s" % Net.lobby_code, "desc": "Code in die Zwischenablage kopieren",
 			"action": func(): DisplayServer.clipboard_set(Net.lobby_code); Events.notify.emit("Code kopiert.", 2.0),
 			"keep_open": true})
+	if Net.is_host() and Game.player_data.is_creative():
+		# only the host sees this - the others never notice the creative mode
+		items.append({"label": "Geld nehmen", "right": "Kreativ", "desc": "Nur für dich sichtbar", "action": _take_money_menu})
+	items.append({"label": "Geld fallen lassen", "right": "$%d" % Game.player_data.money,
+		"desc": "Jeder kann es aufheben", "action": _drop_money_menu})
+	items.append({"label": "Waffe fallen lassen", "desc": "Jeder kann sie aufheben", "action": _drop_weapon_menu})
 	if Net.is_host():
 		if Net.coop and is_instance_valid(Net.coop):
 			items.append({"label": "Koop-Mission abbrechen", "right": String(CoopMissions.MISSIONS[Net.coop.mission_id]["title"]),
@@ -193,11 +199,12 @@ func open_players_menu() -> void:
 			d = (d + "  ·  " if d != "" else "") + link
 		items.append({"label": Net.player_name(pid), "right": "Geld senden", "desc": d,
 			"action": func(): _money_menu(pid)})
+		items.append({"label": "   %s eine Waffe geben" % Net.player_name(pid), "action": func(): _weapon_menu(pid)})
 		if Net.is_host():
 			items.append({"label": "   %s rauswerfen" % Net.player_name(pid), "action": func():
 				Net.kick(pid)
 				Events.notify.emit("%s wurde entfernt." % Net.player_name(pid), 2.5)})
-	MenuPanel.open("Online-Spieler", items, "Geld teilen, Spieler finden (siehe Karte M)")
+	MenuPanel.open("Online-Spieler", items, "Geld und Waffen teilen, Spieler finden (siehe Karte M)")
 
 
 func _coop_menu() -> void:
@@ -211,9 +218,63 @@ func _coop_menu() -> void:
 	MenuPanel.open("Koop-Missionen", items, "Nur zusammen zu schaffen – alle bekommen die Belohnung.")
 
 
+static func _amounts() -> Array:
+	var out := [100, 500, 1000, 5000, 10000, 50000]
+	if Net.is_host():
+		out.append_array([100000, 1000000, 10000000])
+	return out
+
+
+func _take_money_menu() -> void:
+	var items := []
+	for a in [10000, 100000, 1000000, 10000000]:
+		var amount: int = a
+		items.append({"label": "+$%d" % amount, "keep_open": true, "action": func():
+			if Game.player_data.is_creative() and Net.is_host():
+				Game.player_data.add_money(amount, "creative")
+				AudioManager.play_ui("money", -4.0)
+				Events.notify.emit("+$%d  (jetzt $%d)" % [amount, Game.player_data.money], 2.0)})
+	MenuPanel.open("Geld nehmen", items, "Kreativmodus – nur für dich")
+
+
+func _drop_money_menu() -> void:
+	var items := []
+	for a in _amounts():
+		var amount: int = a
+		items.append({"label": "$%d" % amount, "enabled": Game.player_data.money >= amount,
+			"action": func(): Net.drop_money(amount)})
+	MenuPanel.open("Geld fallen lassen", items, "Du hast $%d – jeder kann es aufheben" % Game.player_data.money)
+
+
+func _weapon_items(cb: Callable) -> Array:
+	var items := []
+	var p := GameWorld.instance.player as Player if GameWorld.instance else null
+	if p == null:
+		return items
+	for id in p.weapons.owned_sorted():
+		var wid: String = id
+		if wid == "unarmed":
+			continue
+		var d := WeaponData.get_def(wid)
+		items.append({"label": String(d.get("name", wid)),
+			"right": ("%d Schuss" % p.weapons.ammo_of(wid)) if WeaponData.is_ranged(wid) else "",
+			"action": func(): cb.call(wid)})
+	if items.is_empty():
+		items.append({"label": "Du hast keine Waffe", "enabled": false, "action": func(): pass})
+	return items
+
+
+func _drop_weapon_menu() -> void:
+	MenuPanel.open("Waffe fallen lassen", _weapon_items(func(wid): Net.drop_weapon(wid)), "Mit Munition – jeder kann sie aufheben")
+
+
+func _weapon_menu(pid: int) -> void:
+	MenuPanel.open("Waffe an %s" % Net.player_name(pid), _weapon_items(func(wid): Net.send_weapon(pid, wid)), "Mit der ganzen Munition")
+
+
 func _money_menu(pid: int) -> void:
 	var items := []
-	for a in [100, 500, 1000, 5000, 10000, 50000]:
+	for a in _amounts():
 		var amount: int = a
 		items.append({"label": "$%d" % amount, "enabled": Game.player_data.money >= amount,
 			"action": func(): Net.send_money(pid, amount)})

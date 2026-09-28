@@ -71,6 +71,23 @@ func add_ammo(id: String, amount: int) -> void:
 	_emit_ammo()
 
 
+## Take a weapon away (given to another player / dropped).
+func remove_weapon(id: String) -> void:
+	if id == "unarmed" or not owned.has(id):
+		return
+	if current == id:
+		equip("unarmed")
+	owned.erase(id)
+	_emit_ammo()
+
+
+## Rounds of a weapon (magazine + reserve).
+func ammo_of(id: String) -> int:
+	if not owned.has(id):
+		return 0
+	return int(owned[id]["clip"]) + int(owned[id]["reserve"])
+
+
 func has_weapon(id: String) -> bool:
 	return owned.has(id)
 

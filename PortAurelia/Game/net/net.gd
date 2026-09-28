@@ -31,6 +31,7 @@ const STATE_HZ := 20.0
 const MAX_HIT := 260.0          # one hit never takes more than this (a rocket still kills a 250 hp player)
 const MAX_HIT_RANGE := 260.0
 const MAX_TRANSFER := 50000
+const MAX_HOST_TRANSFER := 10000000   # the host (lobby owner, may be in creative mode) can gift more
 const ALPHABET := "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 const COLORS := [Color(0.2, 0.75, 1.0), Color(1.0, 0.55, 0.1), Color(0.55, 1.0, 0.3), Color(1.0, 0.3, 0.75),
 	Color(1.0, 0.95, 0.25), Color(0.7, 0.45, 1.0), Color(0.25, 1.0, 0.85), Color(1.0, 0.35, 0.3)]
@@ -86,6 +87,11 @@ var _world_share: WorldShare
 var _taken_cars := {}           # client: eid -> our own copy of a shared car we took
 var _returning := {}            # client: token -> [our car, ms] handed back to the host's world
 var _ret_token := 0
+var creative_fake_hp := -1.0    # host in creative: health the others see (so nobody notices)
+var _fake_hit_ms := 0
+var _drops := {}                # drop id -> Pickup (every game)
+var _drop_info := {}            # host: drop id -> {kind, amount, weapon, pos, from, ms}
+var _next_drop := 1
 var coop_state := {}
 var coop: Node = null           # host: running CoopMissions node
 signal coop_changed
@@ -765,6 +771,12 @@ func leave(reason := "") -> void:
 		_apply_share_mode(false)
 	_taken_cars.clear()
 	_returning.clear()
+	for did in _drops:
+		if is_instance_valid(_drops[did]):
+			(_drops[did] as Node).queue_free()
+	_drops.clear()
+	_drop_info.clear()
+	creative_fake_hp = -1.0
 	lobby_ready = true
 	link_kind = ""
 	mode = Mode.OFFLINE
@@ -798,6 +810,8 @@ func _begin_game() -> void:
 	else:
 		Game.start_free_roam()
 	Game.free_roam = true
+	if not is_host():
+		Game.player_data.world_state["creative"] = false   # only the lobby owner has the creative mode
 
 
 func _on_world_ready() -> void:
@@ -843,9 +857,15 @@ func _process(delta: float) -> void:
 			_on_connection_failed()
 		else:
 			_next_attempt()
+	if creative_fake_hp >= 0.0 and Time.get_ticks_msec() - _fake_hit_ms > 4000:
+		var lp := _local_player()
+		if lp:
+			creative_fake_hp = minf(lp.health.max_health, creative_fake_hp + 40.0 * delta)
 	_status_t -= delta
 	if _status_t <= 0.0:
 		_status_t = 1.0
+		if mode == Mode.HOST and not _drop_info.is_empty():
+			_expire_drops()
 		if mode == Mode.HOST:
 			_update_internet_status()
 		elif not _returning.is_empty():
@@ -927,8 +947,11 @@ static func pack_state(p: Player) -> Array:
 		vel = v.linear_velocity
 		flags = (1 if v.headlights_on else 0) | (2 if v.brake_input > 0.1 else 0) | (4 if v.siren_on else 0) \
 			| (8 if v.throttle > 0.1 else 0) | (16 if v.throttle < -0.1 else 0)
+	var hp := p.health.health
+	if Net.creative_fake_hp >= 0.0 and Game.player_data and Game.player_data.is_creative():
+		hp = Net.creative_fake_hp
 	return [p.global_position, p.rotation.y, anim, p.model.net_snapshot(), p.weapons.current_id(), vt, vp, vq, paint,
-		p.health.health, p.health.max_health, liv, steer, kmh, flags, Time.get_ticks_msec(), vel, p.health.armor]
+		hp, p.health.max_health, liv, steer, kmh, flags, Time.get_ticks_msec(), vel, p.health.armor]
 
 
 static func _finite_vec(v: Vector3, lim: float) -> bool:
@@ -1027,6 +1050,9 @@ func _hello_world(outfit: Dictionary) -> void:
 			_ent_spawn.rpc_id(id, eid, e["kind"], e["data"])
 	if not coop_state.is_empty():
 		_coop.rpc_id(id, coop_state)
+	for did in _drop_info:
+		var di: Dictionary = _drop_info[did]
+		_drop_spawn.rpc_id(id, did, di["kind"], di["amount"], di["weapon"], di["pos"], int(di["from"]))
 	var p := _local_player()
 	if p:
 		_meet.rpc_id(id, p.global_position)
@@ -1255,7 +1281,7 @@ func _take_hit(attacker: int, dmg: float) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _money_in(from: int, amount: int) -> void:
-	if not _from_host() or amount <= 0 or amount > MAX_TRANSFER:
+	if not _from_host() or amount <= 0 or amount > MAX_HOST_TRANSFER:
 		return
 	_receive_money(from, amount)
 
@@ -1341,7 +1367,7 @@ func host_npc_hit(target: int, dmg: float) -> void:
 func send_money(target: int, amount: int) -> bool:
 	if not _world_connected or not players.has(target) or target == my_id():
 		return false
-	amount = clampi(amount, 0, MAX_TRANSFER)
+	amount = clampi(amount, 0, MAX_HOST_TRANSFER if is_host() else MAX_TRANSFER)
 	if amount <= 0 or Game.player_data.money < amount:
 		Events.notify.emit("Nicht genug Geld.", 2.5)
 		return false
@@ -1408,7 +1434,16 @@ func chat_log() -> Array:
 # ------------------------------------------------------------------ receiving
 func _receive_hit(attacker: int, dmg: float) -> void:
 	var p := _local_player()
-	if p == null or p.health.dead or p.health.invulnerable:
+	if p == null or p.health.dead:
+		return
+	if p.health.invulnerable:
+		if Game.player_data.is_creative():
+			# creative host: the others see the hits and the health bar go down as usual
+			if creative_fake_hp < 0.0:
+				creative_fake_hp = p.health.health
+			creative_fake_hp = maxf(1.0, creative_fake_hp - dmg)
+			_fake_hit_ms = Time.get_ticks_msec()
+			Combat.impact_fx(p.global_position + Vector3.UP * 1.2, Vector3.UP, "flesh")
 		return
 	var src: Node3D = _proxies.get(attacker) if attacker != 0 else null
 	var pos := p.global_position + Vector3.UP * 1.2
@@ -1481,6 +1516,250 @@ func _show_shot(id: int, from: Vector3, to: Vector3, weapon: String) -> void:
 	AudioManager.play_weapon(String(d.get("sound", "pistol")), from, false)
 	pr.on_fired()
 	Events.gunshot.emit(from, pr, 1.0)   # pedestrians flee, gang members fight back
+
+
+# ================================================================== drops and gifts
+## Put money on the ground in front of us - anybody can pick it up (first come, first served).
+func drop_money(amount: int) -> bool:
+	var p := _local_player()
+	amount = clampi(amount, 0, MAX_HOST_TRANSFER if is_host() else MAX_TRANSFER)
+	if p == null or not _world_connected or amount <= 0:
+		return false
+	if Game.player_data.money < amount:
+		Events.notify.emit("Nicht genug Geld.", 2.5)
+		return false
+	Game.player_data.charge(amount, "drop")
+	_request_drop("money", amount, "", _drop_pos(p))
+	Events.notify.emit("$%d fallen gelassen." % amount, 2.5)
+	AudioManager.play_ui("money", -4.0)
+	return true
+
+
+## Put one of our weapons (with its ammo) on the ground.
+func drop_weapon(wid: String) -> bool:
+	var p := _local_player()
+	if p == null or not _world_connected or wid == "unarmed" or not p.weapons.has_weapon(wid) or WeaponData.get_def(wid).is_empty():
+		return false
+	var ammo := _hand_over(p, wid)
+	_request_drop("weapon", ammo, wid, _drop_pos(p))
+	Events.notify.emit("%s fallen gelassen." % WeaponData.get_def(wid)["name"], 2.5)
+	return true
+
+
+## Give one of our weapons (with its ammo) straight to another player.
+func send_weapon(target: int, wid: String) -> bool:
+	var p := _local_player()
+	if p == null or not _world_connected or not players.has(target) or target == my_id() \
+			or wid == "unarmed" or not p.weapons.has_weapon(wid) or WeaponData.get_def(wid).is_empty():
+		return false
+	var ammo := _hand_over(p, wid)
+	if is_host():
+		_weapon_in.rpc_id(target, 1, wid, ammo)
+	else:
+		_weapon.rpc_id(1, target, wid, ammo)
+	Events.notify.emit("%s an %s gegeben." % [WeaponData.get_def(wid)["name"], player_name(target)], 3.0)
+	AudioManager.play_ui("select", -4.0)
+	return true
+
+
+## The weapon leaves our inventory (in creative mode we keep it - everything is endless there).
+func _hand_over(p: Player, wid: String) -> int:
+	var d := WeaponData.get_def(wid)
+	var ammo := p.weapons.ammo_of(wid)
+	if not WeaponData.is_ranged(wid):
+		ammo = 1
+	if Game.player_data.is_creative():
+		return maxi(ammo, int(d.get("mag", 1)) * 4) if WeaponData.is_ranged(wid) else 1
+	p.weapons.remove_weapon(wid)
+	return maxi(ammo, 1)
+
+
+static func _drop_pos(p: Player) -> Vector3:
+	var fwd := -p.global_basis.z
+	fwd.y = 0.0
+	var at := p.global_position + (fwd.normalized() if fwd.length() > 0.01 else Vector3.FORWARD) * 1.6
+	var q := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 1.5, at + Vector3.DOWN * 4.0)
+	q.exclude = [p.get_rid()]
+	var hit := p.get_world_3d().direct_space_state.intersect_ray(q)
+	return hit["position"] if not hit.is_empty() else p.global_position
+
+
+func _request_drop(kind: String, amount: int, wid: String, pos: Vector3) -> void:
+	if is_host():
+		_host_create_drop(kind, amount, wid, pos, 1)
+	else:
+		_drop_req.rpc_id(1, kind, amount, wid, pos)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _drop_req(kind: String, amount: int, wid: String, pos: Vector3) -> void:
+	var id := _sender_ok()
+	if id == 0 or not _allow(id, "drop", 3) or not pos.is_finite() or not players[id]["world"]:
+		return
+	if kind == "money":
+		if amount <= 0 or amount > MAX_TRANSFER:
+			return
+		wid = ""
+	elif kind == "weapon":
+		if wid == "unarmed" or WeaponData.get_def(wid).is_empty() or amount <= 0:
+			return
+		amount = mini(amount, 5000)
+	else:
+		return
+	var st: Array = players[id]["st"]
+	if st.size() == STATE_SIZE and (st[0] as Vector3).distance_to(pos) > 12.0:
+		return
+	_host_create_drop(kind, amount, wid, pos, id)
+
+
+func _host_create_drop(kind: String, amount: int, wid: String, pos: Vector3, from: int) -> void:
+	if _drop_info.size() >= 60:
+		var oldest: int = _drop_info.keys()[0]
+		_host_remove_drop(oldest)
+	var did := _next_drop
+	_next_drop += 1
+	_drop_info[did] = {"kind": kind, "amount": amount, "weapon": wid, "pos": pos, "from": from, "ms": Time.get_ticks_msec()}
+	for id in players:
+		if id != 1 and players[id]["world"]:
+			_drop_spawn.rpc_id(id, did, kind, amount, wid, pos, from)
+	_spawn_drop(did, kind, amount, wid, pos, from)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _drop_spawn(did: int, kind: String, amount: int, wid: String, pos: Vector3, from: int) -> void:
+	if _from_host() and pos.is_finite() and kind in ["money", "weapon"] and (kind == "money" or not WeaponData.get_def(wid).is_empty()):
+		_spawn_drop(did, kind, amount, wid, pos, from)
+
+
+func _spawn_drop(did: int, kind: String, amount: int, wid: String, pos: Vector3, from: int) -> void:
+	var w := GameWorld.instance
+	if w == null or not _world_connected or _drops.has(did):
+		return
+	var pk := Pickup.new()
+	pk.kind = kind
+	pk.amount = amount
+	pk.weapon_id = wid
+	pk.net_id = did
+	pk.lifetime = 100000.0   # the host removes it
+	pk.own_drop = from == my_id()
+	w.add_child(pk)
+	pk.global_position = pos + Vector3.UP * 0.1
+	_drops[did] = pk
+
+
+## The local player touched a shared drop: ask the host (first one wins).
+func claim_drop(did: int) -> void:
+	if is_host():
+		_host_claim(1, did)
+	else:
+		_drop_claim.rpc_id(1, did)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _drop_claim(did: int) -> void:
+	var id := _sender_ok()
+	if id != 0 and _allow(id, "claim", 10):
+		_host_claim(id, did)
+
+
+func _host_claim(by: int, did: int) -> void:
+	if not _drop_info.has(did):
+		return
+	var di: Dictionary = _drop_info[did]
+	if by != 1:
+		var st: Array = players.get(by, {}).get("st", [])
+		if st.size() == STATE_SIZE and (st[0] as Vector3).distance_to(di["pos"]) > 6.0:
+			return
+	_host_remove_drop(did)
+	var from_name := player_name(int(di["from"])) if players.has(int(di["from"])) else ""
+	if by == 1:
+		_grant_drop(String(di["kind"]), int(di["amount"]), String(di["weapon"]), from_name)
+	else:
+		_drop_grant.rpc_id(by, String(di["kind"]), int(di["amount"]), String(di["weapon"]), from_name)
+
+
+func _host_remove_drop(did: int) -> void:
+	_drop_info.erase(did)
+	for id in players:
+		if id != 1 and players[id]["world"]:
+			_drop_remove.rpc_id(id, did)
+	_remove_drop(did)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _drop_remove(did: int) -> void:
+	if _from_host():
+		_remove_drop(did)
+
+
+func _remove_drop(did: int) -> void:
+	var pk = _drops.get(did)
+	_drops.erase(did)
+	if pk and is_instance_valid(pk):
+		(pk as Node).queue_free()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _drop_grant(kind: String, amount: int, wid: String, from_name: String) -> void:
+	if _from_host() and amount > 0:
+		_grant_drop(kind, mini(amount, MAX_HOST_TRANSFER), wid, clean_name(from_name) if from_name != "" else "")
+
+
+func _grant_drop(kind: String, amount: int, wid: String, from_name: String) -> void:
+	var p := _local_player()
+	if p == null:
+		return
+	var by := (" (von %s)" % from_name) if from_name != "" and from_name != my_name else ""
+	if kind == "money":
+		Game.player_data.add_money(amount, "pickup")
+		AudioManager.play_ui("money", -4.0)
+		Events.notify.emit("+$%d aufgehoben%s" % [amount, by], 2.5)
+	elif kind == "weapon" and not WeaponData.get_def(wid).is_empty():
+		_give_weapon(p, wid, amount)
+		Events.notify.emit("%s aufgehoben%s" % [WeaponData.get_def(wid)["name"], by], 2.5)
+
+
+static func _give_weapon(p: Player, wid: String, ammo: int) -> void:
+	if p.weapons.has_weapon(wid):
+		p.weapons.add_ammo(wid, ammo)
+	else:
+		p.weapons.give(wid, maxi(0, ammo - int(WeaponData.get_def(wid).get("mag", 0))))
+	AudioManager.play_ui("select", -4.0)
+
+
+func _expire_drops() -> void:
+	var now := Time.get_ticks_msec()
+	for did in _drop_info.keys():
+		if now - int(_drop_info[did]["ms"]) > 15 * 60 * 1000:   # 15 minutes
+			_host_remove_drop(did)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _weapon(target: int, wid: String, ammo: int) -> void:
+	var id := _sender_ok()
+	if id == 0 or target == id or not players.has(target) or not _allow(id, "weapon", 3):
+		return
+	if wid == "unarmed" or WeaponData.get_def(wid).is_empty() or ammo <= 0:
+		return
+	ammo = mini(ammo, 5000)
+	if target == 1:
+		_receive_weapon(id, wid, ammo)
+	else:
+		_weapon_in.rpc_id(target, id, wid, ammo)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _weapon_in(from: int, wid: String, ammo: int) -> void:
+	if _from_host() and not WeaponData.get_def(wid).is_empty() and wid != "unarmed" and ammo > 0:
+		_receive_weapon(from, wid, mini(ammo, 5000))
+
+
+func _receive_weapon(from: int, wid: String, ammo: int) -> void:
+	var p := _local_player()
+	if p == null:
+		return
+	_give_weapon(p, wid, ammo)
+	Events.notify.emit("%s hat dir %s gegeben!" % [player_name(from), WeaponData.get_def(wid)["name"]], 4.0)
 
 
 # ================================================================== replicated entities

@@ -6,13 +6,21 @@ extends Node
 var _t := 0.0
 
 
+## In multiplayer only the lobby owner (host) may use it; the other players always play normally.
+static func allowed() -> bool:
+	return not Net.is_online() or Net.is_host()
+
+
 static func set_enabled(on: bool) -> void:
+	if on and not allowed():
+		on = false
 	Game.player_data.world_state["creative"] = on
 	var w := GameWorld.instance
 	if w == null or w.player == null:
 		return
 	var p := w.player as Player
 	p.health.invulnerable = on
+	Net.creative_fake_hp = -1.0
 	if on:
 		for id in WeaponData.WEAPONS:
 			if id != "unarmed":
@@ -34,6 +42,13 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if Game.player_data == null or not Game.player_data.is_creative():
+		return
+	if not allowed():
+		# joined someone else's lobby: normal game (silently)
+		Game.player_data.world_state["creative"] = false
+		var pw := GameWorld.instance
+		if pw and pw.player:
+			(pw.player as Player).health.invulnerable = false
 		return
 	_t -= delta
 	if _t > 0.0:

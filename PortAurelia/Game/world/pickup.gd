@@ -7,6 +7,10 @@ var kind := "money"          # money | jewels | weapon | health | armor
 var amount := 50
 var weapon_id := ""
 var lifetime := 90.0
+var net_id := 0              # multiplayer drop (money / weapon a player dropped): the host decides who gets it
+var _claimed := false
+var own_drop := false        # we dropped it ourselves: only pick it up again after walking away
+var _own_t := 3.0
 var _visual: Node3D
 var _t := 0.0
 
@@ -34,6 +38,7 @@ func _ready() -> void:
 	cs.position.y = 0.5
 	add_child(cs)
 	body_entered.connect(_on_body)
+	body_exited.connect(func(b): if b is Player and own_drop and _own_t <= 0.0: own_drop = false)
 	_visual = Node3D.new()
 	add_child(_visual)
 	_visual.position.y = 0.35
@@ -111,6 +116,16 @@ func _process(delta: float) -> void:
 	lifetime -= delta
 	if lifetime <= 0.0:
 		queue_free()
+	if own_drop and _own_t > 0.0:
+		_own_t -= delta
+		if _own_t <= 0.0:
+			# still standing on it: wait until we step off; otherwise it is free to take again
+			var inside := false
+			for b in get_overlapping_bodies():
+				if b is Player:
+					inside = true
+			if not inside:
+				own_drop = false
 
 
 func _on_body(b: Node) -> void:
@@ -118,6 +133,14 @@ func _on_body(b: Node) -> void:
 		return
 	var p := b as Player
 	if p.state == Player.State.DEAD:
+		return
+	if net_id > 0:
+		if own_drop:
+			return
+		if not _claimed:
+			_claimed = true
+			Net.claim_drop(net_id)
+			get_tree().create_timer(2.0).timeout.connect(func(): _claimed = false)   # retry if lost
 		return
 	match kind:
 		"money", "jewels":

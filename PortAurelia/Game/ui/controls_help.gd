@@ -18,5 +18,5 @@ Fahrzeug
 Allgemein
   M  Karte     T  eigenes Auto rufen   Pfeil hoch  Telefon     ESC  Pause     F5  Schnellspeichern     K  Mission abbrechen
 Multiplayer
-  Enter  Chat     O  Spielerliste (Geld senden, Host: rauswerfen)     M  Karte zeigt alle Mitspieler
+  Enter  Chat     O  Spieler: Geld / Waffen geben oder fallen lassen, Host: Koop-Missionen, rauswerfen     M  Karte zeigt alle Mitspieler
 Controller wird automatisch erkannt (Xbox-Layout)."""

@@ -5,6 +5,7 @@ extends CanvasLayer
 var world: GameWorld
 var _root: Control
 var _box: VBoxContainer
+var _code: Label
 var _sub: Control = null
 
 
@@ -29,9 +30,20 @@ func _ready() -> void:
 	_box.custom_minimum_size = Vector2(420, 0)
 	_box.add_theme_constant_override("separation", 8)
 	_root.add_child(_box)
-	for it in [["FORTSETZEN", _resume], ["KARTE", _map], ["MISSION ABBRECHEN", _abort_mission],
+	var items := [["FORTSETZEN", _resume], ["KARTE", _map], ["MISSION ABBRECHEN", _abort_mission],
 			["KREATIVMODUS AN/AUS", _toggle_creative], ["SPIEL SPEICHERN", _save], ["SPIEL LADEN", _load],
-			["EINSTELLUNGEN", _settings], ["STEUERUNG", _controls], ["HAUPTMENÜ", _main_menu], ["SPIEL BEENDEN", _quit]]:
+			["EINSTELLUNGEN", _settings], ["STEUERUNG", _controls], ["HAUPTMENÜ", _main_menu], ["SPIEL BEENDEN", _quit]]
+	if not CreativeMode.allowed():
+		items.remove_at(3)   # in someone else's lobby: only the host has the creative mode
+	# multiplayer: the lobby code stays visible here too
+	_code = Label.new()
+	_code.position = Vector2(560, 90)
+	_code.add_theme_font_size_override("font_size", 30)
+	_code.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	_code.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_code.add_theme_constant_override("outline_size", 6)
+	_root.add_child(_code)
+	for it in items:
 		var b := Button.new()
 		b.text = it[0]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -62,6 +74,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _open() -> void:
 	visible = true
+	_code.text = ("Lobby-Code: %s" % Net.lobby_code) if Net.is_online() and Net.lobby_code != "" else ""
 	Game.set_paused(true)
 	AudioManager.play_ui("select", -6.0)
 	(_box.get_child(0) as Button).grab_focus()
@@ -85,6 +98,8 @@ func _abort_mission() -> void:
 
 func _toggle_creative() -> void:
 	_resume()
+	if not CreativeMode.allowed():
+		return
 	CreativeMode.set_enabled(not Game.player_data.is_creative())
 
 
