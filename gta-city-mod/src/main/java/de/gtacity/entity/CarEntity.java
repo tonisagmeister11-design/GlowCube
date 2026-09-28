@@ -118,6 +118,19 @@ public class CarEntity extends Entity {
         this.persistentCar = persistent;
     }
 
+    /**
+     * City traffic that drove out of the simulated area. It stops ticking there and would stand frozen in its lane,
+     * blocking every car behind it, so it gets removed instead.
+     */
+    public boolean isStrandedTraffic(ServerLevel level) {
+        return aiDriving && !persistentCar && !level.isPositionEntityTicking(blockPosition());
+    }
+
+    /** Removes the car together with its NPC passengers. */
+    public void despawn() {
+        discardWithPassengers();
+    }
+
     /** Police cars chase this player and let the officers out once they are close. */
     public void setPursuit(@Nullable ServerPlayer target) {
         this.pursuit = target;

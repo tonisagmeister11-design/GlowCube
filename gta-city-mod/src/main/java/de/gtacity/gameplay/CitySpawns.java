@@ -109,6 +109,9 @@ public final class CitySpawns {
         if (server.getTickCount() % 20 != 5) {
             return;
         }
+        if (server.getTickCount() % 40 == 5) {
+            removeStrandedTraffic(server);
+        }
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (!(player.level() instanceof ServerLevel level)
                     || !(level.getChunkSource().getGenerator() instanceof CityChunkGenerator)
@@ -120,6 +123,14 @@ public final class CitySpawns {
             }
             spawnPedestrians(level, player);
             spawnTraffic(level, player);
+        }
+    }
+
+    private static void removeStrandedTraffic(MinecraftServer server) {
+        for (ServerLevel level : server.getAllLevels()) {
+            if (level.getChunkSource().getGenerator() instanceof CityChunkGenerator) {
+                level.getEntities(ModEntities.CAR, car -> car.isStrandedTraffic(level)).forEach(CarEntity::despawn);
+            }
         }
     }
 
