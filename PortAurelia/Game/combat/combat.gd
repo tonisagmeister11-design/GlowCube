@@ -72,6 +72,8 @@ static func explode(world: World3D, pos: Vector3, radius: float, damage: float, 
 	VFX.explosion(pos, radius)
 	AudioManager.play_3d("explosion", pos, 6.0)
 	Events.explosion.emit(pos, radius, source)
+	if Net.is_online() and lethal and (source is Player or (Net.is_host() and source is NPC)):
+		Net.local_boom(pos, radius)   # the other players see and hear it, too
 	var q := PhysicsShapeQueryParameters3D.new()
 	var s := SphereShape3D.new()
 	s.radius = radius
@@ -93,6 +95,11 @@ static func explode(world: World3D, pos: Vector3, radius: float, damage: float, 
 		if t:
 			if lethal and t is Vehicle:
 				var veh := t as Vehicle
+				if veh.has_meta("net_entity") or veh.has_meta("net_proxy"):
+					# a copy of a car simulated in another game: that game destroys it
+					if veh.has_meta("net_entity") and d < radius * 0.9 and source is Player:
+						Net.send_entity_boom(int(veh.get_meta("net_entity")))
+					continue
 				if d < radius * 0.9 and not veh.destroyed:
 					veh.engine_health = 0.0
 					veh.body_health = 0.0

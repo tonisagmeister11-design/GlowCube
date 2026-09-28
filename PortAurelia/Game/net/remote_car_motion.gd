@@ -9,17 +9,25 @@ var driver_outfit := {}
 var _snaps: Array = []          # [ms, pos, quat, steer, kmh, flags]
 var _delays: Array = []
 var _offset := 0.0
+var _offset_target := 0.0
 var _gap := 100.0
+var _interp := 160.0            # render delay, eased so that update-rate changes never jump
 var _flags := 0
 var _driver: CharacterModel
 var _drv_t := 0.0
+var hidden_until_smooth := false
+var debug_jumps := 0
+var _prev_rt := 0.0
+var _rt := 0.0   # a moving car appears only once its motion is interpolated
 
 
 func push(ms: int, pos: Vector3, q: Quaternion, steer: float, kmh: float, flags: int) -> void:
 	_delays.append(float(Time.get_ticks_msec() - ms))
 	if _delays.size() > 40:
 		_delays.pop_front()
-	_offset = _delays.min()
+	_offset_target = _delays.min()
+	if _delays.size() == 1:
+		_offset = _offset_target
 	if not _snaps.is_empty():
 		if ms <= int(_snaps[-1][0]):
 			return
@@ -27,7 +35,7 @@ func push(ms: int, pos: Vector3, q: Quaternion, steer: float, kmh: float, flags:
 	_snaps.append([ms, pos, q.normalized(), steer, kmh, flags])
 	while _snaps.size() > 24:
 		_snaps.pop_front()
-	if _snaps.size() == 1 or car.global_position.distance_to(pos) > 25.0:
+	if _snaps.size() == 1:
 		car.global_transform = Transform3D(Basis(q.normalized()), pos)
 	_flags = flags
 
@@ -35,8 +43,22 @@ func push(ms: int, pos: Vector3, q: Quaternion, steer: float, kmh: float, flags:
 func _physics_process(delta: float) -> void:
 	if car == null or _snaps.is_empty():
 		return
-	var interp := clampf(_gap * 1.6, 110.0, 900.0)
-	var rt := float(Time.get_ticks_msec()) - _offset - interp
+	var target_interp := clampf(_gap * 1.6, 110.0, 900.0)
+	# the delay grows quickly (never run out of updates) and shrinks slowly
+	_interp = move_toward(_interp, target_interp, delta * (400.0 if target_interp > _interp else 100.0))
+	_offset = move_toward(_offset, _offset_target, delta * 100.0)   # clock estimate settles smoothly
+	# own render clock: it runs a little slower or faster to stay at the target delay, and slows
+	# down when an update is late - so the car never freezes and then jumps
+	var target_rt := float(Time.get_ticks_msec()) - _offset - _interp
+	var last_ms := float(_snaps[-1][0])
+	if _rt == 0.0 or absf(target_rt - _rt) > 2500.0:
+		_rt = target_rt
+	else:
+		var rate := clampf(1.0 + (target_rt - _rt) / 600.0, 0.6, 1.4)
+		if _rt > last_ms:
+			rate = minf(rate, 0.35)
+		_rt += delta * 1000.0 * rate
+	var rt := _rt
 	var a: Array = _snaps[0]
 	var b: Array = _snaps[0]
 	for i in _snaps.size():
@@ -50,10 +72,10 @@ func _physics_process(delta: float) -> void:
 		pos = (a[1] as Vector3).lerp(b[1], t)
 		q = (a[2] as Quaternion).slerp(b[2], t)
 	elif _snaps.size() >= 2 and rt > float(a[0]):
-		# newest snapshot is late: continue a little along the last motion
+		# newest update is late: continue a little along the last motion
 		var p0: Array = _snaps[-2]
 		var dt := float(int(a[0]) - int(p0[0]))
-		var ahead := minf(rt - float(a[0]), 250.0)
+		var ahead := minf(rt - float(a[0]), 300.0)
 		pos = a[1]
 		if dt > 0.0:
 			pos += ((a[1] as Vector3) - (p0[1] as Vector3)) / dt * ahead
@@ -61,6 +83,23 @@ func _physics_process(delta: float) -> void:
 	else:
 		pos = a[1]
 		q = a[2]
+	if OS.has_environment("HH_NET_DEBUG") and car.visible:
+		# speed along the rendered (host time) path: a jump shows up as an impossible speed
+		var drt := rt - _prev_rt
+		var step := car.global_position.distance_to(pos)
+		if step > 0.8 and (drt <= 0.5 or step / (drt / 1000.0) > 70.0):
+			debug_jumps += 1
+			print("NETDBG car path jump %.1f m in %.0f ms host time (interp %.0f gap %.0f snaps %d seg %.1f)" % [step, drt, _interp, _gap,
+				_snaps.size(), (a[1] as Vector3).distance_to(b[1])])
+	_prev_rt = rt
+	# a late update that changed the path is blended in over a few frames instead of popping
+	if car.visible and car.global_position.distance_to(pos) < 30.0 and car.global_position.y > -300.0:
+		var k := 1.0 - exp(-delta * 16.0)
+		pos = car.global_position.lerp(pos, k)
+		q = car.global_basis.get_rotation_quaternion().slerp(q, k)
+	if hidden_until_smooth and b[0] != a[0]:
+		hidden_until_smooth = false
+		car.visible = true
 	car.global_transform = Transform3D(Basis(q), pos)
 	car.net_visual(float(a[3]), float(a[4]), int(a[5]), delta)
 	_drv_t -= delta

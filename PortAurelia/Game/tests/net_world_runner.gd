@@ -99,6 +99,8 @@ func _host() -> void:
 	var f := FileAccess.open(args["file"], FileAccess.WRITE)
 	f.store_string(Net.lobby_code)
 	f.close()
+	var booms := [0]
+	Events.explosion.connect(func(_p, _r, src): if src is RemotePlayer: booms[0] += 1)
 	await wait_until(func(): return Net.players.size() == 2, 120.0)
 	await wait(0.5)
 	Net.start_session()
@@ -127,6 +129,28 @@ func _host() -> void:
 	await wait(10.0)
 	var kbs := Net._peer.host.pop_statistic(ENetConnection.HOST_TOTAL_SENT_DATA) / 10.0 / 1024.0
 	check("upload to the friend stays small", kbs < 60.0, "%.1f KB/s with %d cars, %d pedestrians" % [kbs, tm.vehicles.size(), GameWorld.instance.peds.peds.size()])
+	# reference: do the cars jump in my own game, too?
+	var last := {}
+	var hj := 0
+	var t_last := Time.get_ticks_usec()
+	for i in 180:
+		await get_tree().physics_frame
+		var t_now := Time.get_ticks_usec()
+		var dt := maxf((t_now - t_last) / 1000000.0, 0.004)
+		t_last = t_now
+		var now := {}
+		for v in tm.vehicles:
+			if is_instance_valid(v) and (v as Node).has_meta("net_eid"):
+				now[v] = (v as Node3D).global_position
+				if last.has(v):
+					var d: float = (now[v] as Vector3).distance_to(last[v])
+					if d > 0.8 and d / dt > 70.0:
+						hj += 1
+						print("[host] own car jump %.1f m, %.0f m from me, %.0f m from friend, kinematic %s" % [d,
+							(v as Node3D).global_position.distance_to(me().global_position),
+							(v as Node3D).global_position.distance_to((Net.proxies()[cid] as Node3D).global_position), (v as Vehicle).kinematic_mode])
+		last = now
+	print("[host] own traffic jumps: %d" % hj)
 	step("parked_ready")
 	# the friend takes one of my cars
 	var took = await await_arg("took", 90.0)
@@ -135,6 +159,10 @@ func _host() -> void:
 		check("I see him driving it", await wait_until(func():
 			var pr = Net.proxies().get(cid)
 			return pr and is_instance_valid(pr) and (pr as RemotePlayer).car != null, 10.0))
+	var left = await await_arg("left_car", 60.0)
+	if left is Vector3:
+		check("I see the car he left standing there", GameWorld.instance.traffic.vehicles.any(func(v):
+			return is_instance_valid(v) and (v as Node3D).global_position.distance_to(left) < 1.5 and (v as Node).has_meta("net_ret")))
 	# he shoots one of my pedestrians
 	var shot = await await_arg("shot_ped", 90.0)
 	if shot is int:
@@ -142,11 +170,19 @@ func _host() -> void:
 			var e: Dictionary = Net._ents.get(shot, {})
 			var n = e.get("node")
 			return n == null or not is_instance_valid(n) or (n as NPC).is_dead() or (n as NPC).health.health < (n as NPC).health.max_health, 5.0))
+	var rk = await await_arg("rocket", 90.0)
+	if rk is int and rk > 0:
+		check("his rocket destroyed my car", await wait_until(func():
+			var e: Dictionary = Net._ents.get(rk, {})
+			var n = e.get("node")
+			return n == null or not is_instance_valid(n) or (n as Vehicle).destroyed, 5.0))
+		check("I saw his rocket explode", booms[0] > 0)
 	# he drives far away and comes back
 	await await_arg("far", 90.0)
 	check("far friend: no longer shared", await wait_until(func(): return not Net._world_share.is_shared(cid), 10.0))
 	await await_arg("back", 120.0)
-	check("friend back: shared again", await wait_until(func(): return Net._world_share.is_shared(cid), 20.0))
+	check("friend back: shared again", await wait_until(func(): return Net._world_share.is_shared(cid), 20.0),
+		"friend %.0f m away" % me().global_position.distance_to((Net.proxies()[cid] as Node3D).global_position) if Net.proxies().has(cid) else "gone")
 	await await_arg("done", 120.0)
 
 
@@ -175,29 +211,36 @@ func _client() -> void:
 			compared += 1
 			worst = maxf(worst, (pr as Node3D).global_position.distance_to(Vector3(float(v[1]), float(v[2]), float(v[3]))))
 	check("parked cars stand exactly where the host has them", compared >= 2 and worst < 0.1, "%d compared, worst %.3f m" % [compared, worst])
-	# a moving car glides without jumps
-	var mover: Vehicle = null
+	# every visible car of the host glides without jumps (3 s, all cars)
+	# (speed against real time: a slow frame of this busy test machine is not a jump)
+	var last := {}
+	var moved := 0.0
+	var jumps := 0
+	var biggest := 0.0
+	var t_last := Time.get_ticks_usec()
+	for i in 180:
+		await get_tree().physics_frame
+		var t_now := Time.get_ticks_usec()
+		var dt := maxf((t_now - t_last) / 1000000.0, 0.004)
+		t_last = t_now
+		var now := {}
+		for c in _amb_cars():
+			if (c as Vehicle).visible:
+				now[c] = (c as Node3D).global_position
+				if last.has(c):
+					var d: float = (now[c] as Vector3).distance_to(last[c])
+					moved += d
+					biggest = maxf(biggest, d / dt)
+					if d > 0.8 and d / dt > 70.0:   # faster than 250 km/h = a jump
+						jumps += 1
+		last = now
+	var path_jumps := 0
 	for c in _amb_cars():
-		var m := (c as Vehicle).get_node_or_null("NetMotion") as RemoteCarMotion
-		if m and absf((c as Vehicle).speed_kmh) > 5.0:
-			mover = c
-			break
-	if mover:
-		var jumps := 0
-		var last := mover.global_position
-		var moved := 0.0
-		for i in 90:
-			await get_tree().physics_frame
-			if not is_instance_valid(mover):
-				break
-			var d := mover.global_position.distance_to(last)
-			moved += d
-			if d > 2.5:
-				jumps += 1
-			last = mover.global_position
-		check("the host's traffic drives smoothly for me", moved > 2.0 and jumps == 0, "%.1f m, %d jumps" % [moved, jumps])
-	else:
-		check("the host's traffic drives smoothly for me", false, "no moving car seen")
+		var mm := (c as Vehicle).get_node_or_null("NetMotion") as RemoteCarMotion
+		if mm:
+			path_jumps += mm.debug_jumps
+	print("[client] path jumps (host time): %d" % path_jumps)
+	check("the host's traffic drives smoothly for me", moved > 5.0 and jumps == 0, "%.1f m driven, %d jumps, fastest %.0f km/h" % [moved, jumps, biggest * 3.6])
 	# take one of the host's cars
 	var target: Vehicle = null
 	var bd := INF
@@ -221,7 +264,18 @@ func _client() -> void:
 			and not (p.vehicle as Node).has_meta("net_entity") and (p.vehicle as Vehicle).type_id == vt, vt)
 		step("took %d" % eid)
 		await wait(3.0)
+		var mine := p.vehicle as Vehicle
+		var where := mine.global_position if mine else Vector3.ZERO
 		p.exit_vehicle()
+		# the car stays in the host's world: our copy is swapped for his
+		check("the car I leave stays in the host's world", await wait_until(func():
+			if is_instance_valid(mine):
+				return false
+			for c in _amb_cars():
+				if (c as Node3D).global_position.distance_to(where) < 1.0 and (c as Vehicle).type_id == vt:
+					return true
+			return false, 6.0), "type %s" % vt)
+		step("left_car " + var_to_str(where))
 		await wait(1.0)
 	else:
 		check("I can take a car of the host's world", false, "no parked car")
@@ -259,6 +313,35 @@ func _client() -> void:
 		var r = Net._ent_proxies.get(shot)
 		return r == null or (r as RemoteEntity).is_dead(), 5.0))
 	step("shot_ped %d" % shot)
+	# a rocket at one of the host's cars
+	var rc: Vehicle = null
+	var rbd := INF
+	for c in _amb_cars():
+		var dd := (c as Node3D).global_position.distance_to(p.global_position)
+		if dd > 15.0 and dd < rbd:
+			rbd = dd
+			rc = c
+	if rc:
+		var reid := int(rc.get_meta("net_entity"))
+		# from above, so nothing is in the way
+		p.teleport(rc.global_position + Vector3(0, 9.0, 4.0))
+		await wait(0.6)
+		p.weapons.give("rpg", 5)
+		p.weapons.equip("rpg")
+		await wait(0.8)
+		p.teleport(rc.global_position + Vector3(0, 9.0, 4.0))
+		await get_tree().physics_frame
+		p.weapons._cooldown = 0.0
+		p.weapons.owned["rpg"]["clip"] = 1
+		Events.explosion.connect(func(ep, _r, _s): print("[client] explosion at %s, car at %s" % [ep, rc.global_position if is_instance_valid(rc) else "gone"]), CONNECT_ONE_SHOT)
+		p.weapons.fire_at(rc.global_position + Vector3.UP * 0.6, true)
+		check("my rocket destroys the host's car (seen)", await wait_until(func():
+			var r = Net._ent_proxies.get(reid)
+			return r == null or not is_instance_valid(r) or (r as Vehicle).destroyed, 8.0))
+		step("rocket %d" % reid)
+		p.weapons.equip("rifle")
+	else:
+		step("rocket -1")
 	# far away: my own traffic again
 	var home := p.global_position
 	var far := Vector3.ZERO

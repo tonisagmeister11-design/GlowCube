@@ -13,7 +13,10 @@ var model: CharacterModel
 var _snaps: Array = []
 var _delays: Array = []
 var _offset := 0.0
+var _offset_target := 0.0
 var _gap := 100.0               # time between updates (far characters get fewer)
+var _interp := 160.0
+var _rt := 0.0            # render delay, eased so that update-rate changes never jump
 var last_snap: Array = []       # shared-world records only carry the animation when it changed
 var last_weapon := ""
 var _dead := false
@@ -48,7 +51,9 @@ func push(s: Array) -> void:
 	_delays.append(float(Time.get_ticks_msec() - sent))
 	if _delays.size() > 60:
 		_delays.pop_front()
-	_offset = _delays.min()
+	_offset_target = _delays.min()
+	if _delays.size() == 1:
+		_offset = _offset_target
 	if not _snaps.is_empty():
 		if sent <= int(_snaps[-1][0]):
 			return
@@ -63,10 +68,22 @@ func push(s: Array) -> void:
 		rotation.y = s[2]
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if _snaps.is_empty():
 		return
-	var rt := float(Time.get_ticks_msec()) - _offset - clampf(_gap * 1.6, INTERP_MS, 900.0)
+	var target_interp := clampf(_gap * 1.6, INTERP_MS, 900.0)
+	_interp = move_toward(_interp, target_interp, delta * (400.0 if target_interp > _interp else 100.0))
+	_offset = move_toward(_offset, _offset_target, delta * 100.0)
+	# own render clock (slows down when an update is late instead of freezing and jumping)
+	var target_rt := float(Time.get_ticks_msec()) - _offset - _interp
+	if _rt == 0.0 or absf(target_rt - _rt) > 2500.0:
+		_rt = target_rt
+	else:
+		var rate := clampf(1.0 + (target_rt - _rt) / 600.0, 0.6, 1.4)
+		if _rt > float(_snaps[-1][0]):
+			rate = minf(rate, 0.35)
+		_rt += delta * 1000.0 * rate
+	var rt := _rt
 	var a: Array = _snaps[0]
 	var b: Array = _snaps[0]
 	for i in _snaps.size():

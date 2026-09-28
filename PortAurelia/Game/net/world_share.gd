@@ -113,11 +113,16 @@ func _ensure_eid(n: Node3D) -> int:
 	return eid
 
 
-func _spawn_data(n: Node3D) -> Dictionary:
+func _spawn_data(n: Node3D, for_id: int) -> Dictionary:
 	if n is NPC:
-		return {"outfit": (n as NPC).outfit, "amb": true}
+		return {"outfit": (n as NPC).outfit, "amb": true, "pos": n.global_position, "yaw": n.rotation.y}
 	var v := n as Vehicle
-	var d := {"type": v.type_id, "paint": v.paint, "livery": v.livery, "amb": true}
+	# the spawn message is reliable: the car stands in the right place even if updates get lost
+	var d := {"type": v.type_id, "paint": v.paint, "livery": v.livery, "amb": true,
+		"pos": v.global_position, "rot": v.global_basis.get_rotation_quaternion(), "mv": absf(v.speed_kmh) > 0.5}
+	var ret = v.get_meta("net_ret", [])
+	if ret is Array and ret.size() == 2 and int(ret[0]) == for_id:
+		d["ret"] = int(ret[1])   # the car he just got out of: he swaps his copy for ours
 	var tm := GameWorld.instance.traffic as TrafficManager
 	if tm and tm.drivers.has(v):
 		var drv: TrafficDriver = tm.drivers[v]
@@ -146,11 +151,11 @@ func _update_client(id: int, c: Dictionary, pos: Vector3, ents: Array) -> void:
 			if spawns >= MAX_SPAWNS:
 				continue
 			spawns += 1
-			Net._ent_spawn.rpc_id(id, eid, "npc" if node is NPC else "vehicle", _spawn_data(node))
+			Net._ent_spawn.rpc_id(id, eid, "npc" if node is NPC else "vehicle", _spawn_data(node, id))
 			known[eid] = {"t": -100000, "sig": null, "snap": null, "w": null}
 		seen[eid] = true
 		var k: Dictionary = known[eid]
-		var interval := 95 if d < 50.0 else (190 if d < 120.0 else 420)
+		var interval := 95 if d < 50.0 else (150 if d < 110.0 else 300)
 		if now - int(k["t"]) < interval:
 			continue
 		if node is NPC:
@@ -211,7 +216,8 @@ func _put_car(buf: StreamPeerBuffer, eid: int, v: Vehicle, k: Dictionary, now: i
 	var q := v.global_basis.get_rotation_quaternion()
 	var moving := v.speed_kmh > 0.5 or v.siren_on
 	var sig := [p.snapped(Vector3.ONE * 0.02), v.destroyed, v.headlights_on, int(v.body_health / 25.0)]
-	if not moving and k["sig"] == sig and now - int(k["t"]) < 4000:
+	k["n"] = int(k.get("n", 0)) + 1
+	if not moving and k["sig"] == sig and now - int(k["t"]) < 2500 and int(k["n"]) > 3:
 		return false
 	k["sig"] = sig
 	var tm := GameWorld.instance.traffic as TrafficManager
