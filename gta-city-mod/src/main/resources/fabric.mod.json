@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "gtacity",
+  "version": "${version}",
+  "name": "GTA City",
+  "description": "Die ganze Welt ist eine riesige Stadt: Wolkenkratzer, Verkehr, Passanten, Polizei mit 5-Sterne-Fahndung, Waffen, Autos klauen, Läden, Banküberfälle.",
+  "authors": ["tonisagmeister11"],
+  "license": "All-Rights-Reserved",
+  "icon": "assets/gtacity/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["de.gtacity.GtaCity"],
+    "client": ["de.gtacity.client.GtaCityClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

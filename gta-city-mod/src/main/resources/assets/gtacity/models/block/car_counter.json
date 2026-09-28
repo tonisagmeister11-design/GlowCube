@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "gtacity:block/car_counter_top",
+    "side": "gtacity:block/car_counter_side",
+    "bottom": "gtacity:block/car_counter_side"
+  }
+}
