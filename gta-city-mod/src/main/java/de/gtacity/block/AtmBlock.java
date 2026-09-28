@@ -1,6 +1,5 @@
 package de.gtacity.block;
 
-import com.mojang.serialization.MapCodec;
 import de.gtacity.gameplay.Economy;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -19,15 +18,8 @@ import net.minecraft.world.phys.BlockHitResult;
 
 /** Cash machine: shows the bank balance. */
 public class AtmBlock extends Block {
-    public static final MapCodec<AtmBlock> CODEC = simpleCodec(AtmBlock::new);
-
     public AtmBlock(Properties properties) {
         super(properties);
-    }
-
-    @Override
-    protected MapCodec<? extends Block> codec() {
-        return CODEC;
     }
 
     @Override
@@ -41,9 +33,9 @@ public class AtmBlock extends Block {
                                                BlockHitResult hit) {
         if (player instanceof ServerPlayer serverPlayer) {
             level.playSound(null, pos, SoundEvents.NOTE_BLOCK_BIT.value(), SoundSource.BLOCKS, 0.6F, 1.8F);
-            serverPlayer.displayClientMessage(Component.literal("Maze Bank Kontostand: ")
+            serverPlayer.sendSystemMessage(Component.literal("Maze Bank Kontostand: ")
                     .append(Component.literal(Economy.format(Economy.get(serverPlayer)))
-                            .withStyle(ChatFormatting.GREEN)), false);
+                            .withStyle(ChatFormatting.GREEN)));
         }
         return InteractionResult.SUCCESS;
     }

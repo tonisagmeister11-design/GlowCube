@@ -14,39 +14,39 @@ final class Buildings {
     private Buildings() {
     }
 
-    private static final Palette BANK = new Palette(s(Blocks.QUARTZ_BLOCK), s(Blocks.LIGHT_GRAY_STAINED_GLASS),
+    private static final Palette BANK = new Palette(s(Blocks.QUARTZ_BLOCK), s(Blocks.STAINED_GLASS.lightGray()),
             s(Blocks.POLISHED_ANDESITE), B.SEA_LANTERN, s(Blocks.SMOOTH_QUARTZ), s(Blocks.GOLD_BLOCK));
-    private static final Palette AMMU = new Palette(s(Blocks.GRAY_CONCRETE), s(Blocks.GLASS),
-            s(Blocks.POLISHED_ANDESITE), B.SEA_LANTERN, s(Blocks.GRAY_CONCRETE), s(Blocks.RED_CONCRETE));
-    private static final Palette STORE = new Palette(s(Blocks.WHITE_CONCRETE), s(Blocks.GLASS),
-            s(Blocks.WHITE_TERRACOTTA), B.SEA_LANTERN, s(Blocks.LIGHT_GRAY_CONCRETE), s(Blocks.LIME_CONCRETE));
-    private static final Palette POLICE = new Palette(s(Blocks.WHITE_CONCRETE), s(Blocks.LIGHT_BLUE_STAINED_GLASS),
-            s(Blocks.POLISHED_ANDESITE), B.SEA_LANTERN, s(Blocks.GRAY_CONCRETE), s(Blocks.BLUE_CONCRETE));
-    private static final Palette HOSPITAL = new Palette(s(Blocks.WHITE_CONCRETE), s(Blocks.LIGHT_BLUE_STAINED_GLASS),
-            s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.WHITE_CONCRETE), s(Blocks.RED_CONCRETE));
-    private static final Palette DEALER = new Palette(s(Blocks.WHITE_CONCRETE), s(Blocks.GLASS),
-            s(Blocks.POLISHED_DIORITE), B.SEA_LANTERN, s(Blocks.WHITE_CONCRETE), s(Blocks.BLACK_CONCRETE));
+    private static final Palette AMMU = new Palette(s(Blocks.CONCRETE.gray()), s(Blocks.GLASS),
+            s(Blocks.POLISHED_ANDESITE), B.SEA_LANTERN, s(Blocks.CONCRETE.gray()), s(Blocks.CONCRETE.red()));
+    private static final Palette STORE = new Palette(s(Blocks.CONCRETE.white()), s(Blocks.GLASS),
+            s(Blocks.DYED_TERRACOTTA.white()), B.SEA_LANTERN, s(Blocks.CONCRETE.lightGray()), s(Blocks.CONCRETE.lime()));
+    private static final Palette POLICE = new Palette(s(Blocks.CONCRETE.white()), s(Blocks.STAINED_GLASS.lightBlue()),
+            s(Blocks.POLISHED_ANDESITE), B.SEA_LANTERN, s(Blocks.CONCRETE.gray()), s(Blocks.CONCRETE.blue()));
+    private static final Palette HOSPITAL = new Palette(s(Blocks.CONCRETE.white()), s(Blocks.STAINED_GLASS.lightBlue()),
+            s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.CONCRETE.white()), s(Blocks.CONCRETE.red()));
+    private static final Palette DEALER = new Palette(s(Blocks.CONCRETE.white()), s(Blocks.GLASS),
+            s(Blocks.POLISHED_DIORITE), B.SEA_LANTERN, s(Blocks.CONCRETE.white()), s(Blocks.CONCRETE.black()));
     private static final Palette[] VILLAS = {
-            new Palette(s(Blocks.SMOOTH_QUARTZ), s(Blocks.GLASS), s(Blocks.POLISHED_DIORITE), B.SEA_LANTERN, s(Blocks.SMOOTH_QUARTZ), s(Blocks.GRAY_CONCRETE)),
-            new Palette(s(Blocks.WHITE_CONCRETE), s(Blocks.LIGHT_GRAY_STAINED_GLASS), s(Blocks.BIRCH_PLANKS), B.SEA_LANTERN, s(Blocks.WHITE_CONCRETE), s(Blocks.STRIPPED_DARK_OAK_LOG)),
+            new Palette(s(Blocks.SMOOTH_QUARTZ), s(Blocks.GLASS), s(Blocks.POLISHED_DIORITE), B.SEA_LANTERN, s(Blocks.SMOOTH_QUARTZ), s(Blocks.CONCRETE.gray())),
+            new Palette(s(Blocks.CONCRETE.white()), s(Blocks.STAINED_GLASS.lightGray()), s(Blocks.BIRCH_PLANKS), B.SEA_LANTERN, s(Blocks.CONCRETE.white()), s(Blocks.STRIPPED_DARK_OAK_LOG)),
             new Palette(s(Blocks.SMOOTH_SANDSTONE), s(Blocks.GLASS), s(Blocks.SPRUCE_PLANKS), B.GLOWSTONE, s(Blocks.SMOOTH_SANDSTONE), s(Blocks.DARK_OAK_PLANKS)),
-            new Palette(s(Blocks.BLACK_CONCRETE), s(Blocks.GLASS), s(Blocks.POLISHED_ANDESITE), B.SEA_LANTERN, s(Blocks.GRAY_CONCRETE), s(Blocks.WHITE_CONCRETE)),
+            new Palette(s(Blocks.CONCRETE.black()), s(Blocks.GLASS), s(Blocks.POLISHED_ANDESITE), B.SEA_LANTERN, s(Blocks.CONCRETE.gray()), s(Blocks.CONCRETE.white())),
     };
     private static final Palette[] WAREHOUSES = {
-            new Palette(s(Blocks.LIGHT_GRAY_CONCRETE), s(Blocks.GLASS), s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.GRAY_CONCRETE), s(Blocks.SMOOTH_STONE)),
-            new Palette(s(Blocks.CYAN_TERRACOTTA), s(Blocks.GLASS), s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.GRAY_CONCRETE), s(Blocks.LIGHT_GRAY_CONCRETE)),
+            new Palette(s(Blocks.CONCRETE.lightGray()), s(Blocks.GLASS), s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.CONCRETE.gray()), s(Blocks.SMOOTH_STONE)),
+            new Palette(s(Blocks.DYED_TERRACOTTA.cyan()), s(Blocks.GLASS), s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.CONCRETE.gray()), s(Blocks.CONCRETE.lightGray())),
             new Palette(s(Blocks.BRICKS), s(Blocks.GLASS), s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.STONE_BRICKS), s(Blocks.STONE_BRICKS)),
-            new Palette(s(Blocks.WHITE_CONCRETE), s(Blocks.GLASS), s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.LIGHT_GRAY_CONCRETE), s(Blocks.BLUE_CONCRETE)),
+            new Palette(s(Blocks.CONCRETE.white()), s(Blocks.GLASS), s(Blocks.SMOOTH_STONE), B.SEA_LANTERN, s(Blocks.CONCRETE.lightGray()), s(Blocks.CONCRETE.blue())),
     };
     private static final Block[] ROOF_STAIRS = {Blocks.DARK_OAK_STAIRS, Blocks.SPRUCE_STAIRS, Blocks.BRICK_STAIRS,
             Blocks.DEEPSLATE_TILE_STAIRS, Blocks.MUD_BRICK_STAIRS, Blocks.STONE_BRICK_STAIRS};
     private static final Block[] ROOF_FULL = {Blocks.DARK_OAK_PLANKS, Blocks.SPRUCE_PLANKS, Blocks.BRICKS,
             Blocks.DEEPSLATE_TILES, Blocks.MUD_BRICKS, Blocks.STONE_BRICKS};
-    private static final Block[] CONTAINER_A = {Blocks.RED_CONCRETE, Blocks.BLUE_CONCRETE, Blocks.GREEN_CONCRETE,
-            Blocks.ORANGE_CONCRETE, Blocks.CYAN_CONCRETE, Blocks.WHITE_CONCRETE, Blocks.BROWN_CONCRETE};
-    private static final Block[] CONTAINER_B = {Blocks.RED_TERRACOTTA, Blocks.BLUE_TERRACOTTA,
-            Blocks.GREEN_TERRACOTTA, Blocks.ORANGE_TERRACOTTA, Blocks.CYAN_TERRACOTTA, Blocks.WHITE_TERRACOTTA,
-            Blocks.BROWN_TERRACOTTA};
+    private static final Block[] CONTAINER_A = {Blocks.CONCRETE.red(), Blocks.CONCRETE.blue(), Blocks.CONCRETE.green(),
+            Blocks.CONCRETE.orange(), Blocks.CONCRETE.cyan(), Blocks.CONCRETE.white(), Blocks.CONCRETE.brown()};
+    private static final Block[] CONTAINER_B = {Blocks.DYED_TERRACOTTA.red(), Blocks.DYED_TERRACOTTA.blue(),
+            Blocks.DYED_TERRACOTTA.green(), Blocks.DYED_TERRACOTTA.orange(), Blocks.DYED_TERRACOTTA.cyan(), Blocks.DYED_TERRACOTTA.white(),
+            Blocks.DYED_TERRACOTTA.brown()};
 
     private static final Tower.Facade SHOP = (t, rel, f, along, front) -> f == t.fh - 2 ? t.p.accent()
             : (front && f >= 1 && f <= 3 ? t.p.glass() : t.p.frame());
@@ -204,7 +204,7 @@ final class Buildings {
         if (path) {
             c.set(GROUND + 1, s(Blocks.STONE_BRICKS));
         } else if (drive) {
-            c.set(GROUND + 1, s(Blocks.LIGHT_GRAY_CONCRETE));
+            c.set(GROUND + 1, s(Blocks.CONCRETE.lightGray()));
         } else if (u == 0 || u == width - 1 || v == depth - 1 || v == 0) {
             hedge(c);
         } else if (u < u0 || u > u1 || v < v0 || v > v1) {
@@ -297,7 +297,7 @@ final class Buildings {
         if (path) {
             c.set(GROUND + 1, B.PLAZA);
         } else if (drive) {
-            c.set(GROUND + 1, s(Blocks.LIGHT_GRAY_CONCRETE));
+            c.set(GROUND + 1, s(Blocks.CONCRETE.lightGray()));
         } else if (u == 0 || u == width - 1 || v == depth - 1 || v == 0) {
             hedge(c);
         } else {
@@ -414,7 +414,7 @@ final class Buildings {
     }
 
     private static boolean crane(Column c, int u, int v, int width, int depth) {
-        BlockState yellow = s(Blocks.YELLOW_CONCRETE);
+        BlockState yellow = s(Blocks.CONCRETE.yellow());
         int beamY = FLOOR + 18;
         boolean legU = u == 1 || u == 2 || u == width - 3 || u == width - 2;
         boolean legV = v == 1 || v == 2 || v == depth - 3 || v == depth - 2;
@@ -489,7 +489,7 @@ final class Buildings {
                     }
                 }
             }
-            Signs.board(c, u, v, v0, uc, t.top + 2, "BANK", s(Blocks.GREEN_CONCRETE), B.SEA_LANTERN);
+            Signs.board(c, u, v, v0, uc, t.top + 2, "BANK", s(Blocks.CONCRETE.green()), B.SEA_LANTERN);
             return;
         }
         // portico with columns in front of the entrance
@@ -523,7 +523,7 @@ final class Buildings {
                 c.set(FLOOR + 1, s(Blocks.TARGET));
             }
         }
-        Signs.board(c, u, v, v0, uc, t.top + 2, "AMMU", s(Blocks.WHITE_CONCRETE), s(Blocks.RED_CONCRETE));
+        Signs.board(c, u, v, v0, uc, t.top + 2, "AMMU", s(Blocks.CONCRETE.white()), s(Blocks.CONCRETE.red()));
     }
 
     private static void storeInterior(Column c, int u, int v, int u0, int v0, int u1, int v1) {
@@ -538,7 +538,7 @@ final class Buildings {
             c.fill(FLOOR, FLOOR + 1, s(Blocks.BOOKSHELF));
         }
         if (v == v1 - 1 && u > u0 + 6) {
-            c.fill(FLOOR, FLOOR + 1, s(Blocks.LIGHT_BLUE_STAINED_GLASS));
+            c.fill(FLOOR, FLOOR + 1, s(Blocks.STAINED_GLASS.lightBlue()));
         }
     }
 
@@ -553,7 +553,7 @@ final class Buildings {
             return;
         }
         storeInterior(c, u, v, u0, v0, u1, v1);
-        Signs.board(c, u, v, v0, (u0 + u1) / 2, t.top + 2, "24/7", s(Blocks.GREEN_CONCRETE), B.SEA_LANTERN);
+        Signs.board(c, u, v, v0, (u0 + u1) / 2, t.top + 2, "24/7", s(Blocks.CONCRETE.green()), B.SEA_LANTERN);
     }
 
     private static void police(Lot lot, int x, int z, Column c) {
@@ -564,7 +564,7 @@ final class Buildings {
         Tower t = tower(f, u0, v0, u1, v1, 4, 3, POLICE, Tower.BANDS, lot.front);
         t.elevator = true;
         if (t.column(c, x, z)) {
-            Signs.board(c, u, v, v0, (u0 + u1) / 2, t.top + 2, "LSPD", s(Blocks.BLUE_CONCRETE), B.SEA_LANTERN);
+            Signs.board(c, u, v, v0, (u0 + u1) / 2, t.top + 2, "LSPD", s(Blocks.CONCRETE.blue()), B.SEA_LANTERN);
             return;
         }
         if (big && v >= 1 && v < v0 - 1) {
@@ -591,12 +591,12 @@ final class Buildings {
         if (t.roofInterior(x, z)) {
             int du = Math.abs(u - uc), dv = Math.abs(v - vc);
             if ((du <= 1 && dv <= 5) || (dv <= 1 && du <= 5)) {
-                c.set(t.top, s(Blocks.RED_CONCRETE));
+                c.set(t.top, s(Blocks.CONCRETE.red()));
             }
         }
         int boardWidth = u1 - u0 + 1;
-        Signs.board(c, u, v, v0, uc, t.top + 2, fit("HOSPITAL", "ER", boardWidth), s(Blocks.WHITE_CONCRETE),
-                s(Blocks.RED_CONCRETE));
+        Signs.board(c, u, v, v0, uc, t.top + 2, fit("HOSPITAL", "ER", boardWidth), s(Blocks.CONCRETE.white()),
+                s(Blocks.CONCRETE.red()));
     }
 
     private static void gasStation(Lot lot, int x, int z, Column c) {
@@ -623,9 +623,9 @@ final class Buildings {
         if (u >= cu0 && u <= cu1 && v >= cv0 && v <= cv1) {
             boolean rim = u == cu0 || u == cu1 || v == cv0 || v == cv1;
             boolean lamp = !rim && Math.floorMod(u - cu0, 4) == 2 && Math.floorMod(v - cv0, 4) == 2;
-            c.set(canopyY, rim ? s(Blocks.RED_CONCRETE) : (lamp ? B.SEA_LANTERN : s(Blocks.WHITE_CONCRETE)));
+            c.set(canopyY, rim ? s(Blocks.CONCRETE.red()) : (lamp ? B.SEA_LANTERN : s(Blocks.CONCRETE.white())));
             if ((u == cu0 + 1 || u == cu1 - 1) && (v == cv0 + 1 || v == cv1 - 1)) {
-                c.fill(GROUND + 1, canopyY - 1, s(Blocks.WHITE_CONCRETE));
+                c.fill(GROUND + 1, canopyY - 1, s(Blocks.CONCRETE.white()));
             }
             int uc = (cu0 + cu1) / 2;
             int vm = (cv0 + cv1) / 2;
@@ -636,7 +636,7 @@ final class Buildings {
                     c.fill(GROUND + 2, GROUND + 3, ModBlocksRef.gasPump());
                 }
             }
-            Signs.board(c, u, v, cv0, uc, canopyY + 1, "GAS", s(Blocks.RED_CONCRETE), B.SEA_LANTERN);
+            Signs.board(c, u, v, cv0, uc, canopyY + 1, "GAS", s(Blocks.CONCRETE.red()), B.SEA_LANTERN);
         }
     }
 
@@ -654,7 +654,7 @@ final class Buildings {
             if (v == v1 - 2 && u == uc) {
                 c.set(FLOOR, ModBlocksRef.carCounter());
             }
-            Signs.board(c, u, v, v0, uc, t.top + 2, "CARS", s(Blocks.BLACK_CONCRETE), B.SEA_LANTERN);
+            Signs.board(c, u, v, v0, uc, t.top + 2, "CARS", s(Blocks.CONCRETE.black()), B.SEA_LANTERN);
             return;
         }
         c.set(GROUND + 1, B.ASPHALT);

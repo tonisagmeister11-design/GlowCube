@@ -1,6 +1,5 @@
 package de.gtacity.block;
 
-import com.mojang.serialization.MapCodec;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -17,15 +16,8 @@ import net.minecraft.world.phys.BlockHitResult;
 
 /** Right click: ride to the roof (or back down to the lobby). */
 public class ElevatorBlock extends Block {
-    public static final MapCodec<ElevatorBlock> CODEC = simpleCodec(ElevatorBlock::new);
-
     public ElevatorBlock(Properties properties) {
         super(properties);
-    }
-
-    @Override
-    protected MapCodec<? extends Block> codec() {
-        return CODEC;
     }
 
     @Override
@@ -47,13 +39,13 @@ public class ElevatorBlock extends Block {
             up = false;
         }
         if (target == null) {
-            player.displayClientMessage(Component.literal("Dieser Aufzug fährt nirgendwohin."), true);
+            player.sendOverlayMessage(Component.literal("Dieser Aufzug fährt nirgendwohin."));
             return InteractionResult.CONSUME;
         }
         player.teleportTo(target.getX() + 0.5, target.getY() + 1.0, target.getZ() + 0.5);
         level.playSound(null, target, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.0F, 1.6F);
-        player.displayClientMessage(Component.literal(up ? "Aufzug: Dach" : "Aufzug: Lobby")
-                .withStyle(ChatFormatting.GOLD), true);
+        player.sendOverlayMessage(Component.literal(up ? "Aufzug: Dach" : "Aufzug: Lobby")
+                .withStyle(ChatFormatting.GOLD));
         return InteractionResult.SUCCESS;
     }
 

@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Prediction;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -95,8 +96,8 @@ public final class ShopCatalog {
         }
         Offer offer = list.get(index);
         if (!Economy.trySpend(player, offer.price())) {
-            player.displayClientMessage(Component.literal("Zu wenig Geld! Du brauchst " + Economy.format(offer.price()))
-                    .withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.literal("Zu wenig Geld! Du brauchst " + Economy.format(offer.price()))
+                    .withStyle(ChatFormatting.RED));
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.VILLAGER_NO,
                     SoundSource.PLAYERS, 0.8F, 1.0F);
             return;
@@ -114,12 +115,12 @@ public final class ShopCatalog {
         } else {
             ItemStack stack = new ItemStack(offer.item(), offer.count());
             if (!player.getInventory().add(stack)) {
-                player.drop(stack, false);
+                player.drop(stack, false, Prediction.SERVER_ONLY);
             }
         }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.EXPERIENCE_ORB_PICKUP,
                 SoundSource.PLAYERS, 0.8F, 0.8F);
-        player.displayClientMessage(Component.literal("Gekauft: " + offer.name() + " für "
-                + Economy.format(offer.price())).withStyle(ChatFormatting.GREEN), true);
+        player.sendOverlayMessage(Component.literal("Gekauft: " + offer.name() + " für "
+                + Economy.format(offer.price())).withStyle(ChatFormatting.GREEN));
     }
 }

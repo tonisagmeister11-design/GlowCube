@@ -16,10 +16,10 @@ final class Streets {
 
     private static final int LAMP_SPACING = 26;
     private static final int LAMP_HEIGHT = 7;
-    private static final BlockState TRAFFIC_RED = B.s(Blocks.RED_CONCRETE);
-    private static final BlockState TRAFFIC_YELLOW = B.s(Blocks.YELLOW_CONCRETE);
-    private static final BlockState TRAFFIC_GREEN = B.s(Blocks.LIME_CONCRETE);
-    private static final BlockState TRAFFIC_BOX = B.s(Blocks.BLACK_CONCRETE);
+    private static final BlockState TRAFFIC_RED = B.s(Blocks.CONCRETE.red());
+    private static final BlockState TRAFFIC_YELLOW = B.s(Blocks.CONCRETE.yellow());
+    private static final BlockState TRAFFIC_GREEN = B.s(Blocks.CONCRETE.lime());
+    private static final BlockState TRAFFIC_BOX = B.s(Blocks.CONCRETE.black());
 
     static void column(int x, int z, int lx, int lz, boolean rx, boolean rz, Column c) {
         boolean roadX = rx && lx >= SIDEWALK && lx < SIDEWALK + ROAD;

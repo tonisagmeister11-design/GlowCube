@@ -106,12 +106,12 @@ public final class CityEvents {
         player.getInventory().add(new ItemStack(ModItems.PISTOL_AMMO, 48));
         player.getInventory().add(new ItemStack(ModItems.BASEBALL_BAT));
         player.getInventory().add(new ItemStack(ModItems.BURGER, 4));
-        player.displayClientMessage(Component.literal("Willkommen in Los Santos!").withStyle(ChatFormatting.GOLD,
-                ChatFormatting.BOLD), false);
-        player.displayClientMessage(Component.literal("Waffen: Linksklick schießen, Rechtsklick zielen, R nachladen. "
+        player.sendSystemMessage(Component.literal("Willkommen in Los Santos!").withStyle(ChatFormatting.GOLD,
+                ChatFormatting.BOLD));
+        player.sendSystemMessage(Component.literal("Waffen: Linksklick schießen, Rechtsklick zielen, R nachladen. "
                 + "Autos: Rechtsklick einsteigen, WASD fahren, H hupen, Shift aussteigen. "
                 + "Läden: Rechtsklick auf die Theke. Überfall: Schleichen + Rechtsklick mit Waffe.")
-                .withStyle(ChatFormatting.GRAY), false);
+                .withStyle(ChatFormatting.GRAY));
     }
 
     /** Car helper for other systems. */

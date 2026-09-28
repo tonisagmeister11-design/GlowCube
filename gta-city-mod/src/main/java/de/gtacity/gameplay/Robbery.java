@@ -27,7 +27,7 @@ public final class Robbery {
         long now = level.getGameTime();
         Long until = ROBBED_UNTIL.get(pos);
         if (until != null && until > now) {
-            player.displayClientMessage(Component.literal("Die Kasse ist leer.").withStyle(ChatFormatting.GRAY), true);
+            player.sendOverlayMessage(Component.literal("Die Kasse ist leer.").withStyle(ChatFormatting.GRAY));
             return;
         }
         int base = switch (type) {
@@ -42,7 +42,7 @@ public final class Robbery {
         ROBBED_UNTIL.put(pos.immutable(), now + COOLDOWN);
         WantedSystem.commit(player, type == ShopType.WEAPONS ? 3 : 2);
         level.playSound(null, pos, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 2.0F, 1.2F);
-        player.displayClientMessage(Component.literal("Kasse ausgeraubt! " + Economy.format(loot))
-                .withStyle(ChatFormatting.GOLD), true);
+        player.sendOverlayMessage(Component.literal("Kasse ausgeraubt! " + Economy.format(loot))
+                .withStyle(ChatFormatting.GOLD));
     }
 }

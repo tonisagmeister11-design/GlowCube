@@ -6,7 +6,7 @@ import de.gtacity.registry.ModAttachments;
 import de.gtacity.shop.ShopCatalog;
 import de.gtacity.shop.ShopType;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -51,11 +51,11 @@ public class ShopScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        super.render(g, mouseX, mouseY, partialTick);
-        g.drawCenteredString(font, title, width / 2, top - 30, 0xFFFFD040);
+    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(g, mouseX, mouseY, partialTick);
+        g.centeredText(font, title, width / 2, top - 30, 0xFFFFD040);
         Long money = minecraft.player == null ? null : minecraft.player.getAttached(ModAttachments.MONEY);
-        g.drawCenteredString(font, "Dein Geld: " + Economy.format(money == null ? 0 : money), width / 2, top - 18,
+        g.centeredText(font, "Dein Geld: " + Economy.format(money == null ? 0 : money), width / 2, top - 18,
                 0xFF6BD36B);
         for (int i = 0; i < offers.size(); i++) {
             ShopCatalog.Offer offer = offers.get(i);
@@ -63,9 +63,9 @@ public class ShopScreen extends Screen {
             int x = left + col * COL_WIDTH;
             int y = top + row * ROW;
             g.fill(x, y, x + COL_WIDTH - 60, y + 20, 0x90000000);
-            g.renderItem(offer.icon(), x + 2, y + 2);
-            g.drawString(font, offer.name(), x + 22, y + 2, 0xFFFFFFFF, false);
-            g.drawString(font, Economy.format(offer.price()), x + 22, y + 11, 0xFF6BD36B, false);
+            g.item(offer.icon(), x + 2, y + 2);
+            g.text(font, offer.name(), x + 22, y + 2, 0xFFFFFFFF, false);
+            g.text(font, Economy.format(offer.price()), x + 22, y + 11, 0xFF6BD36B, false);
         }
     }
 

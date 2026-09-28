@@ -13,6 +13,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -38,19 +39,18 @@ public final class Heists {
         Long until = EMPTY_UNTIL.get(vault);
         if (until != null && until > now) {
             long minutes = (until - now) / 1200 + 1;
-            player.displayClientMessage(Component.literal("Der Tresor ist leer. Neue Lieferung in ca. " + minutes
-                    + " min.").withStyle(ChatFormatting.GRAY), true);
+            player.sendOverlayMessage(Component.literal("Der Tresor ist leer. Neue Lieferung in ca. " + minutes
+                    + " min.").withStyle(ChatFormatting.GRAY));
             return;
         }
         Heist running = ACTIVE.get(player.getUUID());
         if (running != null) {
-            player.displayClientMessage(Component.literal("Der Bohrer läuft schon!").withStyle(ChatFormatting.GOLD),
-                    true);
+            player.sendOverlayMessage(Component.literal("Der Bohrer läuft schon!").withStyle(ChatFormatting.GOLD));
             return;
         }
         if (!held.is(ModItems.THERMAL_DRILL)) {
-            player.displayClientMessage(Component.literal("Du brauchst einen Thermobohrer (Ammu-Nation).")
-                    .withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.literal("Du brauchst einen Thermobohrer (Ammu-Nation).")
+                    .withStyle(ChatFormatting.RED));
             return;
         }
         ACTIVE.put(player.getUUID(), new Heist(player, vault.immutable(), new int[]{0}));
@@ -66,9 +66,8 @@ public final class Heists {
         while (it.hasNext()) {
             Heist h = it.next();
             ServerPlayer p = h.player;
-            if (p.isRemoved() || !p.isAlive() || p.distanceToSqr(h.vault.getCenter()) > 36.0) {
-                p.displayClientMessage(Component.literal("Überfall abgebrochen!").withStyle(ChatFormatting.RED),
-                        true);
+            if (p.isRemoved() || !p.isAlive() || p.distanceToSqr(Vec3.atCenterOf(h.vault)) > 36.0) {
+                p.sendOverlayMessage(Component.literal("Überfall abgebrochen!").withStyle(ChatFormatting.RED));
                 it.remove();
                 continue;
             }
@@ -83,8 +82,8 @@ public final class Heists {
                 for (int i = 0; i < 20; i++) {
                     bar.append(i < pct / 5 ? '|' : '.');
                 }
-                p.displayClientMessage(Component.literal("Bohren [" + bar + "] " + pct + "%")
-                        .withStyle(ChatFormatting.GOLD), true);
+                p.sendOverlayMessage(Component.literal("Bohren [" + bar + "] " + pct + "%")
+                        .withStyle(ChatFormatting.GOLD));
             }
             if (progress % 200 == 0) {
                 level.playSound(null, h.vault, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 3.0F, 1.0F);

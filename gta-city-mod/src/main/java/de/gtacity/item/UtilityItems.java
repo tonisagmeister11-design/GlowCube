@@ -50,8 +50,7 @@ public final class UtilityItems {
             ItemStack stack = player.getItemInHand(hand);
             if (!level.isClientSide()) {
                 player.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 20 * 60 * 10, 4));
-                player.displayClientMessage(Component.literal("Schutzweste angelegt").withStyle(ChatFormatting.AQUA),
-                        true);
+                player.sendOverlayMessage(Component.literal("Schutzweste angelegt").withStyle(ChatFormatting.AQUA));
             }
             level.playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.ARMOR_EQUIP_NETHERITE.value(), SoundSource.PLAYERS, 1.0F, 1.0F);

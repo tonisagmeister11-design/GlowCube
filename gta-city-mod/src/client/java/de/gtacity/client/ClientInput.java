@@ -6,14 +6,13 @@ import de.gtacity.entity.CarEntity;
 import de.gtacity.item.GunItem;
 import de.gtacity.network.Payloads;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.event.client.player.ClientPreAttackCallback;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import org.lwjgl.glfw.GLFW;
 
 /** Gun trigger, reload, horn and the automatic third person camera in cars. */
 public final class ClientInput {
@@ -21,10 +20,10 @@ public final class ClientInput {
     }
 
     private static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(GtaCity.id("keys"));
-    public static final KeyMapping RELOAD = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.gtacity.reload",
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY));
-    public static final KeyMapping HORN = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.gtacity.horn",
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY));
+    public static final KeyMapping RELOAD = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.gtacity.reload",
+            InputConstants.KEY_R, CATEGORY));
+    public static final KeyMapping HORN = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.gtacity.horn",
+            InputConstants.KEY_H, CATEGORY));
 
     private static CameraType cameraBeforeCar;
     private static boolean wasInCar;
@@ -47,7 +46,7 @@ public final class ClientInput {
                 return;
             }
             boolean gun = player.getMainHandItem().getItem() instanceof GunItem g && g.type.automatic;
-            if (gun && client.screen == null && client.options.keyAttack.isDown()) {
+            if (gun && client.gui.screen() == null && client.options.keyAttack.isDown()) {
                 ClientPlayNetworking.send(new Payloads.Fire(true));
             }
             while (RELOAD.consumeClick()) {
@@ -62,7 +61,7 @@ public final class ClientInput {
 
     public static boolean isAiming() {
         Minecraft mc = Minecraft.getInstance();
-        return mc.player != null && mc.screen == null && mc.options.keyUse.isDown()
+        return mc.player != null && mc.gui.screen() == null && mc.options.keyUse.isDown()
                 && mc.player.getMainHandItem().getItem() instanceof GunItem;
     }
 

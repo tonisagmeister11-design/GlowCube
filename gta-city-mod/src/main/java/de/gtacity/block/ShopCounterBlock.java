@@ -1,7 +1,5 @@
 package de.gtacity.block;
 
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import de.gtacity.gameplay.Robbery;
 import de.gtacity.item.GunItem;
 import de.gtacity.network.ModNetworking;
@@ -19,11 +17,6 @@ import net.minecraft.world.phys.BlockHitResult;
 
 /** Shop counter. Right click opens the shop, sneak + right click with a gun robs the till. */
 public class ShopCounterBlock extends Block {
-    public static final MapCodec<ShopCounterBlock> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            ShopType.CODEC.fieldOf("shop").forGetter(b -> b.type),
-            propertiesCodec()
-    ).apply(instance, ShopCounterBlock::new));
-
     private final ShopType type;
 
     public ShopCounterBlock(ShopType type, Properties properties) {
@@ -33,11 +26,6 @@ public class ShopCounterBlock extends Block {
 
     public ShopType type() {
         return type;
-    }
-
-    @Override
-    protected MapCodec<? extends Block> codec() {
-        return CODEC;
     }
 
     @Override

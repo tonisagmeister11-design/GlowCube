@@ -119,8 +119,8 @@ public final class Weapons {
         }
         int taken = player.getAbilities().instabuild ? need : AmmoItem.take(player, type.ammo, need);
         if (taken <= 0) {
-            player.displayClientMessage(Component.literal("Keine Munition! Kauf welche bei Ammu-Nation.")
-                    .withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.literal("Keine Munition! Kauf welche bei Ammu-Nation.")
+                    .withStyle(ChatFormatting.RED));
             return false;
         }
         stack.set(ModComponents.AMMO, have + taken);
@@ -189,7 +189,7 @@ public final class Weapons {
             if (at.y > living.getEyeY() - 0.25) {
                 amount *= 2.0F; // headshot
             }
-            living.invulnerableTime = 0;
+            living.setInvulnerableTime(0);
             level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, Blocks.REDSTONE_BLOCK.defaultBlockState()),
                     at.x, at.y, at.z, 10, 0.1, 0.1, 0.1, 0.15);
         }

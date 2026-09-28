@@ -6,7 +6,7 @@ import de.gtacity.entity.PoliceEntity;
 import de.gtacity.world.CityLayout;
 import de.gtacity.world.Lot;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -25,8 +25,9 @@ public final class Minimap {
     private static final int MARGIN = 12; // cached pixels around the visible area
     private static final int CACHE = SIZE + 2 * MARGIN;
     private static final int[] PIXELS = new int[CACHE * CACHE];
-    private static int cachedX = Integer.MIN_VALUE;
-    private static int cachedZ = Integer.MIN_VALUE;
+    private static boolean cached;
+    private static int cachedX;
+    private static int cachedZ;
 
     private static int colorAt(int x, int z) {
         int d = CityLayout.outsideDistance(x, z);
@@ -76,12 +77,13 @@ public final class Minimap {
         }
         cachedX = cx;
         cachedZ = cz;
+        cached = true;
     }
 
-    public static void render(GuiGraphics g, Minecraft mc, LocalPlayer player, int left, int top) {
+    public static void render(GuiGraphicsExtractor g, Minecraft mc, LocalPlayer player, int left, int top) {
         int px = Mth.floor(player.getX()), pz = Mth.floor(player.getZ());
         int limit = (MARGIN - 1) * SCALE;
-        if (Math.abs(px - cachedX) > limit || Math.abs(pz - cachedZ) > limit) {
+        if (!cached || Math.abs(px - cachedX) > limit || Math.abs(pz - cachedZ) > limit) {
             rebuild(px - Math.floorMod(px, SCALE), pz - Math.floorMod(pz, SCALE));
         }
         int ox = MARGIN + Math.floorDiv(px - cachedX, SCALE);
@@ -128,6 +130,6 @@ public final class Minimap {
             g.fill(left + half + ax - 1, top + half + az - 1, left + half + ax + 1, top + half + az + 1, 0xFFFFFFFF);
         }
         g.fill(left + half - 2, top + half - 2, left + half + 2, top + half + 2, 0xFFFFE040);
-        g.drawString(mc.font, "N", left + half - 2, top + 1, 0xFFFFFFFF, true);
+        g.text(mc.font, "N", left + half - 2, top + 1, 0xFFFFFFFF, true);
     }
 }

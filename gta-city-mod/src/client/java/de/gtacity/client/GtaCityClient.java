@@ -12,7 +12,7 @@ import de.gtacity.registry.ModEntities;
 import de.gtacity.shop.ShopType;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.Minecraft;
@@ -27,10 +27,10 @@ public class GtaCityClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        EntityModelLayerRegistry.registerModelLayer(NPC_LAYER,
+        ModelLayerRegistry.registerModelLayer(NPC_LAYER,
                 () -> LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, false), 64, 64));
         for (CarVariant.Shape shape : CarVariant.Shape.values()) {
-            EntityModelLayerRegistry.registerModelLayer(CarModel.layer(shape), () -> CarModel.create(shape));
+            ModelLayerRegistry.registerModelLayer(CarModel.layer(shape), () -> CarModel.create(shape));
         }
 
         EntityRendererRegistry.register(ModEntities.PEDESTRIAN, NpcRenderer::new);
@@ -42,7 +42,7 @@ public class GtaCityClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(Payloads.OpenShop.TYPE, (payload, context) -> {
             ShopType[] types = ShopType.values();
             if (payload.shop() >= 0 && payload.shop() < types.length) {
-                Minecraft.getInstance().setScreen(new ShopScreen(types[payload.shop()]));
+                Minecraft.getInstance().gui.setScreen(new ShopScreen(types[payload.shop()]));
             }
         });
         ClientPlayNetworking.registerGlobalReceiver(Payloads.ShotFx.TYPE, (payload, context) -> ShotEffects.spawn(payload));

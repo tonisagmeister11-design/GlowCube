@@ -1,6 +1,5 @@
 package de.gtacity.block;
 
-import com.mojang.serialization.MapCodec;
 import de.gtacity.gameplay.Heists;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,15 +14,8 @@ import net.minecraft.world.phys.BlockHitResult;
 
 /** The safe in the back of every bank. Right click it with a drill to start a heist. */
 public class BankVaultBlock extends Block {
-    public static final MapCodec<BankVaultBlock> CODEC = simpleCodec(BankVaultBlock::new);
-
     public BankVaultBlock(Properties properties) {
         super(properties);
-    }
-
-    @Override
-    protected MapCodec<? extends Block> codec() {
-        return CODEC;
     }
 
     @Override

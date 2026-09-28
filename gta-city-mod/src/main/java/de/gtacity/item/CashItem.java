@@ -33,8 +33,8 @@ public class CashItem extends Item {
             int value = stack.getOrDefault(ModComponents.CASH_VALUE, 10) * stack.getCount();
             stack.setCount(0);
             Economy.add(player, value);
-            player.displayClientMessage(Component.literal("+" + Economy.format(value))
-                    .withStyle(ChatFormatting.GREEN), true);
+            player.sendOverlayMessage(Component.literal("+" + Economy.format(value))
+                    .withStyle(ChatFormatting.GREEN));
             level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.EXPERIENCE_ORB_PICKUP,
                     SoundSource.PLAYERS, 0.5F, 1.4F);
         }

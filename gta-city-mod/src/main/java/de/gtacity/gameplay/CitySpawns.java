@@ -188,7 +188,7 @@ public final class CitySpawns {
         ChunkPos chunk = region.getCenter();
         int minX = chunk.getMinBlockX(), minZ = chunk.getMinBlockZ();
         Set<Long> seen = new HashSet<>();
-        RandomSource random = RandomSource.create(chunk.toLong() * 31L + 7);
+        RandomSource random = RandomSource.create(chunk.pack() * 31L + 7);
         for (int dx = 0; dx < 16; dx += 4) {
             for (int dz = 0; dz < 16; dz += 4) {
                 Lot lot = CityLayout.lotAt(minX + dx, minZ + dz);

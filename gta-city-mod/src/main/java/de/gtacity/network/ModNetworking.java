@@ -19,13 +19,13 @@ public final class ModNetworking {
     }
 
     public static void init() {
-        PayloadTypeRegistry.playC2S().register(Payloads.Fire.TYPE, Payloads.Fire.CODEC);
-        PayloadTypeRegistry.playC2S().register(Payloads.Reload.TYPE, Payloads.Reload.CODEC);
-        PayloadTypeRegistry.playC2S().register(Payloads.Horn.TYPE, Payloads.Horn.CODEC);
-        PayloadTypeRegistry.playC2S().register(Payloads.Buy.TYPE, Payloads.Buy.CODEC);
-        PayloadTypeRegistry.playS2C().register(Payloads.OpenShop.TYPE, Payloads.OpenShop.CODEC);
-        PayloadTypeRegistry.playS2C().register(Payloads.ShotFx.TYPE, Payloads.ShotFx.CODEC);
-        PayloadTypeRegistry.playS2C().register(Payloads.Recoil.TYPE, Payloads.Recoil.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(Payloads.Fire.TYPE, Payloads.Fire.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(Payloads.Reload.TYPE, Payloads.Reload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(Payloads.Horn.TYPE, Payloads.Horn.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(Payloads.Buy.TYPE, Payloads.Buy.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Payloads.OpenShop.TYPE, Payloads.OpenShop.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Payloads.ShotFx.TYPE, Payloads.ShotFx.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Payloads.Recoil.TYPE, Payloads.Recoil.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(Payloads.Fire.TYPE,
                 (payload, context) -> Weapons.tryFire(context.player(), payload.held()));

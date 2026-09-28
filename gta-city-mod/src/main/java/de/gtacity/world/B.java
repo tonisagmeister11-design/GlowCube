@@ -34,9 +34,9 @@ public final class B {
     public static final BlockState WATER = s(Blocks.WATER);
     public static final BlockState DIRT_PATH = s(Blocks.DIRT_PATH);
 
-    public static final BlockState ASPHALT = s(Blocks.GRAY_CONCRETE);
-    public static final BlockState LINE_YELLOW = s(Blocks.YELLOW_CONCRETE);
-    public static final BlockState LINE_WHITE = s(Blocks.WHITE_CONCRETE);
+    public static final BlockState ASPHALT = s(Blocks.CONCRETE.gray());
+    public static final BlockState LINE_YELLOW = s(Blocks.CONCRETE.yellow());
+    public static final BlockState LINE_WHITE = s(Blocks.CONCRETE.white());
     public static final BlockState SIDEWALK = s(Blocks.SMOOTH_STONE_SLAB);
     public static final BlockState CURB = s(Blocks.POLISHED_ANDESITE_SLAB);
     public static final BlockState PLAZA = s(Blocks.POLISHED_ANDESITE);

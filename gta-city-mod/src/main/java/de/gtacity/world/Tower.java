@@ -242,11 +242,11 @@ final class Tower {
         int dx = x - ex, dz = z - ez;
         if (helipad && Math.abs(dx) <= 4 && Math.abs(dz) <= 4) {
             int ax = Math.abs(dx), az = Math.abs(dz);
-            BlockState s = B.s(Blocks.GRAY_CONCRETE);
+            BlockState s = B.s(Blocks.CONCRETE.gray());
             if (ax == 4 || az == 4) {
-                s = B.s(Blocks.YELLOW_CONCRETE);
+                s = B.s(Blocks.CONCRETE.yellow());
             } else if ((ax == 2 && az <= 2) || (dz == 0 && ax <= 2)) {
-                s = B.s(Blocks.WHITE_CONCRETE);
+                s = B.s(Blocks.CONCRETE.white());
             }
             c.set(roofY, s);
             return;
@@ -260,7 +260,7 @@ final class Tower {
             int[] r = rects.getLast();
             int mx = Math.floorMod(x - r[0], 7), mz = Math.floorMod(z - r[1], 7);
             if ((mx == 2 || mx == 3) && (mz == 2 || mz == 3)) {
-                c.set(roofY + 1, B.s(Blocks.LIGHT_GRAY_CONCRETE));
+                c.set(roofY + 1, B.s(Blocks.CONCRETE.lightGray()));
                 c.set(roofY + 2, B.s(Blocks.IRON_TRAPDOOR));
             }
         }

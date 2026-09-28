@@ -22,6 +22,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.InterpolationHandler;
+import net.minecraft.world.entity.LinearInterpolationHandler;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
@@ -50,8 +51,6 @@ public class CarEntity extends Entity {
 
     private static final float CRUISE_SPEED = 0.42F;
     private static final float TURN_SPEED = 0.24F;
-
-    private final InterpolationHandler interpolation = new InterpolationHandler(this, 3);
 
     public float speed;
     public float steer;
@@ -173,8 +172,8 @@ public class CarEntity extends Entity {
     }
 
     @Override
-    public InterpolationHandler getInterpolation() {
-        return interpolation;
+    protected InterpolationHandler createInterpolationHandler() {
+        return LinearInterpolationHandler.create(this, 3);
     }
 
     @Override
@@ -216,7 +215,7 @@ public class CarEntity extends Entity {
     // ------------------------------------------------------------------ interaction
 
     @Override
-    public InteractionResult interact(Player player, InteractionHand hand) {
+    public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
         if (player.isSecondaryUseActive() || player.getVehicle() == this) {
             return InteractionResult.PASS;
         }
@@ -232,7 +231,7 @@ public class CarEntity extends Entity {
             npc.stopRiding();
             npc.panic(player.position(), 200);
             WantedSystem.onCarJacked(player, getVariant() == CarVariant.POLICE);
-            player.displayClientMessage(Component.literal("Auto geklaut!").withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.literal("Auto geklaut!").withStyle(ChatFormatting.RED));
         } else if (getVariant() == CarVariant.POLICE) {
             WantedSystem.onCarJacked(player, true);
         }
@@ -303,8 +302,6 @@ public class CarEntity extends Entity {
                 turn = input[1];
             }
             drive(throttle, turn);
-        } else {
-            interpolation.interpolate();
         }
         wheelRot += speed * 45.0F;
 
@@ -390,7 +387,7 @@ public class CarEntity extends Entity {
                     : level.damageSources().generic();
             victim.hurtServer(level, source, damage);
             victim.push(forward.x * speed * 1.5, 0.35 + Math.abs(speed) * 0.3, forward.z * speed * 1.5);
-            victim.hurtMarked = true;
+            victim.syncVelocity = true;
             speed *= 0.8F;
         }
     }

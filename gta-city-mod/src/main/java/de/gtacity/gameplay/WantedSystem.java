@@ -131,8 +131,8 @@ public final class WantedSystem {
         }
         s.lastArrestHit = now;
         s.arrestHits++;
-        player.displayClientMessage(Component.literal("Die Polizei nimmt dich fest! (" + s.arrestHits + "/3)")
-                .withStyle(ChatFormatting.BLUE), true);
+        player.sendOverlayMessage(Component.literal("Die Polizei nimmt dich fest! (" + s.arrestHits + "/3)")
+                .withStyle(ChatFormatting.BLUE));
         if (s.arrestHits >= 3) {
             busted(player);
         }
@@ -195,8 +195,8 @@ public final class WantedSystem {
             int needed = (10 + stars * 6) * 20;
             if (s.lostSightTicks >= needed) {
                 setLevel(player, 0);
-                player.displayClientMessage(Component.literal("Du hast die Cops abgehängt!")
-                        .withStyle(ChatFormatting.GREEN), true);
+                player.sendOverlayMessage(Component.literal("Du hast die Cops abgehängt!")
+                        .withStyle(ChatFormatting.GREEN));
                 continue;
             }
             PoliceDispatch.dispatch(level, player, stars);

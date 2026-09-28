@@ -2,12 +2,15 @@ package de.gtacity.world;
 
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import de.gtacity.gameplay.CitySpawns;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeManager;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.block.state.BlockState;
@@ -18,8 +21,11 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
+import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /** Chunk generator that turns the whole overworld into one big city. */
@@ -38,8 +44,10 @@ public class CityChunkGenerator extends ChunkGenerator {
     }
 
     @Override
-    public CompletableFuture<ChunkAccess> fillFromNoise(Blender blender, RandomState randomState,
-                                                        StructureManager structureManager, ChunkAccess chunk) {
+    public CompletableFuture<ChunkAccess> buildTerrain(ChunkAccess chunk, Blender blender, RandomState randomState,
+                                                       StructureManager structureManager, BiomeManager biomeManager,
+                                                       @Nullable WorldGenRegion carverBiomeRegion,
+                                                       Set<Holder<Biome>> possibleBiomes) {
         int minY = chunk.getMinY();
         int height = chunk.getHeight();
         Column column = new Column(minY, height);
@@ -96,18 +104,9 @@ public class CityChunkGenerator extends ChunkGenerator {
     }
 
     @Override
-    public void addDebugScreenInfo(List<String> info, RandomState randomState, BlockPos pos) {
+    public void addDebugScreenInfo(List<String> info, RandomState randomState, BlockPos pos,
+                                   SamplerContext samplerContext) {
         info.add("GTA City: " + CityLayout.describe(pos.getX(), pos.getZ()));
-    }
-
-    @Override
-    public void applyCarvers(WorldGenRegion region, long seed, RandomState randomState, BiomeManager biomeManager,
-                             StructureManager structureManager, ChunkAccess chunk) {
-    }
-
-    @Override
-    public void buildSurface(WorldGenRegion region, StructureManager structureManager, RandomState randomState,
-                             ChunkAccess chunk) {
     }
 
     @Override

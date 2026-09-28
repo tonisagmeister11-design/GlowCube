@@ -1,6 +1,5 @@
 package de.gtacity.block;
 
-import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -10,15 +9,8 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /** Gas pump that blows up when it is shot. */
 public class GasPumpBlock extends Block {
-    public static final MapCodec<GasPumpBlock> CODEC = simpleCodec(GasPumpBlock::new);
-
     public GasPumpBlock(Properties properties) {
         super(properties);
-    }
-
-    @Override
-    protected MapCodec<? extends Block> codec() {
-        return CODEC;
     }
 
     /** Called by the weapon code when a bullet hits the pump. */

@@ -31,8 +31,8 @@ public final class ShotEffects {
         level.addParticle(ParticleTypes.SMALL_FLAME, from.x, from.y, from.z, 0, 0.01, 0);
         level.addParticle(ParticleTypes.SMOKE, from.x, from.y, from.z, 0, 0.02, 0);
         for (int i = 0; i < 3; i++) {
-            level.addParticle(ParticleTypes.CRIT, to.x, to.y, to.z, (level.random.nextDouble() - 0.5) * 0.3,
-                    level.random.nextDouble() * 0.2, (level.random.nextDouble() - 0.5) * 0.3);
+            level.addParticle(ParticleTypes.CRIT, to.x, to.y, to.z, (level.getRandom().nextDouble() - 0.5) * 0.3,
+                    level.getRandom().nextDouble() * 0.2, (level.getRandom().nextDouble() - 0.5) * 0.3);
         }
     }
 }
