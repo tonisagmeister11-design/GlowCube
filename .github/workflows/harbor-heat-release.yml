@@ -21,16 +21,21 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: harbor-heat-v3.4
-          name: Harbor Heat v3.4
+          tag_name: harbor-heat-v3.5
+          name: Harbor Heat v3.5
           target_commitish: harbor-heat-download
           make_latest: true
           body: |
-            **Harbor Heat v3.4** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
+            **Harbor Heat v3.5** – open-world action in Port Aurelia (Windows 10/11, 64-bit).
             Download `HarborHeat.exe`, double-click, play. Nothing to install.
 
+            3.5: Nobody gets stuck in the ground any more: joining players land on the sidewalk next to
+            the host, spawns are checked, and whoever falls into the ground is put back automatically.
+            Emergency key U (also in the pause menu): back onto the nearest sidewalk outdoors - never
+            into a building; in a car onto the nearest road. Everyone needs version 3.5.
+
             3.4: Creative mode alone: press O to take money. Steadier relay connections (mobile
-            internet), no crash when closing the game. Everyone needs version 3.4.
+            internet), no crash when closing the game.
 
             3.3: In multiplayer only the lobby owner can use the creative mode (the others always play
             normally, and nobody is told when the owner switches it on). Creative owner: take money
