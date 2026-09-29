@@ -1,16 +1,9 @@
 package de.gtacity.gameplay;
 
-import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import de.gtacity.entity.CarEntity;
 import de.gtacity.network.Payloads;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.ChatFormatting;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -47,10 +40,6 @@ public final class Crew {
     private static final Map<UUID, Set<UUID>> MEMBERS = new HashMap<>();
     /** Open invitations: invited player -> (inviter, game time). */
     private static final Map<UUID, Object[]> INVITES = new HashMap<>();
-
-    public static void init() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, registries, environment) -> register(dispatcher));
-    }
 
     // ------------------------------------------------------------------ queries
 
@@ -132,6 +121,15 @@ public final class Crew {
             player.sendSystemMessage(Component.literal("Keine offene Einladung.").withStyle(ChatFormatting.RED));
             return;
         }
+        join(from, player);
+    }
+
+    /** Puts {@code player} into the crew of {@code leader} (leaving their old crew). */
+    public static void join(ServerPlayer leader, ServerPlayer player) {
+        if (together(leader, player)) {
+            return;
+        }
+        ServerPlayer from = leader;
         leave(player, false);
         UUID crew = CREW_OF.computeIfAbsent(from.getUUID(), id -> id);
         Set<UUID> members = MEMBERS.computeIfAbsent(crew, id -> new LinkedHashSet<>());
@@ -222,28 +220,8 @@ public final class Crew {
         }
     }
 
-    // ------------------------------------------------------------------ commands
-
-    private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("crew")
-                .executes(Crew::info)
-                .then(Commands.literal("einladen").then(Commands.argument("spieler", EntityArgument.player())
-                        .executes(c -> {
-                            invite(c.getSource().getPlayerOrException(), EntityArgument.getPlayer(c, "spieler"));
-                            return 1;
-                        })))
-                .then(Commands.literal("annehmen").executes(c -> {
-                    accept(c.getSource().getPlayerOrException());
-                    return 1;
-                }))
-                .then(Commands.literal("verlassen").executes(c -> {
-                    leave(c.getSource().getPlayerOrException(), true);
-                    return 1;
-                })));
-    }
-
-    private static int info(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        ServerPlayer player = c.getSource().getPlayerOrException();
+    /** /crew: who is in the crew. */
+    public static void info(ServerPlayer player) {
         UUID crew = CREW_OF.get(player.getUUID());
         if (crew == null) {
             player.sendSystemMessage(Component.literal("Keine Crew. Einladen: /crew einladen <Name> oder Karte (M) → "
@@ -252,6 +230,5 @@ public final class Crew {
             player.sendSystemMessage(Component.literal("Deine Crew: " + names(player.level().getServer(),
                     MEMBERS.get(crew))).withStyle(ChatFormatting.GREEN));
         }
-        return 1;
     }
 }

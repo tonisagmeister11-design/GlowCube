@@ -35,7 +35,7 @@ public class GtaCity implements ModInitializer {
         ModNetworking.init();
         Registry.register(BuiltInRegistries.CHUNK_GENERATOR, id("city"), CityChunkGenerator.CODEC);
         CityEvents.init();
-        de.gtacity.gameplay.Crew.init();
+        de.gtacity.gameplay.CityCommands.init();
         LOG.info("GTA City geladen - willkommen in Los Santos!");
     }
 }

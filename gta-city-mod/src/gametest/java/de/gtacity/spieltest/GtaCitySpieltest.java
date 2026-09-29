@@ -1564,24 +1564,46 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 + "andere weiter");
         server.runOnServer(s -> Jobs.cancel(player(s), "Test"));
 
-        // The bank job for crews: works with the crew, refused without.
+        // Team job from the board: the other player gets a question in the chat, [Ja] teleports him to me.
+        server.runOnServer(s -> {
+            ServerPlayer mate = Crew.mates(player(s)).getFirst();
+            Crew.leave(mate, false);
+            mate.teleportTo(s.overworld(), player(s).getX() + 300, CityLayout.GROUND + 2.0, player(s).getZ(),
+                    java.util.Set.of(), 0.0F, 0.0F, true);
+            Jobs.openBoard(player(s), Jobs.Station.SHADY);
+        });
+        ctx.waitForScreen(JobBoardScreen.class);
+        ctx.clickScreenButton("Team-Jobs (3)");
+        ctx.waitTicks(5);
+        ctx.takeScreenshot("gtacity-19e-team-jobs");
+        closeScreen(ctx);
         server.runOnServer(s -> {
             Jobs.openBoard(player(s), Jobs.Station.SHADY);
-            Jobs.start(player(s), Jobs.Type.CREW_HEIST);
+            Jobs.startTeam(player(s), Jobs.Type.CREW_HEIST);
         });
         closeScreen(ctx);
-        var heist = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
-        expect(heist != null && heist.label().contains("Bank"), "Bankraub im Team startet mit Crew ("
-                + (heist == null ? "-" : heist.label()) + ")");
+        expect(server.computeOnServer(s -> Jobs.active(player(s))), "Team-Job: Bankraub im Team startet");
+        String answer = server.computeOnServer(s -> {
+            ServerPlayer mate = s.overworld().players().stream()
+                    .filter(p -> p instanceof net.fabricmc.fabric.api.entity.FakePlayer).findFirst().orElseThrow();
+            Jobs.acceptTeam(mate);
+            return Jobs.active(mate) + " " + (int) mate.distanceTo(player(s));
+        });
+        expect(answer.startsWith("true") && Integer.parseInt(answer.split(" ")[1]) < 5,
+                "Team-Job: Ja teleportiert den Mitspieler her und er macht mit (" + answer + ")");
         server.runOnServer(s -> {
-            Jobs.cancel(Crew.mates(player(s)).getFirst(), "Test");
-            Jobs.cancel(player(s), "Test");
-            Crew.leave(player(s), true);
-            Jobs.openBoard(player(s), Jobs.Station.SHADY);
-            Jobs.start(player(s), Jobs.Type.CREW_HEIST);
+            for (ServerPlayer p : List.copyOf(s.overworld().players())) {
+                Jobs.cancel(p, "Test");
+                if (p instanceof net.fabricmc.fabric.api.entity.FakePlayer) {
+                    Crew.leave(p, false);
+                }
+            }
         });
-        closeScreen(ctx);
-        expect(!server.computeOnServer(s -> Jobs.active(player(s))), "Bankraub im Team geht nicht ohne Crew");
+
+        // Money for operators: /geld geben
+        long cash = server.computeOnServer(s -> Economy.get(player(s)));
+        server.runCommand("geld geben @a 5000");
+        expect(server.computeOnServer(s -> Economy.get(player(s))) == cash + 5000, "/geld geben: +$5.000");
 
         // Gang war (alone): four gang members at the hideout, clear them all.
         server.runOnServer(s -> {
@@ -1608,6 +1630,14 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             long money = server.computeOnServer(s -> Economy.get(player(s)));
             expect(!server.computeOnServer(s -> Jobs.active(player(s))) && money >= 7000,
                     "Bandenkrieg: Versteck ausgeräumt, $" + money);
+            // The "Weitermachen" window: next order, one level harder (one gangster more).
+            ctx.waitForScreen(de.gtacity.client.screen.JobDoneScreen.class);
+            ctx.takeScreenshot("gtacity-19f-weitermachen");
+            ctx.clickScreenButton("Weitermachen (Stufe 2)");
+            ctx.waitTicks(10);
+            var level2 = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+            expect(level2 != null && level2.label().contains("5 Gangster"),
+                    "Weitermachen: Stufe 2 ist schwerer (" + (level2 == null ? "-" : level2.label()) + ")");
         }
         server.runOnServer(s -> {
             Jobs.cancel(player(s), "Test");

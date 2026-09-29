@@ -82,31 +82,39 @@ public final class Jobs {
                 + "Die Polizei darf dich bei der Übergabe nicht verfolgen.", "$7.000 - $9.500"),
         CAR_THEFT("Autodieb", Station.SHADY, "Einen Sportwagen oder Supersportwagen klauen und zum Schrottplatz "
                 + "im Hafen bringen.", "$6.000 / $15.000"),
-        GANG_WAR("Bandenkrieg", Station.JOBCENTER, "Die Polizei zahlt: räum ein Gangversteck aus. Vier Gangster, "
-                + "die sich wehren - allein schwer, mit Crew leichter.", "$6.000"),
-        STREET_RACE("Straßenrennen", Station.SHADY, "Mit dem Auto durch fünf Checkpoints quer durch die Stadt, "
-                + "gegen die Uhr. Mit Crew: wer zuerst ankommt, kassiert den Siegerbonus.", "$3.000 + Bonus"),
-        CREW_HEIST("Bankraub im Team", Station.SHADY, "Nur mit Crew: trefft euch vor der Bank, bohrt den Tresor "
-                + "auf (Thermobohrer), hängt die Polizei ab und teilt nichts - jeder bekommt alles.",
-                "$20.000 pro Kopf", true);
+        GANG_WAR("Bandenkrieg", Station.JOBCENTER, "Die Polizei zahlt: räum ein Gangversteck aus. Gangster, "
+                + "die sich wehren - allein schwer, im Team leichter.", "$6.000"),
+        STREET_RACE("Straßenrennen", Station.SHADY, "Mit dem Auto durch die Checkpoints quer durch die Stadt, "
+                + "gegen die Uhr. Im Team: wer zuerst ankommt, kassiert den Siegerbonus.", "$3.000 + Bonus"),
+        CREW_HEIST("Bankraub im Team", Station.SHADY, "Trefft euch vor der Bank, bohrt den Tresor auf "
+                + "(Thermobohrer), hängt die Polizei ab - jeder bekommt den vollen Anteil.", "$20.000 pro Kopf",
+                true);
 
         public final String label;
         public final Station station;
         public final String description;
         public final String pay;
-        /** Partner mission: can only be started by a player in a crew. */
-        public final boolean crewOnly;
+        /** Only on the team list of the board (made for several players). */
+        public final boolean teamOnly;
 
         Type(String label, Station station, String description, String pay) {
             this(label, station, description, pay, false);
         }
 
-        Type(String label, Station station, String description, String pay, boolean crewOnly) {
+        Type(String label, Station station, String description, String pay, boolean teamOnly) {
             this.label = label;
             this.station = station;
             this.description = description;
             this.pay = pay;
-            this.crewOnly = crewOnly;
+            this.teamOnly = teamOnly;
+        }
+
+        /** Shown under "Team-Jobs": players in the world get asked to join. */
+        public boolean team() {
+            return switch (this) {
+                case BOUNTY, GANG_WAR, GUN_RUNNING, STREET_RACE, CREW_HEIST -> true;
+                default -> false;
+            };
         }
 
         public boolean illegal() {
@@ -201,10 +209,18 @@ public final class Jobs {
         /** Everybody doing this job: the player who took it and, in a crew, the mates (partner mission). */
         final Set<UUID> crew = new LinkedHashSet<>();
 
+        /** Difficulty: every "Weitermachen" is one level harder (more stops, less time, more money). */
+        final int level;
+
         Job(Type type, Station station, int chapter) {
+            this(type, station, chapter, 1);
+        }
+
+        Job(Type type, Station station, int chapter, int level) {
             this.type = type;
             this.station = station;
             this.chapter = chapter;
+            this.level = Math.max(1, level);
         }
 
         Step step() {
@@ -212,7 +228,8 @@ public final class Jobs {
         }
 
         String title() {
-            return chapter > 0 ? "Kapitel " + chapter + ": " + CHAPTER_TITLES[chapter - 1] : type.label;
+            return chapter > 0 ? "Kapitel " + chapter + ": " + CHAPTER_TITLES[chapter - 1]
+                    : type.label + " (Stufe " + level + ")";
         }
     }
 
@@ -382,14 +399,14 @@ public final class Jobs {
     }
 
     private static void begin(ServerPlayer player, Job job) {
+        begin(player, job, List.of());
+    }
+
+    /** {@code team}: players of the last job who come along when it is continued. */
+    private static void begin(ServerPlayer player, Job job, java.util.Collection<UUID> team) {
         if (ACTIVE.containsKey(player.getUUID())) {
             player.sendOverlayMessage(Component.literal("Du hast schon einen Job. Brich ihn erst ab (Karte, Tab Jobs).")
                     .withStyle(ChatFormatting.RED));
-            return;
-        }
-        if (job.chapter == 0 && job.type.crewOnly && !Crew.inCrew(player)) {
-            player.sendSystemMessage(Component.literal(job.type.label + " geht nur mit Crew. Lade jemanden ein: Karte "
-                    + "(M) → Crew.").withStyle(ChatFormatting.RED));
             return;
         }
         ServerLevel level = (ServerLevel) player.level();
@@ -401,8 +418,15 @@ public final class Jobs {
         job.crew.add(player.getUUID());
         if (job.chapter == 0) {
             // Partner mission: the crew mates in the same world who are free join in.
-            for (ServerPlayer mate : Crew.mates(player)) {
-                if (mate.level() == level && !ACTIVE.containsKey(mate.getUUID())) {
+            List<ServerPlayer> mates = new ArrayList<>(Crew.mates(player));
+            for (UUID id : team) {
+                ServerPlayer p = Crew.find(player.level().getServer(), id);
+                if (p != null && p != player && !mates.contains(p)) {
+                    mates.add(p);
+                }
+            }
+            for (ServerPlayer mate : mates) {
+                if (mate.level() == level && mate.isAlive() && !ACTIVE.containsKey(mate.getUUID())) {
                     ACTIVE.put(mate.getUUID(), job);
                     job.crew.add(mate.getUUID());
                 }
@@ -482,6 +506,8 @@ public final class Jobs {
     }
 
     public static void forget(ServerPlayer player) {
+        NEXT.remove(player.getUUID());
+        TEAM_INVITES.remove(player.getUUID());
         STORY_DUE.remove(player.getUUID());
         STORY_PAUSED.remove(player.getUUID());
         Job job = ACTIVE.remove(player.getUUID());
@@ -505,10 +531,160 @@ public final class Jobs {
         job.group.clear();
     }
 
+    // ------------------------------------------------------------------ continue / team jobs
+
+    /** What "Weitermachen" starts: the same job one level up, with the same team. */
+    private record Next(Type type, int level, Set<UUID> team, long time) {
+    }
+
+    private record TeamInvite(UUID from, Job job, long time) {
+    }
+
+    private static final Map<UUID, Next> NEXT = new HashMap<>();
+    private static final Map<UUID, TeamInvite> TEAM_INVITES = new HashMap<>();
+    private static final long CONTINUE_TICKS = 20L * 60 * 10;
+    private static final long TEAM_INVITE_TICKS = 20L * 120;
+
+    /** "Weitermachen" in the window after a job: the next order, one level harder. */
+    public static void continueJob(ServerPlayer player) {
+        Next next = NEXT.remove(player.getUUID());
+        if (ACTIVE.containsKey(player.getUUID())) {
+            player.sendOverlayMessage(Component.literal("Du bist schon im nächsten Auftrag.")
+                    .withStyle(ChatFormatting.YELLOW));
+            return;
+        }
+        if (next == null || player.level().getGameTime() - next.time() > CONTINUE_TICKS) {
+            player.sendOverlayMessage(Component.literal("Kein Auftrag zum Weitermachen - hol dir einen neuen am "
+                    + "Job-Board.").withStyle(ChatFormatting.RED));
+            return;
+        }
+        begin(player, new Job(next.type(), next.type().station, 0, next.level()), next.team());
+        Job job = ACTIVE.get(player.getUUID());
+        if (job != null) {
+            for (UUID id : job.crew) {
+                NEXT.remove(id);
+            }
+        }
+    }
+
+    /** Team job from the board: starts it and asks every other player in the world to join. */
+    public static void startTeam(ServerPlayer player, Type type) {
+        if (!type.team()) {
+            return;
+        }
+        if (!boardOpen(player, type.station)) {
+            player.sendOverlayMessage(Component.literal("Sprich zuerst mit dem Mitarbeiter im "
+                    + type.station.label + ".").withStyle(ChatFormatting.RED));
+            return;
+        }
+        begin(player, new Job(type, type.station, 0));
+        Job job = ACTIVE.get(player.getUUID());
+        if (job == null || job.type != type) {
+            return;
+        }
+        ServerLevel level = (ServerLevel) player.level();
+        int asked = 0;
+        for (ServerPlayer other : List.copyOf(level.players())) {
+            if (other == player || job.crew.contains(other.getUUID()) || other.isSpectator()) {
+                continue;
+            }
+            TEAM_INVITES.put(other.getUUID(), new TeamInvite(player.getUUID(), job, level.getGameTime()));
+            Component yes = Component.literal("[Ja]").withStyle(style -> style.withColor(ChatFormatting.GREEN)
+                    .withBold(true).withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/job ja"))
+                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.literal(
+                            "Mitmachen - du wirst zu " + player.getName().getString() + " teleportiert"))));
+            Component no = Component.literal("[Nein]").withStyle(style -> style.withColor(ChatFormatting.RED)
+                    .withBold(true).withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/job nein")));
+            other.sendSystemMessage(Component.literal(player.getName().getString() + " will mit dir den Team-Job \""
+                    + type.label + "\" machen. ").withStyle(ChatFormatting.GOLD).append(yes)
+                    .append(Component.literal(" ")).append(no));
+            other.level().playSound(null, other.getX(), other.getY(), other.getZ(),
+                    SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.PLAYERS, 1.0F, 1.2F);
+            asked++;
+        }
+        player.sendSystemMessage(Component.literal(asked == 0
+                ? "Gerade ist kein anderer Spieler in der Welt - du fängst allein an."
+                : "Anfrage an " + asked + (asked == 1 ? " Spieler" : " Spieler") + " geschickt. Wer Ja sagt, wird "
+                + "zu dir teleportiert.").withStyle(ChatFormatting.GREEN));
+    }
+
+    /** [Ja] on a team job request: teleport to the player who asked and join the job. */
+    public static void acceptTeam(ServerPlayer player) {
+        TeamInvite invite = TEAM_INVITES.remove(player.getUUID());
+        MinecraftServer server = player.level().getServer();
+        if (invite == null || player.level().getGameTime() - invite.time() > TEAM_INVITE_TICKS) {
+            player.sendSystemMessage(Component.literal("Keine offene Job-Anfrage.").withStyle(ChatFormatting.RED));
+            return;
+        }
+        ServerPlayer from = Crew.find(server, invite.from());
+        if (from == null || ACTIVE.get(from.getUUID()) != invite.job()) {
+            player.sendSystemMessage(Component.literal("Der Job läuft nicht mehr.").withStyle(ChatFormatting.RED));
+            return;
+        }
+        Job job = invite.job();
+        if (ACTIVE.get(player.getUUID()) == job) {
+            return;
+        }
+        if (ACTIVE.containsKey(player.getUUID())) {
+            cancel(player, "du hilfst jetzt " + from.getName().getString() + ".");
+        }
+        player.stopRiding();
+        Vec3 side = from.getLookAngle().multiply(1, 0, 1);
+        side = side.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : side.normalize();
+        Vec3 spot = from.position().add(-side.z * 1.5, 0.0, side.x * 1.5);
+        player.teleportTo((ServerLevel) from.level(), spot.x, from.getY(), spot.z, java.util.Set.of(),
+                from.getYRot(), 0.0F, true);
+        ACTIVE.put(player.getUUID(), job);
+        job.crew.add(player.getUUID());
+        Crew.join(from, player);
+        updateMission(from, job);
+        for (ServerPlayer m : members(server, job)) {
+            m.sendSystemMessage(Component.literal(player.getName().getString() + " macht beim Team-Job mit ("
+                    + job.title() + "). Jeder bekommt den vollen Lohn.").withStyle(ChatFormatting.GREEN));
+        }
+        say(player, job.station, intro(job));
+    }
+
+    public static void declineTeam(ServerPlayer player) {
+        TeamInvite invite = TEAM_INVITES.remove(player.getUUID());
+        if (invite == null) {
+            return;
+        }
+        ServerPlayer from = Crew.find(player.level().getServer(), invite.from());
+        if (from != null) {
+            from.sendSystemMessage(Component.literal(player.getName().getString() + " hat keine Zeit.")
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        player.sendSystemMessage(Component.literal("Anfrage abgelehnt.").withStyle(ChatFormatting.GRAY));
+    }
+
     // ------------------------------------------------------------------ building the steps
 
+    /** Pay factor of a level: +30 % per level. */
+    private static double payFactor(Job job) {
+        return 1.0 + 0.3 * (job.level - 1);
+    }
+
+    /** Time factor of a level: 8 % less time per level, at least 55 %. */
+    private static double timeFactor(Job job) {
+        return Math.max(0.55, 1.0 - 0.08 * (job.level - 1));
+    }
+
     private static void build(ServerLevel level, ServerPlayer player, Job job) {
+        buildSteps(level, player, job);
+        if (job.chapter == 0) {
+            for (Step step : job.steps) {
+                step.pay = (int) Math.round(step.pay * payFactor(job));
+                if (step.seconds > 0) {
+                    step.seconds = (int) Math.max(45, step.seconds * timeFactor(job));
+                }
+            }
+        }
+    }
+
+    private static void buildSteps(ServerLevel level, ServerPlayer player, Job job) {
         RandomSource random = level.getRandom();
+        int lv = job.chapter > 0 ? 1 : job.level;
         BlockPos from = player.blockPosition();
         Set<CityLayout.LotType> homes = EnumSet.of(CityLayout.LotType.HOUSE, CityLayout.LotType.VILLA,
                 CityLayout.LotType.OFFICE, CityLayout.LotType.SKYSCRAPER, CityLayout.LotType.STORE,
@@ -527,7 +703,7 @@ public final class Jobs {
         }
         switch (job.type) {
             case COURIER -> {
-                int stops = job.chapter == 2 ? 2 : 3;
+                int stops = job.chapter == 2 ? 2 : Math.min(7, 2 + lv);
                 BlockPos last = from;
                 for (int i = 1; i <= stops; i++) {
                     BlockPos to = randomAddress(random, last, 250, 650, homes);
@@ -539,7 +715,7 @@ public final class Jobs {
                 }
             }
             case TAXI -> {
-                int rides = job.chapter == 3 ? 1 : 2;
+                int rides = job.chapter == 3 ? 1 : Math.min(5, 1 + lv);
                 BlockPos last = from;
                 for (int i = 1; i <= rides; i++) {
                     String name = PASSENGERS[random.nextInt(PASSENGERS.length)];
@@ -555,15 +731,21 @@ public final class Jobs {
                 }
             }
             case AMBULANCE -> {
-                BlockPos victim = randomAddress(random, from, 150, 500, homes);
-                CityMap.Place hospital = CityMap.nearest(CityMap.Kind.HOSPITAL, victim.getX(), victim.getZ());
-                BlockPos to = hospital == null ? CityPlaces.spawn() : hospital.entrance();
-                double dist = flat(victim, to);
-                job.steps.add(new Step(Goal.PICKUP, victim, "Verletzten abholen (im Auto!)").seconds(240)
-                        .npc("Verletzter").say("Verletzter: Bitte... schnell ins Krankenhaus!"));
-                job.steps.add(new Step(Goal.DROPOFF, to, "Verletzten ins Krankenhaus bringen")
-                        .pay((int) (1000 + dist * 2.0)).seconds((int) (50 + dist / 7)).npc("Verletzter")
-                        .say("Der Arzt: Gut gemacht - du hast ein Leben gerettet!"));
+                int patients = Math.min(4, lv);
+                BlockPos last = from;
+                for (int i = 1; i <= patients; i++) {
+                    String n = patients > 1 ? " " + i + "/" + patients : "";
+                    BlockPos victim = randomAddress(random, last, 150, 500, homes);
+                    CityMap.Place hospital = CityMap.nearest(CityMap.Kind.HOSPITAL, victim.getX(), victim.getZ());
+                    BlockPos to = hospital == null ? CityPlaces.spawn() : hospital.entrance();
+                    double dist = flat(victim, to);
+                    job.steps.add(new Step(Goal.PICKUP, victim, "Verletzten" + n + " abholen (im Auto!)").seconds(240)
+                            .npc("Verletzter").say("Verletzter: Bitte... schnell ins Krankenhaus!"));
+                    job.steps.add(new Step(Goal.DROPOFF, to, "Verletzten" + n + " ins Krankenhaus bringen")
+                            .pay((int) (1000 + dist * 2.0)).seconds((int) (50 + dist / 7)).npc("Verletzter")
+                            .say("Der Arzt: Gut gemacht - du hast ein Leben gerettet!"));
+                    last = to;
+                }
             }
             case BOUNTY -> {
                 BlockPos target = randomAddress(random, from, 250, 600, homes);
@@ -577,25 +759,27 @@ public final class Jobs {
                 BlockPos buyer = randomAddress(random, crate, 700, 1600, EnumSet.of(CityLayout.LotType.HOUSE,
                         CityLayout.LotType.WAREHOUSE, CityLayout.LotType.PARKING));
                 job.steps.add(new Step(Goal.REACH, crate, "Waffenkiste im Hafen abholen").seconds(900)
-                        .wanted(random.nextBoolean() ? 2 : 0));
+                        .wanted(lv >= 3 ? 3 : lv == 2 ? 2 : random.nextBoolean() ? 2 : 0));
                 job.steps.add(new Step(Goal.CLEAR, buyer, "Waffen dem Käufer bringen (ohne Fahndung!)")
                         .pay(7000 + random.nextInt(2501)).seconds(600).say("Käufer: Saubere Arbeit."));
             }
             case GANG_WAR -> {
                 BlockPos hideout = randomAddress(random, from, 250, 700, EnumSet.of(CityLayout.LotType.WAREHOUSE,
                         CityLayout.LotType.PARKING, CityLayout.LotType.HOUSE));
-                job.steps.add(new Step(Goal.KILL_GROUP, hideout, "Gangversteck ausräumen (4 Gangster)").pay(6000)
+                job.steps.add(new Step(Goal.KILL_GROUP, hideout, "Gangversteck ausräumen (" + gangSize(job)
+                        + " Gangster)").pay(6000)
                         .seconds(900).npc("Ballas").say("Polizei: Saubere Arbeit. Das Geld ist überwiesen."));
             }
             case STREET_RACE -> {
                 BlockPos last = from;
                 int total = 0;
-                for (int i = 1; i <= 5; i++) {
+                int points = Math.min(8, 4 + lv);
+                for (int i = 1; i <= points; i++) {
                     BlockPos to = randomAddress(random, last, 180, 420, homes);
                     int secs = (int) (12 + flat(last, to) / 9);
                     total += secs;
-                    job.steps.add(new Step(Goal.CHECKPOINT, to, "Rennen: Checkpoint " + i + "/5 (im Auto)")
-                            .seconds(i == 1 ? 240 : secs).pay(i == 5 ? 3000 : 0));
+                    job.steps.add(new Step(Goal.CHECKPOINT, to, "Rennen: Checkpoint " + i + "/" + points + " (im Auto)")
+                            .seconds(i == 1 ? 240 : secs).pay(i == points ? 3000 : 0));
                     last = to;
                 }
                 job.steps.getLast().say("Rennleiter: Im Ziel! Schnelle Karre, schneller Fahrer.");
@@ -607,7 +791,7 @@ public final class Jobs {
                 job.steps.add(new Step(Goal.TOGETHER, door, "Crew: alle vor der Bank treffen").seconds(900)
                         .say("Tony: Alle da. Jetzt den Tresor aufbohren!"));
                 job.steps.add(new Step(Goal.HEIST, door, "Bank: Tresor mit dem Thermobohrer knacken").seconds(900)
-                        .wanted(3).say("Tony: Der Tresor ist offen! Nehmt alles und weg da!"));
+                        .wanted(Math.min(5, 2 + lv)).say("Tony: Der Tresor ist offen! Nehmt alles und weg da!"));
                 job.steps.add(new Step(Goal.CLEAR, hideout == null ? from : hideout.entrance(),
                         "Zum Hafenbüro und die Polizei abhängen").pay(20000).seconds(1500)
                         .say("Tony: Was für ein Coup! Jeder von euch kriegt seinen vollen Anteil."));
@@ -615,8 +799,11 @@ public final class Jobs {
             case CAR_THEFT -> {
                 BlockPos yard = randomAddress(random, from, 0, 5000, EnumSet.of(CityLayout.LotType.CONTAINERS),
                         CityLayout.District.INDUSTRIAL);
-                job.steps.add(new Step(Goal.STEAL_CAR, yard, "Geklauten Sportwagen zum Schrottplatz bringen")
-                        .seconds(1200));
+                int cars = Math.min(3, lv);
+                for (int i = 1; i <= cars; i++) {
+                    job.steps.add(new Step(Goal.STEAL_CAR, yard, "Geklauten Sportwagen zum Schrottplatz bringen"
+                            + (cars > 1 ? " (" + i + "/" + cars + ")" : "")).seconds(1200));
+                }
             }
         }
         if (job.chapter == 4) {
@@ -778,8 +965,18 @@ public final class Jobs {
             ACTIVE.remove(m.getUUID());
         }
         cleanup(level, job);
+        Set<UUID> ids = new LinkedHashSet<>();
+        team.forEach(m -> ids.add(m.getUUID()));
         for (ServerPlayer m : team) {
             finishFor(m, job);
+            if (job.chapter == 0) {
+                // The "Weitermachen" window: the next order of the same job, one level harder.
+                NEXT.put(m.getUUID(), new Next(job.type, job.level + 1, ids, level.getGameTime()));
+                if (!(m instanceof net.fabricmc.fabric.api.entity.FakePlayer)) {
+                    ServerPlayNetworking.send(m, new Payloads.JobDone(job.type.ordinal(), job.level,
+                            m == player ? job.earned : 0));
+                }
+            }
         }
     }
 
@@ -1005,8 +1202,9 @@ public final class Jobs {
         npc.randomizeLook(bounty);
         npc.setRole(bounty ? "bounty" : "passenger", (bounty ? "Gesucht: " : "") + (s.npcName == null ? "?" : s.npcName));
         if (bounty) {
-            npc.getAttribute(Attributes.MAX_HEALTH).setBaseValue(40.0);
-            npc.setHealth(40.0F);
+            double health = 40.0 + 20.0 * (job.level - 1);
+            npc.getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+            npc.setHealth((float) health);
             npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(ModItems.BASEBALL_BAT));
             npc.addEffect(new MobEffectInstance(MobEffects.GLOWING, 20 * 60 * 20, 0, false, false));
         } else {
@@ -1017,11 +1215,16 @@ public final class Jobs {
         updateMission(player, job);
     }
 
-    /** Gang war: four armed gang members around the hideout, they go for the player. */
+    private static int gangSize(Job job) {
+        return Math.min(8, 3 + job.level);
+    }
+
+    /** Gang war: armed gang members around the hideout (more each level), they go for the player. */
     private static void spawnGang(ServerLevel level, ServerPlayer player, Job job, Step s) {
         RandomSource random = level.getRandom();
-        Item[] weapons = {ModItems.BASEBALL_BAT, ModItems.KNIFE, ModItems.BASEBALL_BAT, ModItems.KNIFE};
-        for (int i = 0; i < 4; i++) {
+        Item[] weapons = {ModItems.BASEBALL_BAT, ModItems.KNIFE};
+        double health = 30.0 + 5.0 * (job.level - 1);
+        for (int i = 0; i < gangSize(job); i++) {
             NpcEntity npc = ModEntities.PEDESTRIAN.create(level, EntitySpawnReason.EVENT);
             if (npc == null) {
                 continue;
@@ -1030,9 +1233,9 @@ public final class Jobs {
             npc.snapTo(x, s.pos.getY(), z, random.nextFloat() * 360.0F, 0.0F);
             npc.randomizeLook(true);
             npc.setRole("bounty", "Gangster");
-            npc.getAttribute(Attributes.MAX_HEALTH).setBaseValue(30.0);
-            npc.setHealth(30.0F);
-            npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(weapons[i]));
+            npc.getAttribute(Attributes.MAX_HEALTH).setBaseValue(health);
+            npc.setHealth((float) health);
+            npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(weapons[i % weapons.length]));
             npc.addEffect(new MobEffectInstance(MobEffects.GLOWING, 20 * 60 * 15, 0, false, false));
             level.addFreshEntity(npc);
             npc.setTarget(player);
@@ -1115,7 +1318,7 @@ public final class Jobs {
             } else {
                 player.stopRiding();
                 car.despawn();
-                s.pay(shape == CarVariant.Shape.SUPER ? 15000 : 6000);
+                s.pay((int) Math.round((shape == CarVariant.Shape.SUPER ? 15000 : 6000) * payFactor(job)));
                 s.say("Schrotthändler: Feiner Wagen. Hier dein Geld, und du warst nie hier.");
                 advance(level, player, job, 0);
                 return;

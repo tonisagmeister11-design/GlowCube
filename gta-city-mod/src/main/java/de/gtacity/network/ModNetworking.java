@@ -36,6 +36,7 @@ public final class ModNetworking {
         PayloadTypeRegistry.clientboundPlay().register(Payloads.ShotFx.TYPE, Payloads.ShotFx.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Payloads.Recoil.TYPE, Payloads.Recoil.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Payloads.Players.TYPE, Payloads.Players.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Payloads.JobDone.TYPE, Payloads.JobDone.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(Payloads.Fire.TYPE,
                 (payload, context) -> Weapons.tryFire(context.player(), payload.held()));
@@ -80,6 +81,13 @@ public final class ModNetworking {
             }
             case Payloads.Phone.CANCEL_JOB -> Jobs.cancel(player, "abgebrochen.");
             case Payloads.Phone.START_STORY -> Jobs.startStory(player, (int) payload.arg());
+            case Payloads.Phone.START_TEAM_JOB -> {
+                Jobs.Type[] types = Jobs.Type.values();
+                if (payload.arg() >= 0 && payload.arg() < types.length) {
+                    Jobs.startTeam(player, types[(int) payload.arg()]);
+                }
+            }
+            case Payloads.Phone.CONTINUE_JOB -> Jobs.continueJob(player);
             case Payloads.Phone.CLAIM_CAR -> Garage.claim(player);
             case Payloads.Phone.BRING_CAR -> Garage.bring(player);
             default -> {

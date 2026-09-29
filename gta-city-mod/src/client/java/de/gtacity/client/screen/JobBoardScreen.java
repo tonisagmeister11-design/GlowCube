@@ -7,6 +7,7 @@ import de.gtacity.registry.ModAttachments;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -14,11 +15,17 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-/** The job board of a station: the clerk's story chapter on top, the repeatable jobs below. */
+/**
+ * The job board of a station: the clerk's story chapter on top, below two tabs - the jobs you do alone (your crew
+ * joins in) and the team jobs, where every other player in the world gets asked to come along.
+ */
 public class JobBoardScreen extends Screen {
-    private static final int ROW = 31;
+    private static final int ROW = 23;
+    private static boolean teamTab;
+
     private final Jobs.Station station;
     private final List<Jobs.Type> jobs = new ArrayList<>();
+    private final List<Jobs.Type> teamJobs = new ArrayList<>();
     private int left;
     private int storyTop;
     private int listTop;
@@ -27,9 +34,13 @@ public class JobBoardScreen extends Screen {
     public JobBoardScreen(Jobs.Station station) {
         super(Component.literal(station.label));
         this.station = station;
+        teamTab = false;
         for (Jobs.Type type : Jobs.Type.values()) {
-            if (type.station == station) {
+            if (type.station == station && !type.teamOnly) {
                 jobs.add(type);
+            }
+            if (type.station == station && type.team()) {
+                teamJobs.add(type);
             }
         }
     }
@@ -47,32 +58,51 @@ public class JobBoardScreen extends Screen {
         return player().getAttached(ModAttachments.MISSION) != null;
     }
 
+    private List<Jobs.Type> shown() {
+        return teamTab ? teamJobs : jobs;
+    }
+
     @Override
     protected void init() {
         panelWidth = Math.min(410, width - 8);
         left = (width - panelWidth) / 2;
-        storyTop = 30;
-        listTop = storyTop + 56;
+        storyTop = 28;
+        int tabsTop = storyTop + 47;
+        listTop = tabsTop + 21;
         int next = chapter() + 1;
         if (next <= Jobs.MAX_CHAPTER && Jobs.CHAPTER_STATION[next - 1] == station) {
             Button b = Button.builder(Component.literal(next == 1 ? "Führung starten" : "Kapitel starten"), button -> {
                 ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.START_STORY, next));
                 onClose();
-            }).bounds(left + panelWidth - 96, storyTop + 30, 90, 20).build();
+            }).bounds(left + panelWidth - 96, storyTop + 21, 90, 20).build();
             b.active = !busy();
             addRenderableWidget(b);
         }
-        for (int i = 0; i < jobs.size(); i++) {
-            Jobs.Type type = jobs.get(i);
-            Button b = Button.builder(Component.literal("Annehmen"), button -> {
-                ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.START_JOB, type.ordinal()));
+        Button solo = Button.builder(Component.literal("Aufträge"), b -> {
+            teamTab = false;
+            rebuildWidgets();
+        }).bounds(left, tabsTop, 100, 18).build();
+        solo.active = teamTab;
+        addRenderableWidget(solo);
+        Button team = Button.builder(Component.literal("Team-Jobs (" + teamJobs.size() + ")"), b -> {
+            teamTab = true;
+            rebuildWidgets();
+        }).bounds(left + 102, tabsTop, 100, 18).build();
+        team.active = !teamTab;
+        team.setTooltip(Tooltip.create(Component.literal("Jobs, die ihr zusammen macht: alle anderen Spieler in der "
+                + "Welt bekommen eine Anfrage im Chat. Wer Ja sagt, wird zu dir teleportiert.")));
+        addRenderableWidget(team);
+
+        List<Jobs.Type> list = shown();
+        for (int i = 0; i < list.size(); i++) {
+            Jobs.Type type = list.get(i);
+            Button b = Button.builder(Component.literal(teamTab ? "Team starten" : "Annehmen"), button -> {
+                ClientPlayNetworking.send(new Payloads.Phone(teamTab ? Payloads.Phone.START_TEAM_JOB
+                        : Payloads.Phone.START_JOB, type.ordinal()));
                 onClose();
-            }).bounds(left + panelWidth - 70, listTop + i * ROW + 3, 64, 20).build();
-            b.active = !busy() && (!type.crewOnly || de.gtacity.client.map.OtherPlayers.inCrew());
-            if (type.crewOnly && !de.gtacity.client.map.OtherPlayers.inCrew()) {
-                b.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(
-                        "Nur mit Crew - Karte (M) → Crew")));
-            }
+            }).bounds(left + panelWidth - 82, listTop + i * ROW + 1, 76, 20).build();
+            b.active = !busy();
+            b.setTooltip(Tooltip.create(Component.literal(type.description)));
             addRenderableWidget(b);
         }
         if (busy()) {
@@ -96,44 +126,45 @@ public class JobBoardScreen extends Screen {
         g.text(font, rank, left + panelWidth - font.width(rank), 10, 0xFFFFD040, false);
         Long money = player().getAttached(ModAttachments.MONEY);
         String cash = Economy.format(money == null ? 0 : money);
-        g.text(font, cash, left + panelWidth - font.width(cash), 20, 0xFF6BD36B, false);
+        g.text(font, cash, left + panelWidth - font.width(cash), 19, 0xFF6BD36B, false);
 
         // story
-        int chapter = chapter();
-        int next = chapter + 1;
-        g.fill(left, storyTop, left + panelWidth, storyTop + 52, 0x60000000);
+        int next = chapter() + 1;
+        g.fill(left, storyTop, left + panelWidth, storyTop + 44, 0x60000000);
         if (next > Jobs.MAX_CHAPTER) {
-            g.text(font, "Story abgeschlossen - du bist der Boss von Los Santos!", left + 6, storyTop + 6, 0xFFFFD040,
+            g.text(font, "Story abgeschlossen - du bist der Boss von Los Santos!", left + 6, storyTop + 5, 0xFFFFD040,
                     false);
             g.textWithWordWrap(font, Component.literal(station.clerk + ": Schau ab und zu vorbei, es gibt immer "
-                    + "Arbeit. Mit jedem Job steigt dein Rang und dein Lohn."), left + 6, storyTop + 20,
+                    + "Arbeit. Mit jedem Job steigt dein Rang und dein Lohn."), left + 6, storyTop + 17,
                     panelWidth - 12, 0xFFC8C8C8);
         } else if (Jobs.CHAPTER_STATION[next - 1] == station) {
-            g.text(font, "Story: Kapitel " + next + " - " + Jobs.CHAPTER_TITLES[next - 1], left + 6, storyTop + 6,
+            g.text(font, "Story: Kapitel " + next + " - " + Jobs.CHAPTER_TITLES[next - 1], left + 6, storyTop + 5,
                     0xFFFFD040, false);
-            g.textWithWordWrap(font, Component.literal(Jobs.CHAPTER_TEXT[next - 1]), left + 6, storyTop + 20,
+            g.textWithWordWrap(font, Component.literal(Jobs.CHAPTER_TEXT[next - 1]), left + 6, storyTop + 17,
                     panelWidth - 110, 0xFFC8C8C8);
         } else {
             Jobs.Station other = Jobs.CHAPTER_STATION[next - 1];
-            g.text(font, "Story: Kapitel " + next + " - " + Jobs.CHAPTER_TITLES[next - 1], left + 6, storyTop + 6,
+            g.text(font, "Story: Kapitel " + next + " - " + Jobs.CHAPTER_TITLES[next - 1], left + 6, storyTop + 5,
                     0xFFFFD040, false);
             g.textWithWordWrap(font, Component.literal("Das nächste Kapitel gibt es im " + other.label + " ("
-                    + (other == Jobs.Station.SHADY ? "D" : "J") + " auf der Karte). " + station.clerk
-                    + ": Schau dort vorbei."), left + 6, storyTop + 20, panelWidth - 12, 0xFFC8C8C8);
+                    + (other == Jobs.Station.SHADY ? "D" : "J") + " auf der Karte)."), left + 6, storyTop + 17,
+                    panelWidth - 12, 0xFFC8C8C8);
         }
 
-        // jobs
-        g.text(font, "Aufträge (jederzeit wiederholbar)", left, listTop - 11, 0xFFFFFFFF, false);
-        for (int i = 0; i < jobs.size(); i++) {
-            Jobs.Type type = jobs.get(i);
+        // jobs: name, pay and a short hint; the full description is the button tooltip
+        List<Jobs.Type> list = shown();
+        String hint = teamTab ? "Mitspieler bekommen eine Anfrage" : "Nach jedem Auftrag: Weitermachen = nächste Stufe";
+        g.text(font, hint, left + 206, listTop - 16, 0xFF9098A0, false);
+        for (int i = 0; i < list.size(); i++) {
+            Jobs.Type type = list.get(i);
             int y = listTop + i * ROW;
-            g.fill(left, y, left + panelWidth, y + ROW - 2, 0x50000000);
-            g.text(font, type.label + (type.crewOnly ? "  [Crew]" : ""), left + 6, y + 3,
-                    type.illegal() ? 0xFFFF6060 : 0xFF60E0FF, false);
-            String pay = type.pay;
-            g.text(font, pay, left + panelWidth - 78 - font.width(pay), y + 3, 0xFF6BD36B, false);
-            g.textWithWordWrap(font, Component.literal(type.description), left + 6, y + 13, panelWidth - 92,
-                    0xFFC8C8C8);
+            g.fill(left, y, left + panelWidth, y + ROW - 1, teamTab ? 0x5020A040 : 0x50000000);
+            int color = teamTab ? 0xFF60F080 : type.illegal() ? 0xFFFF6060 : 0xFF60E0FF;
+            g.text(font, type.label, left + 6, y + 3, color, false);
+            g.text(font, type.pay + (teamTab ? " für jeden" : ""), left + 6, y + 12, 0xFF6BD36B, false);
+            if (mouseX >= left && mouseX < left + panelWidth - 84 && mouseY >= y && mouseY < y + ROW - 1) {
+                g.setTooltipForNextFrame(font, font.split(Component.literal(type.description), 220), mouseX, mouseY);
+            }
         }
         super.extractRenderState(g, mouseX, mouseY, partialTick);
     }

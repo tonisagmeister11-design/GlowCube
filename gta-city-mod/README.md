@@ -75,8 +75,15 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
     Fahndung) und Autodieb (Sportwagen klauen und zum Schrottplatz bringen).
   - Weitere Missionen: **Bandenkrieg** (Jobcenter: vier bewaffnete Gangster in ihrem Versteck ausschalten, ohne
     Fahndungssterne, $6.000), **Straßenrennen** (Hafenbüro: fünf Checkpoints am Steuer gegen die Uhr, $3.000 plus
-    Siegerbonus für den Schnellsten der Crew) und **Bankraub im Team** (Hafenbüro, nur mit Crew: vor der Bank
+    Siegerbonus für den Schnellsten der Crew) und **Bankraub im Team** (Hafenbüro, Team-Job: vor der Bank
     treffen, Tresor aufbohren, Polizei abhängen, $20.000 für jeden).
+  - **Stufen und Weitermachen**: Nach jedem Auftrag erscheint ein Fenster mit „Weitermachen“. Damit startet
+    sofort der nächste Auftrag desselben Jobs, eine Stufe schwerer: mehr Stationen (mehr Pakete, Fahrgäste,
+    Verletzte, Autos, Checkpoints oder Gangster), weniger Zeit und mehr Fahndung, dafür 30 % mehr Geld pro Stufe.
+  - **Team-Jobs**: Am Job-Board gibt es den Reiter „Team-Jobs“ (Kopfgeldjäger, Bandenkrieg, Waffendealer,
+    Straßenrennen, Bankraub im Team). Klickt einer auf „Team starten“, bekommt jeder andere Spieler in der Welt eine
+    Anfrage im Chat. Wer auf [Ja] klickt, wird sofort zu dir teleportiert und macht mit. Jeder bekommt den vollen
+    Lohn, und beim Weitermachen bleibt das Team zusammen.
   - Jeder erledigte Job hebt deinen Rang (Neuling, Profi, Veteran, Legende) und bringt 3 % mehr Lohn, höchstens
     50 %. Das Ziel steht immer auf Karte und Radar, das Navi führt dich hin.
 - **Multiplayer**: Die Mod läuft im LAN, auf einem Server oder wenn du Freunde mit einer Mod wie Essential in deine
@@ -133,6 +140,8 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 | B | Eigenes Auto herbeiholen |
 | M | Karte, Navi, Jobs, Garage, Villen, Crew |
 | `/crew einladen <Name>`, `/crew annehmen`, `/crew verlassen` | Crew für Partnermissionen |
+| `/job ja`, `/job nein` | Anfrage für einen Team-Job beantworten (oder [Ja] / [Nein] im Chat anklicken) |
+| `/geld`, `/geld geben/nehmen/setzen <Spieler> <Betrag>` | Kontostand; Geld geben nur mit Rechten (OP / Cheats) |
 | Rechtsklick auf Verkäufer oder Theke | Laden öffnen |
 | Rechtsklick auf Mitarbeiter oder Schalter (Jobcenter / Hafenbüro) | Job-Board mit Story und Jobs |
 | Schleichen + Rechtsklick mit Waffe auf Theke | Laden ausrauben |

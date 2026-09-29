@@ -61,6 +61,13 @@ public class GtaCityClient implements ClientModInitializer {
                 Minecraft.getInstance().gui.setScreen(new JobBoardScreen(stations[payload.station()]));
             }
         });
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.JobDone.TYPE, (payload, context) -> {
+            Jobs.Type[] types = Jobs.Type.values();
+            if (payload.job() >= 0 && payload.job() < types.length) {
+                Minecraft.getInstance().gui.setScreen(new de.gtacity.client.screen.JobDoneScreen(
+                        types[payload.job()], payload.level(), payload.earned()));
+            }
+        });
         ClientPlayNetworking.registerGlobalReceiver(Payloads.Players.TYPE,
                 (payload, context) -> de.gtacity.client.map.OtherPlayers.update(payload));
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register(

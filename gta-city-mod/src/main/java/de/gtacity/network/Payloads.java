@@ -78,6 +78,8 @@ public final class Payloads {
         public static final int CLAIM_CAR = 5;
         public static final int BRING_CAR = 6;
         public static final int START_STORY = 7;
+        public static final int START_TEAM_JOB = 8;
+        public static final int CONTINUE_JOB = 9;
 
         public static final Type<Phone> TYPE = new Type<>(GtaCity.id("phone"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Phone> CODEC = StreamCodec.composite(
@@ -166,6 +168,19 @@ public final class Payloads {
         public static final StreamCodec<RegistryFriendlyByteBuf, Players> CODEC = StreamCodec.composite(
                 PlayerDot.CODEC.apply(ByteBufCodecs.list(256)), Players::dots, ByteBufCodecs.STRING_UTF8,
                 Players::invitedBy, Players::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** Server -> client: a job is done - show the "Weitermachen" window (next level of the same job). */
+    public record JobDone(int job, int level, long earned) implements CustomPacketPayload {
+        public static final Type<JobDone> TYPE = new Type<>(GtaCity.id("job_done"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, JobDone> CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, JobDone::job, ByteBufCodecs.VAR_INT, JobDone::level, ByteBufCodecs.VAR_LONG,
+                JobDone::earned, JobDone::new);
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
