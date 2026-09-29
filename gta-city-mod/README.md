@@ -73,8 +73,23 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
     der sich wehrt; ihn auszuschalten bringt keine Fahndung).
   - Hafenbüro: Waffendealer (oft ruft ein Zeuge die Polizei, und der Käufer nimmt die Ware erst ohne
     Fahndung) und Autodieb (Sportwagen klauen und zum Schrottplatz bringen).
+  - Weitere Missionen: **Bandenkrieg** (Jobcenter: vier bewaffnete Gangster in ihrem Versteck ausschalten, ohne
+    Fahndungssterne, $6.000), **Straßenrennen** (Hafenbüro: fünf Checkpoints am Steuer gegen die Uhr, $3.000 plus
+    Siegerbonus für den Schnellsten der Crew) und **Bankraub im Team** (Hafenbüro, nur mit Crew: vor der Bank
+    treffen, Tresor aufbohren, Polizei abhängen, $20.000 für jeden).
   - Jeder erledigte Job hebt deinen Rang (Neuling, Profi, Veteran, Legende) und bringt 3 % mehr Lohn, höchstens
     50 %. Das Ziel steht immer auf Karte und Radar, das Navi führt dich hin.
+- **Multiplayer**: Die Mod läuft im LAN, auf einem Server oder wenn du Freunde mit einer Mod wie Essential in deine
+  Welt einlädst. Alle Mitspieler brauchen diese Mod. Andere Spieler erscheinen als blaue Pfeile auf Radar und Karte,
+  mit Namen und Fahndungssternen.
+  - **Crew**: Auf der Karte (M) im Tab „Crew“ lädst du Mitspieler ein. Sie klicken im Chat auf [Annehmen] oder im
+    Crew-Tab auf „Einladung annehmen“. Alternativ geht es mit `/crew einladen <Name>`, `/crew annehmen` und
+    `/crew verlassen`. Eine Crew hat bis zu vier Spieler. Crew-Mitglieder sind grün und bleiben am Radarrand
+    sichtbar, auch wenn sie weit weg sind. Mit „Navi“ fährst du zu ihnen, und ihr könnt euch nicht gegenseitig
+    anschießen.
+  - **Partnermissionen**: Nimmt einer aus der Crew einen Job an, macht die ganze Crew mit. Egal wer ein Ziel
+    erreicht, alle bekommen den vollen Lohn. Steigt einer aus oder stirbt, macht der Rest weiter. Die Story-Kapitel
+    spielt jeder für sich.
 - Straßenkriminalität: Taschendiebstahl (von hinten an Passanten schleichen, Schleichen + Rechtsklick mit leerer
   Hand), Ladendiebstahl im 24/7 (dasselbe an der Theke) und Überfälle (Schleichen + Rechtsklick mit Waffe)
 - Geld: Startkapital $500. Passanten lassen Geld fallen, Geldautomaten zeigen deinen Kontostand.
@@ -116,7 +131,8 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 | H | Hupe |
 | G (im Auto) | Auto behalten, es gehört jetzt dir |
 | B | Eigenes Auto herbeiholen |
-| M | Karte, Navi, Jobs, Garage, Villen |
+| M | Karte, Navi, Jobs, Garage, Villen, Crew |
+| `/crew einladen <Name>`, `/crew annehmen`, `/crew verlassen` | Crew für Partnermissionen |
 | Rechtsklick auf Verkäufer oder Theke | Laden öffnen |
 | Rechtsklick auf Mitarbeiter oder Schalter (Jobcenter / Hafenbüro) | Job-Board mit Story und Jobs |
 | Schleichen + Rechtsklick mit Waffe auf Theke | Laden ausrauben |

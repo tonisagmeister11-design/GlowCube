@@ -122,6 +122,24 @@ public final class Minimap {
             }
         }
 
+        // Other players: crew mates green (pinned to the edge when far away), everybody else blue.
+        for (de.gtacity.network.Payloads.PlayerDot dot : de.gtacity.client.map.OtherPlayers.all()) {
+            float[] s = project(dot.x() + 0.5 - px, dot.z() + 0.5 - pz, scale, cos, sin);
+            float fx = s[0], fy = s[1];
+            int ox = cy - top - HEIGHT / 2;
+            float k = Math.max(Math.abs(fx) / halfW, Math.abs(fy + ox) / (HEIGHT / 2 - 5));
+            if (k > 1) {
+                if (!dot.crew()) {
+                    continue;
+                }
+                fx /= k;
+                fy = (fy + ox) / k - ox;
+            }
+            // The arrow turns with the radar: world yaw plus the radar rotation.
+            de.gtacity.client.map.OtherPlayers.draw(g, mc.font, Math.round(cx + fx), Math.round(cy + fy), dot,
+                    (float) angle, false);
+        }
+
         // North marker on the edge.
         float[] n = project(0, -1000, 1.0, cos, sin);
         float k = Math.max(Math.abs(n[0]) / (WIDTH / 2.0F - 6), Math.abs(n[1]) / (HEIGHT / 2.0F - 6));

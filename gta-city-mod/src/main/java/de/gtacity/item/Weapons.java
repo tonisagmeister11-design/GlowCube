@@ -179,6 +179,11 @@ public final class Weapons {
                 ? level.damageSources().playerAttack(p)
                 : level.damageSources().mobAttack(shooter);
         float amount = damage;
+        if (shooter instanceof net.minecraft.server.level.ServerPlayer a
+                && target instanceof net.minecraft.server.level.ServerPlayer b
+                && de.gtacity.gameplay.Crew.together(a, b)) {
+            return; // no friendly fire in a crew
+        }
         if (target instanceof HelicopterEntity heli) {
             heli.damage(level, amount);
             level.sendParticles(ParticleTypes.CRIT, at.x, at.y, at.z, 6, 0.1, 0.1, 0.1, 0.2);

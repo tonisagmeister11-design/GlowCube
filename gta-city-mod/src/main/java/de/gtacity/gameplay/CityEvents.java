@@ -46,6 +46,7 @@ public final class CityEvents {
             Heists.tick(server);
             Jobs.tick(server);
             Clerks.tick(server);
+            Crew.tick(server);
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> onJoin(handler.getPlayer()));
@@ -53,6 +54,7 @@ public final class CityEvents {
             WantedSystem.forget(handler.getPlayer());
             PoliceDispatch.forget(handler.getPlayer());
             Jobs.forget(handler.getPlayer());
+            Crew.forget(handler.getPlayer());
             Garage.forget(handler.getPlayer());
         });
 

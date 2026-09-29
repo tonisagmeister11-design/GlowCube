@@ -6,6 +6,7 @@ import de.gtacity.client.screen.CityMapScreen;
 import de.gtacity.client.screen.ShopScreen;
 import de.gtacity.client.screen.JobBoardScreen;
 import de.gtacity.gameplay.Clerks;
+import de.gtacity.gameplay.Crew;
 import de.gtacity.gameplay.Jobs;
 import de.gtacity.network.Payloads;
 import de.gtacity.world.CityMap;
@@ -176,6 +177,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Laeden", () -> shops(ctx, server, conn));
             check("Alle Verkaeufer", () -> allClerks(ctx, server, conn));
             check("Jobs", () -> jobs(ctx, server, conn));
+            check("Crew", () -> crew(ctx, server, conn));
             check("Villa", () -> villa(ctx, server, conn));
             check("Taschendiebstahl", () -> pickpocket(ctx, server, conn));
             check("Helikopter", () -> helicopter(ctx, server, conn));
@@ -1488,6 +1490,136 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 Jobs.forget(player(s));
             });
         }
+    }
+
+    /**
+     * Multiplayer with a second (simulated) player: crew invitation, both on the map, a partner mission where the
+     * mate's work pays both, a crew-only mission and the new gang war.
+     */
+    private void crew(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode survival @a");
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        server.runOnServer(s -> {
+            ServerPlayer me = player(s);
+            Jobs.cancel(me, "Test");
+            ServerLevel level = s.overworld();
+            var mate = net.fabricmc.fabric.api.entity.FakePlayer.get(level,
+                    new com.mojang.authlib.GameProfile(java.util.UUID.fromString("0000c0de-0000-4000-8000-00000000c0de"),
+                            "Kumpel"));
+            mate.snapTo(me.getX() + 40, me.getY(), me.getZ() + 25, 90.0F, 0.0F);
+            level.addNewPlayer(mate);
+            Crew.invite(me, mate);
+            Crew.accept(mate);
+            Economy.set(me, 1000);
+            Economy.set(mate, 1000);
+        });
+        expect(server.computeOnServer(s -> Crew.inCrew(player(s))), "Crew: Einladung angenommen, zwei Spieler in der Crew");
+        ctx.waitTicks(25);
+        var dots = ctx.computeOnClient(mc -> de.gtacity.client.map.OtherPlayers.all());
+        expect(dots.size() == 1 && dots.getFirst().crew() && dots.getFirst().name().equals("Kumpel"),
+                "Crew: der Mitspieler kommt beim Client an (" + dots + ")");
+        ctx.waitTicks(10);
+        ctx.takeScreenshot("gtacity-19-radar-crew");
+        ctx.runOnClient(mc -> {
+            CityMapScreen.view(spawn.getX() + 20, spawn.getZ() + 12, 0.5);
+            mc.gui.setScreen(new CityMapScreen());
+        });
+        ctx.waitForScreen(CityMapScreen.class);
+        ctx.waitTicks(20);
+        ctx.takeScreenshot("gtacity-19b-karte-crew");
+        ctx.clickScreenButton("Crew");
+        ctx.waitTicks(10);
+        ctx.takeScreenshot("gtacity-19c-crew-tab");
+        closeScreen(ctx);
+
+        // Partner mission: I take a courier job, my mate is in it too - and his delivery pays both of us.
+        server.runOnServer(s -> {
+            Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
+            Jobs.start(player(s), Jobs.Type.COURIER);
+        });
+        closeScreen(ctx);
+        expect(server.computeOnServer(s -> Jobs.active(player(s)) && Jobs.active(Crew.mates(player(s)).getFirst())),
+                "Partnermission: der Job läuft für beide");
+        long before = server.computeOnServer(s -> Economy.get(player(s)));
+        long mateBefore = server.computeOnServer(s -> Economy.get(Crew.mates(player(s)).getFirst()));
+        var goal = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        server.runOnServer(s -> {
+            ServerPlayer mate = Crew.mates(player(s)).getFirst();
+            mate.teleportTo(s.overworld(), goal.x() + 0.5, CityLayout.GROUND + 2.0, goal.z() + 0.5, java.util.Set.of(),
+                    0.0F, 0.0F, true);
+        });
+        ctx.waitTicks(30);
+        long after = server.computeOnServer(s -> Economy.get(player(s)));
+        long mateAfter = server.computeOnServer(s -> Economy.get(Crew.mates(player(s)).getFirst()));
+        var next = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(after > before && mateAfter > mateBefore && next != null && next.label().startsWith("Paket 2"),
+                "Partnermission: Lieferung vom Mitspieler zahlt beiden (+$" + (after - before) + " / +$"
+                        + (mateAfter - mateBefore) + "), weiter mit " + (next == null ? "-" : next.label()));
+        server.runOnServer(s -> {
+            Jobs.cancel(Crew.mates(player(s)).getFirst(), "Test");
+        });
+        expect(server.computeOnServer(s -> Jobs.active(player(s))), "Partnermission: steigt einer aus, macht der "
+                + "andere weiter");
+        server.runOnServer(s -> Jobs.cancel(player(s), "Test"));
+
+        // The bank job for crews: works with the crew, refused without.
+        server.runOnServer(s -> {
+            Jobs.openBoard(player(s), Jobs.Station.SHADY);
+            Jobs.start(player(s), Jobs.Type.CREW_HEIST);
+        });
+        closeScreen(ctx);
+        var heist = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(heist != null && heist.label().contains("Bank"), "Bankraub im Team startet mit Crew ("
+                + (heist == null ? "-" : heist.label()) + ")");
+        server.runOnServer(s -> {
+            Jobs.cancel(Crew.mates(player(s)).getFirst(), "Test");
+            Jobs.cancel(player(s), "Test");
+            Crew.leave(player(s), true);
+            Jobs.openBoard(player(s), Jobs.Station.SHADY);
+            Jobs.start(player(s), Jobs.Type.CREW_HEIST);
+        });
+        closeScreen(ctx);
+        expect(!server.computeOnServer(s -> Jobs.active(player(s))), "Bankraub im Team geht nicht ohne Crew");
+
+        // Gang war (alone): four gang members at the hideout, clear them all.
+        server.runOnServer(s -> {
+            Economy.set(player(s), 1000);
+            Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
+            Jobs.start(player(s), Jobs.Type.GANG_WAR);
+        });
+        closeScreen(ctx);
+        var gang = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(gang != null && gang.label().contains("Gang"), "Bandenkrieg startet (" + (gang == null ? "-"
+                : gang.label()) + ")");
+        if (gang != null) {
+            server.runCommand("gamemode creative @a");
+            teleport(server, gang.x() + 0.5, CityLayout.GROUND + 2.0, gang.z() + 8.5, 180.0F, 10.0F);
+            ctx.waitTicks(40);
+            int gangsters = server.computeOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN,
+                    n -> n.isAlive() && "bounty".equals(n.role())).size());
+            expect(gangsters == 4, "Bandenkrieg: vier Gangster im Versteck (" + gangsters + ")");
+            ctx.takeScreenshot("gtacity-19d-bandenkrieg");
+            server.runOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN,
+                    n -> n.isAlive() && "bounty".equals(n.role())).forEach(n -> n.hurtServer(s.overworld(),
+                    s.overworld().damageSources().playerAttack(player(s)), 1000.0F)));
+            ctx.waitTicks(30);
+            long money = server.computeOnServer(s -> Economy.get(player(s)));
+            expect(!server.computeOnServer(s -> Jobs.active(player(s))) && money >= 7000,
+                    "Bandenkrieg: Versteck ausgeräumt, $" + money);
+        }
+        server.runOnServer(s -> {
+            Jobs.cancel(player(s), "Test");
+            for (ServerPlayer p : List.copyOf(s.overworld().players())) {
+                if (p instanceof net.fabricmc.fabric.api.entity.FakePlayer fake) {
+                    Crew.forget(fake);
+                    Jobs.forget(fake);
+                    s.overworld().removePlayerImmediately(fake, net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+                }
+            }
+        });
+        server.runCommand("kill @e[type=minecraft:item]");
     }
 
     /** Runs the current mission: teleports to every goal until the job is done. */

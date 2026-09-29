@@ -151,4 +151,25 @@ public final class Payloads {
             return TYPE;
         }
     }
+
+    /** Another player on the radar / map: crew mates are drawn green. */
+    public record PlayerDot(String name, int x, int z, float yaw, boolean crew, int wanted, boolean inCar) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, PlayerDot> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8, PlayerDot::name, ByteBufCodecs.VAR_INT, PlayerDot::x, ByteBufCodecs.VAR_INT,
+                PlayerDot::z, ByteBufCodecs.FLOAT, PlayerDot::yaw, ByteBufCodecs.BOOL, PlayerDot::crew,
+                ByteBufCodecs.VAR_INT, PlayerDot::wanted, ByteBufCodecs.BOOL, PlayerDot::inCar, PlayerDot::new);
+    }
+
+    /** Server -> client: the other players in the world, and who invited this player into a crew (or ""). */
+    public record Players(java.util.List<PlayerDot> dots, String invitedBy) implements CustomPacketPayload {
+        public static final Type<Players> TYPE = new Type<>(GtaCity.id("players"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Players> CODEC = StreamCodec.composite(
+                PlayerDot.CODEC.apply(ByteBufCodecs.list(256)), Players::dots, ByteBufCodecs.STRING_UTF8,
+                Players::invitedBy, Players::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
 }

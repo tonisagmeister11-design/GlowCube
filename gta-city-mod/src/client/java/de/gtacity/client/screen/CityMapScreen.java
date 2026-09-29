@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import de.gtacity.client.map.CityMapTexture;
 import de.gtacity.client.map.MapTiles;
 import de.gtacity.client.map.MapDraw;
+import de.gtacity.client.map.OtherPlayers;
 import de.gtacity.client.map.Waypoint;
 import de.gtacity.entity.CarVariant;
 import de.gtacity.gameplay.Economy;
@@ -33,7 +34,7 @@ import java.util.List;
  */
 public class CityMapScreen extends Screen {
     private enum Tab {
-        MAP("Karte"), JOBS("Jobs"), GARAGE("Garage"), VILLAS("Villen");
+        MAP("Karte"), JOBS("Jobs"), GARAGE("Garage"), VILLAS("Villen"), CREW("Crew");
 
         final String label;
 
@@ -94,6 +95,7 @@ public class CityMapScreen extends Screen {
             case JOBS -> initJobs();
             case GARAGE -> initGarage();
             case VILLAS -> initVillas();
+            case CREW -> initCrew();
         }
     }
 
@@ -218,6 +220,12 @@ public class CityMapScreen extends Screen {
         if (target != null) {
             MapDraw.flag(g, screenX(target[0]), screenY(target[1]), MapDraw.targetColor(player));
         }
+        for (de.gtacity.network.Payloads.PlayerDot dot : OtherPlayers.all()) {
+            int x = screenX(dot.x() + 0.5), y = screenY(dot.z() + 0.5);
+            if (x >= x0 && x <= x1 && y >= y0 && y <= y1) {
+                OtherPlayers.draw(g, font, x, y, dot, 0.0F, true);
+            }
+        }
         if (player != null) {
             g.pose().pushMatrix();
             g.pose().translate(px, py);
@@ -279,6 +287,16 @@ public class CityMapScreen extends Screen {
         y += 12;
         g.fill(8, y + 1, 17, y + 8, 0xFFFF3030);
         g.text(font, "Polizei", 22, y, 0xFFE0E0E0, false);
+        y += 12;
+        g.pose().pushMatrix();
+        g.pose().translate(12, y + 4);
+        MapDraw.arrow(g, OtherPlayers.CREW_COLOR);
+        g.pose().popMatrix();
+        g.text(font, "Crew / andere Spieler", 22, y, 0xFFE0E0E0, false);
+        g.pose().pushMatrix();
+        g.pose().translate(17, y + 4);
+        MapDraw.arrow(g, OtherPlayers.OTHER_COLOR);
+        g.pose().popMatrix();
         y += 14;
         g.textWithWordWrap(font, Component.literal("Klick auf Legende: Navi zum nächsten Ort. Mausrad: Zoom"),
                 6, y, LEGEND_WIDTH - 10, 0xFF9098A0);
@@ -624,6 +642,96 @@ public class CityMapScreen extends Screen {
         }
     }
 
+    // ------------------------------------------------------------------ crew tab
+
+    private static final int CREW_ROW = 24;
+    private static final int CREW_MAX_ROWS = 8;
+
+    private int crewTop() {
+        return TOP + (OtherPlayers.invitedBy().isEmpty() ? 58 : 84);
+    }
+
+    private void command(String command) {
+        if (minecraft.player != null) {
+            minecraft.player.connection.sendCommand(command);
+        }
+    }
+
+    private void initCrew() {
+        int left = width / 2 - 180;
+        if (!OtherPlayers.invitedBy().isEmpty()) {
+            addRenderableWidget(Button.builder(Component.literal("Einladung von " + OtherPlayers.invitedBy()
+                    + " annehmen"), b -> {
+                command("crew annehmen");
+                onClose();
+            }).bounds(left, TOP + 56, 220, 20).build());
+        }
+        List<Payloads.PlayerDot> dots = OtherPlayers.all();
+        int top = crewTop();
+        for (int i = 0; i < Math.min(CREW_MAX_ROWS, dots.size()); i++) {
+            Payloads.PlayerDot dot = dots.get(i);
+            int y = top + i * CREW_ROW;
+            addRenderableWidget(Button.builder(Component.literal("Navi"), b -> {
+                Waypoint.set(dot.x() + 0.5, dot.z() + 0.5);
+                centerX = dot.x();
+                centerZ = dot.z();
+                tab = Tab.MAP;
+                rebuildWidgets();
+            }).bounds(left + 250, y, 44, 20).build());
+            Button invite = Button.builder(Component.literal(dot.crew() ? "In Crew" : "Einladen"), b -> {
+                command("crew einladen " + dot.name());
+                b.active = false;
+            }).bounds(left + 298, y, 64, 20).build();
+            invite.active = !dot.crew();
+            addRenderableWidget(invite);
+        }
+        if (OtherPlayers.inCrew()) {
+            addRenderableWidget(Button.builder(Component.literal("Crew verlassen"), b -> {
+                command("crew verlassen");
+                onClose();
+            }).bounds(width / 2 - 50, height - 30, 100, 20).build());
+        }
+    }
+
+    private void renderCrew(GuiGraphicsExtractor g) {
+        int left = width / 2 - 180;
+        g.fill(left - 6, TOP + 4, width / 2 + 186, height - 4, 0xE0101418);
+        g.text(font, "Crew und Mitspieler", left, TOP + 12, 0xFFFFD040, false);
+        g.textWithWordWrap(font, Component.literal("Lade Mitspieler in deine Crew ein (höchstens 4). Jobs, die einer "
+                + "von euch annimmt, macht ihr dann zusammen, und jeder bekommt den vollen Lohn. Crew-Mitglieder sind "
+                + "grün auf Radar und Karte, und ihr könnt euch nicht gegenseitig anschießen."), left, TOP + 26, 360,
+                0xFFC8C8C8);
+        List<Payloads.PlayerDot> dots = OtherPlayers.all();
+        int top = crewTop();
+        if (dots.isEmpty()) {
+            g.textWithWordWrap(font, Component.literal("Gerade ist niemand sonst in der Welt. Öffne sie im LAN oder lade "
+                    + "Freunde ein (zum Beispiel mit Essential). Deine Freunde brauchen auch diese Mod."), left,
+                    top + 4, 360, 0xFF9098A0);
+            return;
+        }
+        LocalPlayer me = minecraft.player;
+        for (int i = 0; i < Math.min(CREW_MAX_ROWS, dots.size()); i++) {
+            Payloads.PlayerDot dot = dots.get(i);
+            int y = top + i * CREW_ROW;
+            g.fill(left, y - 2, left + 364, y + 22, 0x50000000);
+            g.pose().pushMatrix();
+            g.pose().translate(left + 8, y + 9);
+            MapDraw.arrow(g, OtherPlayers.color(dot));
+            g.pose().popMatrix();
+            g.text(font, dot.name(), left + 18, y + 2, OtherPlayers.color(dot), false);
+            int dist = me == null ? 0 : (int) Math.hypot(dot.x() - me.getX(), dot.z() - me.getZ());
+            String where = CityLayout.insideCity(dot.x(), dot.z()) ? CityLayout.districtAt(dot.x(), dot.z()).label
+                    : "außerhalb";
+            String info = where + ", " + dist + " m" + (dot.inCar() ? ", im Auto" : "")
+                    + (dot.wanted() > 0 ? ", " + dot.wanted() + " Sterne" : "");
+            g.text(font, info, left + 18, y + 12, 0xFF9098A0, false);
+        }
+        if (dots.size() > CREW_MAX_ROWS) {
+            g.text(font, "... und " + (dots.size() - CREW_MAX_ROWS) + " weitere", left,
+                    top + CREW_MAX_ROWS * CREW_ROW + 2, 0xFF9098A0, false);
+        }
+    }
+
     // ------------------------------------------------------------------ frame
 
     @Override
@@ -634,6 +742,7 @@ public class CityMapScreen extends Screen {
             case JOBS -> renderJobs(g);
             case GARAGE -> renderGarage(g);
             case VILLAS -> renderVillas(g);
+            case CREW -> renderCrew(g);
         }
         super.extractRenderState(g, mouseX, mouseY, partialTick);
         Long money = minecraft.player == null ? null : minecraft.player.getAttached(ModAttachments.MONEY);

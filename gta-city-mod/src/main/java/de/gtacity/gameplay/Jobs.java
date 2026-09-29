@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -80,18 +81,32 @@ public final class Jobs {
         GUN_RUNNING("Waffendealer", Station.SHADY, "Eine Kiste Waffen im Hafen abholen und dem Käufer bringen. "
                 + "Die Polizei darf dich bei der Übergabe nicht verfolgen.", "$7.000 - $9.500"),
         CAR_THEFT("Autodieb", Station.SHADY, "Einen Sportwagen oder Supersportwagen klauen und zum Schrottplatz "
-                + "im Hafen bringen.", "$6.000 / $15.000");
+                + "im Hafen bringen.", "$6.000 / $15.000"),
+        GANG_WAR("Bandenkrieg", Station.JOBCENTER, "Die Polizei zahlt: räum ein Gangversteck aus. Vier Gangster, "
+                + "die sich wehren - allein schwer, mit Crew leichter.", "$6.000"),
+        STREET_RACE("Straßenrennen", Station.SHADY, "Mit dem Auto durch fünf Checkpoints quer durch die Stadt, "
+                + "gegen die Uhr. Mit Crew: wer zuerst ankommt, kassiert den Siegerbonus.", "$3.000 + Bonus"),
+        CREW_HEIST("Bankraub im Team", Station.SHADY, "Nur mit Crew: trefft euch vor der Bank, bohrt den Tresor "
+                + "auf (Thermobohrer), hängt die Polizei ab und teilt nichts - jeder bekommt alles.",
+                "$20.000 pro Kopf", true);
 
         public final String label;
         public final Station station;
         public final String description;
         public final String pay;
+        /** Partner mission: can only be started by a player in a crew. */
+        public final boolean crewOnly;
 
         Type(String label, Station station, String description, String pay) {
+            this(label, station, description, pay, false);
+        }
+
+        Type(String label, Station station, String description, String pay, boolean crewOnly) {
             this.label = label;
             this.station = station;
             this.description = description;
             this.pay = pay;
+            this.crewOnly = crewOnly;
         }
 
         public boolean illegal() {
@@ -116,7 +131,7 @@ public final class Jobs {
     // ------------------------------------------------------------------ data
 
     private enum Goal {
-        REACH, PICKUP, DROPOFF, KILL, HAVE_ITEM, HEIST, STEAL_CAR, CLEAR
+        REACH, PICKUP, DROPOFF, KILL, HAVE_ITEM, HEIST, STEAL_CAR, CLEAR, KILL_GROUP, CHECKPOINT, TOGETHER
     }
 
     private static final class Step {
@@ -181,6 +196,10 @@ public final class Jobs {
         long lastHint;
         int missing;
         UUID npc;
+        /** Gang members of a gang war. */
+        final List<UUID> group = new ArrayList<>();
+        /** Everybody doing this job: the player who took it and, in a crew, the mates (partner mission). */
+        final Set<UUID> crew = new LinkedHashSet<>();
 
         Job(Type type, Station station, int chapter) {
             this.type = type;
@@ -198,6 +217,26 @@ public final class Jobs {
     }
 
     private static final Map<UUID, Job> ACTIVE = new HashMap<>();
+
+    /** The players (online) doing a job together. */
+    private static List<ServerPlayer> members(MinecraftServer server, Job job) {
+        List<ServerPlayer> out = new ArrayList<>();
+        for (UUID id : job.crew) {
+            ServerPlayer p = Crew.find(server, id);
+            if (p != null && ACTIVE.get(id) == job) {
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
+    private static List<ServerPlayer> members(ServerPlayer player, Job job) {
+        List<ServerPlayer> out = members(player.level().getServer(), job);
+        if (out.isEmpty()) {
+            out.add(player);
+        }
+        return out;
+    }
     /** Which job board a player has open (a start request is only valid for the board they are looking at). */
     private static final Map<UUID, long[]> BOARD = new HashMap<>();
     private static final Map<UUID, Long> PICKPOCKETED = new HashMap<>();
@@ -348,16 +387,43 @@ public final class Jobs {
                     .withStyle(ChatFormatting.RED));
             return;
         }
+        if (job.chapter == 0 && job.type.crewOnly && !Crew.inCrew(player)) {
+            player.sendSystemMessage(Component.literal(job.type.label + " geht nur mit Crew. Lade jemanden ein: Karte "
+                    + "(M) → Crew.").withStyle(ChatFormatting.RED));
+            return;
+        }
         ServerLevel level = (ServerLevel) player.level();
         build(level, player, job);
         if (job.steps.isEmpty()) {
             return;
         }
         ACTIVE.put(player.getUUID(), job);
+        job.crew.add(player.getUUID());
+        if (job.chapter == 0) {
+            // Partner mission: the crew mates in the same world who are free join in.
+            for (ServerPlayer mate : Crew.mates(player)) {
+                if (mate.level() == level && !ACTIVE.containsKey(mate.getUUID())) {
+                    ACTIVE.put(mate.getUUID(), job);
+                    job.crew.add(mate.getUUID());
+                }
+            }
+        }
         enter(level, player, job);
-        say(player, job.station, intro(job));
-        player.sendSystemMessage(Component.literal("Job angenommen: " + job.title() + " - das Ziel ist auf Karte und "
-                + "Radar markiert (Navi).").withStyle(job.station.illegal ? ChatFormatting.RED : ChatFormatting.AQUA));
+        for (ServerPlayer p : members(player, job)) {
+            say(p, job.station, intro(job));
+            p.sendSystemMessage(Component.literal("Job angenommen: " + job.title() + " - das Ziel ist auf Karte und "
+                    + "Radar markiert (Navi).").withStyle(job.station.illegal ? ChatFormatting.RED
+                    : ChatFormatting.AQUA));
+            if (job.crew.size() > 1) {
+                p.sendSystemMessage(Component.literal("Partnermission mit " + names(player.level().getServer(), job, p)
+                        + " - jeder bekommt den vollen Lohn.").withStyle(ChatFormatting.GREEN));
+            }
+        }
+    }
+
+    private static String names(MinecraftServer server, Job job, ServerPlayer except) {
+        return String.join(", ", members(server, job).stream().filter(p -> p != except)
+                .map(p -> p.getName().getString()).toList());
     }
 
     private static String intro(Job job) {
@@ -381,6 +447,11 @@ public final class Jobs {
             case GUN_RUNNING -> "Die Kiste liegt im Hafen. Beim Abholen kann jemand die Polizei rufen.";
             case CAR_THEFT -> "Ich brauche einen Sportwagen. Klau einen und bring ihn zum Schrottplatz. "
                     + "Dein eigenes Auto nehme ich nicht.";
+            case GANG_WAR -> "Die Ballas haben sich in einem Hinterhof verschanzt. Vier Mann, bewaffnet. Die Polizei "
+                    + "zahlt, wenn du aufräumst - und es gibt keine Sterne dafür.";
+            case STREET_RACE -> "Fünf Checkpoints, die Uhr läuft. Du brauchst ein schnelles Auto - am Steuer zählt's.";
+            case CREW_HEIST -> "Der große Coup, diesmal zu mehreren. Trefft euch vor der Bank. Einer von euch braucht "
+                    + "einen Thermobohrer (Ammu-Nation). Danach: Bullen abhängen, ab zum Hafenbüro.";
         };
     }
 
@@ -391,8 +462,22 @@ public final class Jobs {
             STORY_PAUSED.add(player.getUUID());
         }
         if (job != null) {
-            cleanup((ServerLevel) player.level(), job);
+            leaveJob(player, job);
             player.sendSystemMessage(Component.literal("Job beendet: " + reason).withStyle(ChatFormatting.GRAY));
+        }
+    }
+
+    /** One player is out of a job: the others of a partner mission go on, the last one cleans up. */
+    private static void leaveJob(ServerPlayer player, Job job) {
+        job.crew.remove(player.getUUID());
+        List<ServerPlayer> rest = members(player.level().getServer(), job);
+        if (rest.isEmpty()) {
+            cleanup((ServerLevel) player.level(), job);
+            return;
+        }
+        for (ServerPlayer p : rest) {
+            p.sendSystemMessage(Component.literal(player.getName().getString() + " ist aus der Partnermission raus - "
+                    + "ihr macht weiter.").withStyle(ChatFormatting.GRAY));
         }
     }
 
@@ -401,7 +486,7 @@ public final class Jobs {
         STORY_PAUSED.remove(player.getUUID());
         Job job = ACTIVE.remove(player.getUUID());
         if (job != null) {
-            cleanup((ServerLevel) player.level(), job);
+            leaveJob(player, job);
         }
         BOARD.remove(player.getUUID());
     }
@@ -412,6 +497,12 @@ public final class Jobs {
             npc.discard();
         }
         job.npc = null;
+        for (UUID id : job.group) {
+            if (level.getEntity(id) instanceof NpcEntity npc) {
+                npc.discard();
+            }
+        }
+        job.group.clear();
     }
 
     // ------------------------------------------------------------------ building the steps
@@ -489,6 +580,37 @@ public final class Jobs {
                         .wanted(random.nextBoolean() ? 2 : 0));
                 job.steps.add(new Step(Goal.CLEAR, buyer, "Waffen dem Käufer bringen (ohne Fahndung!)")
                         .pay(7000 + random.nextInt(2501)).seconds(600).say("Käufer: Saubere Arbeit."));
+            }
+            case GANG_WAR -> {
+                BlockPos hideout = randomAddress(random, from, 250, 700, EnumSet.of(CityLayout.LotType.WAREHOUSE,
+                        CityLayout.LotType.PARKING, CityLayout.LotType.HOUSE));
+                job.steps.add(new Step(Goal.KILL_GROUP, hideout, "Gangversteck ausräumen (4 Gangster)").pay(6000)
+                        .seconds(900).npc("Ballas").say("Polizei: Saubere Arbeit. Das Geld ist überwiesen."));
+            }
+            case STREET_RACE -> {
+                BlockPos last = from;
+                int total = 0;
+                for (int i = 1; i <= 5; i++) {
+                    BlockPos to = randomAddress(random, last, 180, 420, homes);
+                    int secs = (int) (12 + flat(last, to) / 9);
+                    total += secs;
+                    job.steps.add(new Step(Goal.CHECKPOINT, to, "Rennen: Checkpoint " + i + "/5 (im Auto)")
+                            .seconds(i == 1 ? 240 : secs).pay(i == 5 ? 3000 : 0));
+                    last = to;
+                }
+                job.steps.getLast().say("Rennleiter: Im Ziel! Schnelle Karre, schneller Fahrer.");
+            }
+            case CREW_HEIST -> {
+                CityMap.Place bank = CityMap.nearest(CityMap.Kind.BANK, from.getX(), from.getZ());
+                CityMap.Place hideout = CityMap.nearest(CityMap.Kind.DOCKS, from.getX(), from.getZ());
+                BlockPos door = bank == null ? CityPlaces.spawn() : bank.entrance();
+                job.steps.add(new Step(Goal.TOGETHER, door, "Crew: alle vor der Bank treffen").seconds(900)
+                        .say("Tony: Alle da. Jetzt den Tresor aufbohren!"));
+                job.steps.add(new Step(Goal.HEIST, door, "Bank: Tresor mit dem Thermobohrer knacken").seconds(900)
+                        .wanted(3).say("Tony: Der Tresor ist offen! Nehmt alles und weg da!"));
+                job.steps.add(new Step(Goal.CLEAR, hideout == null ? from : hideout.entrance(),
+                        "Zum Hafenbüro und die Polizei abhängen").pay(20000).seconds(1500)
+                        .say("Tony: Was für ein Coup! Jeder von euch kriegt seinen vollen Anteil."));
             }
             case CAR_THEFT -> {
                 BlockPos yard = randomAddress(random, from, 0, 5000, EnumSet.of(CityLayout.LotType.CONTAINERS),
@@ -593,7 +715,9 @@ public final class Jobs {
                 && level.getEntity(job.npc) != null) {
             p = level.getEntity(job.npc).blockPosition();
         }
-        player.setAttached(ModAttachments.MISSION, new ModAttachments.Mission(s.label, p.getX(), p.getZ()));
+        for (ServerPlayer m : members(player, job)) {
+            m.setAttached(ModAttachments.MISSION, new ModAttachments.Mission(s.label, p.getX(), p.getZ()));
+        }
     }
 
     /** Called when a step becomes the current one. */
@@ -608,18 +732,31 @@ public final class Jobs {
     /** Step done: pay, tell the story bit, go on to the next one - or finish the job. */
     private static void advance(ServerLevel level, ServerPlayer player, Job job, int extra) {
         Step s = job.step();
-        int pay = (int) Math.round((s.pay + extra) * bonus(player));
-        if (pay > 0) {
-            Economy.add(player, pay);
-            job.earned += pay;
-            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.CASH,
-                    SoundSource.PLAYERS, 1.0F, 1.0F);
-            player.sendOverlayMessage(Component.literal(s.label.split(":")[0] + " erledigt: +" + Economy.format(pay))
-                    .withStyle(ChatFormatting.GREEN));
+        List<ServerPlayer> team = members(player, job);
+        for (ServerPlayer m : team) {
+            int pay = (int) Math.round((s.pay + extra) * bonus(m));
+            if (pay > 0) {
+                Economy.add(m, pay);
+                if (m == player) {
+                    job.earned += pay;
+                }
+                m.level().playSound(null, m.getX(), m.getY(), m.getZ(), ModSounds.CASH, SoundSource.PLAYERS, 1.0F,
+                        1.0F);
+                m.sendOverlayMessage(Component.literal(s.label.split(":")[0] + " erledigt: +" + Economy.format(pay))
+                        .withStyle(ChatFormatting.GREEN));
+            }
+            if (s.say != null) {
+                m.sendSystemMessage(Component.literal(s.say).withStyle(job.station.illegal ? ChatFormatting.RED
+                        : ChatFormatting.AQUA));
+            }
         }
-        if (s.say != null) {
-            player.sendSystemMessage(Component.literal(s.say).withStyle(job.station.illegal ? ChatFormatting.RED
-                    : ChatFormatting.AQUA));
+        if (job.type == Type.STREET_RACE && team.size() > 1 && job.index == job.steps.size() - 1) {
+            int prize = 2000;
+            Economy.add(player, prize);
+            for (ServerPlayer m : team) {
+                m.sendSystemMessage(Component.literal(player.getName().getString() + " gewinnt das Rennen und "
+                        + "kassiert " + Economy.format(prize) + " Siegerbonus!").withStyle(ChatFormatting.GOLD));
+            }
         }
         if (s.wantedStars > 0) {
             WantedSystem.commit(player, s.wantedStars);
@@ -636,9 +773,18 @@ public final class Jobs {
     }
 
     private static void finish(ServerLevel level, ServerPlayer player, Job job) {
-        ACTIVE.remove(player.getUUID());
-        player.removeAttached(ModAttachments.MISSION);
+        List<ServerPlayer> team = members(player, job);
+        for (ServerPlayer m : team) {
+            ACTIVE.remove(m.getUUID());
+        }
         cleanup(level, job);
+        for (ServerPlayer m : team) {
+            finishFor(m, job);
+        }
+    }
+
+    private static void finishFor(ServerPlayer player, Job job) {
+        player.removeAttached(ModAttachments.MISSION);
         player.setAttached(ModAttachments.JOBS_DONE, done(player) + 1);
         long total = job.earned;
         if (job.chapter > 0) {
@@ -668,6 +814,13 @@ public final class Jobs {
 
     private static void fail(ServerPlayer player, String reason) {
         Job job = ACTIVE.get(player.getUUID());
+        if (job != null) {
+            for (ServerPlayer mate : members(player, job)) {
+                if (mate != player) {
+                    cancel(mate, reason);
+                }
+            }
+        }
         cancel(player, reason);
         if (job != null && job.chapter > 0) {
             // A lost chapter is tried again soon, it was not cancelled on purpose.
@@ -689,14 +842,18 @@ public final class Jobs {
             return;
         }
         for (UUID id : List.copyOf(ACTIVE.keySet())) {
-            ServerPlayer player = server.getPlayerList().getPlayer(id);
+            ServerPlayer player = Crew.find(server, id);
             Job job = ACTIVE.get(id);
             if (player == null || job == null) {
                 ACTIVE.remove(id);
                 continue;
             }
             if (!player.isAlive()) {
-                fail(player, "Du bist gestorben.");
+                if (members(server, job).size() > 1) {
+                    cancel(player, "Du bist gestorben - deine Crew macht weiter.");
+                } else {
+                    fail(player, "Du bist gestorben.");
+                }
                 continue;
             }
             ServerLevel level = (ServerLevel) player.level();
@@ -741,6 +898,36 @@ public final class Jobs {
                     }
                 }
                 case KILL -> killCheck(level, player, job, s);
+                case KILL_GROUP -> {
+                    if (job.spawned && job.group.stream().noneMatch(g -> level.getEntity(g) instanceof NpcEntity n
+                            && n.isAlive()) && level.hasChunkAt(s.pos)) {
+                        job.group.clear();
+                        advance(level, player, job, 0);
+                    }
+                }
+                case CHECKPOINT -> {
+                    if (dist <= 14.0) {
+                        if (inCar) {
+                            advance(level, player, job, 0);
+                        } else if (now - job.lastHint > 20 * 8) {
+                            job.lastHint = now;
+                            player.sendOverlayMessage(Component.literal("Checkpoints zählen nur am Steuer eines Autos!")
+                                    .withStyle(ChatFormatting.YELLOW));
+                        }
+                    }
+                }
+                case TOGETHER -> {
+                    List<ServerPlayer> team = members(server, job);
+                    boolean all = team.stream().allMatch(m -> Math.sqrt(m.distanceToSqr(s.pos.getX() + 0.5,
+                            m.getY(), s.pos.getZ() + 0.5)) <= 20.0);
+                    if (all) {
+                        advance(level, player, job, 0);
+                    } else if (dist <= 20.0 && now - job.lastHint > 20 * 10) {
+                        job.lastHint = now;
+                        player.sendOverlayMessage(Component.literal("Warte auf deine Crew vor der Bank ...")
+                                .withStyle(ChatFormatting.YELLOW));
+                    }
+                }
                 case HAVE_ITEM -> {
                     if (player.getInventory().contains(new ItemStack(s.item))) {
                         advance(level, player, job, 0);
@@ -774,7 +961,7 @@ public final class Jobs {
                     }
                 }
             }
-            if (ACTIVE.get(id) == job && (s.goal == Goal.KILL) && tickCountEvery(server, 40)) {
+            if (ACTIVE.get(id) == job && s.goal == Goal.KILL && tickCountEvery(server, 40)) {
                 updateMission(player, job);
             }
         }
@@ -797,13 +984,18 @@ public final class Jobs {
     /** Passengers and bounty targets appear when the player gets close (the chunks around are loaded then). */
     private static void spawnLazily(ServerLevel level, ServerPlayer player, Job job, double dist) {
         Step s = job.step();
-        if (job.spawned || dist > 90.0 || !(s.goal == Goal.PICKUP || s.goal == Goal.KILL)) {
+        if (job.spawned || dist > 90.0 || !(s.goal == Goal.PICKUP || s.goal == Goal.KILL
+                || s.goal == Goal.KILL_GROUP)) {
             return;
         }
         if (!level.hasChunkAt(s.pos) || !level.isPositionEntityTicking(s.pos)) {
             return;
         }
         job.spawned = true;
+        if (s.goal == Goal.KILL_GROUP) {
+            spawnGang(level, player, job, s);
+            return;
+        }
         NpcEntity npc = ModEntities.PEDESTRIAN.create(level, EntitySpawnReason.EVENT);
         if (npc == null) {
             return;
@@ -823,6 +1015,29 @@ public final class Jobs {
         level.addFreshEntity(npc);
         job.npc = npc.getUUID();
         updateMission(player, job);
+    }
+
+    /** Gang war: four armed gang members around the hideout, they go for the player. */
+    private static void spawnGang(ServerLevel level, ServerPlayer player, Job job, Step s) {
+        RandomSource random = level.getRandom();
+        Item[] weapons = {ModItems.BASEBALL_BAT, ModItems.KNIFE, ModItems.BASEBALL_BAT, ModItems.KNIFE};
+        for (int i = 0; i < 4; i++) {
+            NpcEntity npc = ModEntities.PEDESTRIAN.create(level, EntitySpawnReason.EVENT);
+            if (npc == null) {
+                continue;
+            }
+            double x = s.pos.getX() + 0.5 + random.nextInt(7) - 3, z = s.pos.getZ() + 0.5 + random.nextInt(7) - 3;
+            npc.snapTo(x, s.pos.getY(), z, random.nextFloat() * 360.0F, 0.0F);
+            npc.randomizeLook(true);
+            npc.setRole("bounty", "Gangster");
+            npc.getAttribute(Attributes.MAX_HEALTH).setBaseValue(30.0);
+            npc.setHealth(30.0F);
+            npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(weapons[i]));
+            npc.addEffect(new MobEffectInstance(MobEffects.GLOWING, 20 * 60 * 15, 0, false, false));
+            level.addFreshEntity(npc);
+            npc.setTarget(player);
+            job.group.add(npc.getUUID());
+        }
     }
 
     private static void pickup(ServerLevel level, ServerPlayer player, Job job, Step s, boolean inCar, long now) {
@@ -927,7 +1142,7 @@ public final class Jobs {
     /** The bank vault was drilled open: chapter 5 goes on. */
     public static void onVaultOpened(ServerPlayer player) {
         Job job = ACTIVE.get(player.getUUID());
-        if (job != null && job.chapter == 5 && job.step().goal == Goal.HEIST) {
+        if (job != null && job.step().goal == Goal.HEIST) {
             job.heistDone = true;
         }
     }

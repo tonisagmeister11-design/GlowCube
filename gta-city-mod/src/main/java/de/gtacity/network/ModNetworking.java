@@ -35,6 +35,7 @@ public final class ModNetworking {
         PayloadTypeRegistry.clientboundPlay().register(Payloads.OpenJobs.TYPE, Payloads.OpenJobs.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Payloads.ShotFx.TYPE, Payloads.ShotFx.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Payloads.Recoil.TYPE, Payloads.Recoil.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Payloads.Players.TYPE, Payloads.Players.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(Payloads.Fire.TYPE,
                 (payload, context) -> Weapons.tryFire(context.player(), payload.held()));

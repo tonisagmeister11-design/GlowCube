@@ -68,7 +68,11 @@ public class JobBoardScreen extends Screen {
                 ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.START_JOB, type.ordinal()));
                 onClose();
             }).bounds(left + panelWidth - 70, listTop + i * ROW + 3, 64, 20).build();
-            b.active = !busy();
+            b.active = !busy() && (!type.crewOnly || de.gtacity.client.map.OtherPlayers.inCrew());
+            if (type.crewOnly && !de.gtacity.client.map.OtherPlayers.inCrew()) {
+                b.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(
+                        "Nur mit Crew - Karte (M) → Crew")));
+            }
             addRenderableWidget(b);
         }
         if (busy()) {
@@ -124,7 +128,8 @@ public class JobBoardScreen extends Screen {
             Jobs.Type type = jobs.get(i);
             int y = listTop + i * ROW;
             g.fill(left, y, left + panelWidth, y + ROW - 2, 0x50000000);
-            g.text(font, type.label, left + 6, y + 3, type.illegal() ? 0xFFFF6060 : 0xFF60E0FF, false);
+            g.text(font, type.label + (type.crewOnly ? "  [Crew]" : ""), left + 6, y + 3,
+                    type.illegal() ? 0xFFFF6060 : 0xFF60E0FF, false);
             String pay = type.pay;
             g.text(font, pay, left + panelWidth - 78 - font.width(pay), y + 3, 0xFF6BD36B, false);
             g.textWithWordWrap(font, Component.literal(type.description), left + 6, y + 13, panelWidth - 92,
