@@ -12,22 +12,30 @@ SHAPES = {
     "sedan": ((28, 10, 64), (24, 9, 32)),
     "sports": ((28, 8, 62), (24, 7, 26)),
     "suv": ((30, 13, 66), (28, 11, 40)),
+    "super": ((28, 7, 66), (22, 6, 24)),
 }
 TEX_W, TEX_H = 256, 160
 CABIN_V = 80
 WHEEL_UV = (200, 0)
 BUMPER_UV = (140, 80)
 LIGHTBAR_UV = (140, 90)
+SPOILER_UV = (140, 100)   # wing 26 x 2 x 6
+STAND_UV = (140, 112)     # stands 2 x 3 x 2
 
 COLORS = {
     "red": (178, 30, 34), "blue": (34, 70, 160), "black": (26, 26, 30), "white": (226, 228, 232),
     "silver": (160, 164, 172), "green": (30, 110, 60), "yellow": (236, 190, 30), "orange": (230, 110, 30),
-    "lime": (120, 200, 40), "navy": (24, 32, 70), "purple": (100, 40, 140), "darkgreen": (30, 60, 40),
+    "lime": (120, 200, 40), "carbon": (34, 34, 38), "pearl": (236, 236, 244), "magenta": (200, 30, 120), "navy": (24, 32, 70), "purple": (100, 40, 140), "darkgreen": (30, 60, 40),
 }
 VARIANTS = {
     "sedan": ["red", "blue", "black", "white", "silver", "green", "purple"],
     "sports": ["red", "yellow", "orange", "blue", "black", "lime"],
     "suv": ["black", "white", "silver", "darkgreen", "navy"],
+}
+# Supercars: (paint, racing stripe)
+SUPER = {
+    "red": ("red", (20, 20, 22)), "orange": ("orange", (20, 20, 22)), "lime": ("lime", (20, 20, 22)),
+    "pearl": ("pearl", (200, 30, 40)), "carbon": ("carbon", (236, 190, 30)), "magenta": ("magenta", (240, 240, 245)),
 }
 
 
@@ -211,6 +219,158 @@ def make(shape, color_name, seed, special=None):
     return t.img
 
 
+LED = (220, 240, 255)
+TAIL_LED = (255, 30, 40)
+
+
+def paint_super(t, color, stripe):
+    (w, h, d), (cw, ch, cd) = SHAPES["super"]
+    f = faces(0, 0, w, h, d)
+    x, y, fw, fh = f["top"]
+    t.rect(x, y, fw, fh, color)
+    t.rect(x + fw // 2 - 4, y, 3, fh, stripe)                  # twin racing stripes
+    t.rect(x + fw // 2 + 1, y, 3, fh, stripe)
+    t.rect(x + 3, y + 4, 5, 10, shade(color, 0.55))            # hood vents
+    t.rect(x + fw - 8, y + 4, 5, 10, shade(color, 0.55))
+    t.rect(x + 2, y + fh - 16, fw - 4, 10, (24, 24, 28))       # engine cover louvres
+    for yy in range(y + fh - 15, y + fh - 6, 2):
+        t.rect(x + 3, yy, fw - 6, 1, (60, 60, 66))
+    x, y, fw, fh = f["bottom"]
+    t.rect(x, y, fw, fh, DARK)
+    for side in ("west", "east"):
+        x, y, fw, fh = f[side]
+        t.rect(x, y, fw, fh, color)
+        t.rect(x, y + fh - 1, fw, 1, (20, 20, 22))             # carbon side skirt
+        front_right = side == "west"
+        for dist in (13, d - 13):
+            cx = x + (fw - dist if front_right else dist)
+            for yy in range(fh - 5, fh):
+                for xx in range(cx - 6, cx + 6):
+                    t.put(xx, y + yy, DARK, 2)
+        # big side air intake in front of the rear wheel
+        ix = x + (fw - d + 18 if front_right else d - 30)
+        for i in range(10):
+            t.rect(ix + i, y + 1 + i // 3, 1, fh - 3 - i // 3, (18, 18, 20), 1)
+        t.rect(x, y + 1, fw, 1, shade(color, 1.2))
+        t.rect(x + 4, y + fh // 2, fw - 8, 1, stripe)
+    x, y, fw, fh = f["front"]
+    t.rect(x, y, fw, fh, color)
+    t.rect(x + 1, y + 1, 6, 1, LED, 0)                          # slim LED headlights
+    t.rect(x + fw - 7, y + 1, 6, 1, LED, 0)
+    t.rect(x + 1, y + 2, 2, 1, LED, 0)
+    t.rect(x + fw - 3, y + 2, 2, 1, LED, 0)
+    t.rect(x + 7, y + 3, fw - 14, fh - 4, (18, 18, 20))         # low intake
+    t.rect(x, y + fh - 1, fw, 1, (20, 20, 22))                 # splitter
+    x, y, fw, fh = f["back"]
+    t.rect(x, y, fw, fh, color)
+    t.rect(x + 1, y + 1, fw - 2, 1, TAIL_LED, 0)                # full-width LED tail strip
+    t.rect(x + 3, y + 3, fw - 6, fh - 4, (18, 18, 20))          # diffuser
+    for xx in range(x + 4, x + fw - 4, 3):
+        t.rect(xx, y + 3, 1, fh - 4, (60, 60, 66))
+    t.rect(x + fw // 2 - 5, y + fh - 3, 3, 2, (150, 150, 158), 0)  # quad exhaust
+    t.rect(x + fw // 2 + 2, y + fh - 3, 3, 2, (150, 150, 158), 0)
+
+    f = faces(0, CABIN_V, cw, ch, cd)
+    tint = (18, 26, 34)
+    tint_hi = (70, 96, 120)
+    for name, (x, y, fw, fh) in f.items():
+        if name == "top":
+            t.rect(x, y, fw, fh, color)
+            t.rect(x + fw // 2 - 4, y, 3, fh, stripe)
+            t.rect(x + fw // 2 + 1, y, 3, fh, stripe)
+        elif name == "bottom":
+            t.rect(x, y, fw, fh, DARK)
+        else:
+            t.rect(x, y, fw, fh, color)
+            t.rect(x + 1, y + 1, fw - 2, fh - 1, tint)
+            t.rect(x + 2, y + 1, fw // 3, 1, tint_hi)
+
+    u, v = SPOILER_UV
+    for name, (x, y, fw, fh) in faces(u, v, 26, 2, 6).items():
+        t.rect(x, y, fw, fh, (26, 26, 30))
+        if name == "top":
+            t.rect(x, y + fh - 1, fw, 1, stripe)
+    u, v = STAND_UV
+    for name, (x, y, fw, fh) in faces(u, v, 2, 3, 2).items():
+        t.rect(x, y, fw, fh, (40, 40, 44))
+
+
+def make_super(color_name, stripe, seed):
+    t = Tex(seed)
+    paint_super(t, COLORS[color_name], stripe)
+    paint_wheels(t)
+    paint_bumper(t, SHAPES["super"][0][0])
+    paint_lightbar(t, "police")
+    # darker, sportier rims
+    u, v = WHEEL_UV
+    for name, (x, y, fw, fh) in faces(u, v, 4, 10, 10).items():
+        if name in ("west", "east"):
+            cx, cy = x + 5, y + 5
+            for yy in range(y, y + fh):
+                for xx in range(x, x + fw):
+                    r = ((xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2) ** 0.5
+                    if 1.2 < r < 3.8:
+                        spoke = (int((xx - cx) * 3 + (yy - cy)) % 3) == 0
+                        t.put(xx, yy, (40, 40, 44) if spoke else (200, 204, 210), 2)
+                    elif r <= 1.2:
+                        t.put(xx, yy, (220, 30, 30), 0)
+    return t.img
+
+
+# ---------------------------------------------------------------- helicopter (texture 256x128)
+HELI_W, HELI_H = 256, 128
+# part: (u, v, w, h, d) -- keep in sync with HelicopterModel.java
+HELI_PARTS = {
+    "body": (0, 0, 22, 16, 36), "nose": (0, 56, 18, 12, 8), "boom": (120, 0, 6, 6, 40),
+    "fin": (120, 50, 2, 14, 8), "skid": (0, 80, 2, 2, 40), "strut": (90, 80, 2, 4, 2),
+    "mast": (100, 80, 4, 4, 4), "blade": (0, 100, 55, 1, 5), "tail_blade": (120, 80, 1, 16, 3),
+}
+
+
+def heli_texture():
+    img = Image.new("RGBA", (HELI_W, HELI_H), (0, 0, 0, 0))
+    t = Tex(77)
+    t.img = img
+    navy, white, glass = (26, 36, 76), (232, 234, 240), (40, 70, 100)
+
+    def part(name, fill):
+        u, v, w, h, d = HELI_PARTS[name]
+        fl = faces(u, v, w, h, d)
+        for fname, (x, y, fw, fh) in fl.items():
+            fill(fname, x, y, fw, fh)
+
+    def body(fname, x, y, fw, fh):
+        if fname == "top":
+            t.rect(x, y, fw, fh, white)
+        elif fname == "bottom":
+            t.rect(x, y, fw, fh, navy)
+        else:
+            t.rect(x, y, fw, fh, navy)
+            t.rect(x, y, fw, fh // 3, white)                     # white upper half
+            t.rect(x, y + fh // 3, fw, 1, (200, 170, 40), 0)     # gold stripe
+            if fname in ("west", "east"):
+                t.rect(x + fw // 3, y + 2, fw // 3, fh // 2, (14, 14, 18))   # open door
+                t.rect(x + 2, y + 2, fw // 5, fh // 3, glass)
+                t.rect(x + fw - fw // 5 - 2, y + 2, fw // 5, fh // 3, glass)
+            if fname == "front":
+                t.rect(x + 2, y + 1, fw - 4, fh // 2, glass)
+    part("body", body)
+
+    def nose(fname, x, y, fw, fh):
+        t.rect(x, y, fw, fh, navy)
+        if fname in ("top", "front", "west", "east"):
+            t.rect(x + 1, y + 1, fw - 2, fh // 2 + 1, glass)
+            t.rect(x + 2, y + 1, fw // 3, 1, (120, 170, 210))
+    part("nose", nose)
+    part("boom", lambda f, x, y, fw, fh: (t.rect(x, y, fw, fh, navy), t.rect(x, y, fw, 1, white)))
+    part("fin", lambda f, x, y, fw, fh: (t.rect(x, y, fw, fh, navy), t.rect(x, y, fw, 2, (220, 30, 30), 0)))
+    for name in ("skid", "strut", "mast"):
+        part(name, lambda f, x, y, fw, fh: t.rect(x, y, fw, fh, (50, 52, 58)))
+    part("blade", lambda f, x, y, fw, fh: (t.rect(x, y, fw, fh, (30, 30, 34)), t.rect(x, y, 3, fh, (230, 200, 40), 0)))
+    part("tail_blade", lambda f, x, y, fw, fh: t.rect(x, y, fw, fh, (30, 30, 34)))
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     seed = 0
@@ -220,6 +380,11 @@ def main():
             seed += 1
     make("sedan", "white", 99, "police").save(os.path.join(OUT, "police.png"))
     make("sedan", "yellow", 98, "taxi").save(os.path.join(OUT, "taxi.png"))
+    for i, (name, (color, stripe)) in enumerate(SUPER.items()):
+        make_super(color, stripe, 200 + i).save(os.path.join(OUT, "super_%s.png" % name))
+    heli_dir = os.path.join(OUT, "..", "helicopter")
+    os.makedirs(heli_dir, exist_ok=True)
+    heli_texture().save(os.path.join(heli_dir, "police.png"))
 
 
 if __name__ == "__main__":

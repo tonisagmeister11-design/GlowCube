@@ -1,8 +1,10 @@
 package de.gtacity.shop;
 
+import de.gtacity.registry.ModSounds;
 import de.gtacity.entity.CarEntity;
 import de.gtacity.entity.CarVariant;
 import de.gtacity.gameplay.Economy;
+import de.gtacity.gameplay.Garage;
 import de.gtacity.registry.ModEntities;
 import de.gtacity.registry.ModItems;
 import net.minecraft.ChatFormatting;
@@ -80,7 +82,13 @@ public final class ShopCatalog {
                     Offer.car("Sportwagen (rot)", 95000, CarVariant.SPORTS_RED),
                     Offer.car("Sportwagen (gelb)", 95000, CarVariant.SPORTS_YELLOW),
                     Offer.car("Sportwagen (schwarz)", 95000, CarVariant.SPORTS_BLACK),
-                    Offer.car("Sportwagen (lime)", 110000, CarVariant.SPORTS_LIME));
+                    Offer.car("Sportwagen (lime)", 110000, CarVariant.SPORTS_LIME),
+                    Offer.car("Supersport Furia (rot)", 240000, CarVariant.SUPER_RED),
+                    Offer.car("Supersport Furia (orange)", 240000, CarVariant.SUPER_ORANGE),
+                    Offer.car("Supersport Furia (grün)", 260000, CarVariant.SUPER_LIME),
+                    Offer.car("Supersport Furia (perlweiß)", 280000, CarVariant.SUPER_PEARL),
+                    Offer.car("Supersport Furia (magenta)", 280000, CarVariant.SUPER_MAGENTA),
+                    Offer.car("Supersport Furia Carbon", 350000, CarVariant.SUPER_CARBON));
         }
         return switch (type) {
             case WEAPONS -> weapons;
@@ -109,8 +117,13 @@ public final class ShopCatalog {
                 Vec3 spot = player.position().add(player.getLookAngle().multiply(1, 0, 1).normalize().scale(4.0));
                 car.setVariant(offer.car());
                 car.setPersistentCar(true);
+                car.setOwner(player.getUUID());
                 car.snapTo(spot.x, player.getY() + 0.5, spot.z, player.getYRot(), 0.0F);
                 level.addFreshEntity(car);
+                Garage.add(player, offer.car());
+                Garage.delivered(player, car);
+                player.sendSystemMessage(Component.literal("Das Auto gehört dir. Du kannst es jederzeit über die "
+                        + "Karte (M) → Garage liefern lassen.").withStyle(ChatFormatting.GRAY));
             }
         } else {
             ItemStack stack = new ItemStack(offer.item(), offer.count());
@@ -118,8 +131,8 @@ public final class ShopCatalog {
                 player.drop(stack, false, Prediction.SERVER_ONLY);
             }
         }
-        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.EXPERIENCE_ORB_PICKUP,
-                SoundSource.PLAYERS, 0.8F, 0.8F);
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.CASH,
+                SoundSource.PLAYERS, 0.8F, 1.0F);
         player.sendOverlayMessage(Component.literal("Gekauft: " + offer.name() + " für "
                 + Economy.format(offer.price())).withStyle(ChatFormatting.GREEN));
     }

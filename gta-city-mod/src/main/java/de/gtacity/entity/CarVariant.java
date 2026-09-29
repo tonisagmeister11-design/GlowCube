@@ -21,7 +21,14 @@ public enum CarVariant {
     SUV_DARKGREEN(Shape.SUV, "suv_darkgreen"),
     SUV_NAVY(Shape.SUV, "suv_navy"),
     POLICE(Shape.SEDAN, "police"),
-    TAXI(Shape.SEDAN, "taxi");
+    TAXI(Shape.SEDAN, "taxi"),
+    // New variants go at the end: saved cars store the ordinal.
+    SUPER_RED(Shape.SUPER, "super_red"),
+    SUPER_ORANGE(Shape.SUPER, "super_orange"),
+    SUPER_LIME(Shape.SUPER, "super_lime"),
+    SUPER_PEARL(Shape.SUPER, "super_pearl"),
+    SUPER_CARBON(Shape.SUPER, "super_carbon"),
+    SUPER_MAGENTA(Shape.SUPER, "super_magenta");
 
     public final Shape shape;
     public final String texture;
@@ -40,11 +47,15 @@ public enum CarVariant {
         return all[Math.floorMod(id, all.length)];
     }
 
-    /** Car body types with their driving stats (speeds in blocks per tick). */
+    /**
+     * Car body types with their driving stats. Speeds are in blocks per tick: 1 block/tick = 72 km/h, so the
+     * supercar's 4.2 is about 300 km/h.
+     */
     public enum Shape {
-        SEDAN("Limousine", 1.0F, 0.020F, 4.2F, 60.0F, 1.7F),
-        SPORTS("Sportwagen", 1.55F, 0.032F, 4.8F, 50.0F, 1.5F),
-        SUV("SUV", 0.95F, 0.018F, 3.6F, 90.0F, 1.9F);
+        SEDAN("Limousine", 1.4F, 0.024F, 4.2F, 60.0F, 1.7F),
+        SPORTS("Sportwagen", 2.5F, 0.045F, 4.8F, 55.0F, 1.5F),
+        SUV("SUV", 1.3F, 0.022F, 3.6F, 90.0F, 1.9F),
+        SUPER("Supersportwagen", 4.2F, 0.075F, 5.0F, 65.0F, 1.3F);
 
         public final String label;
         public final float maxSpeed;

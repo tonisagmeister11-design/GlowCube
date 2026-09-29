@@ -3,6 +3,7 @@ package de.gtacity.registry;
 import de.gtacity.GtaCity;
 import de.gtacity.entity.CarEntity;
 import de.gtacity.entity.GrenadeEntity;
+import de.gtacity.entity.HelicopterEntity;
 import de.gtacity.entity.NpcEntity;
 import de.gtacity.entity.PoliceEntity;
 import de.gtacity.entity.RocketEntity;
@@ -27,6 +28,9 @@ public final class ModEntities {
                     .clientTrackingRange(10));
     public static final EntityType<CarEntity> CAR = register("car",
             EntityType.Builder.of(CarEntity::new, MobCategory.MISC).sized(2.3F, 1.5F).clientTrackingRange(10)
+                    .updateInterval(1));
+    public static final EntityType<HelicopterEntity> HELICOPTER = register("helicopter",
+            EntityType.Builder.of(HelicopterEntity::new, MobCategory.MISC).sized(3.2F, 2.6F).clientTrackingRange(16)
                     .updateInterval(1));
     public static final EntityType<RocketEntity> ROCKET = register("rocket",
             EntityType.Builder.<RocketEntity>of(RocketEntity::new, MobCategory.MISC).sized(0.4F, 0.4F)

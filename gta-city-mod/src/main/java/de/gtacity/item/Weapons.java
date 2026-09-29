@@ -2,11 +2,12 @@ package de.gtacity.item;
 
 import de.gtacity.block.GasPumpBlock;
 import de.gtacity.entity.CarEntity;
+import de.gtacity.entity.HelicopterEntity;
 import de.gtacity.entity.NpcEntity;
 import de.gtacity.entity.RocketEntity;
-import de.gtacity.gameplay.WantedSystem;
 import de.gtacity.network.ModNetworking;
 import de.gtacity.registry.ModComponents;
+import de.gtacity.registry.ModSounds;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.BlockParticleOption;
@@ -14,7 +15,6 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
@@ -70,8 +70,8 @@ public final class Weapons {
         int ammo = GunItem.ammo(stack);
         if (ammo <= 0) {
             if (!reload(player)) {
-                level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.DISPENSER_FAIL,
-                        SoundSource.PLAYERS, 0.5F, 2.0F);
+                level.playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.DRY_FIRE,
+                        SoundSource.PLAYERS, 0.8F, 1.0F);
             }
             return;
         }
@@ -99,7 +99,6 @@ public final class Weapons {
         }
         playShot(level, player, type);
         NpcEntity.scare(level, player.position(), 28.0, player);
-        WantedSystem.onGunfire(player);
         if (ammo - 1 <= 0 && !player.getAbilities().instabuild) {
             reload(player);
         }
@@ -126,7 +125,7 @@ public final class Weapons {
         stack.set(ModComponents.AMMO, have + taken);
         player.getCooldowns().addCooldown(stack, type.reloadTicks);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-                SoundEvents.CROSSBOW_LOADING_MIDDLE.value(), SoundSource.PLAYERS, 1.0F, 1.3F);
+                ModSounds.RELOAD, SoundSource.PLAYERS, 1.0F, 0.9F + player.getRandom().nextFloat() * 0.2F);
         return true;
     }
 
@@ -140,7 +139,7 @@ public final class Weapons {
         Vec3 dir = spread(aim.subtract(eye).normalize(), spreadDegrees, shooter.getRandom());
         hitscan(level, shooter, eye, dir, damage, 60, false);
         level.playSound(null, shooter.getX(), shooter.getY(), shooter.getZ(),
-                SoundEvents.FIREWORK_ROCKET_LARGE_BLAST, SoundSource.HOSTILE, 1.6F, 1.6F);
+                ModSounds.GUN_PISTOL, SoundSource.HOSTILE, 3.0F, 0.9F + shooter.getRandom().nextFloat() * 0.2F);
         NpcEntity.scare(level, shooter.position(), 20.0, null);
     }
 
@@ -180,6 +179,11 @@ public final class Weapons {
                 ? level.damageSources().playerAttack(p)
                 : level.damageSources().mobAttack(shooter);
         float amount = damage;
+        if (target instanceof HelicopterEntity heli) {
+            heli.damage(level, amount);
+            level.sendParticles(ParticleTypes.CRIT, at.x, at.y, at.z, 6, 0.1, 0.1, 0.1, 0.2);
+            return;
+        }
         if (target instanceof CarEntity car) {
             car.damageCar(level, source, amount);
             level.sendParticles(ParticleTypes.CRIT, at.x, at.y, at.z, 6, 0.1, 0.1, 0.1, 0.2);
@@ -214,17 +218,11 @@ public final class Weapons {
     }
 
     private static void playShot(ServerLevel level, ServerPlayer player, GunType type) {
-        float pitch = type.pitch + (player.getRandom().nextFloat() - 0.5F) * 0.1F;
-        switch (type) {
-            case SHOTGUN -> level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.GENERIC_EXPLODE.value(), SoundSource.PLAYERS, 0.8F, 1.9F);
-            case RPG -> level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.FIREWORK_ROCKET_LAUNCH, SoundSource.PLAYERS, 2.0F, 0.6F);
-            case SMG, MINIGUN -> level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.FIREWORK_ROCKET_BLAST, SoundSource.PLAYERS, 1.4F, pitch);
-            default -> level.playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.FIREWORK_ROCKET_LARGE_BLAST, SoundSource.PLAYERS, 2.0F, pitch);
-        }
+        // Loud enough to be heard a few streets away (every volume step above 1 adds 16 blocks of range).
+        float volume = type == GunType.SNIPER || type == GunType.RPG ? 5.0F : type == GunType.SMG ? 2.5F : 3.5F;
+        float pitch = 0.94F + player.getRandom().nextFloat() * 0.12F;
+        level.playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.shot(type), SoundSource.PLAYERS,
+                volume, pitch);
         float recoil = switch (type) {
             case SNIPER -> 4.0F;
             case SHOTGUN -> 5.0F;

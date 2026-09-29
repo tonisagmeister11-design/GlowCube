@@ -79,7 +79,8 @@ public final class CityHud {
 
         // speedometer
         if (player.getVehicle() instanceof CarEntity car) {
-            int kmh = Math.round(Math.abs(car.speed) * 20.0F * 3.6F);
+            float blocksPerTick = car.getControllingPassenger() == player ? car.speed : car.measuredSpeed;
+            int kmh = Math.round(Math.abs(blocksPerTick) * 20.0F * 3.6F);
             String speed = kmh + " km/h";
             g.pose().pushMatrix();
             g.pose().scale(2.0F, 2.0F);
@@ -91,6 +92,13 @@ public final class CityHud {
                     car.healthFraction() < 0.3F ? 0xFFFF5050 : 0xFFB0B0B0, true);
         }
 
-        Minimap.render(g, mc, player, 8, height - 8 - Minimap.SIZE);
+        Minimap.render(g, mc, player, 8, height - 8 - Minimap.HEIGHT, delta.getGameTimeDeltaPartialTick(true));
+
+        // Current job goal under the money.
+        ModAttachments.Mission mission = player.getAttached(ModAttachments.MISSION);
+        if (mission != null) {
+            String line = "Job: " + mission.label();
+            g.text(font, line, width - 8 - font.width(line), 64, 0xFFFFD020, true);
+        }
     }
 }

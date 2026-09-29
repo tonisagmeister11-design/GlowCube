@@ -1,0 +1,104 @@
+{
+  "gun_pistol": {
+    "sounds": [
+      "gtacity:gun_pistol"
+    ],
+    "subtitle": "subtitles.gtacity.gun_pistol"
+  },
+  "gun_smg": {
+    "sounds": [
+      "gtacity:gun_smg"
+    ],
+    "subtitle": "subtitles.gtacity.gun_smg"
+  },
+  "gun_rifle": {
+    "sounds": [
+      "gtacity:gun_rifle"
+    ],
+    "subtitle": "subtitles.gtacity.gun_rifle"
+  },
+  "gun_shotgun": {
+    "sounds": [
+      "gtacity:gun_shotgun"
+    ],
+    "subtitle": "subtitles.gtacity.gun_shotgun"
+  },
+  "gun_sniper": {
+    "sounds": [
+      "gtacity:gun_sniper"
+    ],
+    "subtitle": "subtitles.gtacity.gun_sniper"
+  },
+  "gun_minigun": {
+    "sounds": [
+      "gtacity:gun_minigun"
+    ],
+    "subtitle": "subtitles.gtacity.gun_minigun"
+  },
+  "rpg_launch": {
+    "sounds": [
+      "gtacity:rpg_launch"
+    ],
+    "subtitle": "subtitles.gtacity.rpg_launch"
+  },
+  "explosion": {
+    "sounds": [
+      "gtacity:explosion"
+    ],
+    "subtitle": "subtitles.gtacity.explosion"
+  },
+  "reload": {
+    "sounds": [
+      "gtacity:reload"
+    ],
+    "subtitle": "subtitles.gtacity.reload"
+  },
+  "dry_fire": {
+    "sounds": [
+      "gtacity:dry_fire"
+    ],
+    "subtitle": "subtitles.gtacity.dry_fire"
+  },
+  "horn": {
+    "sounds": [
+      "gtacity:horn"
+    ],
+    "subtitle": "subtitles.gtacity.horn"
+  },
+  "engine": {
+    "sounds": [
+      "gtacity:engine"
+    ],
+    "subtitle": "subtitles.gtacity.engine"
+  },
+  "engine_super": {
+    "sounds": [
+      "gtacity:engine_super"
+    ],
+    "subtitle": "subtitles.gtacity.engine_super"
+  },
+  "siren": {
+    "sounds": [
+      "gtacity:siren"
+    ],
+    "subtitle": "subtitles.gtacity.siren"
+  },
+  "heli_rotor": {
+    "sounds": [
+      "gtacity:heli_rotor"
+    ],
+    "subtitle": "subtitles.gtacity.heli_rotor"
+  },
+  "skid": {
+    "sounds": [
+      "gtacity:skid"
+    ],
+    "subtitle": "subtitles.gtacity.skid"
+  },
+  "cash": {
+    "sounds": [
+      "gtacity:cash"
+    ],
+    "subtitle": "subtitles.gtacity.cash"
+  }
+}

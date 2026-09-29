@@ -162,9 +162,6 @@ public class NpcEntity extends PathfinderMob {
         boolean hurt = super.hurtServer(level, source, amount);
         if (hurt) {
             Entity attacker = source.getEntity();
-            if (attacker instanceof Player player) {
-                WantedSystem.onNpcHurt(player, this);
-            }
             if (attacker != null && !brave) {
                 panic(attacker.position(), 200);
             }

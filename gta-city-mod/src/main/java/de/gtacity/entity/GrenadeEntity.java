@@ -1,5 +1,6 @@
 package de.gtacity.entity;
 
+import de.gtacity.registry.ModSounds;
 import de.gtacity.registry.ModEntities;
 import de.gtacity.registry.ModItems;
 import net.minecraft.core.particles.ParticleTypes;
@@ -38,6 +39,7 @@ public class GrenadeEntity extends ThrowableItemProjectile {
             level().addParticle(ParticleTypes.SMOKE, getX(), getY() + 0.1, getZ(), 0, 0.01, 0);
         } else if (tickCount >= FUSE && level() instanceof ServerLevel level) {
             level.explode(this, getX(), getY(), getZ(), 3.5F, false, Level.ExplosionInteraction.NONE);
+            ModSounds.boom(level, getX(), getY(), getZ());
             NpcEntity.scare(level, position(), 25.0, getOwner() instanceof LivingEntity l ? l : null);
             discard();
         }

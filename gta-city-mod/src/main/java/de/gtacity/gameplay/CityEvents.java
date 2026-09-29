@@ -5,6 +5,10 @@ import de.gtacity.block.BankVaultBlock;
 import de.gtacity.block.ElevatorBlock;
 import de.gtacity.block.ShopCounterBlock;
 import de.gtacity.entity.CarEntity;
+import de.gtacity.entity.NpcEntity;
+import de.gtacity.shop.ShopType;
+import net.fabricmc.fabric.api.event.player.UseEntityCallback;
+import net.minecraft.world.InteractionHand;
 import de.gtacity.item.GunItem;
 import de.gtacity.registry.ModAttachments;
 import de.gtacity.registry.ModItems;
@@ -40,10 +44,28 @@ public final class CityEvents {
             WantedSystem.tick(server);
             CitySpawns.tick(server);
             Heists.tick(server);
+            Jobs.tick(server);
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> onJoin(handler.getPlayer()));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> WantedSystem.forget(handler.getPlayer()));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            WantedSystem.forget(handler.getPlayer());
+            PoliceDispatch.forget(handler.getPlayer());
+            Jobs.forget(handler.getPlayer());
+            Garage.forget(handler.getPlayer());
+        });
+
+        // Pickpocketing: sneak up to a pedestrian and right click with an empty hand.
+        UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+            if (hand != InteractionHand.MAIN_HAND || !player.isShiftKeyDown() || !player.getMainHandItem().isEmpty()
+                    || !(entity instanceof NpcEntity npc)) {
+                return InteractionResult.PASS;
+            }
+            if (player instanceof ServerPlayer serverPlayer) {
+                return Jobs.pickpocket(serverPlayer, npc) ? InteractionResult.SUCCESS : InteractionResult.PASS;
+            }
+            return InteractionResult.SUCCESS;
+        });
 
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer player) {
@@ -62,10 +84,18 @@ public final class CityEvents {
         // Guns: right click aims, it must not open doors or place blocks
         UseBlockCallback.EVENT.register((player, level, hand, hit) -> {
             ItemStack stack = player.getItemInHand(hand);
+            Block block = level.getBlockState(hit.getBlockPos()).getBlock();
+            // Shoplifting: sneak + right click the 24/7 counter with an empty hand.
+            if (block instanceof ShopCounterBlock counter && counter.type() == ShopType.STORE
+                    && player.isShiftKeyDown() && hand == InteractionHand.MAIN_HAND && stack.isEmpty()) {
+                if (player instanceof ServerPlayer serverPlayer) {
+                    Jobs.shoplift(serverPlayer, hit.getBlockPos());
+                }
+                return InteractionResult.SUCCESS;
+            }
             if (!(stack.getItem() instanceof GunItem)) {
                 return InteractionResult.PASS;
             }
-            Block block = level.getBlockState(hit.getBlockPos()).getBlock();
             // Hold-up: sneak + right click on a counter. Vanilla skips block interactions while sneaking with
             // something in hand, so the counter itself never hears about it - it has to happen here.
             if (block instanceof ShopCounterBlock counter && player.isShiftKeyDown()) {
@@ -121,7 +151,8 @@ public final class CityEvents {
         player.sendSystemMessage(Component.literal("Willkommen in Los Santos!").withStyle(ChatFormatting.GOLD,
                 ChatFormatting.BOLD));
         player.sendSystemMessage(Component.literal("Waffen: Linksklick schießen, Rechtsklick zielen, R nachladen. "
-                + "Autos: Rechtsklick einsteigen, WASD fahren, H hupen, Shift aussteigen. "
+                + "Autos: F oder Rechtsklick einsteigen, WASD fahren, Shift driften, H hupen, F aussteigen. "
+                + "M: Karte mit Navi, Jobs, Garage und Villen. "
                 + "Läden: Rechtsklick auf die Theke. Überfall: Schleichen + Rechtsklick mit Waffe.")
                 .withStyle(ChatFormatting.GRAY));
     }

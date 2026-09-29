@@ -4,6 +4,8 @@ import de.gtacity.GtaCity;
 import de.gtacity.client.hud.CityHud;
 import de.gtacity.client.render.CarModel;
 import de.gtacity.client.render.CarRenderer;
+import de.gtacity.client.render.HelicopterModel;
+import de.gtacity.client.render.HelicopterRenderer;
 import de.gtacity.client.render.NpcRenderer;
 import de.gtacity.client.screen.ShopScreen;
 import de.gtacity.entity.CarVariant;
@@ -37,6 +39,8 @@ public class GtaCityClient implements ClientModInitializer {
         EntityRenderers.register(ModEntities.PEDESTRIAN, NpcRenderer::new);
         EntityRenderers.register(ModEntities.POLICE, NpcRenderer::new);
         EntityRenderers.register(ModEntities.CAR, CarRenderer::new);
+        ModelLayerRegistry.registerModelLayer(HelicopterModel.LAYER, HelicopterModel::create);
+        EntityRenderers.register(ModEntities.HELICOPTER, HelicopterRenderer::new);
         EntityRenderers.register(ModEntities.ROCKET, ThrownItemRenderer::new);
         EntityRenderers.register(ModEntities.GRENADE, ThrownItemRenderer::new);
 

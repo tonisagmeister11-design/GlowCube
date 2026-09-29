@@ -1,11 +1,14 @@
 package de.gtacity.entity;
 
+import de.gtacity.registry.ModSounds;
 import de.gtacity.gameplay.PoliceDispatch;
 import de.gtacity.gameplay.WantedSystem;
+import de.gtacity.registry.ModSounds;
 import net.minecraft.server.level.ServerPlayer;
 import de.gtacity.world.CityLayout;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -36,6 +39,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * A drivable car. Players drive it with WASD (client authoritative, like boats). Without a player it can be
@@ -48,6 +52,12 @@ public class CarEntity extends Entity {
             SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Boolean> SIREN =
             SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DRIFT =
+            SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.BOOLEAN);
+
+    /** Set by the client: reports crashes of the player's own car (the client drives it) to the server. */
+    public static java.util.function.Consumer<Float> crashReporter = amount -> {
+    };
 
     private static final float CRUISE_SPEED = 0.42F;
     private static final float TURN_SPEED = 0.24F;
@@ -56,6 +66,12 @@ public class CarEntity extends Entity {
     public float steer;
     public float wheelRot;
     public float prevWheelRot;
+    /** Speed measured from the actual movement - works on every side, also for cars someone else drives. */
+    public float measuredSpeed;
+
+    private Vec3 slide = Vec3.ZERO;
+    private Vec3 lastMotion = Vec3.ZERO;
+    private @Nullable Vec3 lastPos;
 
     private boolean aiDriving;
     private boolean persistentCar;
@@ -77,6 +93,7 @@ public class CarEntity extends Entity {
         builder.define(VARIANT, 0);
         builder.define(HEALTH, 60.0F);
         builder.define(SIREN, false);
+        builder.define(DRIFT, false);
     }
 
     public CarVariant getVariant() {
@@ -102,6 +119,11 @@ public class CarEntity extends Entity {
 
     public void setSiren(boolean on) {
         entityData.set(SIREN, on);
+    }
+
+    /** The driver pulls the handbrake at speed - tyres squeal and smoke. */
+    public boolean isDrifting() {
+        return entityData.get(DRIFT);
     }
 
     public void setAiDriving(boolean ai, Direction heading) {
@@ -138,11 +160,23 @@ public class CarEntity extends Entity {
 
     private @Nullable ServerPlayer pursuit;
 
+    /** Bought cars belong to a player; the chop shop does not take them. */
+    private @Nullable UUID owner;
+
+    public void setOwner(@Nullable UUID owner) {
+        this.owner = owner;
+    }
+
+    public boolean isOwnedBy(Player player) {
+        return player.getUUID().equals(owner);
+    }
+
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         entityData.set(VARIANT, input.getIntOr("Variant", 0));
         entityData.set(HEALTH, input.getFloatOr("Health", getVariant().shape.health));
         persistentCar = input.getBooleanOr("PersistentCar", true);
+        owner = input.read("Owner", UUIDUtil.CODEC).orElse(null);
     }
 
     @Override
@@ -150,6 +184,7 @@ public class CarEntity extends Entity {
         output.putInt("Variant", entityData.get(VARIANT));
         output.putFloat("Health", getHealth());
         output.putBoolean("PersistentCar", persistentCar);
+        output.storeNullable("Owner", UUIDUtil.CODEC, owner);
     }
 
     @Override
@@ -284,6 +319,7 @@ public class CarEntity extends Entity {
         exploded = true;
         ejectPassengers();
         level.explode(this, getX(), getY() + 0.6, getZ(), 3.5F, true, Level.ExplosionInteraction.NONE);
+        ModSounds.boom(level, getX(), getY() + 0.6, getZ());
         discardWithPassengers();
     }
 
@@ -303,24 +339,43 @@ public class CarEntity extends Entity {
     public void tick() {
         super.tick();
         prevWheelRot = wheelRot;
-        if (isLocalInstanceAuthoritative()) {
+        boolean authoritative = isLocalInstanceAuthoritative();
+        if (authoritative) {
             float throttle = 0.0F, turn = 0.0F;
+            boolean handbrake = false;
             LivingEntity driver = getControllingPassenger();
             if (driver != null) {
                 throttle = driver.zza;
                 turn = driver.xxa;
+                handbrake = driver.isShiftKeyDown();
             } else if (aiDriving && !level().isClientSide()) {
                 float[] input = aiInput();
                 throttle = input[0];
                 turn = input[1];
             }
-            drive(throttle, turn);
+            drive(throttle, turn, handbrake);
+        }
+        measureSpeed();
+        if (!authoritative) {
+            // Someone else moves the car: keep our physics state in step, so taking over the wheel is seamless.
+            speed = measuredSpeed;
+            slide = lastMotion;
         }
         wheelRot += speed * 45.0F;
 
         if (level() instanceof ServerLevel server) {
             serverTick(server);
-        } else if (healthFraction() < 0.5F) {
+            return;
+        }
+        if (isDrifting()) {
+            // Tyre smoke from both rear wheels.
+            for (int side = -1; side <= 1; side += 2) {
+                Vec3 wheel = new Vec3(side * 0.9, 0.15, -1.6).yRot(-getYRot() * Mth.DEG_TO_RAD);
+                level().addParticle(ParticleTypes.CLOUD, getX() + wheel.x, getY() + wheel.y, getZ() + wheel.z,
+                        (random.nextDouble() - 0.5) * 0.05, 0.03, (random.nextDouble() - 0.5) * 0.05);
+            }
+        }
+        if (healthFraction() < 0.5F) {
             double f = healthFraction() < 0.25F ? 3 : 1;
             for (int i = 0; i < f; i++) {
                 level().addParticle(healthFraction() < 0.25F ? ParticleTypes.FLAME : ParticleTypes.SMOKE,
@@ -330,14 +385,31 @@ public class CarEntity extends Entity {
         }
     }
 
-    private void drive(float throttle, float turn) {
+    private void measureSpeed() {
+        Vec3 pos = position();
+        lastMotion = lastPos == null ? Vec3.ZERO : pos.subtract(lastPos).multiply(1, 0, 1);
+        lastPos = pos;
+        Vec3 forward = Vec3.directionFromRotation(0.0F, getYRot());
+        float moved = (float) lastMotion.horizontalDistance();
+        measuredSpeed = lastMotion.dot(forward) < 0 ? -moved : moved;
+    }
+
+    private void drive(float throttle, float turn, boolean handbrake) {
         CarVariant.Shape shape = getVariant().shape;
         if (isInWater()) {
             throttle = 0.0F;
             speed *= 0.8F;
         }
-        if (throttle > 0.01F) {
-            speed += speed < 0 ? 0.06F : shape.accel * throttle;
+        if (handbrake) {
+            // Handbrake: the rear wheels lock, the car slides on and turns much sharper. Gas keeps a power slide going.
+            speed *= Math.abs(speed) > 0.25F ? 0.994F : 0.88F;
+            if (throttle > 0.01F && speed > 0.25F) {
+                speed += shape.accel * 0.3F * throttle;
+            }
+        } else if (throttle > 0.01F) {
+            // Pulls hard from standstill and gets slower towards top speed.
+            float falloff = 1.0F - 0.65F * Math.max(0.0F, speed) / shape.maxSpeed;
+            speed += speed < 0 ? 0.06F : shape.accel * throttle * falloff;
         } else if (throttle < -0.01F) {
             speed -= speed > 0 ? 0.06F : shape.accel * 0.6F;
         } else {
@@ -350,23 +422,41 @@ public class CarEntity extends Entity {
 
         steer += (Mth.clamp(turn, -1.0F, 1.0F) - steer) * 0.35F;
         float grip = Math.min(1.0F, Math.abs(speed) / 0.12F);
-        float yawChange = steer * shape.turn * grip * Math.signum(speed) * (1.0F - Math.abs(speed) / (shape.maxSpeed * 3));
+        boolean sliding = handbrake && Math.abs(speed) > 0.25F;
+        float turnRate = shape.turn * (sliding ? 2.1F : 1.0F);
+        float yawChange = steer * turnRate * grip * Math.signum(speed) * (1.0F - Math.abs(speed) / (shape.maxSpeed * 3));
         setYRot(getYRot() - yawChange);
 
+        // The body turns right away, the actual motion follows it with some delay: almost at once with grip,
+        // slowly while drifting - that is what makes the car slide sideways through the corner.
         Vec3 forward = Vec3.directionFromRotation(0.0F, getYRot());
+        Vec3 wanted = new Vec3(forward.x * speed, 0.0, forward.z * speed);
+        slide = slide.lerp(wanted, sliding ? 0.07 : 0.55);
         double vy = getDeltaMovement().y;
         vy = onGround() ? -0.04 : vy - getGravity();
-        setDeltaMovement(forward.x * speed, vy, forward.z * speed);
-        double before = speed;
+        setDeltaMovement(slide.x, vy, slide.z);
+        double before = slide.horizontalDistance();
         move(MoverType.SELF, getDeltaMovement());
         if (horizontalCollision) {
-            if (Math.abs(before) > 0.45 && level() instanceof ServerLevel server) {
-                damageCar(server, null, (float) Math.abs(before) * 12.0F);
-                level().playSound(null, getX(), getY(), getZ(), SoundEvents.ANVIL_LAND, SoundSource.NEUTRAL,
-                        0.6F, 0.6F);
+            if (before > 0.45) {
+                float damage = (float) before * 12.0F;
+                if (level() instanceof ServerLevel server) {
+                    damageCar(server, null, damage);
+                    level().playSound(null, getX(), getY(), getZ(), SoundEvents.ANVIL_LAND, SoundSource.NEUTRAL,
+                            0.6F, 0.6F);
+                } else {
+                    crashReporter.accept(damage);
+                }
             }
             speed *= -0.15F;
+            slide = slide.scale(-0.15);
         }
+    }
+
+    /** A player's crash, reported by their client (the client drives the car). */
+    public void onReportedCrash(ServerLevel level, float damage) {
+        damageCar(level, null, Math.min(damage, 60.0F));
+        level.playSound(null, getX(), getY(), getZ(), SoundEvents.ANVIL_LAND, SoundSource.NEUTRAL, 0.6F, 0.6F);
     }
 
     private void serverTick(ServerLevel level) {
@@ -374,7 +464,9 @@ public class CarEntity extends Entity {
             explode(level);
             return;
         }
-        if (Math.abs(speed) > 0.18F) {
+        LivingEntity driver = getControllingPassenger();
+        entityData.set(DRIFT, driver != null && driver.isShiftKeyDown() && Math.abs(measuredSpeed) > 0.3F);
+        if (Math.abs(measuredSpeed) > 0.18F) {
             runOver(level);
         }
         if (!persistentCar && getPassengers().stream().noneMatch(p -> p instanceof Player) && tickCount % 40 == 0) {
@@ -383,25 +475,23 @@ public class CarEntity extends Entity {
                 return;
             }
         }
-        if (isSirenOn() && tickCount % 16 == 0) {
-            level.playSound(null, getX(), getY(), getZ(), SoundEvents.NOTE_BLOCK_BIT.value(), SoundSource.NEUTRAL,
-                    1.4F, (tickCount / 16) % 2 == 0 ? 1.5F : 1.1F);
-        }
     }
 
     private void runOver(ServerLevel level) {
-        Vec3 forward = Vec3.directionFromRotation(0.0F, getYRot());
-        AABB box = getBoundingBox().move(forward.scale(Math.signum(speed) * 0.6)).inflate(0.1);
+        float speed = Math.abs(measuredSpeed);
+        Vec3 forward = lastMotion.normalize();
+        // At high speed the car covers several blocks per tick - the hit box has to cover that distance.
+        AABB box = getBoundingBox().expandTowards(lastMotion.scale(-1.0)).move(forward.scale(0.6)).inflate(0.1);
         LivingEntity driver = getControllingPassenger();
         for (LivingEntity victim : level.getEntitiesOfClass(LivingEntity.class, box,
                 e -> e.isAlive() && e.getVehicle() != this && !e.isSpectator())) {
-            float damage = Math.abs(speed) * 28.0F;
+            float damage = speed * 28.0F;
             DamageSource source = driver instanceof Player p ? level.damageSources().playerAttack(p)
                     : level.damageSources().generic();
             victim.hurtServer(level, source, damage);
             victim.push(forward.x * speed * 1.5, 0.35 + Math.abs(speed) * 0.3, forward.z * speed * 1.5);
             victim.syncVelocity = true;
-            speed *= 0.8F;
+            this.speed *= 0.8F;
         }
     }
 
@@ -451,8 +541,8 @@ public class CarEntity extends Entity {
         if (obstacleAhead()) {
             targetSpeed = 0.0F;
             if (++blockedTicks % 60 == 20) {
-                level().playSound(null, getX(), getY(), getZ(), SoundEvents.NOTE_BLOCK_BASS.value(),
-                        SoundSource.NEUTRAL, 1.5F, 0.7F);
+                level().playSound(null, getX(), getY(), getZ(), ModSounds.HORN, SoundSource.NEUTRAL, 1.5F,
+                        0.85F + random.nextFloat() * 0.3F);
             }
         } else {
             blockedTicks = 0;

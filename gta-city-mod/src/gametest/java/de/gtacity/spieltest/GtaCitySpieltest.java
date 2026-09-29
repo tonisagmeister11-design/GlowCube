@@ -1,7 +1,13 @@
 package de.gtacity.spieltest;
 
 import de.gtacity.client.ClientInput;
+import de.gtacity.client.map.Waypoint;
+import de.gtacity.client.screen.CityMapScreen;
 import de.gtacity.client.screen.ShopScreen;
+import de.gtacity.gameplay.Jobs;
+import de.gtacity.network.Payloads;
+import de.gtacity.world.CityMap;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import de.gtacity.entity.CarEntity;
 import de.gtacity.entity.CarVariant;
 import de.gtacity.entity.GrenadeEntity;
@@ -159,6 +165,13 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Autoschaden", () -> carDamage(ctx, server, conn));
             check("Fahren", () -> carHandling(ctx, server, conn));
             check("Autohaus", () -> carDealer(ctx, server, conn));
+            check("Garage", () -> garage(ctx, server, conn));
+            check("Supersportwagen", () -> superCar(ctx, server, conn));
+            check("Karte", () -> map(ctx, server, conn));
+            check("Jobs", () -> jobs(ctx, server, conn));
+            check("Villa", () -> villa(ctx, server, conn));
+            check("Taschendiebstahl", () -> pickpocket(ctx, server, conn));
+            check("Helikopter", () -> helicopter(ctx, server, conn));
             check("Waffenarsenal", () -> allGuns(ctx, server, conn));
             check("Nahkampf", () -> melee(ctx, server, conn));
             check("Umgebung", () -> environment(ctx, server, conn));
@@ -448,8 +461,12 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         double driven = end.distanceTo(start);
         expect(driven > 8.0, "Auto fährt mit W (" + String.format("%.1f", driven) + " Blöcke)");
         ctx.getInput().holdKeyFor(o -> o.keyShift, 5);
+        ctx.waitTicks(5);
+        expect(ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity),
+                "Kurz Shift (Handbremse) wirft nicht aus dem Auto");
+        ctx.getInput().pressKey(o -> o.keySwapOffhand);
         ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
-        expect(ctx.computeOnClient(mc -> mc.player.getVehicle() == null), "Mit Shift ausgestiegen");
+        expect(ctx.computeOnClient(mc -> mc.player.getVehicle() == null), "Mit F ausgestiegen");
         ctx.waitTicks(5);
         expect(ctx.computeOnClient(mc -> mc.options.getCameraType() == CameraType.FIRST_PERSON),
                 "Kamera wieder in der ersten Person");
@@ -489,8 +506,20 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         });
         expect(healthAfter < healthBefore, "Treffer macht Schaden (" + healthBefore + " -> " + healthAfter + ")");
         int wanted = server.computeOnServer(s -> WantedSystem.level(player(s)));
-        expect(wanted >= 1, "Fahndungslevel steigt (" + wanted + " Sterne)");
+        expect(wanted == 0, "Ein Schuss auf einen Passanten bringt noch keine Sterne (" + wanted + ")");
+        // Three dead pedestrians are worth one star.
+        server.runOnServer(s -> {
+            ServerPlayer p = player(s);
+            for (int i = 0; i < 3; i++) {
+                NpcEntity victim = ModEntities.PEDESTRIAN.create(s.overworld(), EntitySpawnReason.COMMAND);
+                victim.snapTo(p.getX() + 3, p.getY(), p.getZ() - 3 - i, 0.0F, 0.0F);
+                s.overworld().addFreshEntity(victim);
+                victim.hurtServer(s.overworld(), s.overworld().damageSources().playerAttack(p), 1000.0F);
+            }
+        });
         ctx.waitTicks(5);
+        wanted = server.computeOnServer(s -> WantedSystem.level(player(s)));
+        expect(wanted >= 1, "Drei getötete Passanten: ein Stern (" + wanted + ")");
         Integer clientWanted = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.WANTED));
         expect(clientWanted != null && clientWanted >= 1, "Sterne kommen im HUD an");
         boolean blockIntact = server.computeOnServer(s -> !s.overworld().getBlockState(
@@ -571,7 +600,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 i -> i.getItem().is(ModItems.CASH)).size());
         int robWanted = server.computeOnServer(s -> WantedSystem.level(player(s)));
         expect(cashAfter > cashBefore, "Überfall: Beute liegt auf der Theke");
-        expect(robWanted >= 2, "Überfall bringt Fahndungssterne (" + robWanted + ")");
+        expect(robWanted >= 1, "Überfall bringt Fahndungssterne (" + robWanted + ")");
         ctx.takeScreenshot("gtacity-07b-ueberfall");
         server.runOnServer(s -> {
             WantedSystem.setLevel(player(s), 0);
@@ -856,7 +885,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         ctx.getInput().pressKey(o -> o.keyAttack);
         ctx.waitTicks(10);
         int afterHit = wanted(server);
-        expect(afterHit >= 2, "Auf einen Polizisten schießen: mindestens 2 Sterne (" + afterHit + ")");
+        expect(afterHit >= 1, "Auf einen Polizisten schießen: mindestens 1 Stern (" + afterHit + ")");
         for (int i = 0; i < 8 && health(server, cop) > 0; i++) {
             ctx.waitTicks(8);
             ctx.getInput().pressKey(o -> o.keyAttack);
@@ -864,7 +893,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         ctx.waitTicks(10);
         int afterKill = wanted(server);
         expect(health(server, cop) == 0, "Polizist geht zu Boden");
-        expect(afterKill >= 3, "Polizist getötet: mindestens 3 Sterne (" + afterKill + ")");
+        expect(afterKill >= 2, "Polizist getötet: mindestens 2 Sterne (" + afterKill + ")");
         server.runCommand("gamemode survival @a");
         reset(server);
     }
@@ -903,9 +932,10 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         });
         expect(inCar, "Rechtsklick auf ein Auto mit Fahrer: Spieler sitzt am Steuer");
         expect(driverOut, "Der Fahrer wird aus dem Auto gezogen");
-        expect(wanted(server) >= 1, "Autoklau bringt einen Stern");
-        ctx.getInput().holdKeyFor(o -> o.keyShift, 5);
+        expect(wanted(server) == 0, "Autoklau ohne Polizei in Sichtweite: keine Sterne (" + wanted(server) + ")");
+        ctx.getInput().pressKey(o -> o.keySwapOffhand);
         ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
+        ctx.waitTicks(10);
         reset(server);
 
         // Stealing a police car is worse.
@@ -947,7 +977,12 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         ctx.getInput().holdKeyFor(o -> o.keyAttack, 20);
         float mid = server.computeOnServer(s -> s.overworld().getEntity(car) instanceof CarEntity c ? c.getHealth() : 0F);
         expect(mid < before, "Schüsse beschädigen das Auto (" + before + " -> " + mid + ")");
-        ctx.getInput().holdKeyFor(o -> o.keyAttack, 80);
+        // Short bursts, aiming again in between: the recoil pulls the gun up.
+        for (int i = 0; i < 10 && server.computeOnServer(s -> s.overworld().getEntity(car) != null); i++) {
+            aim(ctx, new Vec3(x, CityLayout.GROUND + 1.5, z));
+            ctx.getInput().holdKeyFor(o -> o.keyAttack, 10);
+            ctx.waitTicks(5);
+        }
         ctx.waitTicks(20);
         boolean gone = server.computeOnServer(s -> s.overworld().getEntity(car) == null);
         expect(gone, "Zerschossenes Auto explodiert");
@@ -1010,7 +1045,41 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         Vec3 p1 = server.computeOnServer(s -> s.overworld().getEntity(car).position());
         double along = p1.subtract(p0).dot(fwd);
         expect(along < -0.5, "Rückwärtsfahren mit S (" + String.format("%.1f", along) + " Blöcke)");
-        ctx.getInput().holdKeyFor(o -> o.keyShift, 5);
+
+        // Drift: full speed, then Shift + D - the car slides sideways through the corner.
+        ctx.getInput().pressKey(o -> o.keySwapOffhand);
+        ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
+        ctx.waitTicks(5);
+        teleport(server, x + 2.0, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
+        server.runOnServer(s -> {
+            CarEntity c = (CarEntity) s.overworld().getEntity(car);
+            c.snapTo(x, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
+            c.speed = 0.0F;
+        });
+        ctx.waitTicks(5);
+        server.runOnServer(s -> player(s).startRiding(s.overworld().getEntity(car)));
+        ctx.waitFor(mc -> mc.player.getVehicle() instanceof CarEntity, 60);
+        ctx.getInput().holdKey(o -> o.keyUp);
+        ctx.waitTicks(30);
+        ctx.getInput().holdKey(o -> o.keyShift);
+        ctx.getInput().holdKey(o -> o.keyRight);
+        boolean drifting = false, clientSkid = false;
+        for (int i = 0; i < 12; i++) {
+            ctx.waitTicks(2);
+            drifting |= server.computeOnServer(s -> s.overworld().getEntity(car) instanceof CarEntity c
+                    && c.isDrifting());
+            clientSkid |= ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity c && c.isDrifting());
+            if (i == 6) {
+                ctx.takeScreenshot("gtacity-14b-drift");
+            }
+        }
+        ctx.getInput().releaseKey(o -> o.keyRight);
+        ctx.getInput().releaseKey(o -> o.keyShift);
+        ctx.getInput().releaseKey(o -> o.keyUp);
+        ctx.waitTicks(20);
+        expect(drifting && clientSkid, "Shift beim Fahren: Auto driftet (Reifenqualm und Quietschen)");
+        expect(ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity), "Nach dem Drift noch im Auto");
+        ctx.getInput().pressKey(o -> o.keySwapOffhand);
         ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
         server.runOnServer(s -> ((CarEntity) s.overworld().getEntity(car)).despawn());
         reset(server);
@@ -1047,6 +1116,248 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         server.runOnServer(s -> s.overworld().removeBlock(counter, false));
         server.runOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class, player(s).getBoundingBox().inflate(8))
                 .forEach(CarEntity::despawn));
+        reset(server);
+    }
+
+    private void garage(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode survival @a");
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        ctx.waitTicks(10);
+        List<Integer> owned = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.GARAGE));
+        expect(owned != null && !owned.isEmpty(), "Gekauftes Auto steht in der Garage ("
+                + (owned == null ? 0 : owned.size()) + ")");
+        int before = server.computeOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class,
+                player(s).getBoundingBox().inflate(45), c -> c.isOwnedBy(player(s))).size());
+        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.CALL_CAR, 0)));
+        ctx.waitTicks(10);
+        int after = server.computeOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class,
+                player(s).getBoundingBox().inflate(45), c -> c.isOwnedBy(player(s))).size());
+        expect(after >= 1 && after >= before, "Garage: eigenes Auto wird an die Straße geliefert");
+        ctx.takeScreenshot("gtacity-15-garage");
+        server.runOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class,
+                player(s).getBoundingBox().inflate(45), c -> c.isOwnedBy(player(s))).forEach(CarEntity::despawn));
+        reset(server);
+    }
+
+    private void superCar(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode creative @a");
+        double x = 5.5, z = CityLayout.CORRIDOR + 8.5;
+        server.runOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class,
+                new AABB(x - 20, CityLayout.GROUND - 5, z - 10, x + 20, CityLayout.GROUND + 10, z + 900))
+                .forEach(CarEntity::despawn));
+        teleport(server, x + 2.0, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
+        int car = server.computeOnServer(s -> {
+            CarEntity c = ModEntities.CAR.create(s.overworld(), EntitySpawnReason.COMMAND);
+            c.setVariant(CarVariant.SUPER_RED);
+            c.snapTo(x, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
+            s.overworld().addFreshEntity(c);
+            c.interact(player(s), InteractionHand.MAIN_HAND, c.position());
+            return c.getId();
+        });
+        ctx.waitFor(mc -> mc.player.getVehicle() instanceof CarEntity, 60);
+        ctx.waitTicks(10);
+        ctx.takeScreenshot("gtacity-16-supersportwagen");
+        ctx.getInput().holdKey(o -> o.keyUp);
+        float top = 0.0F;
+        for (int i = 0; i < 12; i++) {
+            ctx.waitTicks(10);
+            top = Math.max(top, ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity c
+                    ? Math.abs(c.speed) : 0.0F));
+            if (i == 9) {
+                ctx.takeScreenshot("gtacity-16b-vollgas");
+            }
+        }
+        ctx.getInput().releaseKey(o -> o.keyUp);
+        int kmh = Math.round(top * 72.0F);
+        expect(kmh >= 250, "Supersportwagen schafft fast 300 km/h (" + kmh + " km/h)");
+        ctx.getInput().holdKeyFor(o -> o.keyDown, 60);
+        ctx.getInput().pressKey(o -> o.keySwapOffhand);
+        ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
+        server.runOnServer(s -> {
+            if (s.overworld().getEntity(car) instanceof CarEntity c) {
+                c.despawn();
+            }
+        });
+        server.runCommand("gamemode survival @a");
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        settle(ctx, conn);
+        reset(server);
+    }
+
+    private void map(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        ctx.runOnClient(mc -> Waypoint.clear());
+        expect(CityMap.places().size() > 50, "Karte kennt die Orte der Stadt (" + CityMap.places().size() + ")");
+        ctx.getInput().pressKey(ClientInput.MAP);
+        ctx.waitForScreen(CityMapScreen.class);
+        ok("M öffnet die große Karte");
+        ctx.waitTicks(60); // the map texture is painted in the background
+        ctx.takeScreenshot("gtacity-17-karte");
+        // Click somewhere east of the player: sets the waypoint.
+        ctx.runOnClient(mc -> {
+            var screen = mc.gui.screen();
+            double cx = (124 + screen.width) / 2.0 + 60, cy = (26 + screen.height) / 2.0;
+            var button = new net.minecraft.client.input.MouseButtonEvent(cx, cy,
+                    new net.minecraft.client.input.MouseButtonInfo(1, 0));
+            screen.mouseClicked(button, false);
+            screen.mouseReleased(button);
+        });
+        ctx.waitTicks(5);
+        double[] waypoint = ctx.computeOnClient(mc -> Waypoint.get());
+        expect(waypoint != null, "Klick auf die Karte setzt ein Ziel");
+        ctx.takeScreenshot("gtacity-17b-karte-ziel");
+        ctx.getInput().pressKey(ClientInput.MAP);
+        ctx.waitFor(mc -> mc.gui.screen() == null, 40);
+        ctx.waitTicks(10);
+        ctx.takeScreenshot("gtacity-17c-minimap-route");
+        if (waypoint != null) {
+            List<double[]> route = CityMap.route(spawn.getX(), spawn.getZ(), waypoint[0], waypoint[1]);
+            boolean onStreets = true;
+            for (int i = 1; i + 1 < route.size() - 1; i++) {
+                double[] a = route.get(i), b = route.get(i + 1);
+                double mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+                onStreets &= CityLayout.isCorridor((int) Math.floor(mx), (int) Math.floor(mz));
+            }
+            expect(onStreets, "Navi-Route führt über die Straßen (" + route.size() + " Punkte)");
+        }
+        ctx.runOnClient(mc -> Waypoint.clear());
+    }
+
+    private void jobs(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode survival @a");
+        server.runOnServer(s -> Economy.set(player(s), 1000));
+        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.START_JOB,
+                Jobs.Type.DELIVERY.ordinal())));
+        ctx.waitTicks(10);
+        var mission = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(mission != null, "Job Lieferant startet mit Ziel auf der Karte ("
+                + (mission == null ? "-" : mission.label()) + ")");
+        if (mission == null) {
+            return;
+        }
+        ctx.takeScreenshot("gtacity-18-job");
+        // Depot, then three customers: jump to each goal.
+        for (int i = 0; i < 4; i++) {
+            var goal = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+            if (goal == null) {
+                break;
+            }
+            teleport(server, goal.x() + 0.5, CityLayout.GROUND + 2.0, goal.z() + 0.5, 0.0F, 0.0F);
+            ctx.waitTicks(25);
+        }
+        long money = server.computeOnServer(s -> Economy.get(player(s)));
+        boolean done = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) == null);
+        expect(done && money > 1000, "Alle Pakete zugestellt, Lohn kassiert ($1000 -> $" + money + ")");
+
+        // Illegal: the gun crate. Cancelling works too.
+        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.START_JOB,
+                Jobs.Type.GUN_RUNNING.ordinal())));
+        ctx.waitTicks(10);
+        var crate = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        boolean harbour = crate != null && CityLayout.districtAt(crate.x(), crate.z()) == CityLayout.District.INDUSTRIAL;
+        expect(harbour, "Job Waffendealer: Waffenkiste liegt im Hafen");
+        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.CANCEL_JOB, 0)));
+        ctx.waitTicks(10);
+        expect(ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) == null), "Job abbrechen");
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        settle(ctx, conn);
+        reset(server);
+    }
+
+    private void villa(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode survival @a");
+        CityMap.Place villa = CityMap.of(CityMap.Kind.VILLA).getFirst();
+        int price = CityMap.villaPrice(villa);
+        server.runOnServer(s -> Economy.set(player(s), price + 1000L));
+        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.BUY_VILLA, villa.id())));
+        ctx.waitTicks(10);
+        long money = server.computeOnServer(s -> Economy.get(player(s)));
+        boolean owned = ctx.computeOnClient(mc -> {
+            List<Long> list = mc.player.getAttached(ModAttachments.VILLAS);
+            return list != null && list.contains(villa.id());
+        });
+        expect(owned && money == 1000, "Villa gekauft für " + Economy.format(price) + " (Rest $" + money + ")");
+        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.VILLA_TELEPORT,
+                villa.id())));
+        ctx.waitTicks(20);
+        double dist = server.computeOnServer(s -> Math.sqrt(player(s).blockPosition().distSqr(villa.entrance())));
+        expect(dist < 4, "Per Klick zur Villa teleportiert (Abstand " + String.format("%.1f", dist) + ")");
+        settle(ctx, conn);
+        ctx.takeScreenshot("gtacity-19-villa");
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        settle(ctx, conn);
+        reset(server);
+    }
+
+    private void pickpocket(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode survival @a");
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        server.runCommand("item replace entity @a hotbar.1 with minecraft:air");
+        ctx.getInput().pressKey(o -> o.keyHotbarSlots[1]);
+        server.runOnServer(s -> Economy.set(player(s), 100));
+        // Standing 2 blocks south, facing south (away from the player).
+        int victim = dummy(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 2.5, false);
+        server.runOnServer(s -> {
+            var npc = s.overworld().getEntity(victim);
+            npc.setYRot(0.0F);
+            npc.setYHeadRot(0.0F);
+        });
+        conn.waitForClientboundEntityUpdates(ModEntities.PEDESTRIAN);
+        ctx.waitTicks(5);
+        aim(ctx, new Vec3(spawn.getX() + 0.5, spawn.getY() + 1.0, spawn.getZ() + 2.5));
+        ctx.getInput().holdKey(o -> o.keyShift);
+        ctx.waitTicks(3);
+        ctx.getInput().pressKey(o -> o.keyUse);
+        ctx.waitTicks(5);
+        ctx.getInput().releaseKey(o -> o.keyShift);
+        long money = server.computeOnServer(s -> Economy.get(player(s)));
+        expect(money > 100, "Taschendiebstahl: Geldbörse geklaut ($100 -> $" + money + ")");
+        reset(server);
+    }
+
+    private void helicopter(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode creative @a");
+        teleport(server, 9.5, CityLayout.GROUND + 1.0, 9.5, 0.0F, -20.0F);
+        server.runOnServer(s -> WantedSystem.setLevel(player(s), 5));
+        boolean heli = false;
+        for (int i = 0; i < 20 && !heli; i++) {
+            ctx.waitTicks(20);
+            server.runOnServer(s -> WantedSystem.commit(player(s), 5));
+            heli = server.computeOnServer(s -> !s.overworld().getEntitiesOfClass(
+                    de.gtacity.entity.HelicopterEntity.class, player(s).getBoundingBox().inflate(160)).isEmpty());
+        }
+        expect(heli, "5 Sterne: Polizeihubschrauber kommt");
+        double closest = Double.MAX_VALUE;
+        for (int i = 0; i < 15 && heli; i++) {
+            ctx.waitTicks(20);
+            server.runOnServer(s -> WantedSystem.commit(player(s), 5));
+            closest = Math.min(closest, server.computeOnServer(s -> s.overworld().getEntitiesOfClass(
+                    de.gtacity.entity.HelicopterEntity.class, player(s).getBoundingBox().inflate(160)).stream()
+                    .mapToDouble(h -> h.distanceTo(player(s))).min().orElse(999.0)));
+        }
+        expect(closest < 45, "Hubschrauber kreist über dem Spieler (Abstand " + String.format("%.0f", closest) + ")");
+        ctx.getInput().lookAt(0.0F, -45.0F);
+        ctx.waitTicks(5);
+        ctx.takeScreenshot("gtacity-20-hubschrauber");
+        server.runOnServer(s -> {
+            WantedSystem.setLevel(player(s), 0);
+            s.overworld().getEntitiesOfClass(de.gtacity.entity.HelicopterEntity.class,
+                    player(s).getBoundingBox().inflate(200)).forEach(h -> h.damage(s.overworld(), 1000.0F));
+        });
+        server.runCommand("gamemode survival @a");
         reset(server);
     }
 

@@ -1,5 +1,6 @@
 package de.gtacity.block;
 
+import de.gtacity.registry.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -18,6 +19,7 @@ public class GasPumpBlock extends Block {
         level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
         level.explode(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 4.0F, true,
                 Level.ExplosionInteraction.NONE);
+        ModSounds.boom(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         for (BlockPos near : BlockPos.betweenClosed(pos.offset(-2, -1, -2), pos.offset(2, 1, 2))) {
             if (level.getBlockState(near).getBlock() instanceof GasPumpBlock) {
                 BlockPos other = near.immutable();

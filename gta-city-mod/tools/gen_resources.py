@@ -60,6 +60,7 @@ ENTITY_NAMES = {
     "pedestrian": ("Pedestrian", "Passant"),
     "police": ("Police Officer", "Polizist"),
     "car": ("Car", "Auto"),
+    "helicopter": ("Police Helicopter", "Polizeihubschrauber"),
     "rocket": ("Rocket", "Rakete"),
     "grenade": ("Grenade", "Granate"),
 }
@@ -125,6 +126,7 @@ def main():
     extra = {
         "key.gtacity.reload": ("Reload", "Nachladen"),
         "key.gtacity.horn": ("Car Horn", "Hupe"),
+        "key.gtacity.map": ("Map, Jobs, Garage and Villas", "Karte, Jobs, Garage und Villen"),
         "key.category.gtacity.keys": ("GTA City", "GTA City"),
         "generator.minecraft.normal": ("GTA City", "GTA City"),
     }

@@ -40,7 +40,7 @@ public final class Robbery {
                 CashItem.of(loot));
         level.addFreshEntity(cash);
         ROBBED_UNTIL.put(pos.immutable(), now + COOLDOWN);
-        WantedSystem.commit(player, type == ShopType.WEAPONS ? 3 : 2);
+        WantedSystem.commit(player, type == ShopType.WEAPONS ? 2 : 1);
         level.playSound(null, pos, SoundEvents.BELL_BLOCK, SoundSource.BLOCKS, 2.0F, 1.2F);
         player.sendOverlayMessage(Component.literal("Kasse ausgeraubt! " + Economy.format(loot))
                 .withStyle(ChatFormatting.GOLD));

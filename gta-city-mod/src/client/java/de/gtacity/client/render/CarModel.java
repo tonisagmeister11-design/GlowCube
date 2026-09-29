@@ -42,6 +42,7 @@ public class CarModel extends EntityModel<CarRenderer.State> {
             case SEDAN -> new int[]{28, 10, 64, 24, 9, 32, 4};
             case SPORTS -> new int[]{28, 8, 62, 24, 7, 26, 6};
             case SUV -> new int[]{30, 13, 66, 28, 11, 40, 6};
+            case SUPER -> new int[]{28, 7, 66, 22, 6, 24, 7};
         };
     }
 
@@ -61,6 +62,15 @@ public class CarModel extends EntityModel<CarRenderer.State> {
                 .addBox(-w / 2.0F, bottom - 4, len / 2.0F, w, 3, 2), PartPose.ZERO);
         root.addOrReplaceChild("light_bar", CubeListBuilder.create().texOffs(140, 90)
                 .addBox(-8.0F, bottom - h - ch - 2, -2.0F + off, 16, 2, 4), PartPose.ZERO);
+        // Rear wing on stands - supercars only (empty part for the others, so every layer has the same parts).
+        CubeListBuilder wing = CubeListBuilder.create();
+        if (shape == CarVariant.Shape.SUPER) {
+            float wingZ = len / 2.0F - 7.0F;
+            wing.texOffs(140, 100).addBox(-13.0F, bottom - h - 6, wingZ, 26, 2, 6)
+                    .texOffs(140, 112).addBox(-9.0F, bottom - h - 4, wingZ + 2, 2, 4, 2)
+                    .texOffs(140, 112).addBox(7.0F, bottom - h - 4, wingZ + 2, 2, 4, 2);
+        }
+        root.addOrReplaceChild("spoiler", wing, PartPose.ZERO);
         CubeListBuilder wheel = CubeListBuilder.create().texOffs(200, 0).addBox(-2.0F, -5.0F, -5.0F, 4, 10, 10);
         float wx = w / 2.0F - 1.0F;
         float wz = len / 2.0F - 12.0F;

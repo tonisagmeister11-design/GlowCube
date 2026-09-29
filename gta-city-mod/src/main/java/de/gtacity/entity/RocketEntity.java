@@ -1,5 +1,6 @@
 package de.gtacity.entity;
 
+import de.gtacity.registry.ModSounds;
 import de.gtacity.registry.ModEntities;
 import de.gtacity.registry.ModItems;
 import net.minecraft.core.particles.ParticleTypes;
@@ -48,6 +49,7 @@ public class RocketEntity extends ThrowableItemProjectile {
         super.onHit(result);
         if (level() instanceof ServerLevel level) {
             level.explode(this, getX(), getY(), getZ(), 4.0F, true, Level.ExplosionInteraction.NONE);
+            ModSounds.boom(level, getX(), getY(), getZ());
             NpcEntity.scare(level, position(), 30.0, getOwner() instanceof LivingEntity l ? l : null);
             discard();
         }

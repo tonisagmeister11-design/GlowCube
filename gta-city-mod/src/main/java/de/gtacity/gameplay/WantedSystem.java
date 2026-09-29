@@ -1,5 +1,6 @@
 package de.gtacity.gameplay;
 
+import de.gtacity.entity.HelicopterEntity;
 import de.gtacity.entity.NpcEntity;
 import de.gtacity.entity.PoliceEntity;
 import de.gtacity.registry.ModAttachments;
@@ -18,7 +19,6 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -38,7 +38,11 @@ public final class WantedSystem {
         int arrestHits;
         long lastArrestHit;
         int kills;
+        long lastKill;
     }
+
+    /** Killings are forgotten after five minutes without a new one. */
+    private static final long KILL_MEMORY = 20L * 60 * 5;
 
     private static final Map<UUID, State> STATES = new HashMap<>();
 
@@ -86,39 +90,47 @@ public final class WantedSystem {
 
     // ------------------------------------------------------------------ crimes
 
-    public static void onNpcHurt(Player player, NpcEntity npc) {
-        commit(player, 1);
-    }
-
+    /** Every third killed pedestrian is worth one more star: 3 kills = 1 star, 6 kills = 2 stars ... */
     public static void onNpcKilled(Player player, NpcEntity npc) {
         State s = state(player);
+        long now = player.level().getGameTime();
+        if (now - s.lastKill > KILL_MEMORY) {
+            s.kills = 0;
+        }
+        s.lastKill = now;
         s.kills++;
-        commit(player, 2);
-        if (s.kills % 4 == 0) {
-            commit(player, Math.min(5, level(player) + 1));
+        if (s.kills >= 3) {
+            commit(player, Math.min(5, s.kills / 3));
         }
     }
 
     public static void onCopHurt(Player player) {
-        commit(player, 2);
+        commit(player, 1);
     }
 
     public static void onCopKilled(Player player) {
-        commit(player, Math.max(3, Math.min(5, level(player) + 1)));
+        commit(player, Math.max(2, Math.min(5, level(player) + 1)));
     }
 
+    /** Stealing a police car always counts. An ordinary car only when an officer sees it. */
     public static void onCarJacked(Player player, boolean policeCar) {
-        commit(player, policeCar ? 2 : 1);
-    }
-
-    public static void onGunfire(Player player) {
-        if (level(player) > 0 || !(player.level() instanceof ServerLevel level)) {
-            return;
-        }
-        AABB box = player.getBoundingBox().inflate(24.0);
-        if (!level.getEntitiesOfClass(NpcEntity.class, box).isEmpty()) {
+        if (policeCar) {
+            commit(player, 2);
+        } else if (copSees(player, 40.0)) {
             commit(player, 1);
         }
+    }
+
+    public static boolean copSees(Player player, double range) {
+        if (!(player.level() instanceof ServerLevel level)) {
+            return false;
+        }
+        for (PoliceEntity cop : level.getEntitiesOfClass(PoliceEntity.class, player.getBoundingBox().inflate(range))) {
+            if (cop.hasLineOfSight(player)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ arrest / death
@@ -176,7 +188,7 @@ public final class WantedSystem {
             }
             ServerLevel level = (ServerLevel) player.level();
             State s = state(player);
-            boolean seen = false;
+            boolean seen = HelicopterEntity.seesPlayer(level, player);
             for (PoliceEntity cop : level.getEntitiesOfClass(PoliceEntity.class,
                     player.getBoundingBox().inflate(48.0))) {
                 if (cop.hasLineOfSight(player)) {
@@ -192,7 +204,7 @@ public final class WantedSystem {
                 s.lostSightTicks += 20;
             }
             player.setAttached(ModAttachments.WANTED_HIDDEN, seen ? 0 : 1);
-            int needed = (10 + stars * 6) * 20;
+            int needed = (6 + stars * 4) * 20;
             if (s.lostSightTicks >= needed) {
                 setLevel(player, 0);
                 player.sendOverlayMessage(Component.literal("Du hast die Cops abgehängt!")

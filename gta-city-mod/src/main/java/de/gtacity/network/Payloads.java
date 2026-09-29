@@ -45,6 +45,47 @@ public final class Payloads {
         }
     }
 
+    /** Client -> server: F in a car leaves it, F next to a car gets in. */
+    public record CarDoor() implements CustomPacketPayload {
+        public static final Type<CarDoor> TYPE = new Type<>(GtaCity.id("car_door"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, CarDoor> CODEC = StreamCodec.unit(new CarDoor());
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** Client -> server: the car the player drives crashed into something (the client drives it). */
+    public record CarCrash(float damage) implements CustomPacketPayload {
+        public static final Type<CarCrash> TYPE = new Type<>(GtaCity.id("car_crash"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, CarCrash> CODEC =
+                StreamCodec.composite(ByteBufCodecs.FLOAT, CarCrash::damage, CarCrash::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** Client -> server: a button on the map / phone screen (see {@link ModNetworking#phone}). */
+    public record Phone(int action, long arg) implements CustomPacketPayload {
+        public static final int BUY_VILLA = 0;
+        public static final int VILLA_TELEPORT = 1;
+        public static final int CALL_CAR = 2;
+        public static final int START_JOB = 3;
+        public static final int CANCEL_JOB = 4;
+
+        public static final Type<Phone> TYPE = new Type<>(GtaCity.id("phone"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Phone> CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_INT, Phone::action, ByteBufCodecs.VAR_LONG, Phone::arg, Phone::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     /** Client -> server: buy offer number {@code index} in shop {@code shop}. */
     public record Buy(int shop, int index) implements CustomPacketPayload {
         public static final Type<Buy> TYPE = new Type<>(GtaCity.id("buy"));

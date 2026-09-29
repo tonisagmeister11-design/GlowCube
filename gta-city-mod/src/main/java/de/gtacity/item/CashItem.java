@@ -1,5 +1,6 @@
 package de.gtacity.item;
 
+import de.gtacity.registry.ModSounds;
 import de.gtacity.gameplay.Economy;
 import de.gtacity.registry.ModComponents;
 import de.gtacity.registry.ModItems;
@@ -35,8 +36,8 @@ public class CashItem extends Item {
             Economy.add(player, value);
             player.sendOverlayMessage(Component.literal("+" + Economy.format(value))
                     .withStyle(ChatFormatting.GREEN));
-            level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.EXPERIENCE_ORB_PICKUP,
-                    SoundSource.PLAYERS, 0.5F, 1.4F);
+            level.playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.CASH,
+                    SoundSource.PLAYERS, 0.6F, 1.1F);
         }
     }
 }

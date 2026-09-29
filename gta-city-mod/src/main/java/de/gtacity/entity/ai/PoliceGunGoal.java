@@ -58,13 +58,14 @@ public class PoliceGunGoal extends Goal {
                 cop.getNavigation().stop();
             }
         }
-        if (--cooldown <= 0 && sees && dist < 40) {
+        // Officers are no marksmen: few shots, little damage, lots of misses - you can still get away.
+        if (--cooldown <= 0 && sees && dist < 32) {
             int stars = WantedSystem.level(target);
             boolean swat = cop.isSwat();
-            float damage = swat ? 4.0F : 3.0F;
-            float spread = Math.max(2.0F, 9.0F - stars * 1.2F);
+            float damage = swat ? 2.5F : 1.5F;
+            float spread = Math.max(4.0F, 13.0F - stars * 1.5F);
             Weapons.npcShoot(cop, target, damage, spread);
-            cooldown = swat ? 6 + cop.getRandom().nextInt(6) : 18 + cop.getRandom().nextInt(14);
+            cooldown = swat ? 14 + cop.getRandom().nextInt(12) : 30 + cop.getRandom().nextInt(25);
         }
     }
 }

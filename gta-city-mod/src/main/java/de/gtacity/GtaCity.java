@@ -7,6 +7,7 @@ import de.gtacity.registry.ModBlocks;
 import de.gtacity.registry.ModComponents;
 import de.gtacity.registry.ModEntities;
 import de.gtacity.registry.ModItems;
+import de.gtacity.registry.ModSounds;
 import de.gtacity.world.CityChunkGenerator;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.core.Registry;
@@ -28,6 +29,7 @@ public class GtaCity implements ModInitializer {
         ModComponents.init();
         ModBlocks.init();
         ModItems.init();
+        ModSounds.init();
         ModEntities.init();
         ModAttachments.init();
         ModNetworking.init();
