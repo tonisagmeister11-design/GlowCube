@@ -163,6 +163,10 @@ final class Buildings {
         t.antennaHeight = 8 + Hash.range(h >>> 33, 14);
         if (!t.column(c, x, z)) {
             plaza(lot, x, z, c);
+            // Every third square tower advertises GlowCube on its front, a few floors up.
+            if (!round && lot.front != null && Hash.range(h >>> 45, 3) == 0) {
+                frontBillboard(c, x, z, lot.front, x0, z0, x1, z1, 1, GROUND + 1 + 4 * 3);
+            }
         }
     }
 
@@ -174,12 +178,59 @@ final class Buildings {
         Tower.Facade facade = Tower.ALL[1 + Hash.range(h >>> 21, 4)];
         Tower t = new Tower(GROUND + 1, 4, floors, p, facade, false, lot.front, lot.x0 + m, lot.z0 + m,
                 lot.x1 - m, lot.z1 - m);
-        if (floors > 8 && Hash.range(h >>> 30, 2) == 0) {
+        boolean tiered = floors > 8 && Hash.range(h >>> 30, 2) == 0;
+        if (tiered) {
             t.tier(floors - 3, 3);
         }
         t.elevator = floors > 4;
         if (!t.column(c, x, z)) {
             plaza(lot, x, z, c);
+        } else if (!tiered && floors >= 5 && lot.front != null && Hash.range(h >>> 47, 3) == 0) {
+            // A GlowCube billboard on posts on the roof, near the street side.
+            int roofY = GROUND + 1 + floors * 4;
+            frontBillboard(c, x, z, lot.front, lot.x0 + m, lot.z0 + m, lot.x1 - m, lot.z1 - m, -3, roofY + 4);
+            int post = billboardColumn(x, z, lot.front, lot.x0 + m, lot.z0 + m, lot.x1 - m, lot.z1 - m, -3);
+            if (post == 1 || post == de.gtacity.block.BillboardBlock.SIZE - 2) {
+                c.fill(roofY + 1, roofY + 3, B.s(net.minecraft.world.level.block.Blocks.POLISHED_BLACKSTONE_WALL));
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ GlowCube billboards
+
+    /**
+     * Column of the billboard at (x, z), or -1: the billboard stands in the plane {@code out} blocks in front of the
+     * building's front face (negative: behind it, on the roof), centred on the face. Column 0 is the left edge as
+     * seen from the street.
+     */
+    private static int billboardColumn(int x, int z, Direction front, int x0, int z0, int x1, int z1, int out) {
+        int n = de.gtacity.block.BillboardBlock.SIZE;
+        int plane = switch (front) {
+            case NORTH -> z0 - out;
+            case SOUTH -> z1 + out;
+            case WEST -> x0 - out;
+            default -> x1 + out;
+        };
+        boolean alongX = front.getAxis() == Direction.Axis.Z;
+        if ((alongX ? z : x) != plane || (alongX ? x1 - x0 : z1 - z0) < n + 2) {
+            return -1;
+        }
+        int center = alongX ? (x0 + x1 + 1) / 2 : (z0 + z1 + 1) / 2;
+        Direction right = front.getCounterClockWise(); // the viewer's right, looking at the picture
+        int step = right.getStepX() + right.getStepZ();
+        int col = ((alongX ? x : z) - center) * step + n / 2;
+        return col >= 0 && col < n ? col : -1;
+    }
+
+    private static void frontBillboard(Column c, int x, int z, Direction front, int x0, int z0, int x1, int z1,
+                                       int out, int bottom) {
+        int col = billboardColumn(x, z, front, x0, z0, x1, z1, out);
+        if (col < 0) {
+            return;
+        }
+        int n = de.gtacity.block.BillboardBlock.SIZE;
+        for (int row = 0; row < n; row++) {
+            c.set(bottom + n - 1 - row, ModBlocksRef.billboard(front, row * n + col));
         }
     }
 

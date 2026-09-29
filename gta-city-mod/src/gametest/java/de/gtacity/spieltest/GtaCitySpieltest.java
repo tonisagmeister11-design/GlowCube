@@ -192,6 +192,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Nacht", () -> night(ctx, server, conn));
             check("Eigenes Auto", () -> ownCar(ctx, server, conn));
             check("Fotos", () -> photos(ctx, server, conn));
+            check("Werbung", () -> billboards(ctx, server, conn));
         } catch (Throwable t) {
             fail("Test abgebrochen: " + t);
             t.printStackTrace();
@@ -1791,6 +1792,81 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         expect(warned, "Polizei: der erste Polizist fordert dich zum Aufgeben auf, bevor geschossen wird");
         reset(server);
         server.runCommand("effect clear @a");
+    }
+
+    /** GlowCube billboards: on some office roofs and skyscraper fronts, glowing at night. */
+    private void billboards(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode creative @a");
+        // Nearest billboard to the spawn: look at the office and skyscraper lots around it.
+        int[] found = server.computeOnServer(s -> {
+            ServerLevel level = s.overworld();
+            BlockPos spawn = CityPlaces.spawn();
+            int cx = CityLayout.cell(spawn.getX()), cz = CityLayout.cell(spawn.getZ());
+            int[] best = null;
+            double bestDist = Double.MAX_VALUE;
+            for (int gx = cx - 3; gx <= cx + 3; gx++) {
+                for (int gz = cz - 3; gz <= cz + 3; gz++) {
+                    if (CityLayout.isParkCell(gx, gz)) {
+                        continue;
+                    }
+                    int n = CityLayout.lotsPerSide(gx, gz);
+                    for (int qx = 0; qx < n; qx++) {
+                        for (int qz = 0; qz < n; qz++) {
+                            de.gtacity.world.Lot lot = new de.gtacity.world.Lot(gx, gz, qx, qz, n);
+                            if (lot.type != CityLayout.LotType.OFFICE && lot.type != CityLayout.LotType.SKYSCRAPER) {
+                                continue;
+                            }
+                            for (int x = lot.x0; x <= lot.x1; x++) {
+                                for (int z = lot.z0; z <= lot.z1; z++) {
+                                    for (int y = CityLayout.GROUND; y < CityLayout.GROUND + 140; y++) {
+                                        BlockPos pos = new BlockPos(x, y, z);
+                                        var state = level.getBlockState(pos);
+                                        if (state.getBlock() instanceof de.gtacity.block.BillboardBlock
+                                                && state.getValue(de.gtacity.block.BillboardBlock.TILE)
+                                                == de.gtacity.block.BillboardBlock.SIZE * 4 + 3) {
+                                            double d = pos.distSqr(spawn);
+                                            if (d < bestDist) {
+                                                bestDist = d;
+                                                var f = state.getValue(de.gtacity.block.BillboardBlock.FACING);
+                                                best = new int[]{x, y, z, f.getStepX(), f.getStepZ()};
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return best;
+        });
+        expect(found != null, "Werbung: GlowCube-Tafeln stehen in der Stadt"
+                + (found == null ? "" : " (" + found[0] + ", " + found[1] + ", " + found[2] + ")"));
+        if (found == null) {
+            return;
+        }
+        // In front of the billboard, looking at it.
+        double vx = found[0] + 0.5 + found[3] * 22, vz = found[2] + 0.5 + found[4] * 22;
+        float yaw = (float) Math.toDegrees(Math.atan2(-found[3], found[4])) + 180.0F;
+        server.runOnServer(s -> {
+            ServerPlayer p = player(s);
+            p.getAbilities().flying = true;
+            p.onUpdateAbilities();
+        });
+        teleport(server, vx, found[1] - 1.0, vz, yaw, 0.0F);
+        settle(ctx, conn);
+        ctx.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
+        ctx.takeScreenshot("gtacity-25-werbung-tag");
+        server.runCommand("time set 18000");
+        ctx.waitTicks(20);
+        ctx.takeScreenshot("gtacity-25b-werbung-nacht");
+        server.runCommand("time set 6000");
+        // From the street, further away.
+        teleport(server, found[0] + 0.5 + found[3] * 45, CityLayout.GROUND + 2.0, found[2] + 0.5 + found[4] * 45, yaw,
+                -18.0F);
+        settle(ctx, conn);
+        ctx.takeScreenshot("gtacity-25c-werbung-strasse");
     }
 
     /** Runs the current mission: teleports to every goal until the job is done. */

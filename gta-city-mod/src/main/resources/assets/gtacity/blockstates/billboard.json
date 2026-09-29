@@ -1,0 +1,964 @@
+{
+  "variants": {
+    "facing=north,tile=0": {
+      "model": "gtacity:block/billboard_0"
+    },
+    "facing=east,tile=0": {
+      "model": "gtacity:block/billboard_0",
+      "y": 90
+    },
+    "facing=south,tile=0": {
+      "model": "gtacity:block/billboard_0",
+      "y": 180
+    },
+    "facing=west,tile=0": {
+      "model": "gtacity:block/billboard_0",
+      "y": 270
+    },
+    "facing=north,tile=1": {
+      "model": "gtacity:block/billboard_1"
+    },
+    "facing=east,tile=1": {
+      "model": "gtacity:block/billboard_1",
+      "y": 90
+    },
+    "facing=south,tile=1": {
+      "model": "gtacity:block/billboard_1",
+      "y": 180
+    },
+    "facing=west,tile=1": {
+      "model": "gtacity:block/billboard_1",
+      "y": 270
+    },
+    "facing=north,tile=2": {
+      "model": "gtacity:block/billboard_2"
+    },
+    "facing=east,tile=2": {
+      "model": "gtacity:block/billboard_2",
+      "y": 90
+    },
+    "facing=south,tile=2": {
+      "model": "gtacity:block/billboard_2",
+      "y": 180
+    },
+    "facing=west,tile=2": {
+      "model": "gtacity:block/billboard_2",
+      "y": 270
+    },
+    "facing=north,tile=3": {
+      "model": "gtacity:block/billboard_3"
+    },
+    "facing=east,tile=3": {
+      "model": "gtacity:block/billboard_3",
+      "y": 90
+    },
+    "facing=south,tile=3": {
+      "model": "gtacity:block/billboard_3",
+      "y": 180
+    },
+    "facing=west,tile=3": {
+      "model": "gtacity:block/billboard_3",
+      "y": 270
+    },
+    "facing=north,tile=4": {
+      "model": "gtacity:block/billboard_4"
+    },
+    "facing=east,tile=4": {
+      "model": "gtacity:block/billboard_4",
+      "y": 90
+    },
+    "facing=south,tile=4": {
+      "model": "gtacity:block/billboard_4",
+      "y": 180
+    },
+    "facing=west,tile=4": {
+      "model": "gtacity:block/billboard_4",
+      "y": 270
+    },
+    "facing=north,tile=5": {
+      "model": "gtacity:block/billboard_5"
+    },
+    "facing=east,tile=5": {
+      "model": "gtacity:block/billboard_5",
+      "y": 90
+    },
+    "facing=south,tile=5": {
+      "model": "gtacity:block/billboard_5",
+      "y": 180
+    },
+    "facing=west,tile=5": {
+      "model": "gtacity:block/billboard_5",
+      "y": 270
+    },
+    "facing=north,tile=6": {
+      "model": "gtacity:block/billboard_6"
+    },
+    "facing=east,tile=6": {
+      "model": "gtacity:block/billboard_6",
+      "y": 90
+    },
+    "facing=south,tile=6": {
+      "model": "gtacity:block/billboard_6",
+      "y": 180
+    },
+    "facing=west,tile=6": {
+      "model": "gtacity:block/billboard_6",
+      "y": 270
+    },
+    "facing=north,tile=7": {
+      "model": "gtacity:block/billboard_7"
+    },
+    "facing=east,tile=7": {
+      "model": "gtacity:block/billboard_7",
+      "y": 90
+    },
+    "facing=south,tile=7": {
+      "model": "gtacity:block/billboard_7",
+      "y": 180
+    },
+    "facing=west,tile=7": {
+      "model": "gtacity:block/billboard_7",
+      "y": 270
+    },
+    "facing=north,tile=8": {
+      "model": "gtacity:block/billboard_8"
+    },
+    "facing=east,tile=8": {
+      "model": "gtacity:block/billboard_8",
+      "y": 90
+    },
+    "facing=south,tile=8": {
+      "model": "gtacity:block/billboard_8",
+      "y": 180
+    },
+    "facing=west,tile=8": {
+      "model": "gtacity:block/billboard_8",
+      "y": 270
+    },
+    "facing=north,tile=9": {
+      "model": "gtacity:block/billboard_9"
+    },
+    "facing=east,tile=9": {
+      "model": "gtacity:block/billboard_9",
+      "y": 90
+    },
+    "facing=south,tile=9": {
+      "model": "gtacity:block/billboard_9",
+      "y": 180
+    },
+    "facing=west,tile=9": {
+      "model": "gtacity:block/billboard_9",
+      "y": 270
+    },
+    "facing=north,tile=10": {
+      "model": "gtacity:block/billboard_10"
+    },
+    "facing=east,tile=10": {
+      "model": "gtacity:block/billboard_10",
+      "y": 90
+    },
+    "facing=south,tile=10": {
+      "model": "gtacity:block/billboard_10",
+      "y": 180
+    },
+    "facing=west,tile=10": {
+      "model": "gtacity:block/billboard_10",
+      "y": 270
+    },
+    "facing=north,tile=11": {
+      "model": "gtacity:block/billboard_11"
+    },
+    "facing=east,tile=11": {
+      "model": "gtacity:block/billboard_11",
+      "y": 90
+    },
+    "facing=south,tile=11": {
+      "model": "gtacity:block/billboard_11",
+      "y": 180
+    },
+    "facing=west,tile=11": {
+      "model": "gtacity:block/billboard_11",
+      "y": 270
+    },
+    "facing=north,tile=12": {
+      "model": "gtacity:block/billboard_12"
+    },
+    "facing=east,tile=12": {
+      "model": "gtacity:block/billboard_12",
+      "y": 90
+    },
+    "facing=south,tile=12": {
+      "model": "gtacity:block/billboard_12",
+      "y": 180
+    },
+    "facing=west,tile=12": {
+      "model": "gtacity:block/billboard_12",
+      "y": 270
+    },
+    "facing=north,tile=13": {
+      "model": "gtacity:block/billboard_13"
+    },
+    "facing=east,tile=13": {
+      "model": "gtacity:block/billboard_13",
+      "y": 90
+    },
+    "facing=south,tile=13": {
+      "model": "gtacity:block/billboard_13",
+      "y": 180
+    },
+    "facing=west,tile=13": {
+      "model": "gtacity:block/billboard_13",
+      "y": 270
+    },
+    "facing=north,tile=14": {
+      "model": "gtacity:block/billboard_14"
+    },
+    "facing=east,tile=14": {
+      "model": "gtacity:block/billboard_14",
+      "y": 90
+    },
+    "facing=south,tile=14": {
+      "model": "gtacity:block/billboard_14",
+      "y": 180
+    },
+    "facing=west,tile=14": {
+      "model": "gtacity:block/billboard_14",
+      "y": 270
+    },
+    "facing=north,tile=15": {
+      "model": "gtacity:block/billboard_15"
+    },
+    "facing=east,tile=15": {
+      "model": "gtacity:block/billboard_15",
+      "y": 90
+    },
+    "facing=south,tile=15": {
+      "model": "gtacity:block/billboard_15",
+      "y": 180
+    },
+    "facing=west,tile=15": {
+      "model": "gtacity:block/billboard_15",
+      "y": 270
+    },
+    "facing=north,tile=16": {
+      "model": "gtacity:block/billboard_16"
+    },
+    "facing=east,tile=16": {
+      "model": "gtacity:block/billboard_16",
+      "y": 90
+    },
+    "facing=south,tile=16": {
+      "model": "gtacity:block/billboard_16",
+      "y": 180
+    },
+    "facing=west,tile=16": {
+      "model": "gtacity:block/billboard_16",
+      "y": 270
+    },
+    "facing=north,tile=17": {
+      "model": "gtacity:block/billboard_17"
+    },
+    "facing=east,tile=17": {
+      "model": "gtacity:block/billboard_17",
+      "y": 90
+    },
+    "facing=south,tile=17": {
+      "model": "gtacity:block/billboard_17",
+      "y": 180
+    },
+    "facing=west,tile=17": {
+      "model": "gtacity:block/billboard_17",
+      "y": 270
+    },
+    "facing=north,tile=18": {
+      "model": "gtacity:block/billboard_18"
+    },
+    "facing=east,tile=18": {
+      "model": "gtacity:block/billboard_18",
+      "y": 90
+    },
+    "facing=south,tile=18": {
+      "model": "gtacity:block/billboard_18",
+      "y": 180
+    },
+    "facing=west,tile=18": {
+      "model": "gtacity:block/billboard_18",
+      "y": 270
+    },
+    "facing=north,tile=19": {
+      "model": "gtacity:block/billboard_19"
+    },
+    "facing=east,tile=19": {
+      "model": "gtacity:block/billboard_19",
+      "y": 90
+    },
+    "facing=south,tile=19": {
+      "model": "gtacity:block/billboard_19",
+      "y": 180
+    },
+    "facing=west,tile=19": {
+      "model": "gtacity:block/billboard_19",
+      "y": 270
+    },
+    "facing=north,tile=20": {
+      "model": "gtacity:block/billboard_20"
+    },
+    "facing=east,tile=20": {
+      "model": "gtacity:block/billboard_20",
+      "y": 90
+    },
+    "facing=south,tile=20": {
+      "model": "gtacity:block/billboard_20",
+      "y": 180
+    },
+    "facing=west,tile=20": {
+      "model": "gtacity:block/billboard_20",
+      "y": 270
+    },
+    "facing=north,tile=21": {
+      "model": "gtacity:block/billboard_21"
+    },
+    "facing=east,tile=21": {
+      "model": "gtacity:block/billboard_21",
+      "y": 90
+    },
+    "facing=south,tile=21": {
+      "model": "gtacity:block/billboard_21",
+      "y": 180
+    },
+    "facing=west,tile=21": {
+      "model": "gtacity:block/billboard_21",
+      "y": 270
+    },
+    "facing=north,tile=22": {
+      "model": "gtacity:block/billboard_22"
+    },
+    "facing=east,tile=22": {
+      "model": "gtacity:block/billboard_22",
+      "y": 90
+    },
+    "facing=south,tile=22": {
+      "model": "gtacity:block/billboard_22",
+      "y": 180
+    },
+    "facing=west,tile=22": {
+      "model": "gtacity:block/billboard_22",
+      "y": 270
+    },
+    "facing=north,tile=23": {
+      "model": "gtacity:block/billboard_23"
+    },
+    "facing=east,tile=23": {
+      "model": "gtacity:block/billboard_23",
+      "y": 90
+    },
+    "facing=south,tile=23": {
+      "model": "gtacity:block/billboard_23",
+      "y": 180
+    },
+    "facing=west,tile=23": {
+      "model": "gtacity:block/billboard_23",
+      "y": 270
+    },
+    "facing=north,tile=24": {
+      "model": "gtacity:block/billboard_24"
+    },
+    "facing=east,tile=24": {
+      "model": "gtacity:block/billboard_24",
+      "y": 90
+    },
+    "facing=south,tile=24": {
+      "model": "gtacity:block/billboard_24",
+      "y": 180
+    },
+    "facing=west,tile=24": {
+      "model": "gtacity:block/billboard_24",
+      "y": 270
+    },
+    "facing=north,tile=25": {
+      "model": "gtacity:block/billboard_25"
+    },
+    "facing=east,tile=25": {
+      "model": "gtacity:block/billboard_25",
+      "y": 90
+    },
+    "facing=south,tile=25": {
+      "model": "gtacity:block/billboard_25",
+      "y": 180
+    },
+    "facing=west,tile=25": {
+      "model": "gtacity:block/billboard_25",
+      "y": 270
+    },
+    "facing=north,tile=26": {
+      "model": "gtacity:block/billboard_26"
+    },
+    "facing=east,tile=26": {
+      "model": "gtacity:block/billboard_26",
+      "y": 90
+    },
+    "facing=south,tile=26": {
+      "model": "gtacity:block/billboard_26",
+      "y": 180
+    },
+    "facing=west,tile=26": {
+      "model": "gtacity:block/billboard_26",
+      "y": 270
+    },
+    "facing=north,tile=27": {
+      "model": "gtacity:block/billboard_27"
+    },
+    "facing=east,tile=27": {
+      "model": "gtacity:block/billboard_27",
+      "y": 90
+    },
+    "facing=south,tile=27": {
+      "model": "gtacity:block/billboard_27",
+      "y": 180
+    },
+    "facing=west,tile=27": {
+      "model": "gtacity:block/billboard_27",
+      "y": 270
+    },
+    "facing=north,tile=28": {
+      "model": "gtacity:block/billboard_28"
+    },
+    "facing=east,tile=28": {
+      "model": "gtacity:block/billboard_28",
+      "y": 90
+    },
+    "facing=south,tile=28": {
+      "model": "gtacity:block/billboard_28",
+      "y": 180
+    },
+    "facing=west,tile=28": {
+      "model": "gtacity:block/billboard_28",
+      "y": 270
+    },
+    "facing=north,tile=29": {
+      "model": "gtacity:block/billboard_29"
+    },
+    "facing=east,tile=29": {
+      "model": "gtacity:block/billboard_29",
+      "y": 90
+    },
+    "facing=south,tile=29": {
+      "model": "gtacity:block/billboard_29",
+      "y": 180
+    },
+    "facing=west,tile=29": {
+      "model": "gtacity:block/billboard_29",
+      "y": 270
+    },
+    "facing=north,tile=30": {
+      "model": "gtacity:block/billboard_30"
+    },
+    "facing=east,tile=30": {
+      "model": "gtacity:block/billboard_30",
+      "y": 90
+    },
+    "facing=south,tile=30": {
+      "model": "gtacity:block/billboard_30",
+      "y": 180
+    },
+    "facing=west,tile=30": {
+      "model": "gtacity:block/billboard_30",
+      "y": 270
+    },
+    "facing=north,tile=31": {
+      "model": "gtacity:block/billboard_31"
+    },
+    "facing=east,tile=31": {
+      "model": "gtacity:block/billboard_31",
+      "y": 90
+    },
+    "facing=south,tile=31": {
+      "model": "gtacity:block/billboard_31",
+      "y": 180
+    },
+    "facing=west,tile=31": {
+      "model": "gtacity:block/billboard_31",
+      "y": 270
+    },
+    "facing=north,tile=32": {
+      "model": "gtacity:block/billboard_32"
+    },
+    "facing=east,tile=32": {
+      "model": "gtacity:block/billboard_32",
+      "y": 90
+    },
+    "facing=south,tile=32": {
+      "model": "gtacity:block/billboard_32",
+      "y": 180
+    },
+    "facing=west,tile=32": {
+      "model": "gtacity:block/billboard_32",
+      "y": 270
+    },
+    "facing=north,tile=33": {
+      "model": "gtacity:block/billboard_33"
+    },
+    "facing=east,tile=33": {
+      "model": "gtacity:block/billboard_33",
+      "y": 90
+    },
+    "facing=south,tile=33": {
+      "model": "gtacity:block/billboard_33",
+      "y": 180
+    },
+    "facing=west,tile=33": {
+      "model": "gtacity:block/billboard_33",
+      "y": 270
+    },
+    "facing=north,tile=34": {
+      "model": "gtacity:block/billboard_34"
+    },
+    "facing=east,tile=34": {
+      "model": "gtacity:block/billboard_34",
+      "y": 90
+    },
+    "facing=south,tile=34": {
+      "model": "gtacity:block/billboard_34",
+      "y": 180
+    },
+    "facing=west,tile=34": {
+      "model": "gtacity:block/billboard_34",
+      "y": 270
+    },
+    "facing=north,tile=35": {
+      "model": "gtacity:block/billboard_35"
+    },
+    "facing=east,tile=35": {
+      "model": "gtacity:block/billboard_35",
+      "y": 90
+    },
+    "facing=south,tile=35": {
+      "model": "gtacity:block/billboard_35",
+      "y": 180
+    },
+    "facing=west,tile=35": {
+      "model": "gtacity:block/billboard_35",
+      "y": 270
+    },
+    "facing=north,tile=36": {
+      "model": "gtacity:block/billboard_36"
+    },
+    "facing=east,tile=36": {
+      "model": "gtacity:block/billboard_36",
+      "y": 90
+    },
+    "facing=south,tile=36": {
+      "model": "gtacity:block/billboard_36",
+      "y": 180
+    },
+    "facing=west,tile=36": {
+      "model": "gtacity:block/billboard_36",
+      "y": 270
+    },
+    "facing=north,tile=37": {
+      "model": "gtacity:block/billboard_37"
+    },
+    "facing=east,tile=37": {
+      "model": "gtacity:block/billboard_37",
+      "y": 90
+    },
+    "facing=south,tile=37": {
+      "model": "gtacity:block/billboard_37",
+      "y": 180
+    },
+    "facing=west,tile=37": {
+      "model": "gtacity:block/billboard_37",
+      "y": 270
+    },
+    "facing=north,tile=38": {
+      "model": "gtacity:block/billboard_38"
+    },
+    "facing=east,tile=38": {
+      "model": "gtacity:block/billboard_38",
+      "y": 90
+    },
+    "facing=south,tile=38": {
+      "model": "gtacity:block/billboard_38",
+      "y": 180
+    },
+    "facing=west,tile=38": {
+      "model": "gtacity:block/billboard_38",
+      "y": 270
+    },
+    "facing=north,tile=39": {
+      "model": "gtacity:block/billboard_39"
+    },
+    "facing=east,tile=39": {
+      "model": "gtacity:block/billboard_39",
+      "y": 90
+    },
+    "facing=south,tile=39": {
+      "model": "gtacity:block/billboard_39",
+      "y": 180
+    },
+    "facing=west,tile=39": {
+      "model": "gtacity:block/billboard_39",
+      "y": 270
+    },
+    "facing=north,tile=40": {
+      "model": "gtacity:block/billboard_40"
+    },
+    "facing=east,tile=40": {
+      "model": "gtacity:block/billboard_40",
+      "y": 90
+    },
+    "facing=south,tile=40": {
+      "model": "gtacity:block/billboard_40",
+      "y": 180
+    },
+    "facing=west,tile=40": {
+      "model": "gtacity:block/billboard_40",
+      "y": 270
+    },
+    "facing=north,tile=41": {
+      "model": "gtacity:block/billboard_41"
+    },
+    "facing=east,tile=41": {
+      "model": "gtacity:block/billboard_41",
+      "y": 90
+    },
+    "facing=south,tile=41": {
+      "model": "gtacity:block/billboard_41",
+      "y": 180
+    },
+    "facing=west,tile=41": {
+      "model": "gtacity:block/billboard_41",
+      "y": 270
+    },
+    "facing=north,tile=42": {
+      "model": "gtacity:block/billboard_42"
+    },
+    "facing=east,tile=42": {
+      "model": "gtacity:block/billboard_42",
+      "y": 90
+    },
+    "facing=south,tile=42": {
+      "model": "gtacity:block/billboard_42",
+      "y": 180
+    },
+    "facing=west,tile=42": {
+      "model": "gtacity:block/billboard_42",
+      "y": 270
+    },
+    "facing=north,tile=43": {
+      "model": "gtacity:block/billboard_43"
+    },
+    "facing=east,tile=43": {
+      "model": "gtacity:block/billboard_43",
+      "y": 90
+    },
+    "facing=south,tile=43": {
+      "model": "gtacity:block/billboard_43",
+      "y": 180
+    },
+    "facing=west,tile=43": {
+      "model": "gtacity:block/billboard_43",
+      "y": 270
+    },
+    "facing=north,tile=44": {
+      "model": "gtacity:block/billboard_44"
+    },
+    "facing=east,tile=44": {
+      "model": "gtacity:block/billboard_44",
+      "y": 90
+    },
+    "facing=south,tile=44": {
+      "model": "gtacity:block/billboard_44",
+      "y": 180
+    },
+    "facing=west,tile=44": {
+      "model": "gtacity:block/billboard_44",
+      "y": 270
+    },
+    "facing=north,tile=45": {
+      "model": "gtacity:block/billboard_45"
+    },
+    "facing=east,tile=45": {
+      "model": "gtacity:block/billboard_45",
+      "y": 90
+    },
+    "facing=south,tile=45": {
+      "model": "gtacity:block/billboard_45",
+      "y": 180
+    },
+    "facing=west,tile=45": {
+      "model": "gtacity:block/billboard_45",
+      "y": 270
+    },
+    "facing=north,tile=46": {
+      "model": "gtacity:block/billboard_46"
+    },
+    "facing=east,tile=46": {
+      "model": "gtacity:block/billboard_46",
+      "y": 90
+    },
+    "facing=south,tile=46": {
+      "model": "gtacity:block/billboard_46",
+      "y": 180
+    },
+    "facing=west,tile=46": {
+      "model": "gtacity:block/billboard_46",
+      "y": 270
+    },
+    "facing=north,tile=47": {
+      "model": "gtacity:block/billboard_47"
+    },
+    "facing=east,tile=47": {
+      "model": "gtacity:block/billboard_47",
+      "y": 90
+    },
+    "facing=south,tile=47": {
+      "model": "gtacity:block/billboard_47",
+      "y": 180
+    },
+    "facing=west,tile=47": {
+      "model": "gtacity:block/billboard_47",
+      "y": 270
+    },
+    "facing=north,tile=48": {
+      "model": "gtacity:block/billboard_48"
+    },
+    "facing=east,tile=48": {
+      "model": "gtacity:block/billboard_48",
+      "y": 90
+    },
+    "facing=south,tile=48": {
+      "model": "gtacity:block/billboard_48",
+      "y": 180
+    },
+    "facing=west,tile=48": {
+      "model": "gtacity:block/billboard_48",
+      "y": 270
+    },
+    "facing=north,tile=49": {
+      "model": "gtacity:block/billboard_49"
+    },
+    "facing=east,tile=49": {
+      "model": "gtacity:block/billboard_49",
+      "y": 90
+    },
+    "facing=south,tile=49": {
+      "model": "gtacity:block/billboard_49",
+      "y": 180
+    },
+    "facing=west,tile=49": {
+      "model": "gtacity:block/billboard_49",
+      "y": 270
+    },
+    "facing=north,tile=50": {
+      "model": "gtacity:block/billboard_50"
+    },
+    "facing=east,tile=50": {
+      "model": "gtacity:block/billboard_50",
+      "y": 90
+    },
+    "facing=south,tile=50": {
+      "model": "gtacity:block/billboard_50",
+      "y": 180
+    },
+    "facing=west,tile=50": {
+      "model": "gtacity:block/billboard_50",
+      "y": 270
+    },
+    "facing=north,tile=51": {
+      "model": "gtacity:block/billboard_51"
+    },
+    "facing=east,tile=51": {
+      "model": "gtacity:block/billboard_51",
+      "y": 90
+    },
+    "facing=south,tile=51": {
+      "model": "gtacity:block/billboard_51",
+      "y": 180
+    },
+    "facing=west,tile=51": {
+      "model": "gtacity:block/billboard_51",
+      "y": 270
+    },
+    "facing=north,tile=52": {
+      "model": "gtacity:block/billboard_52"
+    },
+    "facing=east,tile=52": {
+      "model": "gtacity:block/billboard_52",
+      "y": 90
+    },
+    "facing=south,tile=52": {
+      "model": "gtacity:block/billboard_52",
+      "y": 180
+    },
+    "facing=west,tile=52": {
+      "model": "gtacity:block/billboard_52",
+      "y": 270
+    },
+    "facing=north,tile=53": {
+      "model": "gtacity:block/billboard_53"
+    },
+    "facing=east,tile=53": {
+      "model": "gtacity:block/billboard_53",
+      "y": 90
+    },
+    "facing=south,tile=53": {
+      "model": "gtacity:block/billboard_53",
+      "y": 180
+    },
+    "facing=west,tile=53": {
+      "model": "gtacity:block/billboard_53",
+      "y": 270
+    },
+    "facing=north,tile=54": {
+      "model": "gtacity:block/billboard_54"
+    },
+    "facing=east,tile=54": {
+      "model": "gtacity:block/billboard_54",
+      "y": 90
+    },
+    "facing=south,tile=54": {
+      "model": "gtacity:block/billboard_54",
+      "y": 180
+    },
+    "facing=west,tile=54": {
+      "model": "gtacity:block/billboard_54",
+      "y": 270
+    },
+    "facing=north,tile=55": {
+      "model": "gtacity:block/billboard_55"
+    },
+    "facing=east,tile=55": {
+      "model": "gtacity:block/billboard_55",
+      "y": 90
+    },
+    "facing=south,tile=55": {
+      "model": "gtacity:block/billboard_55",
+      "y": 180
+    },
+    "facing=west,tile=55": {
+      "model": "gtacity:block/billboard_55",
+      "y": 270
+    },
+    "facing=north,tile=56": {
+      "model": "gtacity:block/billboard_56"
+    },
+    "facing=east,tile=56": {
+      "model": "gtacity:block/billboard_56",
+      "y": 90
+    },
+    "facing=south,tile=56": {
+      "model": "gtacity:block/billboard_56",
+      "y": 180
+    },
+    "facing=west,tile=56": {
+      "model": "gtacity:block/billboard_56",
+      "y": 270
+    },
+    "facing=north,tile=57": {
+      "model": "gtacity:block/billboard_57"
+    },
+    "facing=east,tile=57": {
+      "model": "gtacity:block/billboard_57",
+      "y": 90
+    },
+    "facing=south,tile=57": {
+      "model": "gtacity:block/billboard_57",
+      "y": 180
+    },
+    "facing=west,tile=57": {
+      "model": "gtacity:block/billboard_57",
+      "y": 270
+    },
+    "facing=north,tile=58": {
+      "model": "gtacity:block/billboard_58"
+    },
+    "facing=east,tile=58": {
+      "model": "gtacity:block/billboard_58",
+      "y": 90
+    },
+    "facing=south,tile=58": {
+      "model": "gtacity:block/billboard_58",
+      "y": 180
+    },
+    "facing=west,tile=58": {
+      "model": "gtacity:block/billboard_58",
+      "y": 270
+    },
+    "facing=north,tile=59": {
+      "model": "gtacity:block/billboard_59"
+    },
+    "facing=east,tile=59": {
+      "model": "gtacity:block/billboard_59",
+      "y": 90
+    },
+    "facing=south,tile=59": {
+      "model": "gtacity:block/billboard_59",
+      "y": 180
+    },
+    "facing=west,tile=59": {
+      "model": "gtacity:block/billboard_59",
+      "y": 270
+    },
+    "facing=north,tile=60": {
+      "model": "gtacity:block/billboard_60"
+    },
+    "facing=east,tile=60": {
+      "model": "gtacity:block/billboard_60",
+      "y": 90
+    },
+    "facing=south,tile=60": {
+      "model": "gtacity:block/billboard_60",
+      "y": 180
+    },
+    "facing=west,tile=60": {
+      "model": "gtacity:block/billboard_60",
+      "y": 270
+    },
+    "facing=north,tile=61": {
+      "model": "gtacity:block/billboard_61"
+    },
+    "facing=east,tile=61": {
+      "model": "gtacity:block/billboard_61",
+      "y": 90
+    },
+    "facing=south,tile=61": {
+      "model": "gtacity:block/billboard_61",
+      "y": 180
+    },
+    "facing=west,tile=61": {
+      "model": "gtacity:block/billboard_61",
+      "y": 270
+    },
+    "facing=north,tile=62": {
+      "model": "gtacity:block/billboard_62"
+    },
+    "facing=east,tile=62": {
+      "model": "gtacity:block/billboard_62",
+      "y": 90
+    },
+    "facing=south,tile=62": {
+      "model": "gtacity:block/billboard_62",
+      "y": 180
+    },
+    "facing=west,tile=62": {
+      "model": "gtacity:block/billboard_62",
+      "y": 270
+    },
+    "facing=north,tile=63": {
+      "model": "gtacity:block/billboard_63"
+    },
+    "facing=east,tile=63": {
+      "model": "gtacity:block/billboard_63",
+      "y": 90
+    },
+    "facing=south,tile=63": {
+      "model": "gtacity:block/billboard_63",
+      "y": 180
+    },
+    "facing=west,tile=63": {
+      "model": "gtacity:block/billboard_63",
+      "y": 270
+    }
+  }
+}

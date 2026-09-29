@@ -8,6 +8,10 @@ final class ModBlocksRef {
     private ModBlocksRef() {
     }
 
+    static BlockState billboard(net.minecraft.core.Direction facing, int tile) {
+        return ModBlocks.BILLBOARD.tile(facing, tile);
+    }
+
     static BlockState elevator() {
         return ModBlocks.ELEVATOR.defaultBlockState();
     }

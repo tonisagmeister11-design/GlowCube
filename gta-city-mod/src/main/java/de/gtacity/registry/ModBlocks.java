@@ -42,6 +42,10 @@ public final class ModBlocks {
                     .noOcclusion());
     public static final Block ATM = register("atm", AtmBlock::new, unbreakable().lightLevel(s -> 5));
 
+    /** The GlowCube billboard on some roofs and skyscrapers (no item: it only exists in the city). */
+    public static final de.gtacity.block.BillboardBlock BILLBOARD = registerBlockOnly("billboard",
+            de.gtacity.block.BillboardBlock::new, unbreakable().lightLevel(s -> 10).emissiveRendering(s -> true));
+
     private static BlockBehaviour.Properties unbreakable() {
         return BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(-1.0F, 3600000.0F)
                 .sound(SoundType.METAL).noLootTable();
@@ -55,6 +59,14 @@ public final class ModBlocks {
         ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, GtaCity.id(name));
         Registry.register(BuiltInRegistries.ITEM, itemKey,
                 new BlockItem(block, new Item.Properties().setId(itemKey).useBlockDescriptionPrefix()));
+        return block;
+    }
+
+    private static <T extends Block> T registerBlockOnly(String name, Function<BlockBehaviour.Properties, T> factory,
+                                                         BlockBehaviour.Properties properties) {
+        ResourceKey<Block> key = ResourceKey.create(Registries.BLOCK, GtaCity.id(name));
+        T block = factory.apply(properties.setId(key));
+        Registry.register(BuiltInRegistries.BLOCK, key, block);
         return block;
     }
 
