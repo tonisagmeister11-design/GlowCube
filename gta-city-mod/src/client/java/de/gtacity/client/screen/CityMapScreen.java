@@ -73,13 +73,13 @@ public class CityMapScreen extends Screen {
                 tab = t;
                 selected = null;
                 rebuildWidgets();
-            }).bounds(x, 3, 56, 20).build();
+            }).bounds(x, 3, 46, 20).build();
             b.active = t != tab;
             addRenderableWidget(b);
-            x += 58;
+            x += 48;
         }
         addRenderableWidget(Button.builder(Component.literal("Schließen"), b -> onClose())
-                .bounds(width - 64, 3, 60, 20).build());
+                .bounds(width - 54, 3, 50, 20).build());
         switch (tab) {
             case MAP -> initMap();
             case JOBS -> initJobs();
@@ -96,12 +96,12 @@ public class CityMapScreen extends Screen {
                 centerX = minecraft.player.getX();
                 centerZ = minecraft.player.getZ();
             }
-        }).bounds(width - 64 - 62, 3, 60, 20).build());
+        }).bounds(width - 54 - 46, 3, 44, 20).build());
         if (Waypoint.get() != null) {
             addRenderableWidget(Button.builder(Component.literal("Ziel löschen"), b -> {
                 Waypoint.clear();
                 rebuildWidgets();
-            }).bounds(width - 64 - 62 - 76, 3, 74, 20).build());
+            }).bounds(width - 54 - 46 - 68, 3, 66, 20).build());
         }
         if (selected != null && selected.kind() == CityMap.Kind.VILLA) {
             boolean owned = MapDraw.owned(minecraft, selected);
@@ -249,22 +249,22 @@ public class CityMapScreen extends Screen {
         for (CityMap.Kind kind : CityMap.Kind.values()) {
             MapDraw.icon(g, font, 12, y + 4, kind.color, kind.textColor, kind.symbol);
             g.text(font, kind.label, 22, y, 0xFFE0E0E0, false);
-            y += 13;
+            y += 12;
         }
         MapDraw.icon(g, font, 12, y + 4, MapDraw.VILLA_OWNED, 0xFFFFFFFF, "H");
         g.text(font, "Deine Villa", 22, y, 0xFFE0E0E0, false);
-        y += 13;
+        y += 12;
         MapDraw.flag(g, 12, y + 4, MapDraw.WAYPOINT_COLOR);
         g.text(font, "Dein Ziel (Navi)", 22, y, 0xFFE0E0E0, false);
-        y += 13;
+        y += 12;
         MapDraw.flag(g, 12, y + 4, MapDraw.MISSION_COLOR);
         g.text(font, "Job-Ziel", 22, y, 0xFFE0E0E0, false);
-        y += 13;
+        y += 12;
         g.fill(8, y + 1, 17, y + 8, 0xFFFF3030);
         g.text(font, "Polizei", 22, y, 0xFFE0E0E0, false);
-        y += 18;
-        y = g.textWithWordWrap(font, Component.literal("Klick: Ziel setzen. Klick auf V: Villa. "
-                + "Rechtsklick: Ziel weg. Ziehen: verschieben, Mausrad: Zoom."), 6, y, LEGEND_WIDTH - 10, 0xFF9098A0);
+        y += 14;
+        g.textWithWordWrap(font, Component.literal("Klick: Ziel / Villa. Rechtsklick: Ziel weg. Mausrad: Zoom"),
+                6, y, LEGEND_WIDTH - 10, 0xFF9098A0);
     }
 
     private @Nullable Object[] iconAt(double x, double y) {
@@ -562,9 +562,9 @@ public class CityMapScreen extends Screen {
         super.extractRenderState(g, mouseX, mouseY, partialTick);
         Long money = minecraft.player == null ? null : minecraft.player.getAttached(ModAttachments.MONEY);
         String text = Economy.format(money == null ? 0 : money);
-        int moneyX = tab == Tab.MAP ? width - 64 - 62 - (Waypoint.get() != null ? 76 : 0) - 8 - font.width(text)
-                : width - 72 - font.width(text);
-        g.text(font, text, moneyX, 9, 0xFF6BD36B, true);
+        // Money sits in the panel header, where it never covers a button.
+        int moneyX = tab == Tab.MAP ? LEGEND_WIDTH - 6 - font.width(text) : width / 2 + 180 - font.width(text);
+        g.text(font, text, moneyX, TOP + (tab == Tab.MAP ? 6 : 12), 0xFF6BD36B, true);
     }
 
     @Override

@@ -26,8 +26,8 @@ public final class Minimap {
     private Minimap() {
     }
 
-    public static final int WIDTH = 132;
-    public static final int HEIGHT = 92;
+    public static final int WIDTH = 110;
+    public static final int HEIGHT = 78;
 
     private static float zoom = 1.6F;
 
