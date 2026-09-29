@@ -252,7 +252,13 @@ public class CarEntity extends Entity {
 
     @Override
     public @Nullable LivingEntity getControllingPassenger() {
-        return getFirstPassenger() instanceof Player player ? player : null;
+        // A player always drives, even if a passenger (taxi guest) got in first.
+        for (Entity passenger : getPassengers()) {
+            if (passenger instanceof Player player) {
+                return player;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -262,7 +268,8 @@ public class CarEntity extends Entity {
 
     @Override
     protected Vec3 getPassengerAttachmentPoint(Entity passenger, EntityDimensions dimensions, float scale) {
-        int index = getPassengers().indexOf(passenger);
+        LivingEntity driver = getControllingPassenger();
+        int index = driver != null ? (passenger == driver ? 0 : 1) : getPassengers().indexOf(passenger);
         float side = index <= 0 ? 0.42F : -0.42F;
         float seat = getVariant().shape == CarVariant.Shape.SUV ? 0.45F : 0.2F;
         return new Vec3(side, seat, -0.1).yRot(-getYRot() * Mth.DEG_TO_RAD);

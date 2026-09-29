@@ -1582,13 +1582,26 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             if (goal == null) {
                 break;
             }
+            // The player drives the car (the client moves it): get out, move the car with the guest inside to the
+            // goal, get back in behind the wheel.
+            ctx.getInput().pressKey(o -> o.keySwapOffhand);
+            ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
             server.runOnServer(s -> {
-                if (player(s).getVehicle() instanceof CarEntity c) {
+                var cars = s.overworld().getEntitiesOfClass(CarEntity.class, player(s).getBoundingBox().inflate(8));
+                if (!cars.isEmpty()) {
+                    CarEntity c = cars.getFirst();
                     c.snapTo(goal.x() + 0.5, CityLayout.GROUND + 2.0, goal.z() + 0.5, 0.0F, 0.0F);
+                    player(s).teleportTo(goal.x() + 2.5, CityLayout.GROUND + 2.0, goal.z() + 0.5);
                 }
             });
-            ctx.waitTicks(70);
-            // second ride: passenger appears when we are near - already the case, the car got us there
+            ctx.waitTicks(40);
+            server.runOnServer(s -> {
+                var cars = s.overworld().getEntitiesOfClass(CarEntity.class, player(s).getBoundingBox().inflate(8));
+                if (!cars.isEmpty()) {
+                    player(s).startRiding(cars.getFirst());
+                }
+            });
+            ctx.waitTicks(40);
         }
         after = server.computeOnServer(s -> Economy.get(player(s)));
         expect(after - before > 500, "Taxi: Fahrgast abgeliefert, Fahrpreis kassiert (+$" + (after - before) + ")");
@@ -1604,6 +1617,10 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         ctx.waitForScreen(JobBoardScreen.class);
         ok("Hafenbüro: Ansprechen von Tony öffnet das Job-Board");
         ctx.takeScreenshot("gtacity-18c-hafenbuero");
+        System.out.println("GTACITY-TEST Diagnose Kapitel: aktiv=" + server.computeOnServer(s -> Jobs.active(player(s)))
+                + " kapitel=" + server.computeOnServer(s -> Jobs.chapter(player(s))) + " clientKapitel="
+                + ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.STORY)) + " clientMission="
+                + ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION)));
         ctx.clickScreenButton("Kapitel starten");
         ctx.waitTicks(10);
         expect(ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) != null),
