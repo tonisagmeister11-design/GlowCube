@@ -1875,13 +1875,17 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 + (ground == null ? "" : " (" + ground[0] + ", " + ground[1] + ", " + ground[2] + ")"));
         if (ground != null) {
             // Stilts: the picture starts 6 blocks above the ground, nothing stands in the street.
+            // Under the middle of the picture there are five free blocks - a car fits through.
             boolean free = server.computeOnServer(s -> {
-                BlockPos street = new BlockPos(ground[0] + ground[3] * 4, CityLayout.GROUND + 1,
-                        ground[2] + ground[4] * 4);
-                return s.overworld().getBlockState(street).isAir();
+                for (int y = CityLayout.GROUND + 1; y <= CityLayout.GROUND + 5; y++) {
+                    if (!s.overworld().getBlockState(new BlockPos(ground[0], y, ground[2])).isAir()) {
+                        return false;
+                    }
+                }
+                return true;
             });
-            expect(ground[1] >= CityLayout.GROUND + 6 && free, "Werbung: Stelzen-Tafel steht hoch, die Straße "
-                    + "davor bleibt frei");
+            expect(ground[1] >= CityLayout.GROUND + 6 && free, "Werbung: Stelzen-Tafel steht hoch, darunter passt "
+                    + "ein Auto durch");
             viewBillboard(ctx, server, conn, ground, 16, -3, -12.0F);
             ctx.takeScreenshot("gtacity-25c-werbung-stelzen");
         }
