@@ -86,6 +86,10 @@ public final class Jobs {
                 + "die sich wehren - allein schwer, im Team leichter.", "$6.000"),
         STREET_RACE("Straßenrennen", Station.SHADY, "Mit dem Auto durch die Checkpoints quer durch die Stadt, "
                 + "gegen die Uhr. Im Team: wer zuerst ankommt, kassiert den Siegerbonus.", "$3.000 + Bonus"),
+        GANG_CAR("Gang-Auto klauen", Station.SHADY, "Eine Gang hat einen teuren Wagen vor ihrem Versteck stehen. "
+                + "Klau ihn und bring ihn zum Käufer - die Gang wird nicht begeistert sein.", "$9.000"),
+        PROTECTION("Schutzgeld eintreiben", Station.SHADY, "Tony will sein Geld von den Läden. Klapper die "
+                + "Geschäfte ab - manchmal ruft ein Verkäufer die Polizei.", "$800 pro Laden"),
         CREW_HEIST("Bankraub im Team", Station.SHADY, "Trefft euch vor der Bank, bohrt den Tresor auf "
                 + "(Thermobohrer), hängt die Polizei ab - jeder bekommt den vollen Anteil.", "$20.000 pro Kopf",
                 true);
@@ -112,7 +116,7 @@ public final class Jobs {
         /** Shown under "Team-Jobs": players in the world get asked to join. */
         public boolean team() {
             return switch (this) {
-                case BOUNTY, GANG_WAR, GUN_RUNNING, STREET_RACE, CREW_HEIST -> true;
+                case BOUNTY, GANG_WAR, GUN_RUNNING, STREET_RACE, CREW_HEIST, GANG_CAR -> true;
                 default -> false;
             };
         }
@@ -139,7 +143,8 @@ public final class Jobs {
     // ------------------------------------------------------------------ data
 
     private enum Goal {
-        REACH, PICKUP, DROPOFF, KILL, HAVE_ITEM, HEIST, STEAL_CAR, CLEAR, KILL_GROUP, CHECKPOINT, TOGETHER
+        REACH, PICKUP, DROPOFF, KILL, HAVE_ITEM, HEIST, STEAL_CAR, CLEAR, KILL_GROUP, CHECKPOINT, TOGETHER,
+        GANG_CAR, DELIVER_CAR
     }
 
     private static final class Step {
@@ -211,6 +216,9 @@ public final class Jobs {
         long lastHint;
         int missing;
         UUID npc;
+        /** The gang's car (gang car theft) and whether the gang has seen the player yet. */
+        UUID car;
+        boolean spotted;
         /** Gang members of a gang war. */
         final List<UUID> group = new ArrayList<>();
         /** Everybody doing this job: the player who took it and, in a crew, the mates (partner mission). */
@@ -304,6 +312,26 @@ public final class Jobs {
     private static boolean boardOpen(ServerPlayer player, Station station) {
         long[] b = BOARD.get(player.getUUID());
         return b != null && b[0] == station.ordinal() && player.level().getGameTime() - b[1] < 20L * 60 * 5;
+    }
+
+    /**
+     * Plays a recorded voice line to one player: gtacity:voice_&lt;clerk&gt;_&lt;key&gt;, e.g. voice_marco_courier. A line
+     * whose sound file is not there yet (tools/import_voices.py) is simply silent - the text is in the chat anyway.
+     */
+    public static void voice(ServerPlayer player, String name) {
+        if (player instanceof net.fabricmc.fabric.api.entity.FakePlayer) {
+            return;
+        }
+        var event = net.minecraft.sounds.SoundEvent.createVariableRangeEvent(de.gtacity.GtaCity.id("voice_" + name));
+        player.connection.send(new net.minecraft.network.protocol.game.ClientboundSoundPacket(
+                net.minecraft.core.Holder.direct(event), SoundSource.VOICE, player.getX(), player.getEyeY(),
+                player.getZ(), 1.0F, 1.0F, player.getRandom().nextLong()));
+    }
+
+    /** Voice line name of a job's intro: clerk + job, e.g. "marco_courier", "tony_chapter4". */
+    private static String introVoice(Job job) {
+        return job.station.clerk.toLowerCase(java.util.Locale.ROOT) + "_"
+                + (job.chapter > 0 ? "chapter" + job.chapter : job.type.name().toLowerCase(java.util.Locale.ROOT));
     }
 
     private static void say(ServerPlayer player, Station station, String text) {
@@ -457,6 +485,7 @@ public final class Jobs {
         enter(level, player, job);
         for (ServerPlayer p : members(player, job)) {
             say(p, job.station, intro(job));
+            voice(p, introVoice(job));
             p.sendSystemMessage(Component.literal("Job angenommen: " + job.title() + " - das Ziel ist auf Karte und "
                     + "Radar markiert (Navi).").withStyle(job.station.illegal ? ChatFormatting.RED
                     : ChatFormatting.AQUA));
@@ -496,6 +525,10 @@ public final class Jobs {
             case GANG_WAR -> "Die Ballas haben sich in einem Hinterhof verschanzt. Vier Mann, bewaffnet. Die Polizei "
                     + "zahlt, wenn du aufräumst - und es gibt keine Sterne dafür.";
             case STREET_RACE -> "Fünf Checkpoints, die Uhr läuft. Du brauchst ein schnelles Auto - am Steuer zählt's.";
+            case GANG_CAR -> "Vor dem Versteck der Ballas steht ein Wagen, den mein Kunde unbedingt will. Hol ihn dir. "
+                    + "Wenn sie dich sehen, wird's hässlich - also sei schnell oder bewaffnet.";
+            case PROTECTION -> "Die Läden in der Gegend zahlen mir Schutzgeld. Sie wissen es nur noch nicht. Geh hin, "
+                    + "sag schöne Grüße von Tony und kassier ab.";
             case CREW_HEIST -> "Der große Coup, diesmal zu mehreren. Trefft euch vor der Bank. Einer von euch braucht "
                     + "einen Thermobohrer (Ammu-Nation). Danach: Bullen abhängen, ab zum Hafenbüro.";
         };
@@ -551,6 +584,10 @@ public final class Jobs {
             }
         }
         job.group.clear();
+        if (job.car != null && level.getEntity(job.car) instanceof CarEntity car && car.getPassengers().isEmpty()) {
+            car.despawn();
+        }
+        job.car = null;
     }
 
     // ------------------------------------------------------------------ continue / team jobs
@@ -665,6 +702,7 @@ public final class Jobs {
                     + job.title() + "). Jeder bekommt den vollen Lohn.").withStyle(ChatFormatting.GREEN));
         }
         say(player, job.station, intro(job));
+        voice(player, introVoice(job));
     }
 
     public static void declineTeam(ServerPlayer player) {
@@ -806,6 +844,42 @@ public final class Jobs {
                 }
                 job.steps.getLast().say("Rennleiter: Im Ziel! Schnelle Karre, schneller Fahrer.");
             }
+            case GANG_CAR -> {
+                BlockPos hideout = randomAddress(random, from, 300, 800, EnumSet.of(CityLayout.LotType.WAREHOUSE,
+                        CityLayout.LotType.PARKING, CityLayout.LotType.HOUSE));
+                BlockPos buyer = randomAddress(random, hideout, 600, 1400, EnumSet.of(CityLayout.LotType.CONTAINERS,
+                        CityLayout.LotType.WAREHOUSE, CityLayout.LotType.PARKING));
+                job.steps.add(new Step(Goal.GANG_CAR, hideout, "Den Wagen der Gang klauen").seconds(900));
+                job.steps.add(new Step(Goal.DELIVER_CAR, buyer, "Gang-Auto zum Käufer bringen").pay(9000)
+                        .seconds(600).say("Käufer: Die Karre ist heiß - genau richtig. Hier ist dein Geld."));
+            }
+            case PROTECTION -> {
+                int shops = Math.min(6, 2 + lv);
+                BlockPos last = from;
+                java.util.Set<Long> used = new java.util.HashSet<>();
+                for (int i = 1; i <= shops; i++) {
+                    CityMap.Place shop = null;
+                    double best = Double.MAX_VALUE;
+                    for (CityMap.Place p : CityMap.places()) {
+                        if ((p.kind() == CityMap.Kind.STORE || p.kind() == CityMap.Kind.GAS_STATION)
+                                && !used.contains(p.id())) {
+                            double d = flat(last, p.entrance()) + random.nextInt(250);
+                            if (d > 120 && d < best) {
+                                best = d;
+                                shop = p;
+                            }
+                        }
+                    }
+                    if (shop == null) {
+                        break;
+                    }
+                    used.add(shop.id());
+                    last = shop.entrance();
+                    job.steps.add(new Step(Goal.REACH, last, "Schutzgeld kassieren: Laden " + i + "/" + shops)
+                            .pay(800).seconds(300).wanted(random.nextInt(4) == 0 || lv >= 3 && i == shops ? 1 : 0)
+                            .say("Verkäufer: Schon gut, schon gut ... hier. Grüß Tony."));
+                }
+            }
             case CREW_HEIST -> {
                 CityMap.Place bank = CityMap.nearest(CityMap.Kind.BANK, from.getX(), from.getZ());
                 CityMap.Place hideout = CityMap.nearest(CityMap.Kind.DOCKS, from.getX(), from.getZ());
@@ -935,6 +1009,7 @@ public final class Jobs {
         Step s = job.step();
         job.spawned = false;
         job.lastHint = 0;
+        job.missing = 0;
         job.deadline = s.seconds > 0 ? level.getGameTime() + s.seconds * 20L : Long.MAX_VALUE;
         updateMission(player, job);
     }
@@ -1021,6 +1096,8 @@ public final class Jobs {
         }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.CASH,
                 SoundSource.PLAYERS, 1.0F, 0.8F);
+        voice(player, job.station.clerk.toLowerCase(java.util.Locale.ROOT)
+                + (job.chapter > 0 ? "_chapter" + job.chapter + "_done" : "_job_done"));
         WantedSystem.title(player, Component.literal(job.chapter > 0 ? "KAPITEL " + job.chapter + " GESCHAFFT"
                 : "JOB ERLEDIGT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                 Component.literal("Verdient: " + Economy.format(total) + "  -  Rang: " + rank(done(player)))
@@ -1136,6 +1213,27 @@ public final class Jobs {
                         advance(level, player, job, 0);
                     }
                 }
+                case GANG_CAR -> gangCar(level, player, job, s, dist, inCar);
+                case DELIVER_CAR -> {
+                    boolean theirCar = job.car != null && player.getVehicle() instanceof CarEntity car
+                            && car.getUUID().equals(job.car);
+                    if (job.car != null && level.getEntity(job.car) == null && level.hasChunkAt(player.blockPosition())
+                            && !theirCar && ++job.missing > 120) {
+                        fail(player, "Der Wagen ist weg.");
+                        continue;
+                    }
+                    if (dist <= 14.0 && theirCar) {
+                        CarEntity car = (CarEntity) player.getVehicle();
+                        player.stopRiding();
+                        car.despawn();
+                        job.car = null;
+                        advance(level, player, job, timeBonus(job, level));
+                    } else if (dist <= 14.0 && now - job.lastHint > 20 * 8) {
+                        job.lastHint = now;
+                        player.sendOverlayMessage(Component.literal("Der Käufer will den Wagen der Gang sehen!")
+                                .withStyle(ChatFormatting.RED));
+                    }
+                }
                 case CHECKPOINT -> {
                     if (dist <= 14.0) {
                         if (inCar) {
@@ -1217,7 +1315,7 @@ public final class Jobs {
         Step s = job.step();
         boolean guide = s.goal == Goal.REACH && s.look != null;
         if (job.spawned || dist > 90.0 || !(s.goal == Goal.PICKUP || s.goal == Goal.KILL
-                || s.goal == Goal.KILL_GROUP || guide)) {
+                || s.goal == Goal.KILL_GROUP || s.goal == Goal.GANG_CAR || guide)) {
             return;
         }
         if (!level.hasChunkAt(s.pos) || !level.isPositionEntityTicking(s.pos)) {
@@ -1225,7 +1323,25 @@ public final class Jobs {
         }
         job.spawned = true;
         if (s.goal == Goal.KILL_GROUP) {
-            spawnGang(level, player, job, s);
+            spawnGang(level, player, job, s, true);
+            return;
+        }
+        if (s.goal == Goal.GANG_CAR) {
+            // The car parked on the street in front of the hideout, the gang hanging around it.
+            CarEntity car = ModEntities.CAR.create(level, EntitySpawnReason.EVENT);
+            if (car != null) {
+                CarVariant[] fancy = {CarVariant.SPORTS_BLACK, CarVariant.SPORTS_RED, CarVariant.SUV_BLACK,
+                        CarVariant.SPORTS_YELLOW};
+                car.setVariant(job.level >= 3 ? CarVariant.SUPER_CARBON
+                        : fancy[level.getRandom().nextInt(fancy.length)]);
+                car.setPersistentCar(true);
+                car.snapTo(s.pos.getX() + 0.5, s.pos.getY() + 0.5, s.pos.getZ() + 0.5,
+                        level.getRandom().nextFloat() * 360.0F, 0.0F);
+                level.addFreshEntity(car);
+                job.car = car.getUUID();
+            }
+            job.spotted = false;
+            spawnGang(level, player, job, s, false);
             return;
         }
         if (guide) {
@@ -1267,8 +1383,46 @@ public final class Jobs {
         return Math.min(8, 3 + job.level);
     }
 
+    /**
+     * Gang car theft: when the player gets close, a gang member shouts ("you shouldn't have come here") and they
+     * all attack. The step is done once the player drives off in the gang's car.
+     */
+    private static void gangCar(ServerLevel level, ServerPlayer player, Job job, Step s, double dist, boolean inCar) {
+        Entity carEntity = job.car == null ? null : level.getEntity(job.car);
+        if (inCar && carEntity != null && player.getVehicle() == carEntity) {
+            job.missing = 0;
+            advance(level, player, job, 0);
+            return;
+        }
+        if (!job.spotted && job.spawned && dist < 18.0) {
+            job.spotted = true;
+            NpcEntity speaker = null;
+            for (UUID id : job.group) {
+                if (level.getEntity(id) instanceof NpcEntity n && n.isAlive()) {
+                    n.setTarget(player);
+                    if (speaker == null || n.distanceTo(player) < speaker.distanceTo(player)) {
+                        speaker = n;
+                    }
+                }
+            }
+            if (speaker != null) {
+                level.playSound(null, speaker.getX(), speaker.getEyeY(), speaker.getZ(), ModSounds.VOICE_GANG_THREAT,
+                        SoundSource.HOSTILE, 3.0F, 1.0F);
+                speaker.pointAt(player.getX(), player.getZ());
+                for (ServerPlayer m : members(player, job)) {
+                    m.sendSystemMessage(Component.literal("Gangster: Du hättest nicht herkommen sollen. Jetzt bist du "
+                            + "dran!").withStyle(ChatFormatting.DARK_RED));
+                }
+            }
+        }
+        if (job.spawned && carEntity == null && level.hasChunkAt(s.pos) && level.isPositionEntityTicking(s.pos)
+                && ++job.missing > 40) {
+            fail(player, "Der Wagen der Gang ist zerstört.");
+        }
+    }
+
     /** Gang war: armed gang members around the hideout (more each level), they go for the player. */
-    private static void spawnGang(ServerLevel level, ServerPlayer player, Job job, Step s) {
+    private static void spawnGang(ServerLevel level, ServerPlayer player, Job job, Step s, boolean attack) {
         RandomSource random = level.getRandom();
         Item[] weapons = {ModItems.BASEBALL_BAT, ModItems.KNIFE};
         double health = 30.0 + 5.0 * (job.level - 1);
@@ -1286,7 +1440,9 @@ public final class Jobs {
             npc.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(weapons[i % weapons.length]));
             npc.addEffect(new MobEffectInstance(MobEffects.GLOWING, 20 * 60 * 15, 0, false, false));
             level.addFreshEntity(npc);
-            npc.setTarget(player);
+            if (attack) {
+                npc.setTarget(player);
+            }
             job.group.add(npc.getUUID());
         }
     }

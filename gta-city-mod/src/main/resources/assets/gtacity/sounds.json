@@ -112,5 +112,23 @@
       "gtacity:gun_ak47"
     ],
     "subtitle": "subtitles.gtacity.gun_ak47"
+  },
+  "voice_gang_threat": {
+    "sounds": [
+      "gtacity:voice_gang_threat"
+    ],
+    "subtitle": "subtitles.gtacity.voice_gang_threat"
+  },
+  "voice_pedestrian_angry": {
+    "sounds": [
+      "gtacity:voice_pedestrian_angry"
+    ],
+    "subtitle": "subtitles.gtacity.voice_pedestrian_angry"
+  },
+  "voice_police_surrender": {
+    "sounds": [
+      "gtacity:voice_police_surrender"
+    ],
+    "subtitle": "subtitles.gtacity.voice_police_surrender"
   }
 }

@@ -62,6 +62,8 @@ public class NpcEntity extends PathfinderMob {
     public static final int[] GESTURE_TICKS = {0, 70, 40, 60};
 
     private long nextGreeting;
+    private long lastShout = -1000;
+    private static long lastShoutAnywhere = -1000;
     /** Walking to a car door to get in (taxi guests). */
     private CarEntity boarding;
     private int boardingTicks;
@@ -312,6 +314,17 @@ public class NpcEntity extends PathfinderMob {
     @Override
     public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
         boolean hurt = super.hurtServer(level, source, amount);
+        if (hurt && brave && !(this instanceof PoliceEntity) && role.isEmpty()
+                && source.getEntity() instanceof Player && isAlive()) {
+            // "Get lost, man!" - and then he hits back.
+            long now = level.getGameTime();
+            if (now - lastShout > 20 * 8 && now - lastShoutAnywhere > 30) {
+                lastShout = now;
+                lastShoutAnywhere = now;
+                level.playSound(null, getX(), getEyeY(), getZ(), de.gtacity.registry.ModSounds.VOICE_PEDESTRIAN_ANGRY,
+                        net.minecraft.sounds.SoundSource.NEUTRAL, 2.0F, 0.95F + getRandom().nextFloat() * 0.1F);
+            }
+        }
         if (hurt) {
             Entity attacker = source.getEntity();
             if (attacker != null && !brave) {

@@ -65,5 +65,8 @@
   "subtitles.gtacity.skid": "Quietschende Reifen",
   "subtitles.gtacity.cash": "Geld",
   "subtitles.gtacity.gun_deagle": "Desert Eagle schießt",
-  "subtitles.gtacity.gun_ak47": "AK-47 schießt"
+  "subtitles.gtacity.gun_ak47": "AK-47 schießt",
+  "subtitles.gtacity.voice_gang_threat": "Gangster droht dir",
+  "subtitles.gtacity.voice_pedestrian_angry": "Passant beschimpft dich",
+  "subtitles.gtacity.voice_police_surrender": "Polizist: Ergib dich"
 }

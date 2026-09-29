@@ -179,6 +179,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Alle Verkaeufer", () -> allClerks(ctx, server, conn));
             check("Jobs", () -> jobs(ctx, server, conn));
             check("Crew", () -> crew(ctx, server, conn));
+            check("Gangauto", () -> gangCar(ctx, server, conn));
             check("Villa", () -> villa(ctx, server, conn));
             check("Taschendiebstahl", () -> pickpocket(ctx, server, conn));
             check("Helikopter", () -> helicopter(ctx, server, conn));
@@ -1712,6 +1713,73 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             }
         });
         server.runCommand("kill @e[type=minecraft:item]");
+    }
+
+    /** New illegal job: steal the gang's car (they shout and attack), and the police call to give up. */
+    private void gangCar(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode survival @a");
+        server.runOnServer(s -> {
+            Jobs.cancel(player(s), "Test");
+            Economy.set(player(s), 1000);
+            player(s).setHealth(player(s).getMaxHealth());
+            Jobs.openBoard(player(s), Jobs.Station.SHADY);
+            Jobs.start(player(s), Jobs.Type.GANG_CAR);
+        });
+        closeScreen(ctx);
+        var goal = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(goal != null && goal.label().contains("Wagen der Gang"), "Gang-Auto: Job startet ("
+                + (goal == null ? "-" : goal.label()) + ")");
+        if (goal == null) {
+            return;
+        }
+        server.runCommand("effect give @a minecraft:resistance 60 4 true");
+        teleport(server, goal.x() + 0.5, CityLayout.GROUND + 2.0, goal.z() + 40.5, 180.0F, 10.0F);
+        ctx.waitTicks(30);
+        teleport(server, goal.x() + 0.5, CityLayout.GROUND + 2.0, goal.z() + 9.5, 180.0F, 10.0F);
+        ctx.waitTicks(30);
+        boolean attacked = server.computeOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN,
+                n -> "bounty".equals(n.role()) && n.getTarget() == player(s)).size() > 0);
+        expect(attacked, "Gang-Auto: die Gang entdeckt dich, droht und greift an");
+        ctx.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
+        ctx.takeScreenshot("gtacity-20-gangauto");
+        boolean inCar = server.computeOnServer(s -> {
+            var cars = s.overworld().getEntitiesOfClass(CarEntity.class, player(s).getBoundingBox().inflate(20),
+                    c -> c.getPassengers().isEmpty());
+            cars.sort(java.util.Comparator.comparingDouble(c -> c.distanceToSqr(goal.x(), c.getY(), goal.z())));
+            return !cars.isEmpty() && player(s).startRiding(cars.getFirst());
+        });
+        ctx.waitTicks(20);
+        var deliver = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(inCar && deliver != null && deliver.label().contains("Käufer"), "Gang-Auto: geklaut, jetzt zum "
+                + "Käufer (" + (deliver == null ? "-" : deliver.label()) + ")");
+        server.runOnServer(s -> Jobs.moveGoalForTest(player(s), player(s).blockPosition()));
+        ctx.waitTicks(20);
+        long money = server.computeOnServer(s -> Economy.get(player(s)));
+        expect(money >= 9000, "Gang-Auto: beim Käufer abgeliefert ($" + money + ")");
+        server.runOnServer(s -> {
+            Jobs.cancel(player(s), "Test");
+            player(s).stopRiding();
+        });
+        ctx.runOnClient(mc -> mc.gui.setScreen(null));
+
+        // Two stars: the first officer calls on you to give up before they shoot.
+        reset(server);
+        server.runOnServer(s -> {
+            ServerPlayer p = player(s);
+            WantedSystem.setLevel(p, 2);
+            PoliceEntity cop = ModEntities.POLICE.create(s.overworld(), EntitySpawnReason.COMMAND);
+            cop.randomizeLook(false);
+            cop.snapTo(p.getX() + 6, p.getY(), p.getZ(), 90.0F, 0.0F);
+            s.overworld().addFreshEntity(cop);
+            cop.setTarget(p);
+        });
+        ctx.waitTicks(20);
+        boolean warned = server.computeOnServer(s -> !PoliceEntity.warningOver(player(s))
+                && s.overworld().getEntities(ModEntities.POLICE, c -> c.gestureKind() == NpcEntity.POINT).size() > 0);
+        expect(warned, "Polizei: der erste Polizist fordert dich zum Aufgeben auf, bevor geschossen wird");
+        reset(server);
+        server.runCommand("effect clear @a");
     }
 
     /** Runs the current mission: teleports to every goal until the job is done. */

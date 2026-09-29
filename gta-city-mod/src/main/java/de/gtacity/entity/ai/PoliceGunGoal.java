@@ -22,7 +22,9 @@ public class PoliceGunGoal extends Goal {
     @Override
     public boolean canUse() {
         LivingEntity target = cop.getTarget();
-        return target != null && target.isAlive() && WantedSystem.level(target) >= 2;
+        // At two stars the first officer calls on you to give up before anyone opens fire.
+        return target != null && target.isAlive() && WantedSystem.level(target) >= 2
+                && (WantedSystem.level(target) > 2 || de.gtacity.entity.PoliceEntity.warningOver(target));
     }
 
     @Override

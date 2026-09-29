@@ -13,6 +13,10 @@ public final class ModSounds {
     private ModSounds() {
     }
 
+    /** Voice lines (tools/import_voices.py). */
+    public static final SoundEvent VOICE_GANG_THREAT = register("voice_gang_threat");
+    public static final SoundEvent VOICE_POLICE_SURRENDER = register("voice_police_surrender");
+    public static final SoundEvent VOICE_PEDESTRIAN_ANGRY = register("voice_pedestrian_angry");
     public static final SoundEvent GUN_PISTOL = register("gun_pistol");
     public static final SoundEvent GUN_SMG = register("gun_smg");
     public static final SoundEvent GUN_RIFLE = register("gun_rifle");

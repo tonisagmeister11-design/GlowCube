@@ -65,5 +65,8 @@
   "subtitles.gtacity.skid": "Screeching tires",
   "subtitles.gtacity.cash": "Cash",
   "subtitles.gtacity.gun_deagle": "Desert Eagle fires",
-  "subtitles.gtacity.gun_ak47": "AK-47 fires"
+  "subtitles.gtacity.gun_ak47": "AK-47 fires",
+  "subtitles.gtacity.voice_gang_threat": "Gang member threatens you",
+  "subtitles.gtacity.voice_pedestrian_angry": "Pedestrian swears at you",
+  "subtitles.gtacity.voice_police_surrender": "Officer: give yourself up"
 }

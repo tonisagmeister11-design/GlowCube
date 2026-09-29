@@ -93,11 +93,38 @@ public class PoliceEntity extends NpcEntity {
         return super.getSkin() % POLICE_SKINS;
     }
 
+    /** When a player was last told to give up (game time), so only the first officer says it. */
+    private static final java.util.Map<java.util.UUID, Long> WARNED = new java.util.HashMap<>();
+    private static final long WARNING_TICKS = 60;
+
+    /** True once the "give yourself up" call is a few seconds old (or was never needed). */
+    public static boolean warningOver(Entity target) {
+        Long at = WARNED.get(target.getUUID());
+        return at != null && target.level().getGameTime() - at >= WARNING_TICKS;
+    }
+
     @Override
     public void tick() {
         super.tick();
         if (!level().isClientSide() && getTarget() instanceof Player p && WantedSystem.level(p) == 0) {
             setTarget(null);
+        }
+        if (!level().isClientSide() && tickCount % 5 == 0 && getTarget() instanceof ServerPlayer p) {
+            int stars = WantedSystem.level(p);
+            long now = level().getGameTime();
+            Long at = WARNED.get(p.getUUID());
+            // One call per chase: again only after the player was free for a while.
+            if (stars >= 1 && stars <= 2 && (at == null || now - at > 20 * 90) && distanceTo(p) < 24
+                    && hasLineOfSight(p)) {
+                WARNED.put(p.getUUID(), now);
+                level().playSound(null, getX(), getEyeY(), getZ(), de.gtacity.registry.ModSounds.VOICE_POLICE_SURRENDER,
+                        net.minecraft.sounds.SoundSource.HOSTILE, 3.0F, 1.0F);
+                gesture(POINT, (float) (Math.toDegrees(Math.atan2(p.getZ() - getZ(), p.getX() - getX())) - 90.0));
+                p.sendSystemMessage(net.minecraft.network.chat.Component.literal("Polizei: Stehen bleiben! Ergib "
+                        + "dich - oder wir schießen!").withStyle(net.minecraft.ChatFormatting.BLUE));
+            } else if (stars > 2 && at == null) {
+                WARNED.put(p.getUUID(), now - WARNING_TICKS);
+            }
         }
     }
 
