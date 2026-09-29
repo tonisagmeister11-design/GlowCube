@@ -545,7 +545,8 @@ public class CarEntity extends Entity {
             if (!pursuit.isAlive() || pursuit.isRemoved() || WantedSystem.level(pursuit) == 0) {
                 pursuit = null;
                 setSiren(false);
-            } else if (distanceTo(pursuit) < 18.0) {
+            } else if (distanceTo(pursuit) < 18.0 || blockedTicks > 40 && distanceTo(pursuit) < 70.0) {
+                // Close enough - or stuck in traffic: the officers get out and run.
                 PoliceDispatch.unload(this, pursuit);
                 pursuit = null;
                 aiDriving = false;

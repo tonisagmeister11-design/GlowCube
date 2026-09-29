@@ -21,6 +21,7 @@ import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.HitResult;
@@ -73,7 +74,9 @@ public class HelicopterEntity extends Entity {
         double angle = player.getRandom().nextDouble() * Math.PI * 2;
         double x = player.getX() + Math.cos(angle) * 90.0;
         double z = player.getZ() + Math.sin(angle) * 90.0;
-        heli.snapTo(x, player.getY() + 45.0, z, (float) Math.toDegrees(-angle) + 90.0F, 0.0F);
+        double y = Math.max(player.getY() + 45.0,
+                level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(x), Mth.floor(z)) + 10.0);
+        heli.snapTo(x, y, z, (float) Math.toDegrees(-angle) + 90.0F, 0.0F);
         heli.target = player.getUUID();
         level.addFreshEntity(heli);
         for (int i = 0; i < 2; i++) {
@@ -210,6 +213,24 @@ public class HelicopterEntity extends Entity {
         }
     }
 
+    /** Lowest height that clears every roof between here and the goal (skyscrapers reach almost 300). */
+    private double safeAltitude(ServerLevel level, Vec3 goal) {
+        Vec3 flat = new Vec3(goal.x - getX(), 0, goal.z - getZ());
+        double length = flat.length();
+        Vec3 dir = length < 1.0E-3 ? Vec3.ZERO : flat.scale(1.0 / length);
+        int highest = level.getMinY();
+        for (double d = 0; d <= Math.min(length, 40.0) + 8.0; d += 4.0) {
+            for (int side = -1; side <= 1; side++) {
+                double x = getX() + dir.x * d - dir.z * side * 3.0, z = getZ() + dir.z * d + dir.x * side * 3.0;
+                highest = Math.max(highest, level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(x),
+                        Mth.floor(z)));
+            }
+        }
+        highest = Math.max(highest, level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(goal.x),
+                Mth.floor(goal.z)));
+        return highest + 7.0;
+    }
+
     private void fly(ServerLevel level) {
         ServerPlayer player = target == null ? null : level.getServer().getPlayerList().getPlayer(target);
         if (!leaving && (player == null || !player.isAlive() || player.level() != level
@@ -235,6 +256,7 @@ public class HelicopterEntity extends Entity {
                 }
             }
         }
+        goal = new Vec3(goal.x, Math.max(goal.y, safeAltitude(level, goal)), goal.z);
         Vec3 to = goal.subtract(position());
         double dist = to.length();
         Vec3 wantVelocity = dist < 0.5 ? Vec3.ZERO : to.scale(Math.min(CRUISE, dist * 0.08) / dist);

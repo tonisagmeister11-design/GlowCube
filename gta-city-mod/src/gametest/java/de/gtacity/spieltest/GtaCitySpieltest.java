@@ -936,6 +936,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         });
         conn.waitForClientboundEntityUpdates(ModEntities.CAR);
         ctx.waitTicks(10);
+        server.runCommand("kill @e[type=gtacity:police]"); // no witnesses from the earlier checks
         aim(ctx, new Vec3(x, CityLayout.GROUND + 1.8, z));
         ctx.getInput().pressKey(o -> o.keyUse);
         ctx.waitFor(mc -> mc.player.getVehicle() instanceof CarEntity, 60);
@@ -1385,10 +1386,13 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             ctx.waitTicks(20);
             server.runOnServer(s -> WantedSystem.commit(player(s), 5));
             closest = Math.min(closest, server.computeOnServer(s -> s.overworld().getEntitiesOfClass(
-                    de.gtacity.entity.HelicopterEntity.class, player(s).getBoundingBox().inflate(160)).stream()
-                    .mapToDouble(h -> h.distanceTo(player(s))).min().orElse(999.0)));
+                    de.gtacity.entity.HelicopterEntity.class, player(s).getBoundingBox().inflate(300)).stream()
+                    .mapToDouble(h -> Math.hypot(h.getX() - player(s).getX(), h.getZ() - player(s).getZ()))
+                    .min().orElse(999.0)));
         }
-        expect(closest < 45, "Hubschrauber kreist über dem Spieler (Abstand " + String.format("%.0f", closest) + ")");
+        // Horizontal distance: over downtown it has to stay above the skyscrapers.
+        expect(closest < 30, "Hubschrauber kreist über dem Spieler (seitlicher Abstand "
+                + String.format("%.0f", closest) + ")");
         ctx.getInput().lookAt(0.0F, -45.0F);
         ctx.waitTicks(5);
         ctx.takeScreenshot("gtacity-20-hubschrauber");
