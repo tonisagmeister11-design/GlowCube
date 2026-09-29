@@ -42,11 +42,14 @@ public class CarModel extends EntityModel<CarRenderer.State> {
             case SEDAN -> new int[]{28, 10, 64, 24, 9, 32, 4};
             case SPORTS -> new int[]{28, 8, 62, 24, 7, 26, 6};
             case SUV -> new int[]{30, 13, 66, 28, 11, 40, 6};
-            case SUPER -> new int[]{28, 7, 66, 22, 6, 24, 7};
+            case SUPER -> new int[]{30, 5, 54, 20, 4, 20, 4};
         };
     }
 
     public static LayerDefinition create(CarVariant.Shape shape) {
+        if (shape == CarVariant.Shape.SUPER) {
+            return createSuper();
+        }
         int[] d = dims(shape);
         int w = d[0], h = d[1], len = d[2], cw = d[3], ch = d[4], cd = d[5], off = d[6];
         float bottom = 20.0F;
@@ -78,6 +81,52 @@ public class CarModel extends EntityModel<CarRenderer.State> {
         root.addOrReplaceChild("wheel_fr", wheel, PartPose.offset(-wx, 19.0F, -wz));
         root.addOrReplaceChild("wheel_bl", wheel, PartPose.offset(wx, 19.0F, wz));
         root.addOrReplaceChild("wheel_br", wheel, PartPose.offset(-wx, 19.0F, wz));
+        return LayerDefinition.create(mesh, 256, 160);
+    }
+
+    /**
+     * The supercar: a low wedge. Flat nose, main body only five pixels high, a glass canopy set far back with a
+     * raked windscreen in front of it, louvred engine cover, side intakes, mirrors, smaller wheels and a big wing on
+     * tall stands. Texture layout (gen_cars.py): body (0,0) 30x5x54, cabin (0,80) 20x4x20, nose (0,110) 28x3x14,
+     * engine cover (0,130) 18x2x12, windscreen (88,80) 18x2x6, intake (150,120) 1x3x8, mirror (170,120) 2x1x1,
+     * wheel (200,24) 4x9x9, wing (140,100) 28x1x6, stand (140,112) 2x6x2.
+     */
+    private static LayerDefinition createSuper() {
+        float bottom = 21.0F;
+        MeshDefinition mesh = new MeshDefinition();
+        PartDefinition root = mesh.getRoot();
+        float top = bottom - 5;
+        root.addOrReplaceChild("body", CubeListBuilder.create().texOffs(0, 0)
+                .addBox(-15.0F, top, -20.0F, 30, 5, 54), PartPose.ZERO);
+        root.addOrReplaceChild("nose", CubeListBuilder.create().texOffs(0, 110)
+                .addBox(-14.0F, bottom - 3, -34.0F, 28, 3, 14), PartPose.ZERO);
+        root.addOrReplaceChild("cabin", CubeListBuilder.create().texOffs(0, 80)
+                .addBox(-10.0F, top - 4, -6.0F, 20, 4, 20), PartPose.ZERO);
+        root.addOrReplaceChild("windscreen", CubeListBuilder.create().texOffs(88, 80)
+                .addBox(-9.0F, top - 2, -12.0F, 18, 2, 6), PartPose.ZERO);
+        root.addOrReplaceChild("engine_cover", CubeListBuilder.create().texOffs(0, 130)
+                .addBox(-9.0F, top - 2, 14.0F, 18, 2, 12), PartPose.ZERO);
+        root.addOrReplaceChild("intakes", CubeListBuilder.create()
+                .texOffs(150, 120).addBox(15.0F, top + 1, 6.0F, 1, 3, 8)
+                .texOffs(150, 120).addBox(-16.0F, top + 1, 6.0F, 1, 3, 8), PartPose.ZERO);
+        root.addOrReplaceChild("mirrors", CubeListBuilder.create()
+                .texOffs(170, 120).addBox(10.0F, top - 3, -5.0F, 2, 1, 1)
+                .texOffs(170, 120).addBox(-12.0F, top - 3, -5.0F, 2, 1, 1), PartPose.ZERO);
+        root.addOrReplaceChild("bumper_front", CubeListBuilder.create().texOffs(140, 80)
+                .addBox(-15.0F, bottom - 2, -36.0F, 30, 3, 2), PartPose.ZERO);
+        root.addOrReplaceChild("bumper_back", CubeListBuilder.create().texOffs(140, 80)
+                .addBox(-15.0F, bottom - 3, 34.0F, 30, 3, 2), PartPose.ZERO);
+        root.addOrReplaceChild("light_bar", CubeListBuilder.create().texOffs(140, 90)
+                .addBox(-8.0F, top - 6, -2.0F, 16, 2, 4), PartPose.ZERO);
+        root.addOrReplaceChild("spoiler", CubeListBuilder.create()
+                .texOffs(140, 100).addBox(-14.0F, top - 7, 27.0F, 28, 1, 6)
+                .texOffs(140, 112).addBox(-9.0F, top - 6, 29.0F, 2, 6, 2)
+                .texOffs(140, 112).addBox(7.0F, top - 6, 29.0F, 2, 6, 2), PartPose.ZERO);
+        CubeListBuilder wheel = CubeListBuilder.create().texOffs(200, 24).addBox(-2.0F, -4.5F, -4.5F, 4, 9, 9);
+        root.addOrReplaceChild("wheel_fl", wheel, PartPose.offset(14.0F, 19.5F, -24.0F));
+        root.addOrReplaceChild("wheel_fr", wheel, PartPose.offset(-14.0F, 19.5F, -24.0F));
+        root.addOrReplaceChild("wheel_bl", wheel, PartPose.offset(14.0F, 19.5F, 22.0F));
+        root.addOrReplaceChild("wheel_br", wheel, PartPose.offset(-14.0F, 19.5F, 22.0F));
         return LayerDefinition.create(mesh, 256, 160);
     }
 

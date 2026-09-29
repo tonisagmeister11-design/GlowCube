@@ -12,7 +12,7 @@ SHAPES = {
     "sedan": ((28, 10, 64), (24, 9, 32)),
     "sports": ((28, 8, 62), (24, 7, 26)),
     "suv": ((30, 13, 66), (28, 11, 40)),
-    "super": ((28, 7, 66), (22, 6, 24)),
+    "super": ((30, 5, 54), (20, 4, 20)),
 }
 TEX_W, TEX_H = 256, 160
 CABIN_V = 80
@@ -223,55 +223,82 @@ LED = (220, 240, 255)
 TAIL_LED = (255, 30, 40)
 
 
+SUPER_PARTS = {  # (u, v, w, h, d) -- keep in sync with CarModel.createSuper()
+    "nose": (0, 110, 28, 3, 14), "cover": (0, 130, 18, 2, 12), "screen": (88, 80, 18, 2, 6),
+    "intake": (150, 120, 1, 3, 8), "mirror": (170, 120, 2, 1, 1), "wheel": (200, 24, 4, 9, 9),
+    "wing": (140, 100, 28, 1, 6), "stand": (140, 112, 2, 6, 2),
+}
+CARBON = (24, 24, 28)
+
+
 def paint_super(t, color, stripe):
     (w, h, d), (cw, ch, cd) = SHAPES["super"]
+    hi = shade(color, 1.18)
+    lo = shade(color, 0.7)
+    # main body: front edge is the "top" face row nearest v=0 -> z = -20 (towards the nose)
     f = faces(0, 0, w, h, d)
     x, y, fw, fh = f["top"]
     t.rect(x, y, fw, fh, color)
     t.rect(x + fw // 2 - 4, y, 3, fh, stripe)                  # twin racing stripes
     t.rect(x + fw // 2 + 1, y, 3, fh, stripe)
-    t.rect(x + 3, y + 4, 5, 10, shade(color, 0.55))            # hood vents
-    t.rect(x + fw - 8, y + 4, 5, 10, shade(color, 0.55))
-    t.rect(x + 2, y + fh - 16, fw - 4, 10, (24, 24, 28))       # engine cover louvres
-    for yy in range(y + fh - 15, y + fh - 6, 2):
-        t.rect(x + 3, yy, fw - 6, 1, (60, 60, 66))
+    t.rect(x, y, 2, fh, hi)                                    # bright shoulder lines
+    t.rect(x + fw - 2, y, 2, fh, hi)
     x, y, fw, fh = f["bottom"]
     t.rect(x, y, fw, fh, DARK)
     for side in ("west", "east"):
         x, y, fw, fh = f[side]
         t.rect(x, y, fw, fh, color)
-        t.rect(x, y + fh - 1, fw, 1, (20, 20, 22))             # carbon side skirt
-        front_right = side == "west"
-        for dist in (13, d - 13):
-            cx = x + (fw - dist if front_right else dist)
-            for yy in range(fh - 5, fh):
+        t.rect(x, y, fw, 1, hi)
+        t.rect(x, y + fh - 1, fw, 1, CARBON)                   # carbon side skirt
+        front_right = side == "west"   # west face: u grows from the back (z=+34) to the front
+        # wheel arches: front wheel at z=-24 (body starts at -20 -> only the rear part of the arch shows),
+        # rear wheel at z=22 -> 42 px from the body front
+        for centre in (-4, 42):
+            cx = x + (fw - centre if front_right else centre)
+            for yy in range(fh - 4, fh):
                 for xx in range(cx - 6, cx + 6):
-                    t.put(xx, y + yy, DARK, 2)
-        # big side air intake in front of the rear wheel
-        ix = x + (fw - d + 18 if front_right else d - 30)
-        for i in range(10):
-            t.rect(ix + i, y + 1 + i // 3, 1, fh - 3 - i // 3, (18, 18, 20), 1)
-        t.rect(x, y + 1, fw, 1, shade(color, 1.2))
-        t.rect(x + 4, y + fh // 2, fw - 8, 1, stripe)
-    x, y, fw, fh = f["front"]
-    t.rect(x, y, fw, fh, color)
-    t.rect(x + 1, y + 1, 6, 1, LED, 0)                          # slim LED headlights
-    t.rect(x + fw - 7, y + 1, 6, 1, LED, 0)
-    t.rect(x + 1, y + 2, 2, 1, LED, 0)
-    t.rect(x + fw - 3, y + 2, 2, 1, LED, 0)
-    t.rect(x + 7, y + 3, fw - 14, fh - 4, (18, 18, 20))         # low intake
-    t.rect(x, y + fh - 1, fw, 1, (20, 20, 22))                 # splitter
+                    if x <= xx < x + fw:
+                        t.put(xx, y + yy, (14, 14, 16), 1)
+        # swooping crease towards the side intake
+        for i in range(20):
+            px = x + (fw - (10 + i) if front_right else 10 + i)
+            t.put(px, y + 1 + i // 7, lo, 0)
+    x, y, fw, fh = f["front"]   # the body front sits behind the nose: mostly hidden, keep it dark
+    t.rect(x, y, fw, fh, lo)
     x, y, fw, fh = f["back"]
     t.rect(x, y, fw, fh, color)
     t.rect(x + 1, y + 1, fw - 2, 1, TAIL_LED, 0)                # full-width LED tail strip
-    t.rect(x + 3, y + 3, fw - 6, fh - 4, (18, 18, 20))          # diffuser
+    t.rect(x + 3, y + 2, fw - 6, fh - 2, (18, 18, 20))          # diffuser
     for xx in range(x + 4, x + fw - 4, 3):
-        t.rect(xx, y + 3, 1, fh - 4, (60, 60, 66))
-    t.rect(x + fw // 2 - 5, y + fh - 3, 3, 2, (150, 150, 158), 0)  # quad exhaust
-    t.rect(x + fw // 2 + 2, y + fh - 3, 3, 2, (150, 150, 158), 0)
+        t.rect(xx, y + 2, 1, fh - 2, (60, 60, 66))
+    t.rect(x + fw // 2 - 5, y + fh - 2, 3, 2, (150, 150, 158), 0)  # quad exhaust
+    t.rect(x + fw // 2 + 2, y + fh - 2, 3, 2, (150, 150, 158), 0)
 
+    # nose: long flat wedge with vents and slim LED lights
+    u, v, nw, nh, nd = SUPER_PARTS["nose"]
+    f = faces(u, v, nw, nh, nd)
+    for name, (x, y, fw, fh) in f.items():
+        t.rect(x, y, fw, fh, DARK if name == "bottom" else color)
+    x, y, fw, fh = f["top"]
+    t.rect(x + fw // 2 - 4, y, 3, fh, stripe)
+    t.rect(x + fw // 2 + 1, y, 3, fh, stripe)
+    t.rect(x + 3, y + 3, 6, 7, (22, 22, 26))                   # bonnet vents
+    t.rect(x + fw - 9, y + 3, 6, 7, (22, 22, 26))
+    for yy in range(y + 4, y + 10, 2):
+        t.rect(x + 3, yy, 6, 1, lo)
+        t.rect(x + fw - 9, yy, 6, 1, lo)
+    x, y, fw, fh = f["front"]
+    t.rect(x, y, fw, fh, color)
+    t.rect(x + 1, y, 7, 1, LED, 0)                              # slim LED headlights
+    t.rect(x + fw - 8, y, 7, 1, LED, 0)
+    t.rect(x + 9, y + 1, fw - 18, fh - 1, (16, 16, 18))         # big central intake
+    for side in ("west", "east"):
+        x, y, fw, fh = f[side]
+        t.rect(x, y + fh - 1, fw, 1, CARBON)
+
+    # canopy: dark tinted glass all round, paint only on the roof
     f = faces(0, CABIN_V, cw, ch, cd)
-    tint = (18, 26, 34)
+    tint = (16, 22, 30)
     tint_hi = (70, 96, 120)
     for name, (x, y, fw, fh) in f.items():
         if name == "top":
@@ -281,39 +308,69 @@ def paint_super(t, color, stripe):
         elif name == "bottom":
             t.rect(x, y, fw, fh, DARK)
         else:
-            t.rect(x, y, fw, fh, color)
-            t.rect(x + 1, y + 1, fw - 2, fh - 1, tint)
-            t.rect(x + 2, y + 1, fw // 3, 1, tint_hi)
-
-    u, v = SPOILER_UV
-    for name, (x, y, fw, fh) in faces(u, v, 26, 2, 6).items():
-        t.rect(x, y, fw, fh, (26, 26, 30))
+            t.rect(x, y, fw, fh, tint)
+            t.rect(x, y, fw, 1, color)
+            t.rect(x + 2, y + 1, max(2, fw // 3), 1, tint_hi)
+    # raked windscreen in front of the canopy
+    u, v, sw, sh, sd = SUPER_PARTS["screen"]
+    for name, (x, y, fw, fh) in faces(u, v, sw, sh, sd).items():
+        t.rect(x, y, fw, fh, tint)
+        if name == "top":
+            for i in range(min(fw, fh)):
+                t.put(x + 3 + i, y + i, tint_hi, 0)
+    # engine cover with louvres
+    u, v, ew, eh, ed = SUPER_PARTS["cover"]
+    for name, (x, y, fw, fh) in faces(u, v, ew, eh, ed).items():
+        t.rect(x, y, fw, fh, color)
+        if name == "top":
+            t.rect(x + 2, y + 1, fw - 4, fh - 2, CARBON)
+            for yy in range(y + 2, y + fh - 1, 2):
+                t.rect(x + 3, yy, fw - 6, 1, (70, 70, 76))
+    for part in ("intake",):
+        u, v, iw, ih, idd = SUPER_PARTS[part]
+        for name, (x, y, fw, fh) in faces(u, v, iw, ih, idd).items():
+            t.rect(x, y, fw, fh, (14, 14, 16))
+    u, v, mw, mh, md = SUPER_PARTS["mirror"]
+    for name, (x, y, fw, fh) in faces(u, v, mw, mh, md).items():
+        t.rect(x, y, fw, fh, color)
+    u, v, ww, wh, wd = SUPER_PARTS["wing"]
+    for name, (x, y, fw, fh) in faces(u, v, ww, wh, wd).items():
+        t.rect(x, y, fw, fh, CARBON)
         if name == "top":
             t.rect(x, y + fh - 1, fw, 1, stripe)
-    u, v = STAND_UV
-    for name, (x, y, fw, fh) in faces(u, v, 2, 3, 2).items():
+            t.rect(x, y, 2, fh, color)
+            t.rect(x + fw - 2, y, 2, fh, color)
+    u, v, sw, sh, sd = SUPER_PARTS["stand"]
+    for name, (x, y, fw, fh) in faces(u, v, sw, sh, sd).items():
         t.rect(x, y, fw, fh, (40, 40, 44))
+
+
+def paint_super_wheels(t):
+    u, v, ww, wh, wd = SUPER_PARTS["wheel"]
+    for name, (x, y, fw, fh) in faces(u, v, ww, wh, wd).items():
+        t.rect(x, y, fw, fh, (18, 18, 20))
+        if name in ("west", "east"):
+            cx, cy = x + fw / 2, y + fh / 2
+            for yy in range(y, y + fh):
+                for xx in range(x, x + fw):
+                    r = ((xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2) ** 0.5
+                    if 1.1 < r < 3.4:
+                        spoke = (int((xx - cx) * 3 + (yy - cy)) % 3) == 0
+                        t.put(xx, yy, (34, 34, 38) if spoke else (60, 62, 68), 2)   # dark sport rims
+                    elif r <= 1.1:
+                        t.put(xx, yy, (220, 30, 30), 0)                              # red hub
+        else:
+            for yy in range(y, y + fh, 2):
+                t.rect(x, yy, fw, 1, (34, 34, 38))
 
 
 def make_super(color_name, stripe, seed):
     t = Tex(seed)
     paint_super(t, COLORS[color_name], stripe)
     paint_wheels(t)
+    paint_super_wheels(t)
     paint_bumper(t, SHAPES["super"][0][0])
     paint_lightbar(t, "police")
-    # darker, sportier rims
-    u, v = WHEEL_UV
-    for name, (x, y, fw, fh) in faces(u, v, 4, 10, 10).items():
-        if name in ("west", "east"):
-            cx, cy = x + 5, y + 5
-            for yy in range(y, y + fh):
-                for xx in range(x, x + fw):
-                    r = ((xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2) ** 0.5
-                    if 1.2 < r < 3.8:
-                        spoke = (int((xx - cx) * 3 + (yy - cy)) % 3) == 0
-                        t.put(xx, yy, (40, 40, 44) if spoke else (200, 204, 210), 2)
-                    elif r <= 1.2:
-                        t.put(xx, yy, (220, 30, 30), 0)
     return t.img
 
 
