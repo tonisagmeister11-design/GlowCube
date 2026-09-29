@@ -130,5 +130,113 @@
       "gtacity:voice_police_surrender"
     ],
     "subtitle": "subtitles.gtacity.voice_police_surrender"
+  },
+  "voice_marco_ambulance": {
+    "sounds": [
+      "gtacity:voice_marco_ambulance"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_ambulance"
+  },
+  "voice_marco_bounty": {
+    "sounds": [
+      "gtacity:voice_marco_bounty"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_bounty"
+  },
+  "voice_marco_chapter1": {
+    "sounds": [
+      "gtacity:voice_marco_chapter1"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_chapter1"
+  },
+  "voice_marco_chapter2": {
+    "sounds": [
+      "gtacity:voice_marco_chapter2"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_chapter2"
+  },
+  "voice_marco_chapter3": {
+    "sounds": [
+      "gtacity:voice_marco_chapter3"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_chapter3"
+  },
+  "voice_marco_courier": {
+    "sounds": [
+      "gtacity:voice_marco_courier"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_courier"
+  },
+  "voice_marco_gang_war": {
+    "sounds": [
+      "gtacity:voice_marco_gang_war"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_gang_war"
+  },
+  "voice_marco_job_done": {
+    "sounds": [
+      "gtacity:voice_marco_job_done"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_job_done"
+  },
+  "voice_marco_taxi": {
+    "sounds": [
+      "gtacity:voice_marco_taxi"
+    ],
+    "subtitle": "subtitles.gtacity.voice_marco_taxi"
+  },
+  "voice_tony_car_theft": {
+    "sounds": [
+      "gtacity:voice_tony_car_theft"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_car_theft"
+  },
+  "voice_tony_chapter4": {
+    "sounds": [
+      "gtacity:voice_tony_chapter4"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_chapter4"
+  },
+  "voice_tony_chapter5": {
+    "sounds": [
+      "gtacity:voice_tony_chapter5"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_chapter5"
+  },
+  "voice_tony_crew_heist": {
+    "sounds": [
+      "gtacity:voice_tony_crew_heist"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_crew_heist"
+  },
+  "voice_tony_gang_car": {
+    "sounds": [
+      "gtacity:voice_tony_gang_car"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_gang_car"
+  },
+  "voice_tony_gun_running": {
+    "sounds": [
+      "gtacity:voice_tony_gun_running"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_gun_running"
+  },
+  "voice_tony_job_done": {
+    "sounds": [
+      "gtacity:voice_tony_job_done"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_job_done"
+  },
+  "voice_tony_protection": {
+    "sounds": [
+      "gtacity:voice_tony_protection"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_protection"
+  },
+  "voice_tony_street_race": {
+    "sounds": [
+      "gtacity:voice_tony_street_race"
+    ],
+    "subtitle": "subtitles.gtacity.voice_tony_street_race"
   }
 }

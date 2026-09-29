@@ -1096,8 +1096,7 @@ public final class Jobs {
         }
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.CASH,
                 SoundSource.PLAYERS, 1.0F, 0.8F);
-        voice(player, job.station.clerk.toLowerCase(java.util.Locale.ROOT)
-                + (job.chapter > 0 ? "_chapter" + job.chapter + "_done" : "_job_done"));
+        voice(player, job.station.clerk.toLowerCase(java.util.Locale.ROOT) + "_job_done");
         WantedSystem.title(player, Component.literal(job.chapter > 0 ? "KAPITEL " + job.chapter + " GESCHAFFT"
                 : "JOB ERLEDIGT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                 Component.literal("Verdient: " + Economy.format(total) + "  -  Rang: " + rank(done(player)))

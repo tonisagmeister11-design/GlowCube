@@ -109,9 +109,10 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   Taxigäste laufen zum Auto, die Tür geht auf, sie steigen ein, und die Tür fällt wieder zu.
 - **Stimmen**: Bei einem oder zwei Sternen ruft der erste Polizist, dass du aufgeben sollst, bevor geschossen
   wird. Mutige Passanten beschimpfen dich, wenn du sie schlägst, und schlagen zurück. Die Gang beim Gang-Auto
-  droht dir. Marco und Tony können ihre Auftragstexte sprechen: Die Dateien heißen `voice_marco_courier.ogg`,
+  droht dir. Marco und Tony sprechen ihre Aufträge auf Englisch (die deutsche Fassung steht im Chat): jede
+  Story-Einleitung, jeden Job und „Job erledigt“. Die Dateien heißen `voice_marco_courier.ogg`,
   `voice_tony_gang_car.ogg` usw. und werden mit `tools/import_voices.py` eingebaut. Fehlt eine Datei, bleibt es
-  still.
+  still. Lautstärke: Minecraft-Einstellungen → Musik und Geräusche → „Stimme/Sprache“.
 - **Autotüren**: Beim Ein- und Aussteigen schwingt die Tür auf und wieder zu. Beim Supersportwagen sind es
   Scherentüren, die nach oben aufgehen. Schleichen + Rechtsklick mit leerer Hand öffnet und schließt die Türen.
 - Straßenkriminalität: Taschendiebstahl (von hinten an Passanten schleichen, Schleichen + Rechtsklick mit leerer
@@ -205,5 +206,7 @@ Ohne Grafikkarte braucht Minecraft 26.3 dafür einen Software-Vulkan-Treiber (un
 - `tools/import_guns.py <jar>`: übernimmt Waffenmodelle, Texturen, Munitionsbilder und Sounds aus
   „Greenboy's Legendary Guns“ (MIT). Das Skript läuft nach `gen_resources.py` und `gen_sounds.py`. Die Modelle
   bleiben im Blockbench-/GeckoLib-Format (`.geo.json`) und werden von `GeoGunRenderer` selbst gezeichnet.
+- `tools/import_voices.py name=datei.mp3 ...`: wandelt Sprachaufnahmen in Mono-Ogg um und trägt sie in
+  `sounds.json` und die Untertitel ein (nach `gen_sounds.py` laufen lassen).
 - `tools/preview/`: lässt den Stadtgenerator ohne Minecraft laufen und rendert Vorschaubilder
   (Draufsicht oder 3D-Isometrie)

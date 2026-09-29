@@ -1536,6 +1536,16 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
 
     /** The story needs no job board: a few seconds after joining the first chapter phones the player. */
     private void storyStart(ClientGameTestContext ctx, TestServerContext server) {
+        // All recorded voice lines (Marco, Tony, police, gang, pedestrians) are known to the sound system.
+        String[] voices = {"marco_chapter1", "marco_chapter2", "marco_chapter3", "marco_courier", "marco_taxi",
+                "marco_ambulance", "marco_bounty", "marco_gang_war", "marco_job_done", "tony_chapter4", "tony_chapter5",
+                "tony_gun_running", "tony_car_theft", "tony_gang_car", "tony_protection", "tony_street_race",
+                "tony_crew_heist", "tony_job_done", "police_surrender", "gang_threat", "pedestrian_angry"};
+        List<String> missing = ctx.computeOnClient(mc -> java.util.Arrays.stream(voices)
+                .filter(v -> mc.getSoundManager().getSoundEvent(de.gtacity.GtaCity.id("voice_" + v)) == null)
+                .toList());
+        expect(missing.isEmpty(), "Sprachausgabe: alle " + voices.length + " Sprachdateien geladen"
+                + (missing.isEmpty() ? "" : ", es fehlen " + missing));
         Jobs.autoStory = true;
         try {
             var mission = (ModAttachments.Mission) null;
