@@ -153,7 +153,7 @@ public class JobBoardScreen extends Screen {
 
         // jobs: name, pay and a short hint; the full description is the button tooltip
         List<Jobs.Type> list = shown();
-        String hint = teamTab ? "Mitspieler bekommen eine Anfrage" : "Nach jedem Auftrag: Weitermachen = nächste Stufe";
+        String hint = teamTab ? "Mitspieler bekommen eine Anfrage" : "Weitermachen = nächste Stufe";
         g.text(font, hint, left + 206, listTop - 16, 0xFF9098A0, false);
         for (int i = 0; i < list.size(); i++) {
             Jobs.Type type = list.get(i);
@@ -161,7 +161,7 @@ public class JobBoardScreen extends Screen {
             g.fill(left, y, left + panelWidth, y + ROW - 1, teamTab ? 0x5020A040 : 0x50000000);
             int color = teamTab ? 0xFF60F080 : type.illegal() ? 0xFFFF6060 : 0xFF60E0FF;
             g.text(font, type.label, left + 6, y + 3, color, false);
-            g.text(font, type.pay + (teamTab ? " für jeden" : ""), left + 6, y + 12, 0xFF6BD36B, false);
+            g.text(font, type.pay + (teamTab && !type.pay.contains("pro Kopf") ? " für jeden" : ""), left + 6, y + 12, 0xFF6BD36B, false);
             if (mouseX >= left && mouseX < left + panelWidth - 84 && mouseY >= y && mouseY < y + ROW - 1) {
                 g.setTooltipForNextFrame(font, font.split(Component.literal(type.description), 220), mouseX, mouseY);
             }
