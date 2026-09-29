@@ -25,6 +25,10 @@ public final class ClientInput {
             InputConstants.KEY_R, CATEGORY));
     public static final KeyMapping HORN = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.gtacity.horn",
             InputConstants.KEY_H, CATEGORY));
+    public static final KeyMapping CLAIM_CAR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+            "key.gtacity.claim_car", InputConstants.KEY_G, CATEGORY));
+    public static final KeyMapping BRING_CAR = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+            "key.gtacity.bring_car", InputConstants.KEY_B, CATEGORY));
     public static final KeyMapping MAP = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.gtacity.map",
             InputConstants.KEY_M, CATEGORY));
 
@@ -93,6 +97,12 @@ public final class ClientInput {
             while (HORN.consumeClick()) {
                 ClientPlayNetworking.send(new Payloads.Horn());
             }
+            while (CLAIM_CAR.consumeClick()) {
+                ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.CLAIM_CAR, 0));
+            }
+            while (BRING_CAR.consumeClick()) {
+                ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.BRING_CAR, 0));
+            }
             while (MAP.consumeClick()) {
                 if (client.gui.screen() == null) {
                     client.gui.setScreen(new CityMapScreen());
@@ -115,7 +125,7 @@ public final class ClientInput {
             cameraBeforeCar = client.options.getCameraType();
             client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
             player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
-                    "F: Aussteigen   Shift: Handbremse / Driften   H: Hupe"));
+                    "F: Aussteigen   Shift: Driften   H: Hupe   G: Auto behalten"));
         } else if (!inCar && wasInCar && cameraBeforeCar != null) {
             client.options.setCameraType(cameraBeforeCar);
         }

@@ -2,6 +2,7 @@ package de.gtacity.client.screen;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import de.gtacity.client.map.CityMapTexture;
+import de.gtacity.client.map.MapTiles;
 import de.gtacity.client.map.MapDraw;
 import de.gtacity.client.map.Waypoint;
 import de.gtacity.entity.CarVariant;
@@ -43,18 +44,26 @@ public class CityMapScreen extends Screen {
 
     private static final int TOP = 26;
     private static final int LEGEND_WIDTH = 124;
-    private static final double MIN_SCALE = 0.6;
+    private static final double MIN_SCALE = 0.2;
     private static final double MAX_SCALE = 14.0;
 
     private static Tab tab = Tab.MAP;
     private static double centerX = Double.NaN;
     private static double centerZ;
-    private static double scale = 4.0;
+    private static double scale = 1.5;
 
     private boolean dragged;
     private @Nullable CityMap.Place selected;
     /** Icons drawn in the last frame, for clicks. */
     private final List<Object[]> drawnIcons = new ArrayList<>();
+
+    /** Opens the map tab at a given spot and zoom (blocks per pixel) - used for screenshots. */
+    public static void view(double x, double z, double blocksPerPixel) {
+        tab = Tab.MAP;
+        centerX = x;
+        centerZ = z;
+        scale = blocksPerPixel;
+    }
 
     public CityMapScreen() {
         super(Component.literal("Karte"));
@@ -161,9 +170,11 @@ public class CityMapScreen extends Screen {
         LocalPlayer player = minecraft.player;
         int x0 = LEGEND_WIDTH, y0 = TOP, x1 = width, y1 = height;
         g.enableScissor(x0, y0, x1, y1);
-        CityMapTexture.draw(g, x0, y0, x1, y1, worldX(x0), worldZ(y0), worldX(x1), worldZ(y1));
-        if (!CityMapTexture.ready()) {
-            g.centeredText(font, "Karte wird gezeichnet...", (int) mapCenterX(), (int) mapCenterY(), 0xFFFFFFFF);
+        MapTiles.draw(g, x0, y0, x1, y1, worldX(x0), worldZ(y0), worldX(x1), worldZ(y1));
+        if (MapTiles.progress() < 1.0F) {
+            String hint = "Karte wird gezeichnet: " + Math.round(MapTiles.progress() * 100) + " %";
+            g.fill(width - font.width(hint) - 8, height - 14, width, height, 0xC0000000);
+            g.text(font, hint, width - font.width(hint) - 4, height - 11, 0xFFFFFFFF, false);
         }
 
         double[] target = player == null ? null : MapDraw.target(player);
@@ -238,21 +249,27 @@ public class CityMapScreen extends Screen {
                     owned ? MapDraw.VILLA_OWNED : 0xFF6BD36B, false);
         }
 
-        renderLegend(g);
+        renderLegend(g, mouseX, mouseY);
     }
 
-    private void renderLegend(GuiGraphicsExtractor g) {
+    /** Legend rows: clicking one sets the GPS to the nearest place of that kind. */
+    private final List<Object[]> legendRows = new ArrayList<>();
+
+    private void renderLegend(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         g.fill(0, TOP, LEGEND_WIDTH, height, 0xF0101418);
+        legendRows.clear();
         int y = TOP + 6;
         g.text(font, "Legende", 6, y, 0xFFFFD040, false);
         y += 14;
         for (CityMap.Kind kind : CityMap.Kind.values()) {
+            legendRow(g, y, mouseX, mouseY, kind);
             MapDraw.icon(g, font, 12, y + 4, kind.color, kind.textColor, kind.symbol);
             g.text(font, kind.label, 22, y, 0xFFE0E0E0, false);
             y += 12;
         }
+        legendRow(g, y, mouseX, mouseY, "home");
         MapDraw.icon(g, font, 12, y + 4, MapDraw.VILLA_OWNED, 0xFFFFFFFF, "H");
-        g.text(font, "Deine Villa", 22, y, 0xFFE0E0E0, false);
+        g.text(font, "Deine Villa (Zuhause)", 22, y, 0xFFE0E0E0, false);
         y += 12;
         MapDraw.flag(g, 12, y + 4, MapDraw.WAYPOINT_COLOR);
         g.text(font, "Dein Ziel (Navi)", 22, y, 0xFFE0E0E0, false);
@@ -263,8 +280,43 @@ public class CityMapScreen extends Screen {
         g.fill(8, y + 1, 17, y + 8, 0xFFFF3030);
         g.text(font, "Polizei", 22, y, 0xFFE0E0E0, false);
         y += 14;
-        g.textWithWordWrap(font, Component.literal("Klick: Ziel / Villa. Rechtsklick: Ziel weg. Mausrad: Zoom"),
+        g.textWithWordWrap(font, Component.literal("Klick auf Legende: Navi zum nächsten Ort. Mausrad: Zoom"),
                 6, y, LEGEND_WIDTH - 10, 0xFF9098A0);
+    }
+
+    private void legendRow(GuiGraphicsExtractor g, int y, int mouseX, int mouseY, Object what) {
+        legendRows.add(new Object[]{y - 2, y + 10, what});
+        if (mouseX < LEGEND_WIDTH && mouseY >= y - 2 && mouseY < y + 10) {
+            g.fill(2, y - 2, LEGEND_WIDTH - 2, y + 10, 0x40FFFFFF);
+        }
+    }
+
+    /** GPS to the nearest place of a kind (or the nearest own villa), and show it on the map. */
+    private void quickTarget(Object what) {
+        LocalPlayer player = minecraft.player;
+        if (player == null) {
+            return;
+        }
+        CityMap.Place best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (CityMap.Place place : CityMap.places()) {
+            boolean match = what == "home" ? MapDraw.owned(minecraft, place) : place.kind() == what;
+            double d = place.entrance().distToCenterSqr(player.getX(), place.entrance().getY(), player.getZ());
+            if (match && d < bestDist) {
+                bestDist = d;
+                best = place;
+            }
+        }
+        if (best == null) {
+            player.sendOverlayMessage(Component.literal(what == "home" ? "Du hast noch keine Villa."
+                    : "Nichts gefunden."));
+            return;
+        }
+        Waypoint.set(best.entrance().getX() + 0.5, best.entrance().getZ() + 0.5);
+        centerX = best.x();
+        centerZ = best.z();
+        selected = null;
+        rebuildWidgets();
     }
 
     private @Nullable Object[] iconAt(double x, double y) {
@@ -287,6 +339,14 @@ public class CityMapScreen extends Screen {
             return true;
         }
         dragged = false;
+        if (tab == Tab.MAP && event.x() < LEGEND_WIDTH && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
+            for (Object[] row : legendRows) {
+                if (event.y() >= (int) row[0] && event.y() < (int) row[1]) {
+                    quickTarget(row[2]);
+                    return true;
+                }
+            }
+        }
         if (!inMap(event.x(), event.y())) {
             return false;
         }
@@ -512,10 +572,15 @@ public class CityMapScreen extends Screen {
         for (int i = 0; i < villas.size() && i < 8; i++) {
             long id = villas.get(i).id();
             int y = TOP + 34 + i * 24;
-            addRenderableWidget(Button.builder(Component.literal("Hinteleportieren"), b -> {
+            addRenderableWidget(Button.builder(Component.literal("Teleport"), b -> {
                 ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.VILLA_TELEPORT, id));
                 onClose();
-            }).bounds(width / 2 + 60, y, 110, 20).build());
+            }).bounds(width / 2 + 60, y, 58, 20).build());
+            CityMap.Place villa = villas.get(i);
+            addRenderableWidget(Button.builder(Component.literal("Navi"), b -> {
+                Waypoint.set(villa.entrance().getX() + 0.5, villa.entrance().getZ() + 0.5);
+                onClose();
+            }).bounds(width / 2 + 122, y, 58, 20).build());
         }
         addRenderableWidget(Button.builder(Component.literal("Villen auf der Karte zeigen"), b -> {
             tab = Tab.MAP;

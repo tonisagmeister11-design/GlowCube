@@ -126,6 +126,8 @@ def main():
     extra = {
         "key.gtacity.reload": ("Reload", "Nachladen"),
         "key.gtacity.horn": ("Car Horn", "Hupe"),
+        "key.gtacity.claim_car": ("Keep This Car", "Auto behalten (wird deins)"),
+        "key.gtacity.bring_car": ("Bring My Car", "Eigenes Auto herbeiholen"),
         "key.gtacity.map": ("Map, Jobs, Garage and Villas", "Karte, Jobs, Garage und Villen"),
         "key.category.gtacity.keys": ("GTA City", "GTA City"),
         "generator.minecraft.normal": ("GTA City", "GTA City"),

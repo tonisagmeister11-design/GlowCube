@@ -1,6 +1,6 @@
 package de.gtacity.client.hud;
 
-import de.gtacity.client.map.CityMapTexture;
+import de.gtacity.client.map.MapTiles;
 import de.gtacity.client.map.MapDraw;
 import de.gtacity.client.map.Waypoint;
 import de.gtacity.entity.CarEntity;
@@ -56,7 +56,7 @@ public final class Minimap {
         g.pose().rotate((float) angle);
         int r = (int) Math.ceil(Math.hypot(WIDTH, HEIGHT) / 2.0) + 2;
         double wr = r * scale;
-        CityMapTexture.draw(g, -r, -r, r, r, px - wr, pz - wr, px + wr, pz + wr);
+        MapTiles.draw(g, -r, -r, r, r, px - wr, pz - wr, px + wr, pz + wr);
         double[] target = MapDraw.target(player);
         if (target != null) {
             List<double[]> route = CityMap.route(px, pz, target[0], target[1]);

@@ -152,7 +152,7 @@ public final class CityEvents {
                 ChatFormatting.BOLD));
         player.sendSystemMessage(Component.literal("Waffen: Linksklick schießen, Rechtsklick zielen, R nachladen. "
                 + "Autos: F oder Rechtsklick einsteigen, WASD fahren, Shift driften, H hupen, F aussteigen. "
-                + "M: Karte mit Navi, Jobs, Garage und Villen. "
+                + "G im Auto: Auto behalten, B: eigenes Auto herbeiholen. M: Karte mit Navi, Jobs, Garage und Villen. "
                 + "Läden: Rechtsklick auf die Theke. Überfall: Schleichen + Rechtsklick mit Waffe.")
                 .withStyle(ChatFormatting.GRAY));
     }

@@ -77,6 +77,8 @@ public final class ModNetworking {
                 }
             }
             case Payloads.Phone.CANCEL_JOB -> Jobs.cancel(player, "abgebrochen.");
+            case Payloads.Phone.CLAIM_CAR -> Garage.claim(player);
+            case Payloads.Phone.BRING_CAR -> Garage.bring(player);
             default -> {
             }
         }

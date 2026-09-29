@@ -75,6 +75,8 @@ public final class Payloads {
         public static final int CALL_CAR = 2;
         public static final int START_JOB = 3;
         public static final int CANCEL_JOB = 4;
+        public static final int CLAIM_CAR = 5;
+        public static final int BRING_CAR = 6;
 
         public static final Type<Phone> TYPE = new Type<>(GtaCity.id("phone"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Phone> CODEC = StreamCodec.composite(

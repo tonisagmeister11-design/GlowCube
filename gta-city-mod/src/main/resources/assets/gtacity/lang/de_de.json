@@ -38,6 +38,8 @@
   "entity.gtacity.grenade": "Granate",
   "key.gtacity.reload": "Nachladen",
   "key.gtacity.horn": "Hupe",
+  "key.gtacity.claim_car": "Auto behalten (wird deins)",
+  "key.gtacity.bring_car": "Eigenes Auto herbeiholen",
   "key.gtacity.map": "Karte, Jobs, Garage und Villen",
   "key.category.gtacity.keys": "GTA City",
   "generator.minecraft.normal": "GTA City",

@@ -48,6 +48,12 @@ public final class ModAttachments {
                     .copyOnDeath()
                     .syncWith(ByteBufCodecs.VAR_INT.apply(ByteBufCodecs.list()), AttachmentSyncPredicate.targetOnly()));
 
+    /** Which garage car the B key brings (index into {@link #GARAGE}). */
+    public static final AttachmentType<Integer> PERSONAL_CAR = AttachmentRegistry.create(GtaCity.id("personal_car"),
+            builder -> builder
+                    .persistent(Codec.INT)
+                    .copyOnDeath());
+
     /** Villas the player owns, as packed entrance positions (see {@link de.gtacity.gameplay.Villas}). */
     public static final AttachmentType<List<Long>> VILLAS = AttachmentRegistry.create(GtaCity.id("villas"),
             builder -> builder

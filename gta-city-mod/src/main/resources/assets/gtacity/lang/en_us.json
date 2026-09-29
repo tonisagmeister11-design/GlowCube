@@ -38,6 +38,8 @@
   "entity.gtacity.grenade": "Grenade",
   "key.gtacity.reload": "Reload",
   "key.gtacity.horn": "Car Horn",
+  "key.gtacity.claim_car": "Keep This Car",
+  "key.gtacity.bring_car": "Bring My Car",
   "key.gtacity.map": "Map, Jobs, Garage and Villas",
   "key.category.gtacity.keys": "GTA City",
   "generator.minecraft.normal": "GTA City",

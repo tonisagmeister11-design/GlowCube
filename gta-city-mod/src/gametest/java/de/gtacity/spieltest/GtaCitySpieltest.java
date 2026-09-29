@@ -178,6 +178,8 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Tod", () -> death(ctx, server, conn));
             check("Haltung", () -> holding(ctx, server, conn));
             check("Nacht", () -> night(ctx, server, conn));
+            check("Eigenes Auto", () -> ownCar(ctx, server, conn));
+            check("Fotos", () -> photos(ctx, server, conn));
         } catch (Throwable t) {
             fail("Test abgebrochen: " + t);
             t.printStackTrace();
@@ -1397,6 +1399,155 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         });
         server.runCommand("gamemode survival @a");
         reset(server);
+    }
+
+    private void ownCar(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode survival @a");
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        double x = 5.5, z = CityLayout.CORRIDOR + 10.5;
+        int car = server.computeOnServer(s -> {
+            CarEntity c = ModEntities.CAR.create(s.overworld(), EntitySpawnReason.COMMAND);
+            c.setVariant(CarVariant.SUV_NAVY);
+            c.snapTo(x, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
+            s.overworld().addFreshEntity(c);
+            c.interact(player(s), InteractionHand.MAIN_HAND, c.position());
+            return c.getId();
+        });
+        ctx.waitFor(mc -> mc.player.getVehicle() instanceof CarEntity, 60);
+        int before = server.computeOnServer(s -> de.gtacity.gameplay.Garage.cars(player(s)).size());
+        ctx.getInput().pressKey(ClientInput.CLAIM_CAR);
+        ctx.waitTicks(10);
+        boolean owned = server.computeOnServer(s -> s.overworld().getEntity(car) instanceof CarEntity c
+                && c.isOwnedBy(player(s)));
+        int after = server.computeOnServer(s -> de.gtacity.gameplay.Garage.cars(player(s)).size());
+        expect(owned && after == before + 1, "G im Auto: das Auto gehört jetzt dir und steht in der Garage");
+        ctx.getInput().pressKey(o -> o.keySwapOffhand);
+        ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
+        // Walk away two blocks of the city, then press B.
+        teleport(server, CityLayout.PITCH + 9.5, CityLayout.GROUND + 1.0, 2 * CityLayout.PITCH + 40.5, 0.0F, 0.0F);
+        settle(ctx, conn);
+        ctx.getInput().pressKey(ClientInput.BRING_CAR);
+        ctx.waitTicks(20);
+        double dist = server.computeOnServer(s -> s.overworld().getEntity(car) instanceof CarEntity c
+                ? (double) c.distanceTo(player(s)) : 999.0);
+        expect(dist < 45, "B holt das eigene Auto zu dir (Abstand " + String.format("%.0f", dist) + ")");
+        ctx.takeScreenshot("gtacity-21-eigenes-auto");
+        server.runOnServer(s -> {
+            if (s.overworld().getEntity(car) instanceof CarEntity c) {
+                c.despawn();
+            }
+        });
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        settle(ctx, conn);
+        reset(server);
+    }
+
+    /** Pictures for the README: the map at several zoom levels and the sports cars in daylight. */
+    private void photos(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode creative @a");
+        server.runCommand("time set 5000");
+        server.runCommand("weather clear");
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        // Let the map paint itself.
+        ctx.getInput().pressKey(ClientInput.MAP);
+        ctx.waitForScreen(CityMapScreen.class);
+        for (int i = 0; i < 180 && ctx.computeOnClient(mc -> de.gtacity.client.map.MapTiles.progress()) < 0.35F; i++) {
+            ctx.waitTicks(20);
+        }
+        ctx.runOnClient(mc -> {
+            CityMapScreen.view(spawn.getX() + 40, spawn.getZ() + 20, 0.5);
+            mc.gui.setScreen(new CityMapScreen());
+        });
+        ctx.waitTicks(40);
+        ctx.takeScreenshot("foto-01-karte-nah");
+        ctx.runOnClient(mc -> {
+            CityMapScreen.view(spawn.getX() + 60, spawn.getZ() + 60, 1.2);
+            mc.gui.setScreen(new CityMapScreen());
+        });
+        ctx.waitTicks(40);
+        ctx.takeScreenshot("foto-02-karte-mittel");
+        ctx.runOnClient(mc -> {
+            CityMapScreen.view(spawn.getX(), spawn.getZ(), 4.0);
+            mc.gui.setScreen(new CityMapScreen());
+        });
+        ctx.waitTicks(40);
+        ctx.takeScreenshot("foto-03-karte-weit");
+        ctx.getInput().pressKey(ClientInput.MAP);
+        ctx.waitFor(mc -> mc.gui.screen() == null, 40);
+        float progress = ctx.computeOnClient(mc -> de.gtacity.client.map.MapTiles.progress());
+        expect(progress > 0.3F, "Exakte Karte wird gezeichnet (" + Math.round(progress * 100) + " %)");
+
+        // Sports cars on a quiet street in the Hills.
+        double x = 9.0, z = -12 * CityLayout.PITCH + 40.0;
+        teleport(server, x + 9.0, CityLayout.GROUND + 2.0, z, 90.0F, 10.0F);
+        settle(ctx, conn);
+        CarVariant[] row = {CarVariant.SUPER_RED, CarVariant.SUPER_ORANGE, CarVariant.SUPER_LIME,
+                CarVariant.SUPER_PEARL, CarVariant.SUPER_MAGENTA, CarVariant.SUPER_CARBON};
+        CarVariant[] sports = {CarVariant.SPORTS_RED, CarVariant.SPORTS_YELLOW, CarVariant.SPORTS_BLUE,
+                CarVariant.SPORTS_LIME};
+        List<Integer> ids = server.computeOnServer(s -> {
+            s.overworld().getEntitiesOfClass(CarEntity.class, new AABB(x - 40, CityLayout.GROUND - 5, z - 60,
+                    x + 40, CityLayout.GROUND + 10, z + 60)).forEach(CarEntity::despawn);
+            List<Integer> list = new ArrayList<>();
+            for (int i = 0; i < row.length; i++) {
+                list.add(photoCar(s.overworld(), row[i], x - 1.5, z - 18 + i * 6.5, 35.0F));
+            }
+            for (int i = 0; i < sports.length; i++) {
+                list.add(photoCar(s.overworld(), sports[i], x + 4.5, z + 30 + i * 6.5, 35.0F));
+            }
+            return list;
+        });
+        server.runCommand("kill @e[type=gtacity:pedestrian]");
+        ctx.runOnClient(mc -> mc.gui.hud.toggle());
+        ctx.waitTicks(30);
+        // Close-up of the red one, from the front left.
+        teleport(server, x + 4.0, CityLayout.GROUND + 2.2, z - 23.0, 30.0F, 18.0F);
+        ctx.waitTicks(10);
+        aim(ctx, new Vec3(x - 1.5, CityLayout.GROUND + 1.6, z - 18));
+        ctx.waitTicks(20);
+        ctx.takeScreenshot("foto-04-supersportwagen-nah");
+        teleport(server, x + 10.0, CityLayout.GROUND + 5.0, z - 26.0, 30.0F, 18.0F);
+        ctx.waitTicks(10);
+        aim(ctx, new Vec3(x - 1.5, CityLayout.GROUND + 1.0, z - 4));
+        ctx.waitTicks(20);
+        ctx.takeScreenshot("foto-05-supersportwagen-reihe");
+        teleport(server, x - 6.0, CityLayout.GROUND + 3.0, z - 26.0, -30.0F, 12.0F);
+        ctx.waitTicks(10);
+        aim(ctx, new Vec3(x - 1.5, CityLayout.GROUND + 1.0, z - 12));
+        ctx.waitTicks(20);
+        ctx.takeScreenshot("foto-06-supersportwagen-heck");
+        teleport(server, x + 12.0, CityLayout.GROUND + 4.0, z + 24.0, 30.0F, 15.0F);
+        ctx.waitTicks(10);
+        aim(ctx, new Vec3(x + 4.5, CityLayout.GROUND + 1.0, z + 38));
+        ctx.waitTicks(20);
+        ctx.takeScreenshot("foto-07-sportwagen");
+        ctx.runOnClient(mc -> mc.gui.hud.toggle());
+        // Minimap in the Hills.
+        teleport(server, x + 9.0, CityLayout.GROUND + 2.0, z, 180.0F, 10.0F);
+        ctx.waitTicks(40);
+        ctx.takeScreenshot("foto-08-radar");
+        ok("Fotos von Karte und Sportwagen aufgenommen");
+        server.runOnServer(s -> ids.forEach(id -> {
+            if (s.overworld().getEntity(id) instanceof CarEntity c) {
+                c.despawn();
+            }
+        }));
+        server.runCommand("gamemode survival @a");
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        reset(server);
+    }
+
+    private static int photoCar(ServerLevel level, CarVariant variant, double x, double z, float yaw) {
+        CarEntity car = ModEntities.CAR.create(level, EntitySpawnReason.COMMAND);
+        car.setVariant(variant);
+        car.setPersistentCar(true);
+        car.snapTo(x, CityLayout.GROUND + 1.0, z, yaw, 0.0F);
+        level.addFreshEntity(car);
+        return car.getId();
     }
 
     // ------------------------------------------------------------------ weapons

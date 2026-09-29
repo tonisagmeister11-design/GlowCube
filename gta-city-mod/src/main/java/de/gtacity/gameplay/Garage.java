@@ -4,6 +4,8 @@ import de.gtacity.entity.CarEntity;
 import de.gtacity.entity.CarVariant;
 import de.gtacity.registry.ModAttachments;
 import de.gtacity.registry.ModEntities;
+import de.gtacity.registry.ModSounds;
+import net.minecraft.sounds.SoundSource;
 import de.gtacity.world.CityLayout;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -45,11 +47,82 @@ public final class Garage {
         DELIVERED.put(player.getUUID(), car.getUUID());
     }
 
+    /** Key G in a car: this car is yours now - it goes into the garage and B brings it back any time. */
+    public static void claim(ServerPlayer player) {
+        if (!(player.getVehicle() instanceof CarEntity car) || car.getControllingPassenger() != player) {
+            player.sendOverlayMessage(Component.literal("Setz dich ans Steuer des Autos, das du behalten willst.")
+                    .withStyle(ChatFormatting.RED));
+            return;
+        }
+        if (car.isOwnedBy(player)) {
+            player.sendOverlayMessage(Component.literal("Das ist schon dein Auto. Mit B holst du es zu dir.")
+                    .withStyle(ChatFormatting.GRAY));
+            DELIVERED.put(player.getUUID(), car.getUUID());
+            return;
+        }
+        add(player, car.getVariant());
+        player.setAttached(ModAttachments.PERSONAL_CAR, cars(player).size() - 1);
+        car.setOwner(player.getUUID());
+        car.setPersistentCar(true);
+        car.setAiDriving(false, null);
+        car.setSiren(false);
+        DELIVERED.put(player.getUUID(), car.getUUID());
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.CASH,
+                SoundSource.PLAYERS, 0.8F, 1.2F);
+        player.sendSystemMessage(Component.literal("Dieser " + car.getVariant().shape.label + " gehört jetzt dir! "
+                + "Mit B holst du ihn jederzeit zu dir, in der Garage (M) steht er auch.").withStyle(ChatFormatting.GREEN));
+    }
+
+    /** Key B: your car comes to you - the one you drove last, or the last one from the garage. */
+    public static void bring(ServerPlayer player) {
+        if (player.getVehicle() instanceof CarEntity) {
+            player.sendOverlayMessage(Component.literal("Du sitzt doch schon in einem Auto.")
+                    .withStyle(ChatFormatting.GRAY));
+            return;
+        }
+        UUID current = DELIVERED.get(player.getUUID());
+        if (current != null) {
+            for (ServerLevel level : player.level().getServer().getAllLevels()) {
+                if (level.getEntity(current) instanceof CarEntity car && car.isAlive() && level == player.level()) {
+                    double[] spot = streetNextTo(level, player);
+                    if (spot == null) {
+                        player.sendOverlayMessage(Component.literal("Geh zu einer Straße, dann kommt dein Auto.")
+                                .withStyle(ChatFormatting.RED));
+                        return;
+                    }
+                    car.ejectPassengers();
+                    car.speed = 0.0F;
+                    car.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
+                    car.snapTo(spot[0], CityLayout.GROUND + 1.0, spot[1], (float) spot[2], 0.0F);
+                    player.sendOverlayMessage(Component.literal("Dein " + car.getVariant().shape.label
+                            + " steht an der Straße bereit.").withStyle(ChatFormatting.GREEN));
+                    return;
+                }
+            }
+        }
+        List<Integer> list = cars(player);
+        if (list.isEmpty()) {
+            player.sendOverlayMessage(Component.literal("Du hast noch kein eigenes Auto. Setz dich in eins und "
+                    + "drück G - oder kauf eins im Autohaus.").withStyle(ChatFormatting.RED));
+            return;
+        }
+        Integer personal = player.getAttached(ModAttachments.PERSONAL_CAR);
+        int index = personal != null && personal >= 0 && personal < list.size() ? personal : list.size() - 1;
+        call(player, index);
+    }
+
+    /** An owned car that is no longer the one its owner uses (another was called meanwhile) goes back. */
+    public static boolean isReplaced(CarEntity car, UUID owner) {
+        UUID current = DELIVERED.get(owner);
+        return current != null && !current.equals(car.getUUID());
+    }
+
     public static void call(ServerPlayer player, int index) {
         List<Integer> list = cars(player);
         if (index < 0 || index >= list.size()) {
             return;
         }
+        player.setAttached(ModAttachments.PERSONAL_CAR, index);
         ServerLevel level = (ServerLevel) player.level();
         UUID old = DELIVERED.remove(player.getUUID());
         if (old != null) {

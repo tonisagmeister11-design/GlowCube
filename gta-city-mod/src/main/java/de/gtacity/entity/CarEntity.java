@@ -497,6 +497,12 @@ public class CarEntity extends Entity {
             explode(level);
             return;
         }
+        // An own car that was replaced by another one called from the garage drives back into the garage.
+        if (owner != null && tickCount % 40 == 0 && getPassengers().isEmpty()
+                && de.gtacity.gameplay.Garage.isReplaced(this, owner)) {
+            despawn();
+            return;
+        }
         LivingEntity driver = getControllingPassenger();
         entityData.set(DRIFT, driver != null && driver.isShiftKeyDown() && Math.abs(measuredSpeed) > 0.3F);
         if (Math.abs(measuredSpeed) > 0.18F) {
