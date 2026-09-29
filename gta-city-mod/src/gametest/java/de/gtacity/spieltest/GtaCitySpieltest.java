@@ -1461,6 +1461,12 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         reset(server);
     }
 
+    private static void closeScreen(ClientGameTestContext ctx) {
+        ctx.waitTicks(5);
+        ctx.runOnClient(mc -> mc.gui.setScreen(null));
+        ctx.waitTicks(2);
+    }
+
     /** Runs the current mission: teleports to every goal until the job is done. */
     private void finishMission(ClientGameTestContext ctx, TestServerContext server, int maxSteps) {
         for (int i = 0; i < maxSteps; i++) {
@@ -1504,6 +1510,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
             Jobs.startStory(player(s), 3);
         });
+        closeScreen(ctx);
         ctx.waitTicks(5);
         expect(ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) == null),
                 "Kapitel lassen sich nicht überspringen");
@@ -1514,6 +1521,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
             Jobs.start(player(s), Jobs.Type.COURIER);
         });
+        closeScreen(ctx);
         ctx.waitTicks(5);
         var courier = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
         expect(courier != null, "Kurierfahrer: Job startet mit Ziel auf der Karte ("
@@ -1528,6 +1536,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
             Jobs.start(player(s), Jobs.Type.BOUNTY);
         });
+        closeScreen(ctx);
         ctx.waitTicks(5);
         var bounty = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
         if (bounty != null) {
@@ -1558,6 +1567,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
             Jobs.start(player(s), Jobs.Type.TAXI);
         });
+        closeScreen(ctx);
         ctx.waitTicks(5);
         var pickup = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
         boolean rode = false;
@@ -1567,6 +1577,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             server.runOnServer(s -> {
                 CarEntity c = ModEntities.CAR.create(s.overworld(), EntitySpawnReason.COMMAND);
                 c.setVariant(CarVariant.SEDAN_WHITE);
+                c.setPersistentCar(true);
                 c.snapTo(pickup.x() + 0.5, CityLayout.GROUND + 2.0, pickup.z() + 0.5, 0.0F, 0.0F);
                 s.overworld().addFreshEntity(c);
                 c.interact(player(s), InteractionHand.MAIN_HAND, c.position());
@@ -1631,6 +1642,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             Jobs.openBoard(player(s), Jobs.Station.SHADY);
             Jobs.startStory(player(s), 5);
         });
+        closeScreen(ctx);
         ctx.waitTicks(20);
         var drillGoal = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
         expect(drillGoal != null && drillGoal.label().contains("Thermobohrer"),
