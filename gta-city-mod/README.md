@@ -75,6 +75,9 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
     der sich wehrt; ihn auszuschalten bringt keine Fahndung).
   - Hafenbüro: Waffendealer (oft ruft ein Zeuge die Polizei, und der Käufer nimmt die Ware erst ohne
     Fahndung) und Autodieb (Sportwagen klauen und zum Schrottplatz bringen).
+  - Hafenbüro, neu: **Gang-Auto klauen** (vor einem Gangversteck steht ein teurer Wagen; kommt man zu nah, droht
+    ein Gangster und alle greifen an; den Wagen zum Käufer bringen, $9.000) und **Schutzgeld eintreiben** (mehrere
+    Läden abklappern, $800 pro Laden, manchmal ruft ein Verkäufer die Polizei).
   - Weitere Missionen: **Bandenkrieg** (Jobcenter: vier bewaffnete Gangster in ihrem Versteck ausschalten, ohne
     Fahndungssterne, $6.000), **Straßenrennen** (Hafenbüro: fünf Checkpoints am Steuer gegen die Uhr, $3.000 plus
     Siegerbonus für den Schnellsten der Crew) und **Bankraub im Team** (Hafenbüro, Team-Job: vor der Bank
@@ -104,6 +107,11 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   zeigt mit der Hand auf das Gebäude. Fahrgäste winken dem Taxi, zeigen während der Fahrt in die Richtung des
   Ziels und bedanken sich beim Aussteigen. Der Mitarbeiter am Schalter zeigt dir, in welche Richtung dein Job geht.
   Taxigäste laufen zum Auto, die Tür geht auf, sie steigen ein, und die Tür fällt wieder zu.
+- **Stimmen**: Bei einem oder zwei Sternen ruft der erste Polizist, dass du aufgeben sollst, bevor geschossen
+  wird. Mutige Passanten beschimpfen dich, wenn du sie schlägst, und schlagen zurück. Die Gang beim Gang-Auto
+  droht dir. Marco und Tony können ihre Auftragstexte sprechen: Die Dateien heißen `voice_marco_courier.ogg`,
+  `voice_tony_gang_car.ogg` usw. und werden mit `tools/import_voices.py` eingebaut. Fehlt eine Datei, bleibt es
+  still.
 - **Autotüren**: Beim Ein- und Aussteigen schwingt die Tür auf und wieder zu. Beim Supersportwagen sind es
   Scherentüren, die nach oben aufgehen. Schleichen + Rechtsklick mit leerer Hand öffnet und schließt die Türen.
 - Straßenkriminalität: Taschendiebstahl (von hinten an Passanten schleichen, Schleichen + Rechtsklick mit leerer
