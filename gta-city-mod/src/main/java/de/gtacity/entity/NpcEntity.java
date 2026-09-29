@@ -46,6 +46,24 @@ public class NpcEntity extends PathfinderMob {
             SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> GANG =
             SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> GESTURE =
+            SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> GESTURE_TIME =
+            SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Float> GESTURE_YAW =
+            SynchedEntityData.defineId(NpcEntity.class, EntityDataSerializers.FLOAT);
+
+    /** Gestures (drawn by the client model): none, point somewhere, wave, talk with the hands. */
+    public static final int NONE = 0;
+    public static final int POINT = 1;
+    public static final int WAVE = 2;
+    public static final int TALK = 3;
+    /** How long a gesture lasts (ticks), by kind. */
+    public static final int[] GESTURE_TICKS = {0, 70, 40, 60};
+
+    private long nextGreeting;
+    /** Guides disappear a while after pointing the way (game time, 0 = never). */
+    private long despawnAt;
 
     private int panicTicks;
     private Vec3 threat;
@@ -71,6 +89,9 @@ public class NpcEntity extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(SKIN, 0);
         builder.define(GANG, false);
+        builder.define(GESTURE, NONE);
+        builder.define(GESTURE_TIME, 0);
+        builder.define(GESTURE_YAW, 0.0F);
     }
 
     @Override
@@ -146,6 +167,76 @@ public class NpcEntity extends PathfinderMob {
         }
     }
 
+    // ------------------------------------------------------------------ gestures
+
+    /** Starts a gesture; {@code yaw} is the world direction for pointing. */
+    public void gesture(int kind, float yaw) {
+        entityData.set(GESTURE_YAW, yaw);
+        entityData.set(GESTURE, kind);
+        entityData.set(GESTURE_TIME, (int) level().getGameTime());
+    }
+
+    /** Points at a spot in the world (turning the head that way). */
+    public void pointAt(double x, double z) {
+        float yaw = (float) (Math.toDegrees(Math.atan2(z - getZ(), x - getX())) - 90.0);
+        setYHeadRot(yaw);
+        if (!isPassenger()) {
+            setYRot(yaw);
+            setYBodyRot(yaw);
+        }
+        gesture(POINT, yaw);
+    }
+
+    public int gestureKind() {
+        return entityData.get(GESTURE);
+    }
+
+    /** Ticks since the gesture started (with the partial tick), or -1 when there is none. */
+    public float gestureAge(float partialTick) {
+        int kind = gestureKind();
+        if (kind == NONE) {
+            return -1;
+        }
+        float age = (float) (level().getGameTime() - entityData.get(GESTURE_TIME)) + partialTick;
+        return age >= 0 && age < GESTURE_TICKS[kind] ? age : -1;
+    }
+
+    public float gestureYaw() {
+        return entityData.get(GESTURE_YAW);
+    }
+
+    public boolean gesturing() {
+        return gestureAge(0) >= 0;
+    }
+
+    public void despawnIn(int ticks) {
+        despawnAt = level().getGameTime() + ticks;
+    }
+
+    /** Clerks greet players who come in, passengers and guides wave the player over. */
+    private void greet() {
+        boolean clerk = switch (role) {
+            case "store", "weapons", "cars", "jobs", "shady" -> true;
+            default -> false;
+        };
+        boolean waiting = ("passenger".equals(role) || "guide".equals(role)) && !isPassenger();
+        if (!clerk && !waiting) {
+            return;
+        }
+        Player near = level().getNearestPlayer(this, clerk ? 7.0 : 35.0);
+        if (near == null) {
+            return;
+        }
+        // Face the player.
+        float yaw = (float) (Math.toDegrees(Math.atan2(near.getZ() - getZ(), near.getX() - getX())) - 90.0);
+        setYHeadRot(yaw);
+        long now = level().getGameTime();
+        if (!gesturing() && now >= nextGreeting) {
+            gesture(WAVE, yaw);
+            nextGreeting = now + (clerk ? 20 * 30 : 20 * 3);
+        }
+    }
+
     public void panic(Vec3 from, int ticks) {
         if (this instanceof PoliceEntity || !role.isEmpty()) {
             return;
@@ -162,6 +253,13 @@ public class NpcEntity extends PathfinderMob {
         }
         if (panicTicks > 0) {
             panicTicks--;
+        }
+        if (!role.isEmpty() && tickCount % 10 == 0) {
+            greet();
+        }
+        if (despawnAt > 0 && level().getGameTime() >= despawnAt) {
+            discard();
+            return;
         }
         if (!persistent && tickCount % 40 == 0) {
             Player near = level().getNearestPlayer(this, 110.0);

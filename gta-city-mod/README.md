@@ -97,6 +97,10 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   - **Partnermissionen**: Nimmt einer aus der Crew einen Job an, macht die ganze Crew mit. Egal wer ein Ziel
     erreicht, alle bekommen den vollen Lohn. Steigt einer aus oder stirbt, macht der Rest weiter. Die Story-Kapitel
     spielt jeder für sich.
+- **Gesten**: Die Leute in der Stadt bewegen sich. Verkäufer und Job-Mitarbeiter drehen sich zu dir, winken, wenn
+  du hereinkommst, und reden mit den Händen. Bei der Führung wartet Marco an jeder Station, winkt dich heran und
+  zeigt mit der Hand auf das Gebäude. Fahrgäste winken dem Taxi, zeigen während der Fahrt in die Richtung des
+  Ziels und bedanken sich beim Aussteigen. Der Mitarbeiter am Schalter zeigt dir, in welche Richtung dein Job geht.
 - Straßenkriminalität: Taschendiebstahl (von hinten an Passanten schleichen, Schleichen + Rechtsklick mit leerer
   Hand), Ladendiebstahl im 24/7 (dasselbe an der Theke) und Überfälle (Schleichen + Rechtsklick mit Waffe)
 - Geld: Startkapital $500. Passanten lassen Geld fallen, Geldautomaten zeigen deinen Kontostand.

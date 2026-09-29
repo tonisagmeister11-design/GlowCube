@@ -201,6 +201,9 @@ public final class Clerks {
 
     /** Right click on a clerk. Returns false if the figure has no task. */
     public static boolean talk(ServerPlayer player, NpcEntity npc) {
+        if (!npc.role().isEmpty() && !"guide".equals(npc.role())) {
+            npc.gesture(NpcEntity.TALK, player.getYRot());
+        }
         switch (npc.role()) {
             case "store" -> ModNetworking.openShop(player, ShopType.STORE, npc.blockPosition());
             case "weapons" -> ModNetworking.openShop(player, ShopType.WEAPONS, npc.blockPosition());

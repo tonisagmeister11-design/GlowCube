@@ -1685,6 +1685,22 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         expect(mission != null, "Story Kapitel 1 startet die Führung ("
                 + (mission == null ? "-" : mission.label()) + ")");
         ctx.takeScreenshot("gtacity-18b-fuehrung");
+        if (mission != null) {
+            // Marco waits at the first stop and waves, then points at the building when you get there.
+            double gx = mission.x() + 2.0, gz = mission.z() + 2.0;
+            teleport(server, gx, CityLayout.GROUND + 2.0, gz + 12, 180.0F, 5.0F);
+            ctx.waitTicks(50);
+            boolean guide = server.computeOnServer(s -> !s.overworld().getEntities(ModEntities.PEDESTRIAN,
+                    n -> "guide".equals(n.role())).isEmpty());
+            expect(guide, "Führung: Marco wartet an der Station");
+            ctx.takeScreenshot("gtacity-18d-fuehrer-winkt");
+            teleport(server, gx, CityLayout.GROUND + 2.0, gz + 5, 180.0F, 5.0F);
+            ctx.waitTicks(14);
+            boolean points = server.computeOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN,
+                    n -> "guide".equals(n.role()) && n.gestureKind() == NpcEntity.POINT).size() > 0);
+            expect(points, "Führung: Marco zeigt mit der Hand auf das Gebäude");
+            ctx.takeScreenshot("gtacity-18e-fuehrer-zeigt");
+        }
         finishMission(ctx, server, 10);
         long money = server.computeOnServer(s -> Economy.get(player(s)));
         int story = server.computeOnServer(s -> Jobs.chapter(player(s)));

@@ -13,7 +13,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.HumanoidArm;
 
 /** Renders pedestrians and police with the player model and the mod's own skins. */
-public class NpcRenderer extends HumanoidMobRenderer<NpcEntity, NpcRenderer.State, HumanoidModel<NpcRenderer.State>> {
+public class NpcRenderer extends HumanoidMobRenderer<NpcEntity, NpcRenderer.State, NpcModel> {
     private static final Identifier[] CIVILIANS = textures("civilian", NpcEntity.CIVILIAN_SKINS);
     private static final Identifier[] GANG = textures("gang", NpcEntity.GANG_SKINS);
     private static final Identifier[] POLICE = textures("police", PoliceEntity.POLICE_SKINS);
@@ -21,10 +21,13 @@ public class NpcRenderer extends HumanoidMobRenderer<NpcEntity, NpcRenderer.Stat
 
     public static class State extends HumanoidRenderState {
         public Identifier texture = CIVILIANS[0];
+        public int gesture;
+        public float gestureAge = -1;
+        public float gestureYaw;
     }
 
     public NpcRenderer(EntityRendererProvider.Context context) {
-        super(context, new HumanoidModel<>(context.bakeLayer(GtaCityClient.NPC_LAYER)), 0.5F);
+        super(context, new NpcModel(context.bakeLayer(GtaCityClient.NPC_LAYER)), 0.5F);
     }
 
     private static Identifier[] textures(String kind, int count) {
@@ -43,6 +46,9 @@ public class NpcRenderer extends HumanoidMobRenderer<NpcEntity, NpcRenderer.Stat
     @Override
     public void extractRenderState(NpcEntity npc, State state, float partialTick) {
         super.extractRenderState(npc, state, partialTick);
+        state.gesture = npc.gestureKind();
+        state.gestureAge = npc.gestureAge(partialTick);
+        state.gestureYaw = npc.gestureYaw();
         int skin = Math.max(0, npc.getSkin());
         if (npc instanceof PoliceEntity cop) {
             state.texture = cop.isSwat() ? SWAT : POLICE[skin % POLICE.length];

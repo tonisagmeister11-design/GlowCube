@@ -152,6 +152,8 @@ public final class Jobs {
         Item item;
         int wantedStars;
         String npcName;
+        /** Where the guide points when the player arrives (the building). */
+        BlockPos look;
 
         Step(Goal goal, BlockPos pos, String label) {
             this.goal = goal;
@@ -181,6 +183,11 @@ public final class Jobs {
 
         Step wanted(int stars) {
             this.wantedStars = stars;
+            return this;
+        }
+
+        Step look(BlockPos look) {
+            this.look = look;
             return this;
         }
 
@@ -314,6 +321,7 @@ public final class Jobs {
             return;
         }
         begin(player, new Job(type, type.station, 0));
+        clerkShowsTheWay(player);
     }
 
     public static void startStory(ServerPlayer player, int chapter) {
@@ -333,6 +341,20 @@ public final class Jobs {
         }
         STORY_PAUSED.remove(player.getUUID());
         begin(player, new Job(storyType(chapter), station, chapter));
+        clerkShowsTheWay(player);
+    }
+
+    /** The clerk behind the desk points towards the first goal of the job that was just taken. */
+    private static void clerkShowsTheWay(ServerPlayer player) {
+        Job job = ACTIVE.get(player.getUUID());
+        if (job == null) {
+            return;
+        }
+        BlockPos goal = job.step().pos;
+        for (NpcEntity npc : player.level().getEntitiesOfClass(NpcEntity.class, player.getBoundingBox().inflate(8.0),
+                n -> "jobs".equals(n.role()) || "shady".equals(n.role()))) {
+            npc.pointAt(goal.getX() + 0.5, goal.getZ() + 0.5);
+        }
     }
 
     private static Type storyType(int chapter) {
@@ -837,7 +859,8 @@ public final class Jobs {
             }
             last = place.entrance();
             job.steps.add(new Step(Goal.REACH, last, "Führung " + (i + 1) + "/" + stops.length + ": "
-                    + stops[i][1]).pay(100).say((String) stops[i][2]));
+                    + stops[i][1]).pay(100).say((String) stops[i][2])
+                    .look(new BlockPos(place.x(), CityLayout.GROUND, place.z())));
         }
         Step end = job.steps.getLast();
         end.say(end.say + " Das war die Führung. Komm zurück zum Jobcenter, ich habe Arbeit für dich.");
@@ -919,6 +942,12 @@ public final class Jobs {
     /** Step done: pay, tell the story bit, go on to the next one - or finish the job. */
     private static void advance(ServerLevel level, ServerPlayer player, Job job, int extra) {
         Step s = job.step();
+        if (s.look != null && job.npc != null && level.getEntity(job.npc) instanceof NpcEntity guide
+                && "guide".equals(guide.role())) {
+            guide.pointAt(s.look.getX() + 0.5, s.look.getZ() + 0.5);
+            guide.despawnIn(100);
+            job.npc = null;
+        }
         List<ServerPlayer> team = members(player, job);
         for (ServerPlayer m : team) {
             int pay = (int) Math.round((s.pay + extra) * bonus(m));
@@ -1082,13 +1111,18 @@ public final class Jobs {
                     }
                     NpcEntity rider = level.getEntity(job.npc) instanceof NpcEntity n ? n : null;
                     boolean aboard = rider != null && rider.getVehicle() == player.getVehicle();
+                    if (aboard && dist > 20 && now % 160 == 0) {
+                        rider.pointAt(s.pos.getX() + 0.5, s.pos.getZ() + 0.5); // "Da lang!"
+                    }
                     if (dist <= 12.0 && inCar && aboard) {
                         NpcEntity npc = rider;
                         int tip = player.getVehicle() instanceof CarEntity car && car.healthFraction() > 0.8F
                                 ? (int) (s.pay * 0.2) : 0;
                         if (npc != null) {
                             npc.stopRiding();
-                            npc.discard();
+                            npc.snapTo(player.getX() + 1.5, player.getY(), player.getZ(), npc.getYRot(), 0.0F);
+                            npc.gesture(NpcEntity.TALK, player.getYRot());
+                            npc.despawnIn(70);
                         }
                         job.npc = null;
                         advance(level, player, job, tip + timeBonus(job, level));
@@ -1181,8 +1215,9 @@ public final class Jobs {
     /** Passengers and bounty targets appear when the player gets close (the chunks around are loaded then). */
     private static void spawnLazily(ServerLevel level, ServerPlayer player, Job job, double dist) {
         Step s = job.step();
+        boolean guide = s.goal == Goal.REACH && s.look != null;
         if (job.spawned || dist > 90.0 || !(s.goal == Goal.PICKUP || s.goal == Goal.KILL
-                || s.goal == Goal.KILL_GROUP)) {
+                || s.goal == Goal.KILL_GROUP || guide)) {
             return;
         }
         if (!level.hasChunkAt(s.pos) || !level.isPositionEntityTicking(s.pos)) {
@@ -1191,6 +1226,19 @@ public final class Jobs {
         job.spawned = true;
         if (s.goal == Goal.KILL_GROUP) {
             spawnGang(level, player, job, s);
+            return;
+        }
+        if (guide) {
+            // Marco waits at every stop of the tour, waves you over and points at the building.
+            NpcEntity marco = ModEntities.PEDESTRIAN.create(level, EntitySpawnReason.EVENT);
+            if (marco != null) {
+                marco.snapTo(s.pos.getX() + 1.5, s.pos.getY(), s.pos.getZ() + 1.5, 0.0F, 0.0F);
+                marco.randomizeLook(false);
+                marco.setRole("guide", "Marco (Führer)");
+                marco.setNoAi(true);
+                level.addFreshEntity(marco);
+                job.npc = marco.getUUID();
+            }
             return;
         }
         NpcEntity npc = ModEntities.PEDESTRIAN.create(level, EntitySpawnReason.EVENT);
