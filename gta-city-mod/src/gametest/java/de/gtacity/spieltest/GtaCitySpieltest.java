@@ -1584,7 +1584,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             }
             // The player drives the car (the client moves it): get out, move the car with the guest inside to the
             // goal, get back in behind the wheel.
-            ctx.getInput().pressKey(o -> o.keySwapOffhand);
+            server.runOnServer(s -> player(s).stopRiding());
             ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
             server.runOnServer(s -> {
                 var cars = s.overworld().getEntitiesOfClass(CarEntity.class, player(s).getBoundingBox().inflate(8));
