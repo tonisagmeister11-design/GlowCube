@@ -704,7 +704,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         });
         BlockPos station = CityPlaces.nearest(CityLayout.LotType.POLICE, 9, 9);
         boolean busted = false;
-        for (int i = 0; i < 45 && !busted; i++) {
+        for (int i = 0; i < 70 && !busted; i++) {
             ctx.waitTicks(20);
             busted = server.computeOnServer(s -> player(s).blockPosition().distSqr(station) < 16);
         }
@@ -839,7 +839,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         teleport(server, 9.5, y + 1.0, 9.5, 0.0F, 0.0F);
         server.runOnServer(s -> WantedSystem.setLevel(player(s), 1));
         boolean blinking = false, lost = false;
-        for (int i = 0; i < 30 && !lost; i++) {
+        for (int i = 0; i < 50 && !lost; i++) {
             ctx.waitTicks(20);
             Integer hidden = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.WANTED_HIDDEN));
             blinking |= hidden != null && hidden == 1;

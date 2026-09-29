@@ -39,7 +39,12 @@ public final class WantedSystem {
         long lastArrestHit;
         int kills;
         long lastKill;
+        /** Until then the police is still on its way: the stars cannot fade yet. */
+        long respondingUntil;
     }
+
+    /** Time the patrol cars get to arrive from out of sight before hiding starts to count. */
+    private static final long RESPONSE_TIME = 20L * 20;
 
     /** Killings are forgotten after five minutes without a new one. */
     private static final long KILL_MEMORY = 20L * 60 * 5;
@@ -72,6 +77,7 @@ public final class WantedSystem {
             s.kills = 0;
             s.arrestHits = 0;
         } else if (clamped > old) {
+            s.respondingUntil = player.level().getGameTime() + RESPONSE_TIME;
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.PLAYERS, 0.8F, 0.6F);
         }
@@ -198,7 +204,8 @@ public final class WantedSystem {
                     }
                 }
             }
-            if (seen) {
+            if (seen || level.getGameTime() < s.respondingUntil) {
+                seen = true;
                 s.lostSightTicks = 0;
             } else {
                 s.lostSightTicks += 20;
