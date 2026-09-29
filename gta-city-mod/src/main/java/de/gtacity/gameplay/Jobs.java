@@ -37,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -274,14 +275,71 @@ public final class Jobs {
                     + "geschafft." : "Erst die vorigen Kapitel abschließen.").withStyle(ChatFormatting.RED));
             return;
         }
-        Type type = switch (chapter) {
-            case 1 -> Type.COURIER;
-            case 2 -> Type.COURIER;
+        STORY_PAUSED.remove(player.getUUID());
+        begin(player, new Job(storyType(chapter), station, chapter));
+    }
+
+    private static Type storyType(int chapter) {
+        return switch (chapter) {
+            case 1, 2 -> Type.COURIER;
             case 3 -> Type.TAXI;
             case 4 -> Type.GUN_RUNNING;
             default -> Type.CAR_THEFT;
         };
-        begin(player, new Job(type, station, chapter));
+    }
+
+    // ------------------------------------------------------------------ story autostart
+
+    /** Off in the automated test, which starts its chapters itself. */
+    public static boolean autoStory = true;
+    /** When the next chapter calls the player (game time). */
+    private static final Map<UUID, Long> STORY_DUE = new HashMap<>();
+    /** Players who cancelled a chapter: no more calls until they join again. */
+    private static final Set<UUID> STORY_PAUSED = new HashSet<>();
+
+    /** The next chapter starts by itself after the delay: the clerk phones the player. */
+    public static void scheduleStory(ServerPlayer player, int delayTicks) {
+        if (chapter(player) < MAX_CHAPTER) {
+            STORY_DUE.put(player.getUUID(), player.level().getGameTime() + delayTicks);
+        }
+    }
+
+    private static void storyTick(MinecraftServer server) {
+        if (!autoStory || STORY_DUE.isEmpty()) {
+            return;
+        }
+        for (UUID id : List.copyOf(STORY_DUE.keySet())) {
+            ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) {
+                STORY_DUE.remove(id);
+                continue;
+            }
+            if (player.level().getGameTime() < STORY_DUE.get(id)) {
+                continue;
+            }
+            if (!player.isAlive() || ACTIVE.containsKey(id)) {
+                STORY_DUE.put(id, player.level().getGameTime() + 20L * 20); // try again later
+                continue;
+            }
+            STORY_DUE.remove(id);
+            int chapter = chapter(player) + 1;
+            if (chapter > MAX_CHAPTER || STORY_PAUSED.contains(id)) {
+                continue;
+            }
+            Station station = CHAPTER_STATION[chapter - 1];
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.PLAYERS, 1.0F, 1.4F);
+            player.sendSystemMessage(Component.literal("Dein Handy klingelt - " + station.clerk + " ruft an.")
+                    .withStyle(ChatFormatting.GOLD));
+            WantedSystem.title(player, Component.literal("KAPITEL " + chapter).withStyle(ChatFormatting.GOLD,
+                    ChatFormatting.BOLD), Component.literal(CHAPTER_TITLES[chapter - 1])
+                    .withStyle(ChatFormatting.YELLOW));
+            begin(player, new Job(storyType(chapter), station, chapter));
+            if (ACTIVE.containsKey(id)) {
+                player.sendSystemMessage(Component.literal("Keine Lust? Karte (M) → Jobs → Abbrechen. Später "
+                        + "geht's im " + station.label + " weiter.").withStyle(ChatFormatting.GRAY));
+            }
+        }
     }
 
     private static void begin(ServerPlayer player, Job job) {
@@ -329,6 +387,9 @@ public final class Jobs {
     public static void cancel(ServerPlayer player, String reason) {
         Job job = ACTIVE.remove(player.getUUID());
         player.removeAttached(ModAttachments.MISSION);
+        if (job != null && job.chapter > 0) {
+            STORY_PAUSED.add(player.getUUID());
+        }
         if (job != null) {
             cleanup((ServerLevel) player.level(), job);
             player.sendSystemMessage(Component.literal("Job beendet: " + reason).withStyle(ChatFormatting.GRAY));
@@ -336,6 +397,8 @@ public final class Jobs {
     }
 
     public static void forget(ServerPlayer player) {
+        STORY_DUE.remove(player.getUUID());
+        STORY_PAUSED.remove(player.getUUID());
         Job job = ACTIVE.remove(player.getUUID());
         if (job != null) {
             cleanup((ServerLevel) player.level(), job);
@@ -592,8 +655,10 @@ public final class Jobs {
                         .withStyle(ChatFormatting.GREEN));
         if (job.chapter > 0 && job.chapter < MAX_CHAPTER) {
             Station next = CHAPTER_STATION[job.chapter];
-            player.sendSystemMessage(Component.literal("Nächstes Kapitel: " + CHAPTER_TITLES[job.chapter] + " - im "
-                    + next.label + " (auf der Karte).").withStyle(ChatFormatting.GOLD));
+            player.sendSystemMessage(Component.literal("Nächstes Kapitel: " + CHAPTER_TITLES[job.chapter] + " - "
+                    + next.clerk + " meldet sich in einer Minute bei dir (oder sofort im " + next.label + ").")
+                    .withStyle(ChatFormatting.GOLD));
+            scheduleStory(player, 20 * 60);
         } else if (job.chapter == MAX_CHAPTER) {
             player.sendSystemMessage(Component.literal("Die Story ist durch - du bist der Boss von Los Santos. "
                     + "Kauf dir eine Villa und einen Supersportwagen, oder arbeite weiter für mehr Rang.")
@@ -602,13 +667,25 @@ public final class Jobs {
     }
 
     private static void fail(ServerPlayer player, String reason) {
+        Job job = ACTIVE.get(player.getUUID());
         cancel(player, reason);
+        if (job != null && job.chapter > 0) {
+            // A lost chapter is tried again soon, it was not cancelled on purpose.
+            STORY_PAUSED.remove(player.getUUID());
+            scheduleStory(player, 20 * 45);
+            player.sendSystemMessage(Component.literal("Das Kapitel startet gleich noch einmal.")
+                    .withStyle(ChatFormatting.GOLD));
+        }
     }
 
     // ------------------------------------------------------------------ tick
 
     public static void tick(MinecraftServer server) {
-        if (server.getTickCount() % 10 != 0 || ACTIVE.isEmpty()) {
+        if (server.getTickCount() % 10 != 0) {
+            return;
+        }
+        storyTick(server);
+        if (ACTIVE.isEmpty()) {
             return;
         }
         for (UUID id : List.copyOf(ACTIVE.keySet())) {

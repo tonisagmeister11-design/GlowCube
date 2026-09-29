@@ -36,9 +36,14 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 - Cops abhängen: Wenn dich weder ein Polizist noch der Hubschrauber sieht, blinken die Sterne. Nach einiger Zeit
   ist die Fahndung vorbei.
 - „WASTED“: Nach dem Tod wachst du im nächsten Krankenhaus auf und zahlst die Rechnung.
-- Waffen gibt es nur bei Ammu-Nation, nicht über Crafting: Pistole, Micro-SMG, Karabiner, Pumpgun,
-  Scharfschützengewehr, Minigun, Raketenwerfer, Granaten, Messer und Baseballschläger. Dazu gibt es Munition,
-  Magazine, Nachladen, Kopfschüsse, Rückstoß und Mündungsfeuer. Glas geht bei Treffern kaputt.
+- Waffen gibt es nur bei Ammu-Nation, nicht über Crafting: Glock 18 ($750), Desert Eagle ($1.800),
+  MP5 ($2.200), M1014-Schrotflinte ($3.000), AK-47 ($3.800), M4A1 ($4.500), AWM-Scharfschützengewehr ($9.000),
+  RPG-7 ($25.000) und Minigun ($50.000). Dazu kommen Granaten, Messer, Baseballschläger, Schutzweste und
+  Thermobohrer. Es gibt Munition, Magazine, Nachladen, Kopfschüsse, Rückstoß und Mündungsfeuer. Glas geht bei
+  Treffern kaputt.
+- Die 3D-Modelle, Texturen, Munitionsbilder und Schusssounds der Schusswaffen stammen aus
+  **„Greenboy's Legendary Guns“** von GreenBoyGamerr (MIT-Lizenz, siehe `CREDITS-greenboys-legendary-guns.txt`).
+  Sie sind fest in dieser Mod enthalten, du musst die andere Mod (und GeckoLib) also nicht installieren.
 - Eigene Sounds für jede Waffe, den Raketenwerfer, Explosionen, Nachladen, Hupe und Kasse. Jedes Auto brummt, und
   der Motor dreht mit dem Tempo hoch. Dazu kommen Sirene, Hubschrauber-Rotor und Reifenquietschen beim Driften.
 - Autos klauen: F oder Rechtsklick auf ein Auto zieht den Fahrer raus. Du fährst mit WASD und hupst mit H.
@@ -56,7 +61,10 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 - **Jobs und Story**: In der Stadt gibt es mehrere Jobstationen. Das Jobcenter (J auf der Karte) hat legale
   Arbeit, das Hafenbüro (D) die illegale. Hinter dem Schalter steht ein Mitarbeiter (Marco, Tony und andere).
   Rechtsklick auf ihn oder den Schalter öffnet das Job-Board. Das erste Jobcenter liegt direkt neben dem Spawn.
-  - **Story in fünf Kapiteln**: 1. Führung durch Los Santos (Marco zeigt dir Supermarkt, Waffenladen, Autohaus,
+  - **Story in fünf Kapiteln**: Die Story startet von selbst. Ein paar Sekunden nach dem Betreten der Welt ruft
+    Marco an, und Kapitel 1 beginnt. Eine Minute nach jedem geschafften Kapitel meldet sich der nächste
+    Auftraggeber. Wer lieber frei spielt, bricht das Kapitel auf der Karte (M → Jobs) ab und setzt es später am
+    Job-Board fort. Die Kapitel: 1. Führung durch Los Santos (Marco zeigt dir Supermarkt, Waffenladen, Autohaus,
     Krankenhaus, Polizei und Bank), 2. der erste Lohn, 3. Fahrgäste, 4. Schattengeschäfte im Hafen und
     5. der große Coup (Thermobohrer kaufen, Banktresor knacken, Polizei abhängen). Jedes Kapitel bringt eine
     Belohnung von $1.500 bis $30.000.
@@ -93,8 +101,6 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 - Ein Klick auf die Karte setzt ein Ziel. Ein Klick auf ein Symbol (z. B. den nächsten Waffenladen) setzt das Ziel
   dorthin. Das Navi zeichnet die Route über die Straßen auf Radar und Karte, ähnlich wie in GTA 5.
   Jobziele erscheinen gelb, eigene Ziele lila. Rechtsklick löscht das Ziel.
-
-Story-Missionen folgen später.
 
 ## Steuerung
 
@@ -153,5 +159,8 @@ Ohne Grafikkarte braucht Minecraft 26.3 dafür einen Software-Vulkan-Treiber (un
 - `tools/gen_resources.py`: erzeugt Modelle, Blockzustände, Sprachdateien und das Welt-Preset
 - `tools/gen_sounds.py`: synthetisiert alle Sounds (Python + NumPy, SciPy, soundfile) und schreibt `sounds.json`.
   Er ergänzt die Untertitel in den Sprachdateien und muss deshalb nach `gen_resources.py` laufen.
+- `tools/import_guns.py <jar>`: übernimmt Waffenmodelle, Texturen, Munitionsbilder und Sounds aus
+  „Greenboy's Legendary Guns“ (MIT). Das Skript läuft nach `gen_resources.py` und `gen_sounds.py`. Die Modelle
+  bleiben im Blockbench-/GeckoLib-Format (`.geo.json`) und werden von `GeoGunRenderer` selbst gezeichnet.
 - `tools/preview/`: lässt den Stadtgenerator ohne Minecraft laufen und rendert Vorschaubilder
   (Draufsicht oder 3D-Isometrie)

@@ -63,7 +63,9 @@ def main(jar_path):
         sys.exit("Unexpected licence in mods.toml - check before importing!")
 
     for item, (geo, texture, display) in GUNS.items():
-        write_bytes(os.path.join(ASSETS, "geo", item + ".geo.json"), jar.read(SRC + "geo/" + geo + ".geo.json"))
+        model = json.loads(jar.read(SRC + "geo/" + geo + ".geo.json"))
+        idle = idle_pose(jar, geo)
+        write_json(os.path.join(ASSETS, "geo", item + ".geo.json"), clean_model(model, idle))
         write_bytes(os.path.join(ASSETS, "textures", "item", "gun", item + ".png"),
                     jar.read(SRC + "textures/item/" + texture + ".png"))
         settings = json.loads(jar.read(SRC + "models/displaysettings/" + display + ".json"))
@@ -109,6 +111,52 @@ def main(jar_path):
 
     write_bytes(os.path.join(ROOT, "CREDITS-greenboys-legendary-guns.txt"), CREDITS.encode())
     print("imported", len(GUNS), "guns,", len(AMMO), "ammo icons,", len(SOUNDS), "sounds")
+
+
+def idle_pose(jar, geo):
+    """Static scale of the bones in the gun's idle animation (the original hides some parts with scale 0)."""
+    try:
+        animations = json.loads(jar.read(SRC + "animations/" + geo + ".animation.json"))["animations"]
+    except KeyError:
+        return {}
+    idle = next((a for name, a in animations.items() if name == "idle" or name.endswith(".idle")), {})
+    pose = {}
+    for bone, channels in idle.get("bones", {}).items():
+        scale = channels.get("scale")
+        if isinstance(scale, dict) and "vector" not in scale:  # keyframes: take the first one
+            scale = scale[sorted(scale, key=float)[0]]
+        if isinstance(scale, dict):
+            scale = scale.get("vector")
+        if isinstance(scale, (int, float)):
+            scale = [scale] * 3
+        if isinstance(scale, list) and all(isinstance(v, (int, float)) for v in scale):
+            pose[bone] = scale
+    return pose
+
+
+def clean_model(model, idle):
+    """Drops what only the original's first person animations need: the arms, the muzzle flash, the camera and
+    the parts hidden in the idle pose. Other idle scales are kept as "gtacity_scale"."""
+    geometry = model["minecraft:geometry"][0]
+    bones = geometry["bones"]
+    drop = {b["name"] for b in bones if "arm" in b["name"].lower() or b["name"] in ("flash", "camera")
+            or idle.get(b["name"]) == [0, 0, 0]}
+    changed = True
+    while changed:  # children of dropped bones go too
+        changed = False
+        for b in bones:
+            if b["name"] not in drop and b.get("parent") in drop:
+                drop.add(b["name"])
+                changed = True
+    kept = []
+    for b in bones:
+        if b["name"] in drop:
+            continue
+        if b["name"] in idle and idle[b["name"]] != [1, 1, 1]:
+            b["gtacity_scale"] = idle[b["name"]]
+        kept.append(b)
+    geometry["bones"] = kept
+    return model
 
 
 def write_bytes(path, data):

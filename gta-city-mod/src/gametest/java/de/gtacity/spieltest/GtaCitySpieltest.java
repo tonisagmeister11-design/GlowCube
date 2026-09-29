@@ -130,6 +130,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext ctx) {
         game = ctx;
+        Jobs.autoStory = false; // the checks start their chapters themselves; "Story" switches it on briefly
         ctx.runOnClient(mc -> {
             mc.options.renderDistance().set(ONLY == null ? 6 : 4);
             mc.options.simulationDistance().set(6);
@@ -148,6 +149,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
 
             check("Welt", () -> world(ctx, server));
             check("Start", () -> starterKit(ctx, conn));
+            check("Story", () -> storyStart(ctx, server));
             check("Strasse", () -> street(ctx, server, conn));
             check("Skyline", () -> skyline(ctx, server, conn));
             check("Verkehr", () -> traffic(ctx, server, conn));
@@ -1465,6 +1467,27 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         ctx.waitTicks(5);
         ctx.runOnClient(mc -> mc.gui.setScreen(null));
         ctx.waitTicks(2);
+    }
+
+    /** The story needs no job board: a few seconds after joining the first chapter phones the player. */
+    private void storyStart(ClientGameTestContext ctx, TestServerContext server) {
+        Jobs.autoStory = true;
+        try {
+            var mission = (ModAttachments.Mission) null;
+            for (int i = 0; i < 40 && mission == null; i++) {
+                ctx.waitTicks(10);
+                mission = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+            }
+            expect(mission != null, "Story startet von selbst nach dem Betreten der Welt ("
+                    + (mission == null ? "-" : mission.label()) + ")");
+            ctx.takeScreenshot("gtacity-02b-story-start");
+        } finally {
+            Jobs.autoStory = false;
+            server.runOnServer(s -> {
+                Jobs.cancel(player(s), "Test");
+                Jobs.forget(player(s));
+            });
+        }
     }
 
     /** Runs the current mission: teleports to every goal until the job is done. */

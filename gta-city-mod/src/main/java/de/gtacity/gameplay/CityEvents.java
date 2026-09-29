@@ -146,6 +146,8 @@ public final class CityEvents {
             // Only values that are actually set get synced - without this the HUD shows $0 instead of $500.
             Economy.set(player, Economy.get(player));
         }
+        // The story does not wait for the player to find the job centre: the next chapter phones them.
+        Jobs.scheduleStory(player, 20 * 8);
         Boolean hasKit = player.getAttached(ModAttachments.STARTER_KIT);
         if (hasKit != null && hasKit) {
             return;

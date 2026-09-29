@@ -130,8 +130,12 @@ public class GeoGunRenderer implements NoDataSpecialModelRenderer {
         return new float[]{a.get(0).getAsFloat(), a.get(1).getAsFloat(), a.get(2).getAsFloat()};
     }
 
-    /** Moves the pose into a bone / cube: to the (mirrored) pivot, rotate Z, Y, X, and back. */
+    /** Moves the pose into a bone / cube: to the (mirrored) pivot, rotate Z, Y, X, scale, and back. */
     private static void rotateAround(PoseStack pose, float[] pivot, float[] rotation) {
+        rotateAround(pose, pivot, rotation, null);
+    }
+
+    private static void rotateAround(PoseStack pose, float[] pivot, float[] rotation, float[] scale) {
         float px = -pivot[0] / 16.0F, py = pivot[1] / 16.0F, pz = pivot[2] / 16.0F;
         pose.translate(px, py, pz);
         if (rotation[2] != 0) {
@@ -143,13 +147,17 @@ public class GeoGunRenderer implements NoDataSpecialModelRenderer {
         if (rotation[0] != 0) {
             pose.rotate(Axis.XP.rotationDegrees(-rotation[0]));
         }
+        if (scale != null) {
+            pose.scale(scale[0], scale[1], scale[2]);
+        }
         pose.translate(-px, -py, -pz);
     }
 
     private static void bake(JsonObject bone, List<JsonObject> bones, PoseStack pose, float texW, float texH,
                              List<float[]> out) {
         pose.pushPose();
-        rotateAround(pose, vec(bone, "pivot", 0), vec(bone, "rotation", 0));
+        rotateAround(pose, vec(bone, "pivot", 0), vec(bone, "rotation", 0),
+                bone.has("gtacity_scale") ? vec(bone, "gtacity_scale", 1) : null);
         if (bone.has("cubes")) {
             for (JsonElement e : bone.getAsJsonArray("cubes")) {
                 JsonObject cube = e.getAsJsonObject();
