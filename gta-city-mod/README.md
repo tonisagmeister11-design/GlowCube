@@ -49,17 +49,30 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   an die nächste Straße.
 - **Eigenes Auto**: Im Auto am Steuer drückst du G, dann gehört das Auto dir (auch ein geklautes). Mit B holst du
   dein Auto jederzeit an die nächste Straße neben dir.
-- **Villen**: Die Villen mit Pool in den Hills kannst du kaufen ($150.000–$400.000). Danach teleportierst du dich
+- **Villen**: Die Villen in den Hills kannst du kaufen ($150.000–$400.000). Sie haben einen Eingang mit
+  Säulen, einen Carport, einen beleuchteten Pool mit Holzdeck und Liegen, Wegleuchten und eingerichtete Räume
+  (Wohnzimmer mit Sofa und Fernseher, Küche, Schlafzimmer oben). Danach teleportierst du dich
   mit einem Klick auf der Karte nach Hause, allerdings nur ohne Fahndungssterne.
-- **Jobs** (über die Karte, Taste M):
-  - Lieferant (legal): Pakete im Depot abholen und zu drei Kunden fahren
-  - Waffendealer (illegal): Waffenkiste im Hafen abholen und dem Käufer bringen. Oft ruft ein Zeuge die Polizei,
-    und der Käufer nimmt die Ware erst, wenn du die Cops abgehängt hast.
-  - Autodieb (illegal): Sportwagen oder Supersportwagen klauen und zum Schrottplatz im Hafen bringen
+- **Jobs und Story**: In der Stadt gibt es mehrere Jobstationen. Das Jobcenter (J auf der Karte) hat legale
+  Arbeit, das Hafenbüro (D) die illegale. Hinter dem Schalter steht ein Mitarbeiter (Marco, Tony und andere).
+  Rechtsklick auf ihn oder den Schalter öffnet das Job-Board. Das erste Jobcenter liegt direkt neben dem Spawn.
+  - **Story in fünf Kapiteln**: 1. Führung durch Los Santos (Marco zeigt dir Supermarkt, Waffenladen, Autohaus,
+    Krankenhaus, Polizei und Bank), 2. der erste Lohn, 3. Fahrgäste, 4. Schattengeschäfte im Hafen und
+    5. der große Coup (Thermobohrer kaufen, Banktresor knacken, Polizei abhängen). Jedes Kapitel bringt eine
+    Belohnung von $1.500 bis $30.000.
+  - Jobcenter: Kurierfahrer (drei Pakete, Trinkgeld für schnelle Zustellung), Taxifahrer (Fahrgäste steigen
+    ins Auto ein), Krankentransport (Verletzte ins Krankenhaus) und Kopfgeldjäger (ein leuchtender Gesuchter,
+    der sich wehrt; ihn auszuschalten bringt keine Fahndung).
+  - Hafenbüro: Waffendealer (oft ruft ein Zeuge die Polizei, und der Käufer nimmt die Ware erst ohne
+    Fahndung) und Autodieb (Sportwagen klauen und zum Schrottplatz bringen).
+  - Jeder erledigte Job hebt deinen Rang (Neuling, Profi, Veteran, Legende) und bringt 3 % mehr Lohn, höchstens
+    50 %. Das Ziel steht immer auf Karte und Radar, das Navi führt dich hin.
 - Straßenkriminalität: Taschendiebstahl (von hinten an Passanten schleichen, Schleichen + Rechtsklick mit leerer
   Hand), Ladendiebstahl im 24/7 (dasselbe an der Theke) und Überfälle (Schleichen + Rechtsklick mit Waffe)
 - Geld: Startkapital $500. Passanten lassen Geld fallen, Geldautomaten zeigen deinen Kontostand.
-- Läden: Ammu-Nation (Waffen und Munition), 24/7 (Essen, Medikits, Schutzweste) und das Autohaus
+- Läden: Ammu-Nation (Waffen und Munition), 24/7 und Tankstellen (Essen, Medikits, Schutzweste) und das Autohaus.
+  In jedem Laden steht ein Verkäufer hinter der Kasse, und die Läden sind innen hell beleuchtet. Rechtsklick auf
+  den Verkäufer oder die Theke öffnet den Laden.
 - Banküberfall: Mit dem Thermobohrer (gibt es bei Ammu-Nation) den Tresor aufbohren, 30 Sekunden durchhalten,
   dann liegt die Beute im Tresor.
 - HUD: Geld, Fahndungssterne, Munition, Tacho, aktueller Job und das Radar
@@ -98,7 +111,8 @@ Story-Missionen folgen später.
 | G (im Auto) | Auto behalten, es gehört jetzt dir |
 | B | Eigenes Auto herbeiholen |
 | M | Karte, Navi, Jobs, Garage, Villen |
-| Rechtsklick auf Theke | Laden öffnen |
+| Rechtsklick auf Verkäufer oder Theke | Laden öffnen |
+| Rechtsklick auf Mitarbeiter oder Schalter (Jobcenter / Hafenbüro) | Job-Board mit Story und Jobs |
 | Schleichen + Rechtsklick mit Waffe auf Theke | Laden ausrauben |
 | Schleichen + Rechtsklick mit leerer Hand | Taschendiebstahl (Passant) / Ladendiebstahl (24/7-Theke) |
 | Rechtsklick auf Aufzug | Lobby ↔ Dach |

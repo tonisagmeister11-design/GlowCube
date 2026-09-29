@@ -235,7 +235,9 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             }
         });
         server.runCommand("kill @e[type=gtacity:police]");
-        server.runCommand("kill @e[type=gtacity:pedestrian]");
+        // Pedestrians go, the shop and job clerks stay.
+        server.runOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN, n -> n.role().isEmpty())
+                .forEach(net.minecraft.world.entity.Entity::discard));
         server.runCommand("kill @e[type=minecraft:item]");
     }
 
@@ -482,7 +484,8 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
     private void shooting(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
         BlockPos spawn = CityPlaces.spawn();
         teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
-        server.runCommand("kill @e[type=gtacity:pedestrian]");
+        server.runOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN, n -> n.role().isEmpty())
+                .forEach(net.minecraft.world.entity.Entity::discard));
         server.runCommand("item replace entity @a hotbar.0 with gtacity:pistol");
         server.runCommand("give @a gtacity:pistol_ammo 48");
         ctx.getInput().pressKey(o -> o.keyHotbarSlots[0]);
@@ -561,7 +564,8 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             player(s).setHealth(player(s).getMaxHealth());
         });
         server.runCommand("kill @e[type=gtacity:police]");
-        server.runCommand("kill @e[type=gtacity:pedestrian]");
+        server.runOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN, n -> n.role().isEmpty())
+                .forEach(net.minecraft.world.entity.Entity::discard));
         ctx.waitTicks(10);
     }
 
@@ -1434,7 +1438,9 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         }
         expect(ok == total, "Alle " + total + " Läden und Jobstationen im Umkreis: Mitarbeiter da, hell, Theke ("
                 + ok + " in Ordnung" + (bad.isEmpty() ? "" : ", Probleme: " + String.join("; ", bad)) + ")");
-        // Every shop sells: buy the first offer of every catalogue on the server.
+        // Every shop sells: buy the first offer of every catalogue on the server (in survival, creative is free).
+        server.runCommand("gamemode survival @a");
+        ctx.waitTicks(5);
         server.runOnServer(s -> Economy.set(player(s), 1_000_000));
         boolean allSell = server.computeOnServer(s -> {
             for (de.gtacity.shop.ShopType type : de.gtacity.shop.ShopType.values()) {
@@ -1823,7 +1829,8 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             }
             return list;
         });
-        server.runCommand("kill @e[type=gtacity:pedestrian]");
+        server.runOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN, n -> n.role().isEmpty())
+                .forEach(net.minecraft.world.entity.Entity::discard));
         ctx.runOnClient(mc -> mc.gui.hud.toggle());
         ctx.waitTicks(30);
         String[] names = {"supersportwagen-rot", "supersportwagen-carbon", "supersportwagen-gruen",
@@ -2024,7 +2031,8 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         BlockPos spawn = CityPlaces.spawn();
         server.runCommand("time set 6000");
         server.runCommand("gamemode creative @a");
-        server.runCommand("kill @e[type=gtacity:pedestrian]");
+        server.runOnServer(s -> s.overworld().getEntities(ModEntities.PEDESTRIAN, n -> n.role().isEmpty())
+                .forEach(net.minecraft.world.entity.Entity::discard));
         server.runCommand("kill @e[type=gtacity:police]");
         teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
         server.runCommand("item replace entity @a hotbar.0 with gtacity:pistol");
