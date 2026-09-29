@@ -47,6 +47,8 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 - Autohaus: Limousinen, SUVs, Sportwagen und der **Supersportwagen „Furia“** mit Heckflügel und bis zu 300 km/h
   ($240.000–$350.000). Gekaufte Autos kommen in deine Garage, und ein Mechaniker bringt sie dir jederzeit
   an die nächste Straße.
+- **Eigenes Auto**: Im Auto am Steuer drückst du G, dann gehört das Auto dir (auch ein geklautes). Mit B holst du
+  dein Auto jederzeit an die nächste Straße neben dir.
 - **Villen**: Die Villen mit Pool in den Hills kannst du kaufen ($150.000–$400.000). Danach teleportierst du dich
   mit einem Klick auf der Karte nach Hause, allerdings nur ohne Fahndungssterne.
 - **Jobs** (über die Karte, Taste M):
@@ -63,11 +65,17 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 - HUD: Geld, Fahndungssterne, Munition, Tacho, aktueller Job und das Radar
 
 **Karte und Navi**
-- Das Radar unten links zeigt die echte Stadtkarte: Straßen, Häuserblocks, Parks, Strand und Meer. Es dreht sich
-  mit der Kamera und zoomt beim schnellen Fahren heraus. Dazu zeigt es Polizei, Hubschrauber und den Stadtteil.
+- Die Karte ist exakt: Jeder Pixel ist eine echte Blocksäule, berechnet mit derselben Funktion, die die Stadt baut.
+  Man erkennt jedes Haus, jedes Dach, jeden Pool, Baum, Helipad und jede Fahrbahnmarkierung. Hohe Gebäude werfen
+  Schatten und haben dunkle Kanten, dadurch wirkt die Karte dreidimensional. Gezeichnet wird sie im Hintergrund,
+  zuerst rund um den Spieler.
+- Das Radar unten links dreht sich mit der Kamera und zoomt beim schnellen Fahren heraus. Dazu zeigt es Polizei,
+  Hubschrauber und den Stadtteil.
 - Mit M öffnest du die große Karte. Mit dem Mausrad zoomst du, durch Ziehen verschiebst du sie. Eine Legende
   erklärt die Symbole: M = Supermarkt 24/7, W = Waffenladen, $ = Bank, P = Polizei, + = Krankenhaus,
-  T = Tankstelle, A = Autohaus, L = Lieferdienst, V = Villa zu verkaufen, H = deine Villa.
+  T = Tankstelle, A = Autohaus, L = Lieferdienst, V = Villa zu verkaufen, ★ = deine Villa.
+  Ein Klick auf einen Eintrag der Legende setzt das Navi zum nächsten Ort dieser Art, „Deine Villa“ führt nach Hause.
+  Im Tab „Villen“ hat jede eigene Villa die Knöpfe „Navi“ und „Teleport“.
   Symbole liegen nie übereinander: Ist kein Platz, fehlt das unwichtigere und erscheint beim Hineinzoomen.
 - Ein Klick auf die Karte setzt ein Ziel. Ein Klick auf ein Symbol (z. B. den nächsten Waffenladen) setzt das Ziel
   dorthin. Das Navi zeichnet die Route über die Straßen auf Radar und Karte, ähnlich wie in GTA 5.
@@ -87,6 +95,8 @@ Story-Missionen folgen später.
 | Shift (beim Fahren) | Handbremse / Driften |
 | F (im Auto) | Aussteigen (oder im Stand Shift gedrückt halten) |
 | H | Hupe |
+| G (im Auto) | Auto behalten, es gehört jetzt dir |
+| B | Eigenes Auto herbeiholen |
 | M | Karte, Navi, Jobs, Garage, Villen |
 | Rechtsklick auf Theke | Laden öffnen |
 | Schleichen + Rechtsklick mit Waffe auf Theke | Laden ausrauben |
