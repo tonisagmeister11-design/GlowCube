@@ -55,7 +55,7 @@ public enum CarVariant {
         SEDAN("Limousine", 1.4F, 0.024F, 4.2F, 60.0F, 1.7F),
         SPORTS("Sportwagen", 2.5F, 0.045F, 4.8F, 55.0F, 1.5F),
         SUV("SUV", 1.3F, 0.022F, 3.6F, 90.0F, 1.9F),
-        SUPER("Supersportwagen", 4.2F, 0.075F, 5.0F, 65.0F, 1.3F);
+        SUPER("Supersportwagen", 4.2F, 0.095F, 5.0F, 65.0F, 1.3F);
 
         public final String label;
         public final float maxSpeed;

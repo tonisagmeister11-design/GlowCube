@@ -1047,17 +1047,25 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         expect(along < -0.5, "Rückwärtsfahren mit S (" + String.format("%.1f", along) + " Blöcke)");
 
         // Drift: full speed, then Shift + D - the car slides sideways through the corner.
+        // A fresh car: the old one took a beating above and may already be on fire.
         ctx.getInput().pressKey(o -> o.keySwapOffhand);
         ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
         ctx.waitTicks(5);
-        teleport(server, x + 2.0, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
         server.runOnServer(s -> {
-            CarEntity c = (CarEntity) s.overworld().getEntity(car);
-            c.snapTo(x, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
-            c.speed = 0.0F;
+            if (s.overworld().getEntity(car) instanceof CarEntity old) {
+                old.despawn();
+            }
         });
-        ctx.waitTicks(5);
-        server.runOnServer(s -> player(s).startRiding(s.overworld().getEntity(car)));
+        server.runCommand("gamemode creative @a");
+        teleport(server, x + 2.0, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
+        int driftCar = server.computeOnServer(s -> {
+            CarEntity c = ModEntities.CAR.create(s.overworld(), EntitySpawnReason.COMMAND);
+            c.setVariant(CarVariant.SPORTS_RED);
+            c.snapTo(x, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
+            s.overworld().addFreshEntity(c);
+            c.interact(player(s), InteractionHand.MAIN_HAND, c.position());
+            return c.getId();
+        });
         ctx.waitFor(mc -> mc.player.getVehicle() instanceof CarEntity, 60);
         ctx.getInput().holdKey(o -> o.keyUp);
         ctx.waitTicks(30);
@@ -1066,7 +1074,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         boolean drifting = false, clientSkid = false;
         for (int i = 0; i < 12; i++) {
             ctx.waitTicks(2);
-            drifting |= server.computeOnServer(s -> s.overworld().getEntity(car) instanceof CarEntity c
+            drifting |= server.computeOnServer(s -> s.overworld().getEntity(driftCar) instanceof CarEntity c
                     && c.isDrifting());
             clientSkid |= ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity c && c.isDrifting());
             if (i == 6) {
@@ -1081,7 +1089,12 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         expect(ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity), "Nach dem Drift noch im Auto");
         ctx.getInput().pressKey(o -> o.keySwapOffhand);
         ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
-        server.runOnServer(s -> ((CarEntity) s.overworld().getEntity(car)).despawn());
+        server.runOnServer(s -> {
+            if (s.overworld().getEntity(driftCar) instanceof CarEntity c) {
+                c.despawn();
+            }
+        });
+        server.runCommand("gamemode survival @a");
         reset(server);
     }
 
@@ -1162,17 +1175,17 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         ctx.takeScreenshot("gtacity-16-supersportwagen");
         ctx.getInput().holdKey(o -> o.keyUp);
         float top = 0.0F;
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 16; i++) {
             ctx.waitTicks(10);
             top = Math.max(top, ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity c
                     ? Math.abs(c.speed) : 0.0F));
-            if (i == 9) {
+            if (i == 13) {
                 ctx.takeScreenshot("gtacity-16b-vollgas");
             }
         }
         ctx.getInput().releaseKey(o -> o.keyUp);
         int kmh = Math.round(top * 72.0F);
-        expect(kmh >= 250, "Supersportwagen schafft fast 300 km/h (" + kmh + " km/h)");
+        expect(kmh >= 280, "Supersportwagen schafft fast 300 km/h (" + kmh + " km/h)");
         ctx.getInput().holdKeyFor(o -> o.keyDown, 60);
         ctx.getInput().pressKey(o -> o.keySwapOffhand);
         ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
