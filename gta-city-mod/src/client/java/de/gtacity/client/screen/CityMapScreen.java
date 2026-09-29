@@ -648,7 +648,7 @@ public class CityMapScreen extends Screen {
     private static final int CREW_MAX_ROWS = 8;
 
     private int crewTop() {
-        return TOP + (OtherPlayers.invitedBy().isEmpty() ? 58 : 84);
+        return TOP + (OtherPlayers.invitedBy().isEmpty() ? 72 : 98);
     }
 
     private void command(String command) {
@@ -664,7 +664,7 @@ public class CityMapScreen extends Screen {
                     + " annehmen"), b -> {
                 command("crew annehmen");
                 onClose();
-            }).bounds(left, TOP + 56, 220, 20).build());
+            }).bounds(left, TOP + 70, 220, 20).build());
         }
         List<Payloads.PlayerDot> dots = OtherPlayers.all();
         int top = crewTop();
