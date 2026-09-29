@@ -835,6 +835,18 @@ public final class Jobs {
         }
     }
 
+    /** For the automatic game test: moves the goal of the current step (e.g. next to the taxi). */
+    public static void moveGoalForTest(ServerPlayer player, BlockPos pos) {
+        Job job = ACTIVE.get(player.getUUID());
+        if (job == null) {
+            return;
+        }
+        Step old = job.step();
+        Step moved = new Step(old.goal, pos, old.label).pay(old.pay).seconds(old.seconds).say(old.say).npc(old.npcName);
+        job.steps.set(job.index, moved);
+        updateMission(player, job);
+    }
+
     /** The bank vault was drilled open: chapter 5 goes on. */
     public static void onVaultOpened(ServerPlayer player) {
         Job job = ACTIVE.get(player.getUUID());
