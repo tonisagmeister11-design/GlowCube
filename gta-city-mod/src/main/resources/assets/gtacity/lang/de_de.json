@@ -28,6 +28,8 @@
   "block.gtacity.weapon_counter": "Ammu-Nation-Theke",
   "block.gtacity.store_counter": "24/7-Kasse",
   "block.gtacity.car_counter": "Autohaus-Schalter",
+  "block.gtacity.job_desk": "Jobcenter-Schalter",
+  "block.gtacity.shady_desk": "Hafenbüro-Schalter",
   "block.gtacity.gas_pump": "Zapfsäule",
   "block.gtacity.atm": "Geldautomat",
   "entity.gtacity.pedestrian": "Passant",

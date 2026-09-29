@@ -32,6 +32,7 @@ public final class ModNetworking {
         PayloadTypeRegistry.serverboundPlay().register(Payloads.CarCrash.TYPE, Payloads.CarCrash.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(Payloads.Phone.TYPE, Payloads.Phone.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Payloads.OpenShop.TYPE, Payloads.OpenShop.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(Payloads.OpenJobs.TYPE, Payloads.OpenJobs.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Payloads.ShotFx.TYPE, Payloads.ShotFx.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(Payloads.Recoil.TYPE, Payloads.Recoil.CODEC);
 
@@ -77,6 +78,7 @@ public final class ModNetworking {
                 }
             }
             case Payloads.Phone.CANCEL_JOB -> Jobs.cancel(player, "abgebrochen.");
+            case Payloads.Phone.START_STORY -> Jobs.startStory(player, (int) payload.arg());
             case Payloads.Phone.CLAIM_CAR -> Garage.claim(player);
             case Payloads.Phone.BRING_CAR -> Garage.bring(player);
             default -> {

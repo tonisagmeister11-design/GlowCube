@@ -4,6 +4,8 @@ import de.gtacity.client.ClientInput;
 import de.gtacity.client.map.Waypoint;
 import de.gtacity.client.screen.CityMapScreen;
 import de.gtacity.client.screen.ShopScreen;
+import de.gtacity.client.screen.JobBoardScreen;
+import de.gtacity.gameplay.Clerks;
 import de.gtacity.gameplay.Jobs;
 import de.gtacity.network.Payloads;
 import de.gtacity.world.CityMap;
@@ -169,6 +171,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Supersportwagen", () -> superCar(ctx, server, conn));
             check("Karte", () -> map(ctx, server, conn));
             check("Navi", () -> navi(ctx, server, conn));
+            check("Laeden", () -> shops(ctx, server, conn));
             check("Jobs", () -> jobs(ctx, server, conn));
             check("Villa", () -> villa(ctx, server, conn));
             check("Taschendiebstahl", () -> pickpocket(ctx, server, conn));
@@ -1299,44 +1302,273 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         expect(turn != null && turn.distance() > 0, "Navi: nächste Abbiegung wird erkannt");
     }
 
-    private void jobs(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
-        reset(server);
-        server.runCommand("gamemode survival @a");
-        server.runOnServer(s -> Economy.set(player(s), 1000));
-        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.START_JOB,
-                Jobs.Type.DELIVERY.ordinal())));
-        ctx.waitTicks(10);
-        var mission = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
-        expect(mission != null, "Job Lieferant startet mit Ziel auf der Karte ("
-                + (mission == null ? "-" : mission.label()) + ")");
-        if (mission == null) {
+    /** Stands in front of the clerk of the nearest place of a kind, looks at him and right clicks. */
+    private void talkToClerk(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn,
+                             CityMap.Kind kind, String what) {
+        BlockPos spawn = CityPlaces.spawn();
+        CityMap.Place place = CityMap.nearest(kind, spawn.getX(), spawn.getZ());
+        Clerks.Spot spot = Clerks.spot(place);
+        net.minecraft.core.Direction out = net.minecraft.core.Direction.fromYRot(spot.yaw());
+        teleport(server, spot.x() + out.getStepX() * 2.0, spot.y(), spot.z() + out.getStepZ() * 2.0,
+                spot.yaw() + 180.0F, 0.0F);
+        settle(ctx, conn);
+        // The clerk is put there while a player is near.
+        int clerk = -1;
+        for (int i = 0; i < 12 && clerk < 0; i++) {
+            ctx.waitTicks(20);
+            clerk = server.computeOnServer(s -> {
+                var list = s.overworld().getEntitiesOfClass(NpcEntity.class, AABB.ofSize(new Vec3(spot.x(),
+                        spot.y() + 1, spot.z()), 4, 4, 4), n -> spot.role().equals(n.role()));
+                return list.isEmpty() ? -1 : list.getFirst().getId();
+            });
+        }
+        expect(clerk >= 0, what + ": Mitarbeiter steht hinter der Theke (" + spot.name() + ")");
+        if (clerk < 0) {
+            System.out.println("GTACITY-TEST Diagnose Mitarbeiter: place=" + place.x() + "," + place.z() + " kind="
+                    + place.kind() + " lot=" + place.lot().type + " spot=" + spot + " " + server.computeOnServer(s -> {
+                BlockPos c = BlockPos.containing(spot.x(), spot.y(), spot.z());
+                StringBuilder b = new StringBuilder("block=" + s.overworld().getBlockState(c).getBlock()
+                        + " above=" + s.overworld().getBlockState(c.above()).getBlock() + " below="
+                        + s.overworld().getBlockState(c.below()).getBlock() + " chunk="
+                        + s.overworld().hasChunkAt(c) + " ticking=" + s.overworld().isPositionEntityTicking(c)
+                        + " player=" + player(s).position());
+                for (NpcEntity n : s.overworld().getEntitiesOfClass(NpcEntity.class, AABB.ofSize(new Vec3(spot.x(),
+                        spot.y(), spot.z()), 30, 30, 30), n -> !n.role().isEmpty())) {
+                    b.append(" [").append(n.role()).append(" ").append(n.position()).append("]");
+                }
+                return b.toString();
+            }));
             return;
         }
-        ctx.takeScreenshot("gtacity-18-job");
-        // Depot, then three customers: jump to each goal.
+        int light = server.computeOnServer(s -> s.overworld().getBrightness(net.minecraft.world.level.LightLayer.BLOCK,
+                BlockPos.containing(spot.x(), spot.y() + 1, spot.z())));
+        expect(light >= 8, what + ": drinnen ist es hell (Lichtstärke " + light + ")");
+        boolean counter = server.computeOnServer(s -> {
+            BlockPos c = BlockPos.containing(spot.x(), spot.y(), spot.z());
+            for (BlockPos q : BlockPos.betweenClosed(c.offset(-2, 0, -2), c.offset(2, 1, 2))) {
+                var b = s.overworld().getBlockState(q).getBlock();
+                if (b instanceof de.gtacity.block.ShopCounterBlock || b instanceof de.gtacity.block.JobDeskBlock) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        expect(counter, what + ": Theke steht direkt vor dem Mitarbeiter");
+        aim(ctx, new Vec3(spot.x(), spot.y() + 1.6, spot.z()));
+        ctx.getInput().pressKey(o -> o.keyUse);
+    }
+
+    private void shops(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode survival @a");
+        server.runCommand("item replace entity @a hotbar.1 with minecraft:air");
+        ctx.getInput().pressKey(o -> o.keyHotbarSlots[1]);
+        server.runOnServer(s -> Economy.set(player(s), 5000));
+        // Supermarket: talk to the clerk, buy a burger.
+        talkToClerk(ctx, server, conn, CityMap.Kind.STORE, "Supermarkt");
+        ctx.waitForScreen(ShopScreen.class);
+        ok("Supermarkt: Ansprechen des Verkäufers öffnet den Laden");
+        ctx.takeScreenshot("gtacity-22-supermarkt");
+        int burgers = server.computeOnServer(s -> player(s).getInventory().countItem(ModItems.BURGER));
+        ctx.clickScreenButton("Kaufen");
+        ctx.waitTicks(10);
+        int after = server.computeOnServer(s -> player(s).getInventory().countItem(ModItems.BURGER));
+        expect(after > burgers, "Supermarkt: Burger gekauft (" + burgers + " -> " + after + ")");
+        ctx.clickScreenButton("Schließen");
+        ctx.waitFor(mc -> mc.gui.screen() == null, 40);
+        talkToClerk(ctx, server, conn, CityMap.Kind.AMMU_NATION, "Waffenladen");
+        ctx.waitForScreen(ShopScreen.class);
+        ok("Waffenladen: Ansprechen des Händlers öffnet den Laden");
+        ctx.takeScreenshot("gtacity-23-waffenladen");
+        ctx.clickScreenButton("Schließen");
+        ctx.waitFor(mc -> mc.gui.screen() == null, 40);
+        talkToClerk(ctx, server, conn, CityMap.Kind.CAR_DEALER, "Autohaus");
+        ctx.waitForScreen(ShopScreen.class);
+        ok("Autohaus: Ansprechen des Verkäufers öffnet den Laden");
+        ctx.clickScreenButton("Schließen");
+        ctx.waitFor(mc -> mc.gui.screen() == null, 40);
+        // Gas station shop
+        talkToClerk(ctx, server, conn, CityMap.Kind.GAS_STATION, "Tankstelle");
+        ctx.waitForScreen(ShopScreen.class);
+        ok("Tankstelle: Ansprechen des Verkäufers öffnet den Laden");
+        ctx.clickScreenButton("Schließen");
+        ctx.waitFor(mc -> mc.gui.screen() == null, 40);
+        BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        settle(ctx, conn);
+        reset(server);
+    }
+
+    /** Runs the current mission: teleports to every goal until the job is done. */
+    private void finishMission(ClientGameTestContext ctx, TestServerContext server, int maxSteps) {
+        for (int i = 0; i < maxSteps; i++) {
+            var goal = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+            if (goal == null) {
+                return;
+            }
+            server.runOnServer(s -> WantedSystem.setLevel(player(s), 0));
+            teleport(server, goal.x() + 0.5, CityLayout.GROUND + 2.0, goal.z() + 0.5, 0.0F, 0.0F);
+            ctx.waitTicks(25);
+        }
+    }
+
+    private void jobs(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode creative @a");
+        server.runOnServer(s -> {
+            Economy.set(player(s), 1000);
+            player(s).setAttached(ModAttachments.STORY, 0);
+            player(s).setAttached(ModAttachments.JOBS_DONE, 0);
+        });
+        // The job centre next to the spawn: talk to Marco.
+        talkToClerk(ctx, server, conn, CityMap.Kind.JOB, "Jobcenter");
+        ctx.waitForScreen(JobBoardScreen.class);
+        ok("Jobcenter: Ansprechen des Mitarbeiters öffnet das Job-Board");
+        ctx.waitTicks(10);
+        ctx.takeScreenshot("gtacity-18-job-board");
+        ctx.clickScreenButton("Führung starten");
+        ctx.waitTicks(10);
+        var mission = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(mission != null, "Story Kapitel 1 startet die Führung ("
+                + (mission == null ? "-" : mission.label()) + ")");
+        ctx.takeScreenshot("gtacity-18b-fuehrung");
+        finishMission(ctx, server, 10);
+        long money = server.computeOnServer(s -> Economy.get(player(s)));
+        int story = server.computeOnServer(s -> Jobs.chapter(player(s)));
+        expect(story == 1 && money > 2000, "Führung beendet: Kapitel 1 geschafft, Belohnung kassiert ($" + money + ")");
+
+        // Kapitel 3 darf man nicht überspringen
+        server.runOnServer(s -> {
+            Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
+            Jobs.startStory(player(s), 3);
+        });
+        ctx.waitTicks(5);
+        expect(ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) == null),
+                "Kapitel lassen sich nicht überspringen");
+
+        // Courier: three deliveries, paid.
+        long before = server.computeOnServer(s -> Economy.get(player(s)));
+        server.runOnServer(s -> {
+            Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
+            Jobs.start(player(s), Jobs.Type.COURIER);
+        });
+        ctx.waitTicks(5);
+        var courier = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(courier != null, "Kurierfahrer: Job startet mit Ziel auf der Karte ("
+                + (courier == null ? "-" : courier.label()) + ")");
+        finishMission(ctx, server, 8);
+        long after = server.computeOnServer(s -> Economy.get(player(s)));
+        expect(after - before > 1000, "Kurierfahrer: drei Pakete zugestellt, Lohn kassiert (+$" + (after - before) + ")");
+
+        // Bounty: the target glows, dies, pays.
+        before = after;
+        server.runOnServer(s -> {
+            Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
+            Jobs.start(player(s), Jobs.Type.BOUNTY);
+        });
+        ctx.waitTicks(5);
+        var bounty = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        if (bounty != null) {
+            teleport(server, bounty.x() + 0.5, CityLayout.GROUND + 2.0, bounty.z() + 0.5, 0.0F, 0.0F);
+            ctx.waitTicks(60);
+            boolean killed = server.computeOnServer(s -> {
+                var list = s.overworld().getEntitiesOfClass(NpcEntity.class, player(s).getBoundingBox().inflate(120),
+                        n -> "bounty".equals(n.role()));
+                if (list.isEmpty()) {
+                    return false;
+                }
+                list.getFirst().hurtServer(s.overworld(), s.overworld().damageSources().playerAttack(player(s)),
+                        1000.0F);
+                return true;
+            });
+            ctx.waitTicks(40);
+            long paid = server.computeOnServer(s -> Economy.get(player(s))) - before;
+            expect(killed && paid >= 3500, "Kopfgeldjäger: Gesuchter aufgespürt und ausgeschaltet (+$" + paid + ")");
+        } else {
+            fail("Kopfgeldjäger: Job startet nicht");
+        }
+        expect(server.computeOnServer(s -> WantedSystem.level(player(s))) == 0,
+                "Kopfgeldjäger: Töten des Gesuchten bringt keine Fahndung");
+
+        // Taxi: passenger boards the car and is delivered.
+        before = server.computeOnServer(s -> Economy.get(player(s)));
+        server.runOnServer(s -> {
+            Jobs.openBoard(player(s), Jobs.Station.JOBCENTER);
+            Jobs.start(player(s), Jobs.Type.TAXI);
+        });
+        ctx.waitTicks(5);
+        var pickup = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        boolean rode = false;
+        if (pickup != null) {
+            teleport(server, pickup.x() + 0.5, CityLayout.GROUND + 2.0, pickup.z() + 0.5, 0.0F, 0.0F);
+            ctx.waitTicks(60);
+            server.runOnServer(s -> {
+                CarEntity c = ModEntities.CAR.create(s.overworld(), EntitySpawnReason.COMMAND);
+                c.setVariant(CarVariant.SEDAN_WHITE);
+                c.snapTo(pickup.x() + 0.5, CityLayout.GROUND + 2.0, pickup.z() + 0.5, 0.0F, 0.0F);
+                s.overworld().addFreshEntity(c);
+                c.interact(player(s), InteractionHand.MAIN_HAND, c.position());
+            });
+            ctx.waitTicks(40);
+            rode = server.computeOnServer(s -> !s.overworld().getEntitiesOfClass(NpcEntity.class,
+                    player(s).getBoundingBox().inflate(20), n -> "passenger".equals(n.role()) && n.isPassenger())
+                    .isEmpty());
+        }
+        expect(rode, "Taxi: Fahrgast steigt in das Auto ein");
         for (int i = 0; i < 4; i++) {
             var goal = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
             if (goal == null) {
                 break;
             }
-            teleport(server, goal.x() + 0.5, CityLayout.GROUND + 2.0, goal.z() + 0.5, 0.0F, 0.0F);
-            ctx.waitTicks(25);
+            server.runOnServer(s -> {
+                if (player(s).getVehicle() instanceof CarEntity c) {
+                    c.snapTo(goal.x() + 0.5, CityLayout.GROUND + 2.0, goal.z() + 0.5, 0.0F, 0.0F);
+                }
+            });
+            ctx.waitTicks(70);
+            // second ride: passenger appears when we are near - already the case, the car got us there
         }
-        long money = server.computeOnServer(s -> Economy.get(player(s)));
-        boolean done = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) == null);
-        expect(done && money > 1000, "Alle Pakete zugestellt, Lohn kassiert ($1000 -> $" + money + ")");
+        after = server.computeOnServer(s -> Economy.get(player(s)));
+        expect(after - before > 500, "Taxi: Fahrgast abgeliefert, Fahrpreis kassiert (+$" + (after - before) + ")");
+        server.runOnServer(s -> {
+            Jobs.cancel(player(s), "Test");
+            s.overworld().getEntitiesOfClass(CarEntity.class, player(s).getBoundingBox().inflate(50))
+                    .forEach(CarEntity::despawn);
+        });
 
-        // Illegal: the gun crate. Cancelling works too.
-        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.START_JOB,
-                Jobs.Type.GUN_RUNNING.ordinal())));
+        // Dirty work at the harbour office: chapter 4 (gun running) and 5 (the bank job).
+        server.runOnServer(s -> player(s).setAttached(ModAttachments.STORY, 3));
+        talkToClerk(ctx, server, conn, CityMap.Kind.DOCKS, "Hafenbüro");
+        ctx.waitForScreen(JobBoardScreen.class);
+        ok("Hafenbüro: Ansprechen von Tony öffnet das Job-Board");
+        ctx.takeScreenshot("gtacity-18c-hafenbuero");
+        ctx.clickScreenButton("Kapitel starten");
         ctx.waitTicks(10);
-        var crate = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
-        boolean harbour = crate != null && CityLayout.districtAt(crate.x(), crate.z()) == CityLayout.District.INDUSTRIAL;
-        expect(harbour, "Job Waffendealer: Waffenkiste liegt im Hafen");
-        ctx.runOnClient(mc -> ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.CANCEL_JOB, 0)));
-        ctx.waitTicks(10);
-        expect(ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) == null), "Job abbrechen");
+        expect(ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) != null),
+                "Kapitel 4 (Waffenkiste) startet im Hafenbüro");
+        finishMission(ctx, server, 6);
+        expect(server.computeOnServer(s -> Jobs.chapter(player(s))) == 4, "Kapitel 4 geschafft");
+        server.runOnServer(s -> {
+            Jobs.openBoard(player(s), Jobs.Station.SHADY);
+            Jobs.startStory(player(s), 5);
+        });
+        ctx.waitTicks(20);
+        var drillGoal = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(drillGoal != null && drillGoal.label().contains("Thermobohrer"),
+                "Kapitel 5: erst den Thermobohrer kaufen");
+        server.runCommand("give @a gtacity:thermal_drill");
+        ctx.waitTicks(30);
+        var bankGoal = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION));
+        expect(bankGoal != null && bankGoal.label().contains("Bank"), "Kapitel 5: weiter zur Bank");
+        finishMission(ctx, server, 1); // reach the bank
+        server.runOnServer(s -> Jobs.onVaultOpened(player(s)));
+        ctx.waitTicks(30);
+        finishMission(ctx, server, 3);
+        expect(server.computeOnServer(s -> Jobs.chapter(player(s))) == 5
+                && server.computeOnServer(s -> Economy.get(player(s))) > 30000,
+                "Kapitel 5 geschafft: der große Coup bringt $30.000");
         BlockPos spawn = CityPlaces.spawn();
+        server.runCommand("gamemode survival @a");
         teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
         settle(ctx, conn);
         reset(server);

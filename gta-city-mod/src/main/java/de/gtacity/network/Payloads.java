@@ -77,10 +77,23 @@ public final class Payloads {
         public static final int CANCEL_JOB = 4;
         public static final int CLAIM_CAR = 5;
         public static final int BRING_CAR = 6;
+        public static final int START_STORY = 7;
 
         public static final Type<Phone> TYPE = new Type<>(GtaCity.id("phone"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Phone> CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, Phone::action, ByteBufCodecs.VAR_LONG, Phone::arg, Phone::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    /** Server -> client: open the job board of a station (0 = job centre, 1 = harbour office). */
+    public record OpenJobs(int station) implements CustomPacketPayload {
+        public static final Type<OpenJobs> TYPE = new Type<>(GtaCity.id("open_jobs"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, OpenJobs> CODEC =
+                StreamCodec.composite(ByteBufCodecs.VAR_INT, OpenJobs::station, OpenJobs::new);
 
         @Override
         public Type<? extends CustomPacketPayload> type() {

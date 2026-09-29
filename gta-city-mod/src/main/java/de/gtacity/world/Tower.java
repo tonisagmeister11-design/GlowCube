@@ -224,6 +224,11 @@ final class Tower {
             c.set(roofY + 1, p.frame());
         } else if (k == rects.size() - 1) {
             roof(c, x, z, roofY);
+            // Ceiling lamp of the top floor: the slab lamps only light the floors below the top one, so single storey
+            // buildings (shops!) used to be pitch dark inside.
+            if (!skylights && lightSpot(x, z)) {
+                c.set(roofY - 1, p.light());
+            }
         }
         if (elevator && x == centerX() && z == centerZ()) {
             c.set(base + 1, ModBlocksRef.elevator());

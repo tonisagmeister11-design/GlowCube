@@ -54,6 +54,22 @@ public final class ModAttachments {
                     .persistent(Codec.INT)
                     .copyOnDeath());
 
+    /** Story chapters finished (0..5). */
+    public static final AttachmentType<Integer> STORY = AttachmentRegistry.create(GtaCity.id("story"),
+            builder -> builder
+                    .initializer(() -> 0)
+                    .persistent(Codec.INT)
+                    .copyOnDeath()
+                    .syncWith(ByteBufCodecs.VAR_INT, AttachmentSyncPredicate.targetOnly()));
+
+    /** Jobs finished so far - decides the rank and the pay bonus. */
+    public static final AttachmentType<Integer> JOBS_DONE = AttachmentRegistry.create(GtaCity.id("jobs_done"),
+            builder -> builder
+                    .initializer(() -> 0)
+                    .persistent(Codec.INT)
+                    .copyOnDeath()
+                    .syncWith(ByteBufCodecs.VAR_INT, AttachmentSyncPredicate.targetOnly()));
+
     /** Villas the player owns, as packed entrance positions (see {@link de.gtacity.gameplay.Villas}). */
     public static final AttachmentType<List<Long>> VILLAS = AttachmentRegistry.create(GtaCity.id("villas"),
             builder -> builder

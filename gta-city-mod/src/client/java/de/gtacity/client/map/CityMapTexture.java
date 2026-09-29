@@ -112,6 +112,8 @@ public final class CityMapTexture {
             case HOSPITAL -> 0xFF645050;
             case GAS_STATION -> 0xFF5A4A38;
             case CAR_DEALER -> 0xFF4E4262;
+            case JOB_CENTER -> 0xFF3A5A8A;
+            case HARBOR_OFFICE -> 0xFF6A2E2E;
         };
         return edge ? darker(base) : base;
     }

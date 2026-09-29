@@ -45,6 +45,7 @@ public final class CityEvents {
             CitySpawns.tick(server);
             Heists.tick(server);
             Jobs.tick(server);
+            Clerks.tick(server);
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> onJoin(handler.getPlayer()));
@@ -57,6 +58,14 @@ public final class CityEvents {
 
         // Pickpocketing: sneak up to a pedestrian and right click with an empty hand.
         UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
+            // Talking to a clerk (right click): shop or job board.
+            if (hand == InteractionHand.MAIN_HAND && !player.isShiftKeyDown() && entity instanceof NpcEntity clerk
+                    && !clerk.role().isEmpty() && !(player.getMainHandItem().getItem() instanceof GunItem)) {
+                if (player instanceof ServerPlayer serverPlayer) {
+                    return Clerks.talk(serverPlayer, clerk) ? InteractionResult.SUCCESS : InteractionResult.PASS;
+                }
+                return InteractionResult.SUCCESS;
+            }
             if (hand != InteractionHand.MAIN_HAND || !player.isShiftKeyDown() || !player.getMainHandItem().isEmpty()
                     || !(entity instanceof NpcEntity npc)) {
                 return InteractionResult.PASS;

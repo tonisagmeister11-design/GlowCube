@@ -385,6 +385,15 @@ def store_counter_top():
     return draw(img, s.render())
 
 
+def job_desk_top(shady):
+    img = noise_block((60, 60, 70) if shady else (60, 110, 190), 5, 9)
+    s = Sprite(16)
+    s.rect(3, 3, 12, 12, "dark")
+    s.rect(4, 4, 11, 11, "yellow" if not shady else "red")
+    s.rect(6, 6, 9, 9, "dark")
+    return draw(img, s.render())
+
+
 def car_counter_top():
     img = noise_block((36, 36, 40), 4, 7)
     img.alpha_composite(car_key())
@@ -452,6 +461,10 @@ def main():
     save(store_counter_top(), "block", "store_counter_top")
     save(counter_side((30, 30, 34), (200, 200, 206)), "block", "car_counter_side")
     save(car_counter_top(), "block", "car_counter_top")
+    save(counter_side((30, 70, 140), (240, 200, 40)), "block", "job_desk_side")
+    save(job_desk_top(False), "block", "job_desk_top")
+    save(counter_side((30, 30, 34), (200, 40, 44)), "block", "shady_desk_side")
+    save(job_desk_top(True), "block", "shady_desk_top")
     save(gas_pump(), "block", "gas_pump")
     save(atm(), "block", "atm")
 

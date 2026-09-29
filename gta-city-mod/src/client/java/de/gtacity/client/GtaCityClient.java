@@ -7,7 +7,9 @@ import de.gtacity.client.render.CarRenderer;
 import de.gtacity.client.render.HelicopterModel;
 import de.gtacity.client.render.HelicopterRenderer;
 import de.gtacity.client.render.NpcRenderer;
+import de.gtacity.client.screen.JobBoardScreen;
 import de.gtacity.client.screen.ShopScreen;
+import de.gtacity.gameplay.Jobs;
 import de.gtacity.entity.CarVariant;
 import de.gtacity.network.Payloads;
 import de.gtacity.registry.ModEntities;
@@ -48,6 +50,12 @@ public class GtaCityClient implements ClientModInitializer {
             ShopType[] types = ShopType.values();
             if (payload.shop() >= 0 && payload.shop() < types.length) {
                 Minecraft.getInstance().gui.setScreen(new ShopScreen(types[payload.shop()]));
+            }
+        });
+        ClientPlayNetworking.registerGlobalReceiver(Payloads.OpenJobs.TYPE, (payload, context) -> {
+            Jobs.Station[] stations = Jobs.Station.values();
+            if (payload.station() >= 0 && payload.station() < stations.length) {
+                Minecraft.getInstance().gui.setScreen(new JobBoardScreen(stations[payload.station()]));
             }
         });
         ClientPlayNetworking.registerGlobalReceiver(Payloads.ShotFx.TYPE, (payload, context) -> ShotEffects.spawn(payload));

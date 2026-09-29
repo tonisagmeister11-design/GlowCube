@@ -51,6 +51,8 @@ public class NpcEntity extends PathfinderMob {
     private Vec3 threat;
     private boolean brave;
     private boolean persistent;
+    /** What this figure is for: "store", "weapons", "cars", "jobs", "shady", "passenger", "bounty" - or empty. */
+    private String role = "";
 
     public NpcEntity(EntityType<? extends NpcEntity> type, Level level) {
         super(type, level);
@@ -121,6 +123,18 @@ public class NpcEntity extends PathfinderMob {
         this.persistent = persistent;
     }
 
+    public String role() {
+        return role;
+    }
+
+    /** Gives this figure a task (and a name tag): shop clerks, job clerks, passengers, bounty targets. */
+    public void setRole(String role, String name) {
+        this.role = role;
+        setPersistent(true);
+        setCustomName(net.minecraft.network.chat.Component.literal(name));
+        setCustomNameVisible(true);
+    }
+
     /** Makes every pedestrian around {@code center} run away. */
     public static void scare(ServerLevel level, Vec3 center, double radius, @Nullable LivingEntity source) {
         AABB box = new AABB(center, center).inflate(radius);
@@ -133,7 +147,7 @@ public class NpcEntity extends PathfinderMob {
     }
 
     public void panic(Vec3 from, int ticks) {
-        if (this instanceof PoliceEntity) {
+        if (this instanceof PoliceEntity || !role.isEmpty()) {
             return;
         }
         this.threat = from;
@@ -174,7 +188,8 @@ public class NpcEntity extends PathfinderMob {
     public void die(DamageSource source) {
         super.die(source);
         if (level() instanceof ServerLevel level) {
-            if (source.getEntity() instanceof Player player) {
+            // Killing a bounty target is legal work, it does not count as murder.
+            if (source.getEntity() instanceof Player player && !"bounty".equals(role)) {
                 WantedSystem.onNpcKilled(player, this);
             }
             int value = 10 + getRandom().nextInt(isGang() ? 300 : 120);
@@ -201,6 +216,7 @@ public class NpcEntity extends PathfinderMob {
         output.putBoolean("Gang", isGang());
         output.putBoolean("Brave", brave);
         output.putBoolean("CityPersistent", persistent);
+        output.putString("Role", role);
     }
 
     @Override
@@ -210,6 +226,7 @@ public class NpcEntity extends PathfinderMob {
         entityData.set(GANG, input.getBooleanOr("Gang", false));
         brave = input.getBooleanOr("Brave", false);
         persistent = input.getBooleanOr("CityPersistent", false);
+        role = input.getStringOr("Role", "");
     }
 
     @Override

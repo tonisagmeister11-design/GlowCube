@@ -442,44 +442,55 @@ public class CityMapScreen extends Screen {
     private void initJobs() {
         LocalPlayer player = minecraft.player;
         boolean busy = player != null && player.getAttached(ModAttachments.MISSION) != null;
-        int y = TOP + 40;
-        for (Jobs.Type type : Jobs.Type.values()) {
-            Button b = Button.builder(Component.literal("Starten"),
-                            button -> {
-                                ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.START_JOB, type.ordinal()));
-                                onClose();
-                            })
-                    .bounds(width / 2 + 120, y, 60, 20).build();
-            b.active = !busy;
-            addRenderableWidget(b);
-            y += 44;
-        }
+        int cx = width / 2;
+        addRenderableWidget(Button.builder(Component.literal("Navi: nächstes Jobcenter (legal)"), b -> {
+            navigateTo(CityMap.Kind.JOB);
+        }).bounds(cx - 180, TOP + 120, 176, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Navi: nächstes Hafenbüro (illegal)"), b -> {
+            navigateTo(CityMap.Kind.DOCKS);
+        }).bounds(cx + 4, TOP + 120, 176, 20).build());
         if (busy) {
             addRenderableWidget(Button.builder(Component.literal("Job abbrechen"), b -> {
                 ClientPlayNetworking.send(new Payloads.Phone(Payloads.Phone.CANCEL_JOB, 0));
                 onClose();
-            }).bounds(width / 2 - 50, height - 30, 100, 20).build());
+            }).bounds(cx - 50, height - 30, 100, 20).build());
+        }
+    }
+
+    private void navigateTo(CityMap.Kind kind) {
+        LocalPlayer player = minecraft.player;
+        if (player == null) {
+            return;
+        }
+        CityMap.Place place = CityMap.nearest(kind, player.getX(), player.getZ());
+        if (place != null) {
+            Waypoint.set(place.entrance().getX() + 0.5, place.entrance().getZ() + 0.5);
+            centerX = place.x();
+            centerZ = place.z();
+            scale = 1.5;
+            tab = Tab.MAP;
+            rebuildWidgets();
         }
     }
 
     private void renderJobs(GuiGraphicsExtractor g) {
         int left = width / 2 - 180;
         g.fill(left - 6, TOP + 4, width / 2 + 186, height - 4, 0xE0101418);
-        g.text(font, "Jobs - verdien Geld für Autos und Villen", left, TOP + 12, 0xFFFFD040, false);
-        int y = TOP + 40;
-        for (Jobs.Type type : Jobs.Type.values()) {
-            g.text(font, type.label + (type.illegal ? "  (illegal)" : "  (legal)"), left, y,
-                    type.illegal ? 0xFFFF6060 : 0xFF60E0FF, false);
-            g.textWithWordWrap(font, Component.literal(type.description), left, y + 11, 290, 0xFFC8C8C8);
-            y += 44;
-        }
+        g.text(font, "Jobs und Story", left, TOP + 12, 0xFFFFD040, false);
+        int done = Jobs.done(minecraft.player);
+        int chapter = Jobs.chapter(minecraft.player);
+        g.text(font, "Rang: " + Jobs.rank(done) + " (" + done + " Jobs, +" + Math.min(50, done * 3) + " % Lohn)", left,
+                TOP + 28, 0xFFFFFFFF, false);
+        g.text(font, "Story: Kapitel " + Math.min(chapter, Jobs.MAX_CHAPTER) + " von " + Jobs.MAX_CHAPTER
+                + (chapter >= Jobs.MAX_CHAPTER ? " - geschafft!" : "  (nächstes: "
+                + Jobs.CHAPTER_TITLES[chapter] + ")"), left, TOP + 40, 0xFFFFFFFF, false);
+        g.textWithWordWrap(font, Component.literal("Jobs bekommst du an den Jobstationen: J = Jobcenter (legal, mit der "
+                + "Story und einer Führung durch die Stadt), D = Hafenbüro (illegal, mehr Geld). Geh zum Schalter oder "
+                + "sprich den Mitarbeiter an (Rechtsklick) - er zeigt dir alles."), left, TOP + 56, 360, 0xFFC8C8C8);
         ModAttachments.Mission mission = minecraft.player == null ? null
                 : minecraft.player.getAttached(ModAttachments.MISSION);
-        y += 4;
-        g.text(font, "Straßenkriminalität:", left, y, 0xFFFFD040, false);
-        g.textWithWordWrap(font, Component.literal("Taschendiebstahl: von hinten an Passanten schleichen, Schleichen + "
-                + "Rechtsklick mit leerer Hand. Ladendiebstahl: im 24/7 Schleichen + Rechtsklick mit leerer Hand auf "
-                + "die Theke. Überfall: dasselbe mit einer Waffe in der Hand."), left, y + 11, 360, 0xFFC8C8C8);
+        g.text(font, "Straßenkriminalität: Taschendiebstahl (von hinten, Schleichen + Rechtsklick), Ladendiebstahl im "
+                + "24/7 und Überfälle mit Waffe.", left, TOP + 150, 0xFF9098A0, false);
         if (mission != null) {
             g.centeredText(font, "Aktueller Job: " + mission.label(), width / 2, height - 44, 0xFFFFD020);
         }

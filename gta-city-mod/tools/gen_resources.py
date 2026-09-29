@@ -19,7 +19,7 @@ ITEMS = ["pistol_ammo", "smg_ammo", "rifle_ammo", "shotgun_shells", "sniper_ammo
          "medkit", "thermal_drill", "cash", "car_key", "burger", "ecola", "candy_bar"]
 HANDHELD = ["knife", "baseball_bat"]
 BLOCKS_ALL = ["elevator", "bank_vault", "gas_pump", "atm"]
-COUNTERS = ["weapon_counter", "store_counter", "car_counter"]
+COUNTERS = ["weapon_counter", "store_counter", "car_counter", "job_desk", "shady_desk"]
 
 NAMES = {
     "pistol": ("Pistol", "Pistole"),
@@ -53,6 +53,8 @@ BLOCK_NAMES = {
     "weapon_counter": ("Ammu-Nation Counter", "Ammu-Nation-Theke"),
     "store_counter": ("24/7 Counter", "24/7-Kasse"),
     "car_counter": ("Car Dealer Desk", "Autohaus-Schalter"),
+    "job_desk": ("Job Centre Desk", "Jobcenter-Schalter"),
+    "shady_desk": ("Harbour Office Desk", "Hafenbüro-Schalter"),
     "gas_pump": ("Gas Pump", "Zapfsäule"),
     "atm": ("ATM", "Geldautomat"),
 }

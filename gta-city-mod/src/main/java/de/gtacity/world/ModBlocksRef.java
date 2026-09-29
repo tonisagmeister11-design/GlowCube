@@ -28,6 +28,14 @@ final class ModBlocksRef {
         return ModBlocks.CAR_COUNTER.defaultBlockState();
     }
 
+    static BlockState jobDesk() {
+        return ModBlocks.JOB_DESK.defaultBlockState();
+    }
+
+    static BlockState shadyDesk() {
+        return ModBlocks.SHADY_DESK.defaultBlockState();
+    }
+
     static BlockState gasPump() {
         return ModBlocks.GAS_PUMP.defaultBlockState();
     }

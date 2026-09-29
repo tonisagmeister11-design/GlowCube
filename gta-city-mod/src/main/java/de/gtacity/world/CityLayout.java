@@ -40,7 +40,9 @@ public final class CityLayout {
 
     public enum LotType {
         SKYSCRAPER, OFFICE, HOUSE, VILLA, WAREHOUSE, CONTAINERS, PARKING, POCKET_PARK, COURTYARD,
-        BANK, AMMU_NATION, STORE, POLICE, HOSPITAL, GAS_STATION, CAR_DEALER
+        BANK, AMMU_NATION, STORE, POLICE, HOSPITAL, GAS_STATION, CAR_DEALER,
+        /** Job centre (legal jobs, story) and the shady harbour office (illegal jobs). */
+        JOB_CENTER, HARBOR_OFFICE
     }
 
     // ------------------------------------------------------------------ grid
@@ -145,6 +147,9 @@ public final class CityLayout {
         if (gx == 0 && gz == 0 && qz == 0) {
             return qx == 0 ? LotType.STORE : LotType.AMMU_NATION;
         }
+        if (gx == 0 && gz == 0 && qx == 0 && qz == 1) {
+            return LotType.JOB_CENTER; // right next to the spawn: the first stop of the story
+        }
         if (gx == -1 && gz == 0 && qx == 1 && qz == 0) {
             return LotType.BANK;
         }
@@ -175,6 +180,7 @@ public final class CityLayout {
                     : r < 10 ? LotType.STORE
                     : r < 12 ? LotType.POCKET_PARK
                     : r < 13 ? LotType.HOSPITAL
+                    : r < 16 ? LotType.JOB_CENTER
                     : LotType.SKYSCRAPER;
             case MIDTOWN -> r < 4 ? LotType.BANK
                     : r < 9 ? LotType.AMMU_NATION
@@ -185,12 +191,14 @@ public final class CityLayout {
                     : r < 32 ? LotType.GAS_STATION
                     : r < 34 ? LotType.CAR_DEALER
                     : r < 38 ? LotType.POCKET_PARK
+                    : r < 41 ? LotType.JOB_CENTER
                     : LotType.OFFICE;
             case RESIDENTIAL -> (qx == 1 && qz == 1) ? LotType.COURTYARD
                     : r < 5 ? LotType.STORE
                     : r < 7 ? LotType.GAS_STATION
                     : r < 8 ? LotType.POLICE
                     : r < 9 ? LotType.AMMU_NATION
+                    : r < 11 ? LotType.JOB_CENTER
                     : LotType.HOUSE;
             case HILLS -> r < 10 ? LotType.POCKET_PARK : LotType.VILLA;
             case INDUSTRIAL -> r < 40 ? LotType.WAREHOUSE
@@ -198,6 +206,7 @@ public final class CityLayout {
                     : r < 84 ? LotType.PARKING
                     : r < 87 ? LotType.POLICE
                     : r < 90 ? LotType.GAS_STATION
+                    : r < 95 ? LotType.HARBOR_OFFICE
                     : LotType.WAREHOUSE;
         };
     }

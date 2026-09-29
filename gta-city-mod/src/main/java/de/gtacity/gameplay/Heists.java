@@ -107,6 +107,7 @@ public final class Heists {
             level.addFreshEntity(cash);
         }
         EMPTY_UNTIL.put(vault, level.getGameTime() + VAULT_COOLDOWN);
+        Jobs.onVaultOpened(player);
         WantedSystem.commit(player, 4);
         level.playSound(null, vault, SoundEvents.IRON_DOOR_OPEN, SoundSource.BLOCKS, 2.0F, 0.6F);
         WantedSystem.title(player, Component.literal("TRESOR OFFEN").withStyle(ChatFormatting.GREEN,

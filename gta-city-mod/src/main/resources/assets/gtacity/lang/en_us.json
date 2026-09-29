@@ -28,6 +28,8 @@
   "block.gtacity.weapon_counter": "Ammu-Nation Counter",
   "block.gtacity.store_counter": "24/7 Counter",
   "block.gtacity.car_counter": "Car Dealer Desk",
+  "block.gtacity.job_desk": "Job Centre Desk",
+  "block.gtacity.shady_desk": "Harbour Office Desk",
   "block.gtacity.gas_pump": "Gas Pump",
   "block.gtacity.atm": "ATM",
   "entity.gtacity.pedestrian": "Pedestrian",

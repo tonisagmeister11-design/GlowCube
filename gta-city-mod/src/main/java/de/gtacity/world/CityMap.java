@@ -16,14 +16,15 @@ public final class CityMap {
 
     /** Map symbols. Lower priority numbers win when two symbols would overlap. */
     public enum Kind {
-        HOSPITAL("+", "Krankenhaus", 0xFFE84040, 0xFFFFFFFF, 1),
-        POLICE("P", "Polizei", 0xFF3A6BE0, 0xFFFFFFFF, 2),
-        AMMU_NATION("W", "Waffenladen", 0xFFB02020, 0xFFFFFFFF, 3),
-        STORE("M", "Supermarkt 24/7", 0xFF2FA84F, 0xFFFFFFFF, 4),
-        BANK("$", "Bank", 0xFFE0B020, 0xFF202020, 5),
-        CAR_DEALER("A", "Autohaus", 0xFF9050D0, 0xFFFFFFFF, 6),
-        GAS_STATION("T", "Tankstelle", 0xFFE08020, 0xFFFFFFFF, 7),
-        DEPOT("L", "Lieferdienst (Job)", 0xFF8A6A3A, 0xFFFFFFFF, 8),
+        JOB("J", "Jobcenter (Jobs, Story)", 0xFF2A8AE0, 0xFFFFFFFF, 0),
+        DOCKS("D", "Hafenbüro (illegale Jobs)", 0xFF8A1E1E, 0xFFFFFFFF, 0),
+        HOSPITAL("+", "Krankenhaus", 0xFFE84040, 0xFFFFFFFF, 2),
+        POLICE("P", "Polizei", 0xFF3A6BE0, 0xFFFFFFFF, 3),
+        AMMU_NATION("W", "Waffenladen", 0xFFB02020, 0xFFFFFFFF, 4),
+        STORE("M", "Supermarkt 24/7", 0xFF2FA84F, 0xFFFFFFFF, 5),
+        BANK("$", "Bank", 0xFFE0B020, 0xFF202020, 6),
+        CAR_DEALER("A", "Autohaus", 0xFF9050D0, 0xFFFFFFFF, 7),
+        GAS_STATION("T", "Tankstelle", 0xFFE08020, 0xFFFFFFFF, 8),
         VILLA("V", "Villa (zu verkaufen)", 0xFF707070, 0xFFFFFFFF, 9);
 
         public final String symbol;
@@ -87,14 +88,10 @@ public final class CityMap {
             case CAR_DEALER -> Kind.CAR_DEALER;
             case GAS_STATION -> Kind.GAS_STATION;
             case VILLA -> Kind.VILLA;
-            case WAREHOUSE -> isDepot(lot) ? Kind.DEPOT : null;
+            case JOB_CENTER -> Kind.JOB;
+            case HARBOR_OFFICE -> Kind.DOCKS;
             default -> null;
         };
-    }
-
-    /** A few warehouses in the harbour serve as depots for the delivery job. */
-    private static boolean isDepot(Lot lot) {
-        return lot.qx == 0 && lot.qz == 0 && Math.floorMod(lot.gx + lot.gz, 3) == 0;
     }
 
     public static List<Place> of(Kind kind) {

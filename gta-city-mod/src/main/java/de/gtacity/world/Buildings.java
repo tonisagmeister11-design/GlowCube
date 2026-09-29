@@ -42,6 +42,10 @@ final class Buildings {
             Blocks.DEEPSLATE_TILE_STAIRS, Blocks.MUD_BRICK_STAIRS, Blocks.STONE_BRICK_STAIRS};
     private static final Block[] ROOF_FULL = {Blocks.DARK_OAK_PLANKS, Blocks.SPRUCE_PLANKS, Blocks.BRICKS,
             Blocks.DEEPSLATE_TILES, Blocks.MUD_BRICKS, Blocks.STONE_BRICKS};
+    private static final Palette JOBS = new Palette(s(Blocks.CONCRETE.white()), s(Blocks.STAINED_GLASS.lightBlue()),
+            s(Blocks.BIRCH_PLANKS), B.SEA_LANTERN, s(Blocks.CONCRETE.gray()), s(Blocks.CONCRETE.blue()));
+    private static final Palette SHADY = new Palette(s(Blocks.CONCRETE.black()), s(Blocks.STAINED_GLASS.black()),
+            s(Blocks.DEEPSLATE_TILES), B.STREET_LIGHT, s(Blocks.CONCRETE.gray()), s(Blocks.CONCRETE.red()));
     private static final Block[] CONTAINER_A = {Blocks.CONCRETE.red(), Blocks.CONCRETE.blue(), Blocks.CONCRETE.green(),
             Blocks.CONCRETE.orange(), Blocks.CONCRETE.cyan(), Blocks.CONCRETE.white(), Blocks.CONCRETE.brown()};
     private static final Block[] CONTAINER_B = {Blocks.DYED_TERRACOTTA.red(), Blocks.DYED_TERRACOTTA.blue(),
@@ -77,6 +81,8 @@ final class Buildings {
             case HOSPITAL -> hospital(lot, x, z, c);
             case GAS_STATION -> gasStation(lot, x, z, c);
             case CAR_DEALER -> carDealer(lot, x, z, c);
+            case JOB_CENTER -> jobOffice(lot, x, z, c, false);
+            case HARBOR_OFFICE -> jobOffice(lot, x, z, c, true);
         }
     }
 
@@ -289,6 +295,8 @@ final class Buildings {
         int v0 = 13, v1 = v0 + Hash.between(h >>> 8, 12, 15) - 1;
         int doorU = (u0 + u1) / 2;
         int dw0 = width - 7, dw1 = width - 3;
+        int pu0 = u0 + 2, pu1 = u0 + 15, pv0 = v1 + 2, pv1 = depth - 3; // the pool
+        int portico = GROUND + 5;
 
         c.set(GROUND, B.DIRT);
         c.set(GROUND + 1, B.GRASS);
@@ -302,18 +310,151 @@ final class Buildings {
             hedge(c);
         } else {
             Nature.decorate(x, z, c);
-            pool(c, u, v, u0 + 2, v1 + 2, u0 + 15, depth - 3);
+            pool(c, u, v, pu0, pv0, pu1, pv1);
+            villaPoolArea(c, u, v, pu0, pv0, pu1, pv1);
         }
 
         Tower t = tower(f, u0, v0, u1, v1, 4, 2, p, Tower.CURTAIN, lot.front).tier(1, 2);
         t.roofUnits = false;
         if (t.column(c, x, z)) {
+            villaInterior(c, f, u, v, u0, v0, u1, v1);
             return;
         }
-        if (!drive && !path) {
-            Nature.palm(c, u - 6, v - 5, FLOOR, 7);
-            Nature.palm(c, u - (width - 12), v - 5, FLOOR, 8);
+        if (drive || path || u == 0 || u == width - 1 || v == 0) {
+            villaCarportAndPath(c, u, v, doorU, dw0, dw1, v0, v1, portico);
+            return;
         }
+        villaGarden(c, u, v, width, doorU, v0, portico);
+    }
+
+    /** Wooden deck around the pool with sun loungers and a parasol; the pool itself glows from below. */
+    private static void villaPoolArea(Column c, int u, int v, int pu0, int pv0, int pu1, int pv1) {
+        boolean inPool = u >= pu0 && u <= pu1 && v >= pv0 && v <= pv1;
+        if (inPool) {
+            if (u > pu0 && u < pu1 && v > pv0 && v < pv1 && Math.floorMod(u + v, 4) == 0) {
+                c.set(GROUND - 1, B.SEA_LANTERN);
+            }
+            return;
+        }
+        boolean deck = u >= pu0 - 2 && u <= pu1 + 2 && v >= pv0 - 2 && v <= pv1 + 2;
+        if (!deck) {
+            return;
+        }
+        c.set(GROUND + 1, s(Blocks.SPRUCE_PLANKS));
+        c.set(FLOOR, null);
+        c.set(FLOOR + 1, null);
+        boolean outer = u == pu0 - 2 || u == pu1 + 2 || v == pv1 + 2;
+        if (outer) {
+            return;
+        }
+        // loungers along the house side of the pool
+        if (v == pv0 - 1 && u > pu0 + 1 && u < pu1 - 1 && Math.floorMod(u - pu0, 3) == 1) {
+            c.set(FLOOR, s(Blocks.QUARTZ_SLAB));
+            c.set(FLOOR + 1, s(Blocks.CARPET.white()));
+        }
+        // parasol
+        if (u == pu1 + 1 && v == pv0 + 3) {
+            c.fill(FLOOR, FLOOR + 2, s(Blocks.OAK_FENCE));
+        }
+        if (Math.abs(u - (pu1 + 1)) <= 1 && Math.abs(v - (pv0 + 3)) <= 1) {
+            c.set(FLOOR + 3, s(Blocks.CARPET.white()));
+        }
+    }
+
+    /** Furnished rooms: sofa, TV, kitchen island and shelves downstairs, bed and desk upstairs. */
+    private static void villaInterior(Column c, Lot.Frame f, int u, int v, int u0, int v0, int u1, int v1) {
+        int uc = (u0 + u1) / 2;
+        int iu0 = u0 + 1, iu1 = u1 - 1, iv0 = v0 + 1, iv1 = v1 - 1;
+        if (u >= iu0 && u <= iu1 && v >= iv0 && v <= iv1) {
+            BlockState carpet = s(Blocks.CARPET.lightGray());
+            c.set(FLOOR, carpet);
+            // TV cabinet against the back wall
+            if (v == iv1 && Math.abs(u - uc) <= 2) {
+                c.set(FLOOR, s(Blocks.DARK_OAK_SLAB));
+                if (Math.abs(u - uc) <= 1) {
+                    c.fill(FLOOR + 1, FLOOR + 2, s(Blocks.CONCRETE.black()));
+                }
+            }
+            // sofa facing the TV, coffee table in front of it
+            if (v == iv1 - 4 && Math.abs(u - uc) <= 3) {
+                c.set(FLOOR, B.stairs(Blocks.QUARTZ_STAIRS, f.out()));
+            } else if (v == iv1 - 5 && (u == uc - 3 || u == uc + 3)) {
+                c.set(FLOOR, s(Blocks.QUARTZ_SLAB));
+            } else if (v == iv1 - 2 && Math.abs(u - uc) <= 1) {
+                c.set(FLOOR, s(Blocks.SPRUCE_SLAB));
+            }
+            // kitchen island near the front, left
+            if (v == iv0 + 2 && u >= iu0 + 1 && u <= iu0 + 5) {
+                c.set(FLOOR, s(Blocks.SMOOTH_QUARTZ));
+                if (u == iu0 + 3) {
+                    c.set(FLOOR + 1, s(Blocks.SEA_PICKLE));
+                }
+            }
+            // bookshelves on the right wall
+            if (u == iu1 && v > iv0 + 1 && v < iv1 - 1 && Math.floorMod(v - iv0, 3) != 0) {
+                c.fill(FLOOR, FLOOR + 1, s(Blocks.BOOKSHELF));
+            }
+            // plants in the corners
+            if ((u == iu0 || u == iu1) && v == iv1) {
+                c.set(FLOOR, B.FLOWERING_AZALEA);
+            }
+        }
+        // upstairs (the smaller top storey)
+        int fl2 = GROUND + 6;
+        int ju0 = u0 + 3, ju1 = u1 - 3, jv0 = v0 + 3, jv1 = v1 - 3;
+        if (u >= ju0 && u <= ju1 && v >= jv0 && v <= jv1) {
+            c.set(fl2, s(Blocks.CARPET.lightBlue()));
+            if (v >= jv1 - 1 && Math.abs(u - uc) <= 1) {                 // bed
+                c.set(fl2, s(v == jv1 ? Blocks.WOOL.white() : Blocks.WOOL.red()));
+            }
+            if (v == jv1 && (u == uc - 3 || u == uc + 3)) {             // nightstands with lamps
+                c.set(fl2, s(Blocks.DARK_OAK_SLAB));
+                c.set(fl2 + 1, B.SEA_LANTERN);
+            }
+            if (u == ju0 && v >= jv0 + 1 && v <= jv0 + 3) {              // desk
+                c.set(fl2, s(Blocks.CONCRETE.black()));
+            }
+            if (u == ju1 && v == jv0) {
+                c.set(fl2, B.FLOWERING_AZALEA);
+            }
+        }
+    }
+
+    /** Entrance portico, carport and lamps along the path. */
+    private static void villaCarportAndPath(Column c, int u, int v, int doorU, int dw0, int dw1, int v0, int v1,
+                                            int roofY) {
+        // portico: slab roof on two pillars in front of the door
+        if (v >= v0 - 4 && v <= v0 - 1 && Math.abs(u - doorU) <= 3) {
+            c.set(roofY, s(Blocks.QUARTZ_SLAB));
+            if (v == v0 - 4 && Math.abs(u - doorU) == 3) {
+                c.fill(FLOOR, roofY - 1, s(Blocks.QUARTZ_PILLAR));
+            }
+            if (v == v0 - 2 && u == doorU) {
+                c.set(roofY - 1, B.SEA_LANTERN);
+            }
+        }
+        // carport over the drive
+        if (u >= dw0 - 1 && u <= dw1 + 1 && v >= 5 && v <= Math.min(v1, 24)) {
+            c.set(roofY, s(Blocks.QUARTZ_SLAB));
+            boolean end = v == 5 || v == Math.min(v1, 24);
+            if (end && (u == dw0 - 1 || u == dw1 + 1)) {
+                c.fill(FLOOR, roofY - 1, s(Blocks.QUARTZ_PILLAR));
+            }
+            if (Math.floorMod(v, 5) == 0 && u == (dw0 + dw1) / 2) {
+                c.set(roofY - 1, B.SEA_LANTERN);
+            }
+        }
+    }
+
+    /** Lamp posts beside the path, palms and trees. */
+    private static void villaGarden(Column c, int u, int v, int width, int doorU, int v0, int portico) {
+        villaCarportAndPath(c, u, v, doorU, width - 7, width - 3, v0, v0 + 12, portico);
+        if (Math.abs(u - doorU) == 2 && v < v0 - 2 && Math.floorMod(v, 4) == 2) {
+            c.fill(FLOOR, FLOOR + 1, s(Blocks.STONE_BRICK_WALL));
+            c.set(FLOOR + 2, B.STREET_LIGHT);
+        }
+        Nature.palm(c, u - 6, v - 5, FLOOR, 7);
+        Nature.palm(c, u - (width - 12), v - 5, FLOOR, 8);
     }
 
     private static void pocketPark(Lot lot, int x, int z, Column c) {
@@ -638,6 +779,36 @@ final class Buildings {
             }
             Signs.board(c, u, v, cv0, uc, canopyY + 1, "GAS", s(Blocks.CONCRETE.red()), B.SEA_LANTERN);
         }
+    }
+
+    /**
+     * Job station: a lit office with a long desk, the clerk behind it (spawned by {@code Clerks}) and a few benches
+     * and shelves. The legal job centre is bright and blue, the harbour office dark with a red accent.
+     */
+    private static void jobOffice(Lot lot, int x, int z, Column c, boolean shady) {
+        Lot.Frame f = lot.frame();
+        int u = f.u(x, z), v = f.v(x, z);
+        int u0 = 3, u1 = f.width - 4, v0 = 4, v1 = Math.min(f.depth - 4, v0 + 15);
+        int uc = (u0 + u1) / 2;
+        c.set(GROUND + 1, B.PLAZA);
+        Tower t = tower(f, u0, v0, u1, v1, 5, 1, shady ? SHADY : JOBS, SHOP, lot.front);
+        t.lobbyGlass = false;
+        if (!t.column(c, x, z)) {
+            return;
+        }
+        if (u > u0 && u < u1 && v > v0 && v < v1) {
+            if (v == v1 - 4 && Math.abs(u - uc) <= 4) {
+                c.set(FLOOR, shady ? ModBlocksRef.shadyDesk() : ModBlocksRef.jobDesk());
+            } else if (v == v1 - 1 && (u - u0) % 4 == 2) {
+                c.fill(FLOOR, FLOOR + 1, s(Blocks.BOOKSHELF));                     // files
+            } else if (v == v0 + 2 && (u == u0 + 2 || u == u1 - 2)) {
+                c.set(FLOOR, s(shady ? Blocks.DEEPSLATE_BRICK_STAIRS : Blocks.BIRCH_STAIRS)); // waiting bench
+            } else if (v == v1 - 1 && u == u1 - 1) {
+                c.set(FLOOR, B.FLOWERING_AZALEA);
+            }
+        }
+        Signs.board(c, u, v, v0, uc, t.top + 2, shady ? "DOCKS" : "JOBS",
+                s(shady ? Blocks.CONCRETE.red() : Blocks.CONCRETE.blue()), B.SEA_LANTERN);
     }
 
     private static void carDealer(Lot lot, int x, int z, Column c) {

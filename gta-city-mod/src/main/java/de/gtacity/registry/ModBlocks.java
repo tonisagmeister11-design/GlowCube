@@ -30,6 +30,11 @@ public final class ModBlocks {
             p -> new ShopCounterBlock(ShopType.WEAPONS, p), unbreakable());
     public static final Block STORE_COUNTER = register("store_counter",
             p -> new ShopCounterBlock(ShopType.STORE, p), unbreakable());
+    /** Desks of the job centre and the harbour office: right click talks to the clerk / opens the job board. */
+    public static final Block JOB_DESK = register("job_desk",
+            p -> new de.gtacity.block.JobDeskBlock(false, p), unbreakable());
+    public static final Block SHADY_DESK = register("shady_desk",
+            p -> new de.gtacity.block.JobDeskBlock(true, p), unbreakable());
     public static final Block CAR_COUNTER = register("car_counter",
             p -> new ShopCounterBlock(ShopType.CARS, p), unbreakable());
     public static final Block GAS_PUMP = register("gas_pump", GasPumpBlock::new,
