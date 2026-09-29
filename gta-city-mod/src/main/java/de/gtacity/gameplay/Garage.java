@@ -31,6 +31,13 @@ public final class Garage {
     /** The car delivered last per player - calling another one takes the old one back to the garage. */
     private static final Map<UUID, UUID> DELIVERED = new HashMap<>();
 
+    /** The car the player drove last, owned or not - the B key brings this one. */
+    private static final Map<UUID, UUID> LAST_DRIVEN = new HashMap<>();
+
+    public static void drove(ServerPlayer player, CarEntity car) {
+        LAST_DRIVEN.put(player.getUUID(), car.getUUID());
+    }
+
     public static List<Integer> cars(Player player) {
         List<Integer> list = player.getAttached(ModAttachments.GARAGE);
         return list == null ? List.of() : list;
@@ -80,8 +87,10 @@ public final class Garage {
                     .withStyle(ChatFormatting.GRAY));
             return;
         }
-        UUID current = DELIVERED.get(player.getUUID());
-        if (current != null) {
+        for (UUID current : new UUID[]{LAST_DRIVEN.get(player.getUUID()), DELIVERED.get(player.getUUID())}) {
+            if (current == null) {
+                continue;
+            }
             for (ServerLevel level : player.level().getServer().getAllLevels()) {
                 if (level.getEntity(current) instanceof CarEntity car && car.isAlive() && level == player.level()) {
                     double[] spot = streetNextTo(level, player);
@@ -102,8 +111,8 @@ public final class Garage {
         }
         List<Integer> list = cars(player);
         if (list.isEmpty()) {
-            player.sendOverlayMessage(Component.literal("Du hast noch kein eigenes Auto. Setz dich in eins und "
-                    + "drück G - oder kauf eins im Autohaus.").withStyle(ChatFormatting.RED));
+            player.sendOverlayMessage(Component.literal("Dein letztes Auto ist weg. Mit G im Auto behältst du "
+                    + "es für immer - dann kommt es mit B immer wieder.").withStyle(ChatFormatting.RED));
             return;
         }
         Integer personal = player.getAttached(ModAttachments.PERSONAL_CAR);
@@ -176,5 +185,6 @@ public final class Garage {
 
     public static void forget(ServerPlayer player) {
         DELIVERED.remove(player.getUUID());
+        LAST_DRIVEN.remove(player.getUUID());
     }
 }

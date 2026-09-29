@@ -310,10 +310,13 @@ public class CarEntity extends Entity {
             WantedSystem.onCarJacked(player, true);
         }
         aiDriving = false;
-        persistentCar = true;
         waypoints.clear();
         setSiren(false);
-        return player.startRiding(this) ? InteractionResult.SUCCESS : InteractionResult.PASS;
+        if (player instanceof ServerPlayer serverPlayer && player.startRiding(this)) {
+            de.gtacity.gameplay.Garage.drove(serverPlayer, this);
+            return InteractionResult.SUCCESS;
+        }
+        return InteractionResult.PASS;
     }
 
     @Override
@@ -426,6 +429,12 @@ public class CarEntity extends Entity {
             throttle = 0.0F;
             speed *= 0.8F;
         }
+        if (getControllingPassenger() == null && !aiDriving) {
+            // Nobody at the wheel: the handbrake is on. The car stops right where it was left instead of rolling on.
+            speed *= 0.8F;
+            slide = slide.scale(0.8);
+            throttle = 0.0F;
+        }
         if (handbrake) {
             // Handbrake: the rear wheels lock, the car slides on and turns much sharper. Gas keeps a power slide going.
             speed *= Math.abs(speed) > 0.25F ? 0.994F : 0.88F;
@@ -504,6 +513,9 @@ public class CarEntity extends Entity {
             return;
         }
         LivingEntity driver = getControllingPassenger();
+        if (driver instanceof ServerPlayer serverPlayer && tickCount % 20 == 0) {
+            de.gtacity.gameplay.Garage.drove(serverPlayer, this);
+        }
         entityData.set(DRIFT, driver != null && driver.isShiftKeyDown() && Math.abs(measuredSpeed) > 0.3F);
         if (Math.abs(measuredSpeed) > 0.18F) {
             runOver(level);

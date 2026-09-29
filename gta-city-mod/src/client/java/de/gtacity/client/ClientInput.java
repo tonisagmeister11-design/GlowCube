@@ -126,8 +126,12 @@ public final class ClientInput {
             client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
             player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
                     "F: Aussteigen   Shift: Driften   H: Hupe   G: Auto behalten"));
-        } else if (!inCar && wasInCar && cameraBeforeCar != null) {
-            client.options.setCameraType(cameraBeforeCar);
+        } else if (!inCar && wasInCar) {
+            if (cameraBeforeCar != null) {
+                client.options.setCameraType(cameraBeforeCar);
+            }
+            player.sendOverlayMessage(net.minecraft.network.chat.Component.literal(
+                    "B: Auto wieder herbeiholen   G (im Auto): Auto behalten"));
         }
         wasInCar = inCar;
     }

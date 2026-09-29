@@ -58,9 +58,11 @@ public final class Minimap {
         double wr = r * scale;
         MapTiles.draw(g, -r, -r, r, r, px - wr, pz - wr, px + wr, pz + wr);
         double[] target = MapDraw.target(player);
+        CityMap.Turn turn = null;
         if (target != null) {
             List<double[]> route = CityMap.route(px, pz, target[0], target[1]);
             MapDraw.route(g, route, px, pz, scale, 0, 0, MapDraw.targetColor(player), 3);
+            turn = CityMap.nextTurn(route);
         }
         g.pose().popMatrix();
 
@@ -139,6 +141,13 @@ public final class Minimap {
                 : CityLayout.outsideDistance(Mth.floor(px), Mth.floor(pz)) <= CityLayout.PROMENADE + 30 ? "Strand"
                 : "Pazifik";
         g.text(mc.font, where, left, top - 11, 0xFFFFFFFF, true);
+        if (turn != null && turn.distance() < 500) {
+            int meters = (int) Math.round(turn.distance() / 10.0) * 10;
+            String hint = (turn.right() ? "Rechts abbiegen" : "Links abbiegen") + (meters < 20 ? " jetzt"
+                    : " in " + meters + " m");
+            g.fill(left, top - 23, left + mc.font.width(hint) + 4, top - 13, 0xC0000000);
+            g.text(mc.font, hint, left + 2, top - 22, MapDraw.targetColor(player), false);
+        }
         if (target != null) {
             int meters = (int) Math.round(Math.hypot(target[0] - px, target[1] - pz));
             String label = meters >= 1000 ? String.format("%.1f km", meters / 1000.0) : meters + " m";

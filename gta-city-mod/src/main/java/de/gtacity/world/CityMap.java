@@ -144,61 +144,145 @@ public final class CityMap {
 
     // ------------------------------------------------------------------ GPS
 
+    private static final int N = CityLayout.HALF_CELLS;
+    private static final int SIDE = 2 * N + 1;
+    private static final double STREET_MID = CityLayout.CORRIDOR / 2.0;
+
+    /** Centre line of street number {@code i} (the streets run at every cell border). */
+    private static double line(int i) {
+        return i * CityLayout.PITCH + STREET_MID;
+    }
+
+    /** A point on a street: {@code vertical} streets run along z at x = line(index), horizontal ones along x. */
+    private record Snap(boolean vertical, int index, double along) {
+        double x() {
+            return vertical ? line(index) : along;
+        }
+
+        double z() {
+            return vertical ? along : line(index);
+        }
+
+        int segment() {
+            return Math.max(-N, Math.min(N - 1, (int) Math.floor((along - STREET_MID) / CityLayout.PITCH)));
+        }
+
+        int nodeA() {
+            return vertical ? node(index, segment()) : node(segment(), index);
+        }
+
+        int nodeB() {
+            return vertical ? node(index, segment() + 1) : node(segment() + 1, index);
+        }
+
+        double costA() {
+            return along - line(segment());
+        }
+
+        double costB() {
+            return line(segment() + 1) - along;
+        }
+    }
+
+    private static int node(int i, int j) {
+        return (i + N) * SIDE + (j + N);
+    }
+
+    private static Snap snap(double x, double z) {
+        int i = Math.max(-N, Math.min(N, (int) Math.round((x - STREET_MID) / CityLayout.PITCH)));
+        int j = Math.max(-N, Math.min(N, (int) Math.round((z - STREET_MID) / CityLayout.PITCH)));
+        double dv = Math.abs(x - line(i)), dh = Math.abs(z - line(j));
+        if (dv <= STREET_MID && dh <= STREET_MID) {
+            return new Snap(true, i, line(j)); // on a crossing: exactly that crossing, never flip between streets
+        }
+        if (dv <= dh) {
+            return new Snap(true, i, Math.max(line(-N), Math.min(line(N), z)));
+        }
+        return new Snap(false, j, Math.max(line(-N), Math.min(line(N), x)));
+    }
+
     /**
-     * Route along the street grid from {@code (x, z)} to {@code (tx, tz)}. Every cell border is a street, so the
-     * route drives to the next crossing, then along one street and around one corner to the crossing next to the
-     * goal. Returned as corner points (x, z pairs) including start and goal.
+     * Route along the street grid from {@code (x, z)} to {@code (tx, tz)}: shortest way over the crossings
+     * (Dijkstra), so it never cuts through a block and turns only at crossings. Returned as corner points (x, z).
      */
     public static List<double[]> route(double x, double z, double tx, double tz) {
+        Snap from = snap(x, z), to = snap(tx, tz);
         List<double[]> points = new ArrayList<>();
         points.add(new double[]{x, z});
-        double[] start = nearestRoadPoint(x, z);
-        double[] goal = nearestRoadPoint(tx, tz);
-        double sx = crossing(start[0]), sz = crossing(start[1]);
-        double gx = crossing(goal[0]), gz = crossing(goal[1]);
-        points.add(start);
-        boolean startAlongX = onStreetAlongX(start[0], start[1]);
-        // Leave the current street in its own direction first (no U-turn through a building).
-        if (startAlongX) {
-            points.add(new double[]{sx, start[1]});
-        } else {
-            points.add(new double[]{start[0], sz});
+        points.add(new double[]{from.x(), from.z()});
+        boolean sameSegment = from.vertical() == to.vertical() && from.index() == to.index()
+                && from.segment() == to.segment();
+        if (!sameSegment) {
+            double[] dist = new double[SIDE * SIDE];
+            int[] prev = new int[SIDE * SIDE];
+            java.util.Arrays.fill(dist, Double.MAX_VALUE);
+            java.util.Arrays.fill(prev, -1);
+            java.util.PriorityQueue<double[]> queue = new java.util.PriorityQueue<>((a, b) -> Double.compare(a[0], b[0]));
+            dist[from.nodeA()] = from.costA();
+            dist[from.nodeB()] = Math.min(dist[from.nodeB()], from.costB());
+            queue.add(new double[]{dist[from.nodeA()], from.nodeA()});
+            queue.add(new double[]{dist[from.nodeB()], from.nodeB()});
+            while (!queue.isEmpty()) {
+                double[] head = queue.poll();
+                int at = (int) head[1];
+                if (head[0] > dist[at]) {
+                    continue;
+                }
+                int i = at / SIDE - N, j = at % SIDE - N;
+                int[][] steps = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+                for (int[] s : steps) {
+                    int ni = i + s[0], nj = j + s[1];
+                    if (ni < -N || ni > N || nj < -N || nj > N) {
+                        continue;
+                    }
+                    int next = node(ni, nj);
+                    double d = dist[at] + CityLayout.PITCH;
+                    if (d < dist[next]) {
+                        dist[next] = d;
+                        prev[next] = at;
+                        queue.add(new double[]{d, next});
+                    }
+                }
+            }
+            double viaA = dist[to.nodeA()] + to.costA(), viaB = dist[to.nodeB()] + to.costB();
+            int end = viaA <= viaB ? to.nodeA() : to.nodeB();
+            List<double[]> nodes = new ArrayList<>();
+            for (int at = end; at != -1; at = prev[at]) {
+                nodes.add(0, new double[]{line(at / SIDE - N), line(at % SIDE - N)});
+            }
+            points.addAll(nodes);
         }
-        double[] corner = startAlongX ? new double[]{sx, gz} : new double[]{gx, sz};
-        points.add(corner);
-        points.add(new double[]{gx, gz});
-        boolean goalAlongX = onStreetAlongX(goal[0], goal[1]);
-        if (goalAlongX) {
-            points.add(new double[]{goal[0], gz});
-        } else {
-            points.add(new double[]{gx, goal[1]});
-        }
-        points.add(goal);
+        points.add(new double[]{to.x(), to.z()});
         points.add(new double[]{tx, tz});
         return simplify(points);
     }
 
-    /** Street centre coordinate of the grid line closest to {@code c}. */
-    private static double crossing(double c) {
-        double center = CityLayout.CORRIDOR / 2.0;
-        double cell = Math.floor((c - center) / CityLayout.PITCH + 0.5);
-        cell = Math.max(-CityLayout.HALF_CELLS, Math.min(CityLayout.HALF_CELLS, cell));
-        return cell * CityLayout.PITCH + center;
+    /** Next turn on the route: {@code right} or left, and the distance to it in blocks (or -1 if there is none). */
+    public record Turn(boolean right, double distance) {
     }
 
-    private static boolean onStreetAlongX(double x, double z) {
-        return CityLayout.local((int) Math.floor(z)) < CityLayout.CORRIDOR;
-    }
-
-    /** Closest point on a street centre line. */
-    private static double[] nearestRoadPoint(double x, double z) {
-        double cx = crossing(x), cz = crossing(z);
-        double min = CityLayout.CITY_MIN + CityLayout.CORRIDOR / 2.0;
-        double max = CityLayout.CITY_MAX - CityLayout.CORRIDOR / 2.0;
-        double px = Math.max(min, Math.min(max, x));
-        double pz = Math.max(min, Math.min(max, z));
-        // Either on the vertical street at cx or on the horizontal street at cz - whichever is closer.
-        return Math.abs(px - cx) < Math.abs(pz - cz) ? new double[]{cx, pz} : new double[]{px, cz};
+    public static Turn nextTurn(List<double[]> route) {
+        // route[0] is the player, route[1] the street below them; the heading is that of the first street segment.
+        double length = 0;
+        double[] prevDir = null;
+        for (int i = 1; i + 1 < route.size(); i++) {
+            double[] a = route.get(i), b = route.get(i + 1);
+            double dx = b[0] - a[0], dz = b[1] - a[1];
+            double len = Math.hypot(dx, dz);
+            if (len < 0.5) {
+                continue;
+            }
+            double[] dir = {dx / len, dz / len};
+            if (prevDir != null) {
+                double cross = prevDir[0] * dir[1] - prevDir[1] * dir[0];
+                if (Math.abs(cross) > 0.5) {
+                    return new Turn(cross > 0, length);
+                }
+            }
+            length += len;
+            prevDir = dir;
+        }
+        return null;
     }
 
     private static List<double[]> simplify(List<double[]> points) {

@@ -168,6 +168,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Garage", () -> garage(ctx, server, conn));
             check("Supersportwagen", () -> superCar(ctx, server, conn));
             check("Karte", () -> map(ctx, server, conn));
+            check("Navi", () -> navi(ctx, server, conn));
             check("Jobs", () -> jobs(ctx, server, conn));
             check("Villa", () -> villa(ctx, server, conn));
             check("Taschendiebstahl", () -> pickpocket(ctx, server, conn));
@@ -1268,6 +1269,34 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             expect(onStreets, "Navi-Route führt über die Straßen (" + route.size() + " Punkte)");
         }
         ctx.runOnClient(mc -> Waypoint.clear());
+    }
+
+    private void navi(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        // Routes only over streets, corners at crossings, and no jumping while moving along a street.
+        double[][] goals = {{600, 400}, {-800, 900}, {50, -700}, {1200, -300}};
+        boolean allOnStreets = true, noBackwards = true;
+        for (double[] goal : goals) {
+            for (double sx = 12; sx < 200; sx += 7) {
+                List<double[]> route = CityMap.route(sx, 30, goal[0], goal[1]);
+                for (int i = 1; i + 1 < route.size() - 1; i++) {
+                    double[] a = route.get(i), b = route.get(i + 1);
+                    boolean straight = Math.abs(a[0] - b[0]) < 0.6 || Math.abs(a[1] - b[1]) < 0.6;
+                    double mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+                    allOnStreets &= straight && CityLayout.isCorridor((int) Math.floor(mx), (int) Math.floor(mz));
+                }
+                // The route must not be much longer than the direct way over the streets.
+                double length = 0;
+                for (int i = 0; i + 1 < route.size(); i++) {
+                    length += Math.hypot(route.get(i + 1)[0] - route.get(i)[0], route.get(i + 1)[1] - route.get(i)[1]);
+                }
+                double manhattan = Math.abs(goal[0] - sx) + Math.abs(goal[1] - 30);
+                noBackwards &= length < manhattan + 260;
+            }
+        }
+        expect(allOnStreets, "Navi: Route führt nur über Straßen und biegt nur an Kreuzungen ab");
+        expect(noBackwards, "Navi: keine Umwege oder Sprünge entlang einer Straße");
+        CityMap.Turn turn = CityMap.nextTurn(CityMap.route(9, 300, 300, 500));
+        expect(turn != null && turn.distance() > 0, "Navi: nächste Abbiegung wird erkannt");
     }
 
     private void jobs(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
