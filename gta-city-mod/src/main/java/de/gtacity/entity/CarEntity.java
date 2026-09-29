@@ -308,7 +308,8 @@ public class CarEntity extends Entity {
                     : InteractionResult.PASS;
         }
         Entity driver = getFirstPassenger();
-        if (driver instanceof NpcEntity npc) {
+        // Only a real driver is pulled out - a taxi guest waiting in the back seat stays.
+        if (driver instanceof NpcEntity npc && npc.role().isEmpty()) {
             npc.stopRiding();
             npc.panic(player.position(), 200);
             WantedSystem.onCarJacked(player, getVariant() == CarVariant.POLICE);

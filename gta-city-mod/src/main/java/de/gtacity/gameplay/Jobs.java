@@ -648,8 +648,10 @@ public final class Jobs {
                     if (!dropoffAlive(level, player, job)) {
                         continue;
                     }
-                    if (dist <= 12.0 && inCar) {
-                        NpcEntity npc = level.getEntity(job.npc) instanceof NpcEntity n ? n : null;
+                    NpcEntity rider = level.getEntity(job.npc) instanceof NpcEntity n ? n : null;
+                    boolean aboard = rider != null && rider.getVehicle() == player.getVehicle();
+                    if (dist <= 12.0 && inCar && aboard) {
+                        NpcEntity npc = rider;
                         int tip = player.getVehicle() instanceof CarEntity car && car.healthFraction() > 0.8F
                                 ? (int) (s.pay * 0.2) : 0;
                         if (npc != null) {
@@ -766,14 +768,24 @@ public final class Jobs {
         }
     }
 
-    /** The passenger must stay in the car; if the player lost him (got out, crashed), the job is over. */
+    /**
+     * The passenger must survive the ride. If he is out of the car (crash, the player left him somewhere), he gets
+     * back in when the player stops next to him with a car.
+     */
     private static boolean dropoffAlive(ServerLevel level, ServerPlayer player, Job job) {
-        if (job.npc == null || !(level.getEntity(job.npc) instanceof NpcEntity npc) || !npc.isAlive()
-                || npc.getVehicle() == null) {
-            fail(player, "Dein Fahrgast ist weg.");
-            return false;
+        Entity e = job.npc == null ? null : level.getEntity(job.npc);
+        if (e instanceof NpcEntity npc && npc.isAlive()) {
+            if (npc.getVehicle() == null && player.getVehicle() instanceof CarEntity car
+                    && car.getControllingPassenger() == player && npc.distanceTo(player) < 8.0) {
+                npc.startRiding(car, true, false);
+            }
+            return true;
         }
-        return true;
+        if (e == null && !level.hasChunkAt(job.step().pos)) {
+            return true; // not loaded right now
+        }
+        fail(player, "Dein Fahrgast ist verletzt oder weg.");
+        return false;
     }
 
     private static void killCheck(ServerLevel level, ServerPlayer player, Job job, Step s) {
