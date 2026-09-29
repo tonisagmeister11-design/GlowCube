@@ -1430,14 +1430,18 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         settle(ctx, conn);
         ctx.getInput().pressKey(ClientInput.BRING_CAR);
         ctx.waitTicks(20);
-        double dist = server.computeOnServer(s -> s.overworld().getEntity(car) instanceof CarEntity c
-                ? (double) c.distanceTo(player(s)) : 999.0);
+        // Far away the old car is not loaded any more - then the mechanic brings it from the garage.
+        double dist = server.computeOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class,
+                player(s).getBoundingBox().inflate(60), c -> c.isOwnedBy(player(s))).stream()
+                .mapToDouble(c -> c.distanceTo(player(s))).min().orElse(999.0));
         expect(dist < 45, "B holt das eigene Auto zu dir (Abstand " + String.format("%.0f", dist) + ")");
         ctx.takeScreenshot("gtacity-21-eigenes-auto");
         server.runOnServer(s -> {
             if (s.overworld().getEntity(car) instanceof CarEntity c) {
                 c.despawn();
             }
+            s.overworld().getEntitiesOfClass(CarEntity.class, player(s).getBoundingBox().inflate(60),
+                    c -> c.isOwnedBy(player(s))).forEach(CarEntity::despawn);
         });
         teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
         settle(ctx, conn);
@@ -1481,55 +1485,53 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         float progress = ctx.computeOnClient(mc -> de.gtacity.client.map.MapTiles.progress());
         expect(progress > 0.3F, "Exakte Karte wird gezeichnet (" + Math.round(progress * 100) + " %)");
 
-        // Sports cars on a quiet street in the Hills.
-        double x = 9.0, z = -12 * CityLayout.PITCH + 40.0;
-        teleport(server, x + 9.0, CityLayout.GROUND + 2.0, z, 90.0F, 10.0F);
+        // Sports cars on a quiet street in the Hills, standing free in the middle of the road.
+        double x = 9.0, z = -12 * CityLayout.PITCH + 30.0;
+        float yaw = 35.0F;
+        CarVariant[] row = {CarVariant.SUPER_RED, CarVariant.SUPER_CARBON, CarVariant.SUPER_LIME,
+                CarVariant.SUPER_ORANGE, CarVariant.SUPER_PEARL, CarVariant.SUPER_MAGENTA, CarVariant.SPORTS_YELLOW,
+                CarVariant.SPORTS_BLUE};
+        teleport(server, x, CityLayout.GROUND + 1.0, z - 6, 0.0F, 10.0F);
         settle(ctx, conn);
-        CarVariant[] row = {CarVariant.SUPER_RED, CarVariant.SUPER_ORANGE, CarVariant.SUPER_LIME,
-                CarVariant.SUPER_PEARL, CarVariant.SUPER_MAGENTA, CarVariant.SUPER_CARBON};
-        CarVariant[] sports = {CarVariant.SPORTS_RED, CarVariant.SPORTS_YELLOW, CarVariant.SPORTS_BLUE,
-                CarVariant.SPORTS_LIME};
         List<Integer> ids = server.computeOnServer(s -> {
             s.overworld().getEntitiesOfClass(CarEntity.class, new AABB(x - 40, CityLayout.GROUND - 5, z - 60,
-                    x + 40, CityLayout.GROUND + 10, z + 60)).forEach(CarEntity::despawn);
+                    x + 40, CityLayout.GROUND + 10, z + 120)).forEach(CarEntity::despawn);
             List<Integer> list = new ArrayList<>();
             for (int i = 0; i < row.length; i++) {
-                list.add(photoCar(s.overworld(), row[i], x - 1.5, z - 18 + i * 6.5, 35.0F));
-            }
-            for (int i = 0; i < sports.length; i++) {
-                list.add(photoCar(s.overworld(), sports[i], x + 4.5, z + 30 + i * 6.5, 35.0F));
+                list.add(photoCar(s.overworld(), row[i], x, z + i * 10.0, yaw));
             }
             return list;
         });
         server.runCommand("kill @e[type=gtacity:pedestrian]");
         ctx.runOnClient(mc -> mc.gui.hud.toggle());
         ctx.waitTicks(30);
-        // Close-up of the red one, from the front left.
-        teleport(server, x + 4.0, CityLayout.GROUND + 2.2, z - 23.0, 30.0F, 18.0F);
-        ctx.waitTicks(10);
-        aim(ctx, new Vec3(x - 1.5, CityLayout.GROUND + 1.6, z - 18));
-        ctx.waitTicks(20);
-        ctx.takeScreenshot("foto-04-supersportwagen-nah");
-        teleport(server, x + 10.0, CityLayout.GROUND + 5.0, z - 26.0, 30.0F, 18.0F);
-        ctx.waitTicks(10);
-        aim(ctx, new Vec3(x - 1.5, CityLayout.GROUND + 1.0, z - 4));
-        ctx.waitTicks(20);
-        ctx.takeScreenshot("foto-05-supersportwagen-reihe");
-        teleport(server, x - 6.0, CityLayout.GROUND + 3.0, z - 26.0, -30.0F, 12.0F);
-        ctx.waitTicks(10);
-        aim(ctx, new Vec3(x - 1.5, CityLayout.GROUND + 1.0, z - 12));
-        ctx.waitTicks(20);
-        ctx.takeScreenshot("foto-06-supersportwagen-heck");
-        teleport(server, x + 12.0, CityLayout.GROUND + 4.0, z + 24.0, 30.0F, 15.0F);
-        ctx.waitTicks(10);
-        aim(ctx, new Vec3(x + 4.5, CityLayout.GROUND + 1.0, z + 38));
-        ctx.waitTicks(20);
-        ctx.takeScreenshot("foto-07-sportwagen");
+        String[] names = {"supersportwagen-rot", "supersportwagen-carbon", "supersportwagen-gruen",
+                "supersportwagen-orange", "supersportwagen-perlweiss", "supersportwagen-magenta", "sportwagen-gelb",
+                "sportwagen-blau"};
+        Vec3 forward = Vec3.directionFromRotation(0.0F, yaw);
+        for (int i = 0; i < row.length; i++) {
+            Vec3 car = new Vec3(x, CityLayout.GROUND + 1.0, z + i * 10.0);
+            // Front left, three quarters - and for two of them the rear with the wing.
+            boolean rear = i == 2 || i == 5;
+            Vec3 dir = rear ? forward.scale(-1).yRot((float) Math.toRadians(-35)) : forward.yRot((float) Math.toRadians(40));
+            Vec3 eye = car.add(dir.scale(4.4));
+            teleport(server, eye.x, CityLayout.GROUND + 1.0, eye.z, 0.0F, 0.0F);
+            ctx.waitTicks(8);
+            aim(ctx, car.add(0, 0.7, 0));
+            ctx.waitTicks(12);
+            ctx.takeScreenshot(String.format("foto-%02d-%s%s", 4 + i, names[i], rear ? "-heck" : ""));
+        }
+        // The whole row from above.
+        teleport(server, x + 5.0, CityLayout.GROUND + 7.0, z - 9.0, 0.0F, 0.0F);
+        ctx.waitTicks(8);
+        aim(ctx, new Vec3(x, CityLayout.GROUND + 1.0, z + 22));
+        ctx.waitTicks(15);
+        ctx.takeScreenshot("foto-12-reihe");
         ctx.runOnClient(mc -> mc.gui.hud.toggle());
         // Minimap in the Hills.
-        teleport(server, x + 9.0, CityLayout.GROUND + 2.0, z, 180.0F, 10.0F);
+        teleport(server, x + 7.5, CityLayout.GROUND + 1.0, z - 12, 180.0F, 10.0F);
         ctx.waitTicks(40);
-        ctx.takeScreenshot("foto-08-radar");
+        ctx.takeScreenshot("foto-13-radar");
         ok("Fotos von Karte und Sportwagen aufgenommen");
         server.runOnServer(s -> ids.forEach(id -> {
             if (s.overworld().getEntity(id) instanceof CarEntity c) {

@@ -70,7 +70,7 @@ public final class MapDraw {
 
     public static void icon(GuiGraphicsExtractor g, Font font, int x, int y, CityMap.Place place, boolean owned) {
         if (place.kind() == CityMap.Kind.VILLA && owned) {
-            icon(g, font, x, y, VILLA_OWNED, 0xFFFFFFFF, "H");
+            icon(g, font, x, y, VILLA_OWNED, 0xFFFFFFFF, "★");
         } else {
             icon(g, font, x, y, place.kind().color, place.kind().textColor, place.kind().symbol);
         }

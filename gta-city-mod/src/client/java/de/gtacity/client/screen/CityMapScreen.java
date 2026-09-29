@@ -256,7 +256,7 @@ public class CityMapScreen extends Screen {
     private final List<Object[]> legendRows = new ArrayList<>();
 
     private void renderLegend(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        g.fill(0, TOP, LEGEND_WIDTH, height, 0xF0101418);
+        g.fill(0, TOP, LEGEND_WIDTH, height, 0xFF101418);
         legendRows.clear();
         int y = TOP + 6;
         g.text(font, "Legende", 6, y, 0xFFFFD040, false);
@@ -268,7 +268,7 @@ public class CityMapScreen extends Screen {
             y += 12;
         }
         legendRow(g, y, mouseX, mouseY, "home");
-        MapDraw.icon(g, font, 12, y + 4, MapDraw.VILLA_OWNED, 0xFFFFFFFF, "H");
+        MapDraw.icon(g, font, 12, y + 4, MapDraw.VILLA_OWNED, 0xFFFFFFFF, "★");
         g.text(font, "Deine Villa (Zuhause)", 22, y, 0xFFE0E0E0, false);
         y += 12;
         MapDraw.flag(g, 12, y + 4, MapDraw.WAYPOINT_COLOR);
