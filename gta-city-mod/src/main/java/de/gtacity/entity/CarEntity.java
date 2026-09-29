@@ -148,6 +148,15 @@ public class CarEntity extends Entity {
         return aiDriving && !persistentCar && !level.isPositionEntityTicking(blockPosition());
     }
 
+    @Override
+    public void remove(RemovalReason reason) {
+        if (Boolean.getBoolean("gtacity.debug") && getVariant() == CarVariant.POLICE && !level().isClientSide()) {
+            de.gtacity.GtaCity.LOG.info("GTACITY-DEBUG Polizeiauto entfernt: {} health={} pos={}", reason, getHealth(),
+                    blockPosition(), new Throwable());
+        }
+        super.remove(reason);
+    }
+
     /** Removes the car together with its NPC passengers. */
     public void despawn() {
         discardWithPassengers();

@@ -61,6 +61,9 @@ if (project.hasProperty('spieltest')) {
         runs {
             configureEach {
                 vmArg '-Xmx4G'
+                if (System.getenv('GTACITY_DEBUG')) {
+                    vmArg '-Dgtacity.debug=true'
+                }
             }
         }
     }
