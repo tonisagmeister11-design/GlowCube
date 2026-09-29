@@ -24,6 +24,7 @@ import de.gtacity.gameplay.WantedSystem;
 import de.gtacity.item.GunItem;
 import de.gtacity.registry.ModAttachments;
 import de.gtacity.registry.ModBlocks;
+import de.gtacity.registry.ModComponents;
 import de.gtacity.registry.ModEntities;
 import de.gtacity.registry.ModItems;
 import de.gtacity.world.CityChunkGenerator;
@@ -2394,6 +2395,31 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             ctx.waitTicks(15);
             ctx.takeScreenshot("gtacity-10-haltung-" + guns[i]);
         }
+        // Shoot and reload animations, frozen mid-way (/tick freeze) for the screenshots.
+        String[][] anims = {{"0", "pistol", "schuss"}, {"4", "ak47", "schuss"}, {"6", "sniper", "schuss"},
+                {"0", "pistol", "nachladen"}, {"4", "ak47", "nachladen"}, {"3", "shotgun", "nachladen"},
+                {"7", "minigun", "schuss"}};
+        for (String[] a : anims) {
+            final int slot = Integer.parseInt(a[0]);
+            final boolean reload = a[2].equals("nachladen");
+            ctx.getInput().pressKey(o -> o.keyHotbarSlots[slot]);
+            ctx.waitTicks(10);
+            server.runCommand("tick freeze");
+            ctx.waitTicks(3);
+            server.runOnServer(s -> {
+                ItemStack gun = player(s).getMainHandItem();
+                int now = (int) s.overworld().getGameTime();
+                gun.set(ModComponents.GUN_ANIM, reload ? new ModComponents.GunAnim(-100000, now - 20, 40)
+                        : new ModComponents.GunAnim(now, -100000, 0));
+            });
+            ctx.waitTicks(5);
+            boolean animated = ctx.computeOnClient(mc -> mc.player.getMainHandItem().has(ModComponents.GUN_ANIM));
+            ctx.takeScreenshot("gtacity-10-anim-" + a[1] + "-" + a[2]);
+            server.runCommand("tick unfreeze");
+            expect(animated, "Waffenanimation " + a[1] + " (" + a[2] + ") kommt beim Client an");
+            ctx.waitTicks(45);
+        }
+
         // Third person from behind with the AK.
         ctx.getInput().pressKey(o -> o.keyHotbarSlots[4]);
         ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));

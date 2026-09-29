@@ -76,6 +76,7 @@ public final class Weapons {
             return;
         }
         LAST_SHOT.put(player.getUUID(), now);
+        animateShot(stack, now);
         if (!player.getAbilities().instabuild) {
             stack.set(ModComponents.AMMO, ammo - 1);
         }
@@ -124,9 +125,21 @@ public final class Weapons {
         }
         stack.set(ModComponents.AMMO, have + taken);
         player.getCooldowns().addCooldown(stack, type.reloadTicks);
+        ModComponents.GunAnim anim = stack.getOrDefault(ModComponents.GUN_ANIM, ModComponents.GunAnim.NONE);
+        stack.set(ModComponents.GUN_ANIM, new ModComponents.GunAnim(anim.shot(),
+                (int) player.level().getGameTime(), type.reloadTicks));
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                 ModSounds.RELOAD, SoundSource.PLAYERS, 1.0F, 0.9F + player.getRandom().nextFloat() * 0.2F);
         return true;
+    }
+
+    /** Remembers the shot on the gun, the clients play its shoot animation (recoil, slide, flash, shell). */
+    private static void animateShot(ItemStack stack, long now) {
+        if (stack.getItem() instanceof GunItem) {
+            ModComponents.GunAnim anim = stack.getOrDefault(ModComponents.GUN_ANIM, ModComponents.GunAnim.NONE);
+            stack.set(ModComponents.GUN_ANIM, new ModComponents.GunAnim((int) now, anim.reloadStart(),
+                    anim.reloadTicks()));
+        }
     }
 
     /** NPC (police, gangs) shooting at a target. */
@@ -134,6 +147,7 @@ public final class Weapons {
         if (!(shooter.level() instanceof ServerLevel level)) {
             return;
         }
+        animateShot(shooter.getMainHandItem(), level.getGameTime());
         Vec3 eye = shooter.getEyePosition();
         Vec3 aim = target.position().add(0, target.getBbHeight() * 0.6, 0);
         Vec3 dir = spread(aim.subtract(eye).normalize(), spreadDegrees, shooter.getRandom());

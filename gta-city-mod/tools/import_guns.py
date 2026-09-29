@@ -72,13 +72,15 @@ def main(jar_path):
     for item, (geo, texture, display) in GUNS.items():
         model = json.loads(jar.read(SRC + "geo/" + geo + ".geo.json"))
         idle = idle_pose(jar, geo)
-        write_json(os.path.join(ASSETS, "geo", item + ".geo.json"), clean_model(model, idle))
+        model = clean_model(model, idle)
+        model["minecraft:geometry"][0]["gtacity_animations"] = gun_animations(jar, geo, model)
+        write_json(os.path.join(ASSETS, "geo", item + ".geo.json"), model)
         write_bytes(os.path.join(ASSETS, "textures", "item", "gun", item + ".png"),
                     jar.read(SRC + "textures/item/" + texture + ".png"))
         settings = json.loads(jar.read(SRC + "models/displaysettings/" + display + ".json"))
         # The special model needs a normal base model for the hand / GUI transforms and the break particles.
         display = settings.get("display", {})
-        display.update(first_person(clean_model(model, idle), FIRST_PERSON_LENGTH[item]))
+        display.update(first_person(model, FIRST_PERSON_LENGTH[item]))
         write_json(os.path.join(ASSETS, "models", "item", item + "_3d.json"), {
             "gui_light": "front",
             "textures": {"particle": "gtacity:item/gun/" + item},
@@ -156,6 +158,8 @@ def bounds(model):
     points = []
 
     def bake(bone, m):
+        if bone.get("gtacity_hidden"):
+            return
         m = around(m, bone.get("pivot", [0, 0, 0]), bone.get("rotation", [0, 0, 0]), bone.get("gtacity_scale"))
         for cube in bone.get("cubes", []):
             n = around(m, cube.get("pivot", [0, 0, 0]), cube["rotation"]) if "rotation" in cube else m
@@ -214,12 +218,12 @@ def idle_pose(jar, geo):
 
 
 def clean_model(model, idle):
-    """Drops what only the original's first person animations need: the arms, the muzzle flash, the camera and
-    the parts hidden in the idle pose. Other idle scales are kept as "gtacity_scale"."""
+    """Drops what only the original's first person view needs: the arms and the camera. The muzzle flash and the
+    parts hidden in the idle pose stay, marked "gtacity_hidden" - the shoot / reload animations show them. Other idle
+    scales are kept as "gtacity_scale"."""
     geometry = model["minecraft:geometry"][0]
     bones = geometry["bones"]
-    drop = {b["name"] for b in bones if "arm" in b["name"].lower() or b["name"] in ("flash", "camera")
-            or idle.get(b["name"]) == [0, 0, 0]}
+    drop = {b["name"] for b in bones if "arm" in b["name"].lower() or b["name"] == "camera"}
     changed = True
     while changed:  # children of dropped bones go too
         changed = False
@@ -231,11 +235,70 @@ def clean_model(model, idle):
     for b in bones:
         if b["name"] in drop:
             continue
-        if b["name"] in idle and idle[b["name"]] != [1, 1, 1]:
+        if b["name"] == "flash" or idle.get(b["name"]) == [0, 0, 0]:
+            b["gtacity_hidden"] = True
+        elif b["name"] in idle and idle[b["name"]] != [1, 1, 1]:
             b["gtacity_scale"] = idle[b["name"]]
         kept.append(b)
     geometry["bones"] = kept
     return model
+
+
+def gun_animations(jar, geo, model):
+    """The original's "shoot" and "reload" animations, reduced to the bones we draw, as sorted keyframe lists:
+    {"shoot": {"length": seconds, "bones": {bone: {"rotation": [[t, x, y, z], ...], "position": ..., "scale": ...}}}}.
+    All keyframes of these guns are plain numbers with linear interpolation."""
+    try:
+        animations = json.loads(jar.read(SRC + "animations/" + geo + ".animation.json"))["animations"]
+    except KeyError:
+        return {}
+    names = {b["name"] for b in model["minecraft:geometry"][0]["bones"]}
+    out = {}
+    for kind in ("shoot", "reload"):
+        animation = animations.get(kind)
+        if animation is None:
+            continue
+        bones = {}
+        for bone, channels in animation.get("bones", {}).items():
+            if bone not in names:
+                continue
+            baked = {}
+            for channel in ("rotation", "position", "scale"):
+                frames = keyframes(channels.get(channel))
+                if frames:
+                    baked[channel] = frames
+            if baked:
+                bones[bone] = baked
+        length = animation.get("animation_length") or max(
+            (f[-1][0] for b in bones.values() for f in b.values()), default=0.5)
+        out[kind] = {"length": round(float(length), 4), "bones": bones}
+    return out
+
+
+def keyframes(channel):
+    def vec(v):
+        if isinstance(v, dict):
+            v = v.get("post", v.get("vector", v.get("pre")))
+            if isinstance(v, dict):
+                v = v.get("vector")
+        if isinstance(v, (int, float)):
+            v = [v, v, v]
+        if isinstance(v, list) and len(v) == 3 and all(isinstance(x, (int, float)) for x in v):
+            return [round(float(x), 4) for x in v]
+        return None
+
+    if channel is None:
+        return None
+    if isinstance(channel, list) or (isinstance(channel, dict) and "vector" in channel):
+        v = vec(channel)
+        return [[0.0] + v] if v else None
+    frames = []
+    for t, value in channel.items():
+        v = vec(value)
+        if v:
+            frames.append([round(float(t), 4)] + v)
+    frames.sort(key=lambda f: f[0])
+    return frames or None
 
 
 def write_bytes(path, data):

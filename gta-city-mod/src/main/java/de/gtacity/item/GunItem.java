@@ -41,6 +41,13 @@ public class GunItem extends Item {
         return InteractionResult.PASS;
     }
 
+    /** Firing and reloading change the gun's data (ammo, animation) - that must not make the hand bob. */
+    @Override
+    public boolean allowComponentsUpdateAnimation(Player player, InteractionHand hand, ItemStack oldStack,
+                                                  ItemStack newStack) {
+        return false;
+    }
+
     @Override
     public boolean isBarVisible(ItemStack stack) {
         return true;
