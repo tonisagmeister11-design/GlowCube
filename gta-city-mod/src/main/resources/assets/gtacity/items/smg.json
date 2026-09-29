@@ -1,6 +1,11 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "gtacity:item/smg"
+    "type": "minecraft:special",
+    "base": "gtacity:item/smg_3d",
+    "model": {
+      "type": "gtacity:geo_gun",
+      "geometry": "gtacity:geo/smg.geo.json",
+      "texture": "gtacity:textures/item/gun/smg.png"
+    }
   }
 }

@@ -1,11 +1,13 @@
 {
-  "item.gtacity.pistol": "Pistole",
-  "item.gtacity.smg": "Micro-SMG",
-  "item.gtacity.carbine": "Karabiner",
-  "item.gtacity.shotgun": "Pumpgun",
-  "item.gtacity.sniper": "Scharfschützengewehr",
+  "item.gtacity.pistol": "Glock 18",
+  "item.gtacity.deagle": "Desert Eagle",
+  "item.gtacity.ak47": "AK-47",
+  "item.gtacity.smg": "MP5",
+  "item.gtacity.carbine": "M4A1",
+  "item.gtacity.shotgun": "M1014 Schrotflinte",
+  "item.gtacity.sniper": "AWM Scharfschützengewehr",
   "item.gtacity.minigun": "Minigun",
-  "item.gtacity.rpg": "Raketenwerfer",
+  "item.gtacity.rpg": "RPG-7",
   "item.gtacity.pistol_ammo": "Pistolenmunition",
   "item.gtacity.smg_ammo": "SMG-Munition",
   "item.gtacity.rifle_ammo": "Gewehrmunition",
@@ -61,5 +63,7 @@
   "subtitles.gtacity.siren": "Polizeisirene",
   "subtitles.gtacity.heli_rotor": "Hubschrauber",
   "subtitles.gtacity.skid": "Quietschende Reifen",
-  "subtitles.gtacity.cash": "Geld"
+  "subtitles.gtacity.cash": "Geld",
+  "subtitles.gtacity.gun_deagle": "Desert Eagle schießt",
+  "subtitles.gtacity.gun_ak47": "AK-47 schießt"
 }

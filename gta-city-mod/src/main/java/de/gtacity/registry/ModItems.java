@@ -35,6 +35,8 @@ public final class ModItems {
     public static final Item SNIPER = gun("sniper", GunType.SNIPER);
     public static final Item MINIGUN = gun("minigun", GunType.MINIGUN);
     public static final Item RPG = gun("rpg", GunType.RPG);
+    public static final Item DEAGLE = gun("deagle", GunType.DEAGLE);
+    public static final Item AK47 = gun("ak47", GunType.AK47);
 
     public static final Item PISTOL_AMMO = ammo("pistol_ammo", GunType.AmmoKind.PISTOL);
     public static final Item SMG_AMMO = ammo("smg_ammo", GunType.AmmoKind.SMG);

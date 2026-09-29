@@ -32,6 +32,9 @@ public class GtaCityClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        // 3D gun models (Bedrock / GeckoLib format) drawn without GeckoLib.
+        net.minecraft.client.renderer.special.SpecialModelRenderers.ID_MAPPER.put(GtaCity.id("geo_gun"),
+                de.gtacity.client.render.GeoGunRenderer.Unbaked.MAP_CODEC);
         ModelLayerRegistry.registerModelLayer(NPC_LAYER,
                 () -> LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, false), 64, 64));
         for (CarVariant.Shape shape : CarVariant.Shape.values()) {

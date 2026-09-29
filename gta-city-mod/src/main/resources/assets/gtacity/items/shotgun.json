@@ -1,6 +1,11 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "gtacity:item/shotgun"
+    "type": "minecraft:special",
+    "base": "gtacity:item/shotgun_3d",
+    "model": {
+      "type": "gtacity:geo_gun",
+      "geometry": "gtacity:geo/shotgun.geo.json",
+      "texture": "gtacity:textures/item/gun/shotgun.png"
+    }
   }
 }

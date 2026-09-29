@@ -19,6 +19,8 @@ public final class ModSounds {
     public static final SoundEvent GUN_SHOTGUN = register("gun_shotgun");
     public static final SoundEvent GUN_SNIPER = register("gun_sniper");
     public static final SoundEvent GUN_MINIGUN = register("gun_minigun");
+    public static final SoundEvent GUN_DEAGLE = register("gun_deagle");
+    public static final SoundEvent GUN_AK47 = register("gun_ak47");
     public static final SoundEvent RPG_LAUNCH = register("rpg_launch");
     public static final SoundEvent EXPLOSION = register("explosion");
     public static final SoundEvent RELOAD = register("reload");
@@ -45,6 +47,8 @@ public final class ModSounds {
             case SNIPER -> GUN_SNIPER;
             case MINIGUN -> GUN_MINIGUN;
             case RPG -> RPG_LAUNCH;
+            case DEAGLE -> GUN_DEAGLE;
+            case AK47 -> GUN_AK47;
         };
     }
 

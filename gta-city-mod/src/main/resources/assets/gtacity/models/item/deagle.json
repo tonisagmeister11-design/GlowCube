@@ -1,0 +1,6 @@
+{
+  "parent": "gtacity:item/gun_base",
+  "textures": {
+    "layer0": "gtacity:item/deagle"
+  }
+}

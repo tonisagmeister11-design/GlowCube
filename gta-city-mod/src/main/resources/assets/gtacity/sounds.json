@@ -100,5 +100,17 @@
       "gtacity:cash"
     ],
     "subtitle": "subtitles.gtacity.cash"
+  },
+  "gun_deagle": {
+    "sounds": [
+      "gtacity:gun_deagle"
+    ],
+    "subtitle": "subtitles.gtacity.gun_deagle"
+  },
+  "gun_ak47": {
+    "sounds": [
+      "gtacity:gun_ak47"
+    ],
+    "subtitle": "subtitles.gtacity.gun_ak47"
   }
 }

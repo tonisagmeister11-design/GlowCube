@@ -1,0 +1,102 @@
+{
+  "gui_light": "front",
+  "textures": {
+    "particle": "gtacity:item/gun/shotgun"
+  },
+  "display": {
+    "thirdperson_righthand": {
+      "translation": [
+        0,
+        -4,
+        -1
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        157.75,
+        64.9,
+        -87.95
+      ],
+      "translation": [
+        -9.25,
+        -7.25,
+        4.25
+      ],
+      "scale": [
+        0.607421875,
+        0.607421875,
+        0.607421875
+      ]
+    },
+    "firstperson_righthand": {
+      "translation": [
+        -5.5,
+        -6.75,
+        1.5
+      ]
+    },
+    "firstperson_lefthand": {
+      "scale": [
+        0,
+        0,
+        0
+      ]
+    },
+    "gui": {
+      "rotation": [
+        90,
+        41.5,
+        -90
+      ],
+      "translation": [
+        -2.75,
+        -3,
+        0
+      ],
+      "scale": [
+        0.380859375,
+        0.380859375,
+        0.380859375
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        90,
+        -46,
+        90
+      ],
+      "translation": [
+        3,
+        -3.5,
+        0
+      ],
+      "scale": [
+        0.466796875,
+        0.466796875,
+        0.466796875
+      ]
+    },
+    "on_shelf": {
+      "rotation": [
+        87.75,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        -6
+      ],
+      "scale": [
+        0.783203125,
+        0.783203125,
+        0.783203125
+      ]
+    }
+  }
+}

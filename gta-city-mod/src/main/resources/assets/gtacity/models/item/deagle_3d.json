@@ -1,0 +1,95 @@
+{
+  "gui_light": "front",
+  "textures": {
+    "particle": "gtacity:item/gun/deagle"
+  },
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [
+        -0.5799999999999272,
+        -2.949999999999818,
+        5.070000000000164
+      ],
+      "translation": [
+        0.75,
+        -6.5,
+        1.25
+      ],
+      "scale": [
+        0.62305,
+        0.62305,
+        0.62305
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        -20.480000000000018,
+        -1.3099999999999454,
+        93.92000000000007
+      ],
+      "translation": [
+        -4,
+        -3,
+        -0.25
+      ],
+      "scale": [
+        0.51953,
+        0.51953,
+        0.51953
+      ]
+    },
+    "firstperson_righthand": {
+      "translation": [
+        -7.25,
+        -5,
+        1.5
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        -180,
+        88.25,
+        -180
+      ],
+      "translation": [
+        -80,
+        -80,
+        80
+      ]
+    },
+    "gui": {
+      "rotation": [
+        90,
+        56.75,
+        -90
+      ],
+      "translation": [
+        -3.25,
+        -8,
+        0
+      ],
+      "scale": [
+        0.82617,
+        0.82617,
+        0.82617
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        -180,
+        85.25,
+        -180
+      ],
+      "translation": [
+        2.75,
+        -9,
+        0
+      ],
+      "scale": [
+        1.06836,
+        1.06836,
+        1.06836
+      ]
+    }
+  }
+}

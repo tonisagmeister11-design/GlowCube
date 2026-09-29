@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "gtacity:item/ak47_3d",
+    "model": {
+      "type": "gtacity:geo_gun",
+      "geometry": "gtacity:geo/ak47.geo.json",
+      "texture": "gtacity:textures/item/gun/ak47.png"
+    }
+  }
+}

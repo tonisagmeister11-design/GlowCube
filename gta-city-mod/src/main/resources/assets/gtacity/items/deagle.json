@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "gtacity:item/deagle_3d",
+    "model": {
+      "type": "gtacity:geo_gun",
+      "geometry": "gtacity:geo/deagle.geo.json",
+      "texture": "gtacity:textures/item/gun/deagle.png"
+    }
+  }
+}

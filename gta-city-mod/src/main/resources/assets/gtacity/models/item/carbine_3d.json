@@ -1,0 +1,119 @@
+{
+  "gui_light": "front",
+  "textures": {
+    "particle": "gtacity:item/gun/carbine"
+  },
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [
+        -1.25,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        -7.75,
+        2.5
+      ],
+      "scale": [
+        0.75586,
+        0.75586,
+        0.75586
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        154.51999999999998,
+        49.88000000000011,
+        -88.32000000000016
+      ],
+      "translation": [
+        -9.25,
+        -8.25,
+        2.25
+      ],
+      "scale": [
+        0.80274,
+        0.80274,
+        0.80274
+      ]
+    },
+    "firstperson_righthand": {
+      "translation": [
+        -6.55,
+        -5.9,
+        10.5
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        -180,
+        88.25,
+        -180
+      ],
+      "translation": [
+        80,
+        80,
+        80
+      ]
+    },
+    "ground": {
+      "translation": [
+        0,
+        0,
+        3.25
+      ]
+    },
+    "gui": {
+      "rotation": [
+        89.09999999999991,
+        -56.25,
+        89.23000000000002
+      ],
+      "translation": [
+        4.5,
+        -5.25,
+        0
+      ],
+      "scale": [
+        0.625,
+        0.625,
+        0.625
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        90.40999999999985,
+        55,
+        -90.38999999999987
+      ],
+      "translation": [
+        -5.5,
+        -6.25,
+        0
+      ],
+      "scale": [
+        0.72461,
+        0.72461,
+        0.72461
+      ]
+    },
+    "on_shelf": {
+      "rotation": [
+        89.75,
+        0,
+        -89.5
+      ],
+      "translation": [
+        -14.5,
+        6.25,
+        0
+      ],
+      "scale": [
+        1.26563,
+        1.26563,
+        1.26563
+      ]
+    }
+  }
+}

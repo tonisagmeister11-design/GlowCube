@@ -14,7 +14,7 @@ def write(path, data):
         f.write("\n")
 
 
-GUNS = ["pistol", "smg", "carbine", "shotgun", "sniper", "minigun", "rpg"]
+GUNS = ["pistol", "smg", "carbine", "shotgun", "sniper", "minigun", "rpg", "deagle", "ak47"]
 ITEMS = ["pistol_ammo", "smg_ammo", "rifle_ammo", "shotgun_shells", "sniper_ammo", "rocket", "grenade", "body_armor",
          "medkit", "thermal_drill", "cash", "car_key", "burger", "ecola", "candy_bar"]
 HANDHELD = ["knife", "baseball_bat"]
@@ -22,13 +22,15 @@ BLOCKS_ALL = ["elevator", "bank_vault", "gas_pump", "atm"]
 COUNTERS = ["weapon_counter", "store_counter", "car_counter", "job_desk", "shady_desk"]
 
 NAMES = {
-    "pistol": ("Pistol", "Pistole"),
-    "smg": ("Micro SMG", "Micro-SMG"),
-    "carbine": ("Carbine Rifle", "Karabiner"),
-    "shotgun": ("Pump Shotgun", "Pumpgun"),
-    "sniper": ("Sniper Rifle", "Scharfschützengewehr"),
+    "pistol": ("Glock 18", "Glock 18"),
+    "deagle": ("Desert Eagle", "Desert Eagle"),
+    "ak47": ("AK-47", "AK-47"),
+    "smg": ("MP5", "MP5"),
+    "carbine": ("M4A1", "M4A1"),
+    "shotgun": ("M1014 Shotgun", "M1014 Schrotflinte"),
+    "sniper": ("AWM Sniper Rifle", "AWM Scharfschützengewehr"),
     "minigun": ("Minigun", "Minigun"),
-    "rpg": ("RPG", "Raketenwerfer"),
+    "rpg": ("RPG-7", "RPG-7"),
     "pistol_ammo": ("Pistol Ammo", "Pistolenmunition"),
     "smg_ammo": ("SMG Ammo", "SMG-Munition"),
     "rifle_ammo": ("Rifle Ammo", "Gewehrmunition"),

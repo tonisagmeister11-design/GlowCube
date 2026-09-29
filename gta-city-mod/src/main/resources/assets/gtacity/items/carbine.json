@@ -1,6 +1,11 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "gtacity:item/carbine"
+    "type": "minecraft:special",
+    "base": "gtacity:item/carbine_3d",
+    "model": {
+      "type": "gtacity:geo_gun",
+      "geometry": "gtacity:geo/carbine.geo.json",
+      "texture": "gtacity:textures/item/gun/carbine.png"
+    }
   }
 }

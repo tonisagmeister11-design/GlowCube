@@ -2041,17 +2041,29 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 .forEach(net.minecraft.world.entity.Entity::discard));
         server.runCommand("kill @e[type=gtacity:police]");
         teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
-        server.runCommand("item replace entity @a hotbar.0 with gtacity:pistol");
-        server.runCommand("item replace entity @a hotbar.1 with gtacity:carbine");
-        server.runCommand("item replace entity @a hotbar.2 with gtacity:rpg");
+        String[] guns = {"pistol", "deagle", "smg", "shotgun", "ak47", "carbine", "sniper", "minigun", "rpg"};
+        for (int i = 0; i < guns.length; i++) {
+            server.runCommand("item replace entity @a hotbar." + i + " with gtacity:" + guns[i]);
+        }
         settle(ctx, conn);
-        String[] names = {"pistole", "karabiner", "rpg"};
-        for (int i = 0; i < names.length; i++) {
+        for (int i = 0; i < guns.length; i++) {
             final int slot = i;
             ctx.getInput().pressKey(o -> o.keyHotbarSlots[slot]);
             ctx.waitTicks(15);
-            ctx.takeScreenshot("gtacity-10-haltung-" + names[i]);
+            ctx.takeScreenshot("gtacity-10-haltung-" + guns[i]);
         }
+        // Third person from behind with the AK.
+        ctx.getInput().pressKey(o -> o.keyHotbarSlots[4]);
+        ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+        ctx.waitTicks(15);
+        ctx.takeScreenshot("gtacity-10-haltung-ak47-hinten");
+        ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+        // The inventory with all nine guns.
+        ctx.runOnClient(mc -> mc.gui.setScreen(new net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen(
+                mc.player, mc.player.connection.enabledFeatures(), false)));
+        ctx.waitTicks(15);
+        ctx.takeScreenshot("gtacity-10-haltung-inventar");
+        ctx.runOnClient(mc -> mc.gui.setScreen(null));
         // Two officers seen from their right side: one relaxed, one aiming.
         server.runOnServer(s -> {
             ServerLevel level = s.overworld();

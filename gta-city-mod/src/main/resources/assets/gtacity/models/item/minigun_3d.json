@@ -1,0 +1,95 @@
+{
+  "gui_light": "front",
+  "textures": {
+    "particle": "gtacity:item/gun/minigun"
+  },
+  "display": {
+    "thirdperson_righthand": {
+      "translation": [
+        0,
+        -6.75,
+        0.75
+      ],
+      "scale": [
+        0.54297,
+        0.54297,
+        0.54297
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        162.36000000000013,
+        28.840000000000146,
+        177.51000000000022
+      ],
+      "translation": [
+        -6.25,
+        -11.75,
+        7.25
+      ],
+      "scale": [
+        0.48438,
+        0.48438,
+        0.48438
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        0,
+        16
+      ],
+      "translation": [
+        -0.5,
+        -11,
+        -1
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        -180,
+        88.25,
+        -180
+      ],
+      "translation": [
+        3.25,
+        -13.25,
+        -10
+      ]
+    },
+    "gui": {
+      "rotation": [
+        90,
+        41.5,
+        -90
+      ],
+      "translation": [
+        -2,
+        -1.75,
+        0
+      ],
+      "scale": [
+        0.3164,
+        0.3164,
+        0.3164
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        90,
+        49.5,
+        -90
+      ],
+      "translation": [
+        -1.75,
+        -3.5,
+        0
+      ],
+      "scale": [
+        0.46094,
+        0.46094,
+        0.46094
+      ]
+    }
+  }
+}

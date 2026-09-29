@@ -48,12 +48,14 @@ public final class ShopCatalog {
     public static List<Offer> offers(ShopType type) {
         if (weapons == null) {
             weapons = List.of(
-                    Offer.item("Pistole", 750, ModItems.PISTOL, 1),
-                    Offer.item("Micro-SMG", 2200, ModItems.SMG, 1),
-                    Offer.item("Karabiner", 4500, ModItems.CARBINE, 1),
-                    Offer.item("Pumpgun", 3000, ModItems.SHOTGUN, 1),
-                    Offer.item("Scharfschützengewehr", 9000, ModItems.SNIPER, 1),
-                    Offer.item("Raketenwerfer", 25000, ModItems.RPG, 1),
+                    Offer.item("Glock 18 (Pistole)", 750, ModItems.PISTOL, 1),
+                    Offer.item("Desert Eagle", 1800, ModItems.DEAGLE, 1),
+                    Offer.item("MP5 (Maschinenpistole)", 2200, ModItems.SMG, 1),
+                    Offer.item("M1014 (Schrotflinte)", 3000, ModItems.SHOTGUN, 1),
+                    Offer.item("AK-47", 3800, ModItems.AK47, 1),
+                    Offer.item("M4A1 (Sturmgewehr)", 4500, ModItems.CARBINE, 1),
+                    Offer.item("AWM (Scharfschütze)", 9000, ModItems.SNIPER, 1),
+                    Offer.item("RPG-7 (Raketenwerfer)", 25000, ModItems.RPG, 1),
                     Offer.item("Minigun", 50000, ModItems.MINIGUN, 1),
                     Offer.item("Granaten x5", 1000, ModItems.GRENADE, 5),
                     Offer.item("Messer", 200, ModItems.KNIFE, 1),
