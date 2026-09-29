@@ -34,17 +34,37 @@
       ]
     },
     "firstperson_righthand": {
-      "translation": [
-        -5.5,
-        -6.75,
-        1.5
-      ]
-    },
-    "firstperson_lefthand": {
-      "scale": [
+      "rotation": [
         0,
         0,
         0
+      ],
+      "translation": [
+        -4.11,
+        -2.528,
+        -1.253
+      ],
+      "scale": [
+        0.5656,
+        0.5656,
+        0.5656
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        4.11,
+        -2.528,
+        -1.253
+      ],
+      "scale": [
+        0.5656,
+        0.5656,
+        0.5656
       ]
     },
     "gui": {

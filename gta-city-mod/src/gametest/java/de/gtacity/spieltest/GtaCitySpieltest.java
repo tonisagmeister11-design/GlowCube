@@ -2069,6 +2069,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             server.runCommand("item replace entity @a hotbar." + i + " with gtacity:" + guns[i]);
         }
         settle(ctx, conn);
+        ctx.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false)); // the chat would cover the guns
         for (int i = 0; i < guns.length; i++) {
             final int slot = i;
             ctx.getInput().pressKey(o -> o.keyHotbarSlots[slot]);

@@ -9,6 +9,7 @@ The 3D models stay in their Bedrock/GeckoLib format (.geo.json); the mod draws t
 """
 import io
 import json
+import math
 import os
 import sys
 import zipfile
@@ -33,6 +34,12 @@ GUNS = {
     "minigun": ("minigunn", "minigun", "minigunn.item"),           # Minigun
     "rpg": ("rpg", "rpg", "rpg.item"),                             # RPG-7
 }
+# Length of the gun in first person (blocks). The original placed its guns for its own animated arms and camera;
+# without them they were too big and too close, so first person gets its own transform.
+FIRST_PERSON_LENGTH = {"pistol": 0.62, "deagle": 0.66, "smg": 1.05, "carbine": 1.25, "ak47": 1.3, "shotgun": 1.3,
+                       "sniper": 1.5, "minigun": 1.35, "rpg": 1.6}
+# Where the middle of the gun sits, relative to the hand (blocks): a bit towards the screen centre and up.
+FIRST_PERSON_CENTER = (-0.26, 0.16, -0.12)
 AMMO = {
     "pistol_ammo": "pistolbullet", "smg_ammo": "smgbullet", "rifle_ammo": "riflebullet",
     "shotgun_shells": "shotgunammo", "sniper_ammo": "niperbullet", "rocket": "rpgammo",
@@ -70,10 +77,12 @@ def main(jar_path):
                     jar.read(SRC + "textures/item/" + texture + ".png"))
         settings = json.loads(jar.read(SRC + "models/displaysettings/" + display + ".json"))
         # The special model needs a normal base model for the hand / GUI transforms and the break particles.
+        display = settings.get("display", {})
+        display.update(first_person(clean_model(model, idle), FIRST_PERSON_LENGTH[item]))
         write_json(os.path.join(ASSETS, "models", "item", item + "_3d.json"), {
             "gui_light": "front",
             "textures": {"particle": "gtacity:item/gun/" + item},
-            "display": settings.get("display", {}),
+            "display": display,
         })
         write_json(os.path.join(ASSETS, "items", item + ".json"), {
             "model": {
@@ -111,6 +120,76 @@ def main(jar_path):
 
     write_bytes(os.path.join(ROOT, "CREDITS-greenboys-legendary-guns.txt"), CREDITS.encode())
     print("imported", len(GUNS), "guns,", len(AMMO), "ammo icons,", len(SOUNDS), "sounds")
+
+
+def bounds(model):
+    """Bounding box of the baked model in item units (blocks), with GeckoLib's conventions like GeoGunRenderer."""
+    geometry = model["minecraft:geometry"][0]
+    bones = geometry["bones"]
+
+    def rot(axis, deg):
+        a = math.radians(deg)
+        c, s = math.cos(a), math.sin(a)
+        m = np.eye(4)
+        i, j = {"x": (1, 2), "y": (2, 0), "z": (0, 1)}[axis]
+        m[i, i], m[i, j], m[j, i], m[j, j] = c, -s, s, c
+        return m
+
+    def tr(x, y, z):
+        m = np.eye(4)
+        m[:3, 3] = [x, y, z]
+        return m
+
+    def around(m, pivot, rotation, scale=None):
+        p = (-pivot[0] / 16, pivot[1] / 16, pivot[2] / 16)
+        m = m @ tr(*p)
+        if rotation[2]:
+            m = m @ rot("z", rotation[2])
+        if rotation[1]:
+            m = m @ rot("y", -rotation[1])
+        if rotation[0]:
+            m = m @ rot("x", -rotation[0])
+        if scale:
+            m = m @ np.diag([scale[0], scale[1], scale[2], 1.0])
+        return m @ tr(-p[0], -p[1], -p[2])
+
+    points = []
+
+    def bake(bone, m):
+        m = around(m, bone.get("pivot", [0, 0, 0]), bone.get("rotation", [0, 0, 0]), bone.get("gtacity_scale"))
+        for cube in bone.get("cubes", []):
+            n = around(m, cube.get("pivot", [0, 0, 0]), cube["rotation"]) if "rotation" in cube else m
+            o, size = cube["origin"], cube["size"]
+            x0, y0, z0 = -(o[0] + size[0]) / 16, o[1] / 16, o[2] / 16
+            for dx in (0, size[0] / 16):
+                for dy in (0, size[1] / 16):
+                    for dz in (0, size[2] / 16):
+                        points.append((n @ np.array([x0 + dx, y0 + dy, z0 + dz, 1.0]))[:3])
+        for child in bones:
+            if child.get("parent") == bone["name"]:
+                bake(child, m)
+
+    for bone in bones:
+        if "parent" not in bone:
+            bake(bone, np.eye(4))
+    points = np.array(points)
+    return points.min(axis=0), points.max(axis=0)
+
+
+def first_person(model, length):
+    """First person transforms: barrel forward (-z, as modelled), scaled to the length, centred beside the hand."""
+    lo, hi = bounds(model)
+    k = length / (hi[2] - lo[2])
+    c = (lo + hi) / 2
+    # The renderer puts the model origin at (0.5, 0.51, 0.5) in the item block, the transform pivots at its centre.
+    c = c + np.array([0.0, 0.01, 0.0])
+    right = [round(float((FIRST_PERSON_CENTER[i] - k * c[i]) * 16), 3) for i in range(3)]
+    left = [-right[0], right[1], right[2]]
+    scale = [round(float(k), 4)] * 3
+    return {
+        "firstperson_righthand": {"rotation": [0, 0, 0], "translation": right, "scale": scale},
+        "firstperson_lefthand": {"rotation": [0, 0, 0], "translation": left, "scale": scale},
+    }
 
 
 def idle_pose(jar, geo):
