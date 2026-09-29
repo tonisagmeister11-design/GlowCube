@@ -707,6 +707,18 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         for (int i = 0; i < 70 && !busted; i++) {
             ctx.waitTicks(20);
             busted = server.computeOnServer(s -> player(s).blockPosition().distSqr(station) < 16);
+            if (i % 5 == 0) {
+                System.out.println("GTACITY-TEST Diagnose Festnahme t=" + i + "s " + server.computeOnServer(s -> {
+                    ServerPlayer p = player(s);
+                    StringBuilder b = new StringBuilder("sterne=" + WantedSystem.level(p));
+                    for (PoliceEntity c : s.overworld().getEntitiesOfClass(PoliceEntity.class,
+                            p.getBoundingBox().inflate(150))) {
+                        b.append(String.format(" cop[%.0f %s ziel=%s]", c.distanceTo(p),
+                                c.getVehicle() != null ? "faehrt" : "zuFuss", c.getTarget() == p));
+                    }
+                    return b.toString();
+                }));
+            }
         }
         long money = server.computeOnServer(s -> Economy.get(player(s)));
         expect(busted, "1 Stern: Polizei nimmt fest, BUSTED, Abtransport zum Revier");
@@ -1076,6 +1088,11 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             ctx.waitTicks(2);
             drifting |= server.computeOnServer(s -> s.overworld().getEntity(driftCar) instanceof CarEntity c
                     && c.isDrifting());
+            System.out.println("GTACITY-TEST Diagnose Drift " + server.computeOnServer(s ->
+                    s.overworld().getEntity(driftCar) instanceof CarEntity c ? "shift=" + player(s).isShiftKeyDown()
+                            + " gemessen=" + c.measuredSpeed + " fahrer=" + (c.getControllingPassenger() != null)
+                            : "kein Auto") + " client: shift=" + ctx.computeOnClient(mc -> mc.player.isShiftKeyDown())
+                    + " speed=" + ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity c ? c.speed : -1));
             clientSkid |= ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity c && c.isDrifting());
             if (i == 6) {
                 ctx.takeScreenshot("gtacity-14b-drift");
@@ -1179,6 +1196,9 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             ctx.waitTicks(10);
             top = Math.max(top, ctx.computeOnClient(mc -> mc.player.getVehicle() instanceof CarEntity c
                     ? Math.abs(c.speed) : 0.0F));
+            System.out.println("GTACITY-TEST Diagnose Super " + ctx.computeOnClient(mc ->
+                    mc.player.getVehicle() instanceof CarEntity c ? String.format("speed=%.2f pos=%.0f,%.0f zustand=%.0f%%",
+                            c.speed, c.getX(), c.getZ(), c.healthFraction() * 100) : "nicht im Auto"));
             if (i == 13) {
                 ctx.takeScreenshot("gtacity-16b-vollgas");
             }
