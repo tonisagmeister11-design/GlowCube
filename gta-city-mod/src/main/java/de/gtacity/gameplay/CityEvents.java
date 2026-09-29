@@ -148,6 +148,9 @@ public final class CityEvents {
             // Only values that are actually set get synced - without this the HUD shows $0 instead of $500.
             Economy.set(player, Economy.get(player));
         }
+        player.sendSystemMessage(Component.literal("Dieses Spiel wurde von ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal("GlowCube").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD))
+                .append(Component.literal(" gemacht. Viel Spaß in Los Santos!").withStyle(ChatFormatting.GRAY)));
         // The story does not wait for the player to find the job centre: the next chapter phones them.
         Jobs.scheduleStory(player, 20 * 8);
         Boolean hasKit = player.getAttached(ModAttachments.STARTER_KIT);

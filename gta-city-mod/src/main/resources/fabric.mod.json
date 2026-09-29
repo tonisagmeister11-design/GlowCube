@@ -3,8 +3,11 @@
   "id": "gtacity",
   "version": "${version}",
   "name": "GTA City",
-  "description": "Die ganze Welt ist eine riesige Stadt: Wolkenkratzer, Verkehr, Passanten, Polizei mit 5-Sterne-Fahndung, Waffen, Autos klauen, Läden, Banküberfälle.",
+  "description": "Von GlowCube. Die ganze Welt ist eine riesige Stadt: Wolkenkratzer, Verkehr, Passanten, Polizei mit 5-Sterne-Fahndung, Waffen, Autos klauen, Läden, Banküberfälle.",
   "authors": [
+    "GlowCube"
+  ],
+  "contributors": [
     "tonisagmeister11"
   ],
   "license": "All-Rights-Reserved",

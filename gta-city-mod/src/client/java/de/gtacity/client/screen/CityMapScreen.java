@@ -300,6 +300,7 @@ public class CityMapScreen extends Screen {
         y += 14;
         g.textWithWordWrap(font, Component.literal("Klick auf Legende: Navi zum nächsten Ort. Mausrad: Zoom"),
                 6, y, LEGEND_WIDTH - 10, 0xFF9098A0);
+        g.text(font, "GTA City · GlowCube", 6, height - 11, 0xFF4A90A8, false);
     }
 
     private void legendRow(GuiGraphicsExtractor g, int y, int mouseX, int mouseY, Object what) {

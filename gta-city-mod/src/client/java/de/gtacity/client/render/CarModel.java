@@ -22,6 +22,8 @@ public class CarModel extends EntityModel<CarRenderer.State> {
     private final ModelPart wheelBackLeft;
     private final ModelPart wheelBackRight;
     private final ModelPart lightBar;
+    private final ModelPart doorDriver;
+    private final ModelPart doorPassenger;
 
     public CarModel(ModelPart root) {
         super(root);
@@ -30,6 +32,8 @@ public class CarModel extends EntityModel<CarRenderer.State> {
         wheelBackLeft = root.getChild("wheel_bl");
         wheelBackRight = root.getChild("wheel_br");
         lightBar = root.getChild("light_bar");
+        doorDriver = root.getChild("door_driver");
+        doorPassenger = root.getChild("door_passenger");
     }
 
     public static ModelLayerLocation layer(CarVariant.Shape shape) {
@@ -81,6 +85,20 @@ public class CarModel extends EntityModel<CarRenderer.State> {
         root.addOrReplaceChild("wheel_fr", wheel, PartPose.offset(-wx, 19.0F, -wz));
         root.addOrReplaceChild("wheel_bl", wheel, PartPose.offset(wx, 19.0F, wz));
         root.addOrReplaceChild("wheel_br", wheel, PartPose.offset(-wx, 19.0F, wz));
+        // Front doors, hinged at the front edge: a body coloured panel with the window above it.
+        int doorLen = (int) Math.min(18.0F, cd * 0.6F);
+        float hingeZ = -cd / 2.0F + off;
+        float inset = (w - cw) / 2.0F;
+        for (int side : new int[]{1, -1}) {
+            float x0 = side > 0 ? 0.0F : -0.6F;
+            CubeListBuilder door = CubeListBuilder.create()
+                    // UV offsets chosen so the door's side faces show the body's and the cabin's side texture.
+                    .texOffs(20, len - doorLen).addBox(x0, bottom - h, 0.0F, 0.6F, h - 3, doorLen)
+                    .texOffs(0, 80 + cd - doorLen).addBox(x0 - side * inset, bottom - h - ch, 0.0F, 0.6F, ch,
+                            doorLen);
+            root.addOrReplaceChild(side > 0 ? "door_driver" : "door_passenger", door,
+                    PartPose.offset(side * (w / 2.0F + 0.05F), 0.0F, hingeZ));
+        }
         return LayerDefinition.create(mesh, 256, 160);
     }
 
@@ -127,6 +145,15 @@ public class CarModel extends EntityModel<CarRenderer.State> {
         root.addOrReplaceChild("wheel_fr", wheel, PartPose.offset(-14.0F, 19.5F, -24.0F));
         root.addOrReplaceChild("wheel_bl", wheel, PartPose.offset(14.0F, 19.5F, 22.0F));
         root.addOrReplaceChild("wheel_br", wheel, PartPose.offset(-14.0F, 19.5F, 22.0F));
+        // Scissor doors: hinged at the front, they swing up.
+        for (int side : new int[]{1, -1}) {
+            float x0 = side > 0 ? 0.0F : -0.6F;
+            CubeListBuilder door = CubeListBuilder.create()
+                    .texOffs(20, 54 - 16).addBox(x0, 0.0F, 0.0F, 0.6F, 5, 16)
+                    .texOffs(0, 80 + 20 - 16).addBox(x0 - side * 5.0F, -4.0F, 0.0F, 0.6F, 4, 16);
+            root.addOrReplaceChild(side > 0 ? "door_driver" : "door_passenger", door,
+                    PartPose.offset(side * 15.05F, top, -6.0F));
+        }
         return LayerDefinition.create(mesh, 256, 160);
     }
 
@@ -142,5 +169,13 @@ public class CarModel extends EntityModel<CarRenderer.State> {
         wheelFrontLeft.yRot = steer;
         wheelFrontRight.yRot = steer;
         lightBar.visible = state.variant.hasLightBar() && (!state.siren || state.flash);
+        if (state.variant.shape == CarVariant.Shape.SUPER) {
+            // Scissor doors swing up.
+            doorDriver.xRot = state.doorDriver * 1.1F;
+            doorPassenger.xRot = state.doorPassenger * 1.1F;
+        } else {
+            doorDriver.yRot = state.doorDriver * 1.15F;
+            doorPassenger.yRot = -state.doorPassenger * 1.15F;
+        }
     }
 }

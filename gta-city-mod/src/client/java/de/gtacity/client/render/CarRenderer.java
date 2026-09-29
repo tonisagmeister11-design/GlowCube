@@ -25,6 +25,8 @@ public class CarRenderer extends EntityRenderer<CarEntity, CarRenderer.State> {
         public boolean siren;
         public boolean flash;
         public CarVariant variant = CarVariant.SEDAN_RED;
+        public float doorDriver;
+        public float doorPassenger;
     }
 
     private final Map<CarVariant.Shape, CarModel> models = new EnumMap<>(CarVariant.Shape.class);
@@ -51,6 +53,8 @@ public class CarRenderer extends EntityRenderer<CarEntity, CarRenderer.State> {
         state.siren = car.isSirenOn();
         state.flash = (car.tickCount / 4) % 2 == 0;
         state.variant = car.getVariant();
+        state.doorDriver = car.doorOpen(true, partialTick);
+        state.doorPassenger = car.doorOpen(false, partialTick);
     }
 
     private static Identifier texture(CarVariant variant) {

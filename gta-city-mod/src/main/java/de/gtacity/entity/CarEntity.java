@@ -54,6 +54,14 @@ public class CarEntity extends Entity {
             SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DRIFT =
             SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.BOOLEAN);
+    /** Game time when the driver's / the passenger's door was last opened (someone got in or out). */
+    private static final EntityDataAccessor<Integer> DOOR_DRIVER =
+            SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DOOR_PASSENGER =
+            SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.INT);
+    /** Both doors held open (sneak + right click). */
+    private static final EntityDataAccessor<Boolean> DOORS_OPEN =
+            SynchedEntityData.defineId(CarEntity.class, EntityDataSerializers.BOOLEAN);
 
     /** Set by the client: reports crashes of the player's own car (the client drives it) to the server. */
     public static java.util.function.Consumer<Float> crashReporter = amount -> {
@@ -94,6 +102,68 @@ public class CarEntity extends Entity {
         builder.define(HEALTH, 60.0F);
         builder.define(SIREN, false);
         builder.define(DRIFT, false);
+        builder.define(DOOR_DRIVER, -1000);
+        builder.define(DOOR_PASSENGER, -1000);
+        builder.define(DOORS_OPEN, false);
+    }
+
+    // ------------------------------------------------------------------ doors
+
+    /** Opens a door for a moment (someone gets in or out): swings open, stays a second, closes. */
+    public void openDoor(boolean driverSide) {
+        if (level().isClientSide()) {
+            return;
+        }
+        entityData.set(driverSide ? DOOR_DRIVER : DOOR_PASSENGER, (int) level().getGameTime());
+        level().playSound(null, getX(), getY(), getZ(), net.minecraft.sounds.SoundEvents.IRON_DOOR_OPEN,
+                net.minecraft.sounds.SoundSource.NEUTRAL, 0.6F, 1.5F);
+    }
+
+    public void toggleDoors() {
+        boolean open = !entityData.get(DOORS_OPEN);
+        entityData.set(DOORS_OPEN, open);
+        level().playSound(null, getX(), getY(), getZ(), open ? net.minecraft.sounds.SoundEvents.IRON_DOOR_OPEN
+                : net.minecraft.sounds.SoundEvents.IRON_DOOR_CLOSE, net.minecraft.sounds.SoundSource.NEUTRAL, 0.7F,
+                1.4F);
+    }
+
+    /** How far a door is open, 0 (closed) to 1 (wide open), for the renderer. */
+    public float doorOpen(boolean driverSide, float partialTick) {
+        if (entityData.get(DOORS_OPEN)) {
+            return 1.0F;
+        }
+        float t = (float) (level().getGameTime() - entityData.get(driverSide ? DOOR_DRIVER : DOOR_PASSENGER))
+                + partialTick;
+        if (t < 0 || t > 30) {
+            return 0.0F;
+        }
+        float open = Math.min(t / 6.0F, Math.min(1.0F, (30.0F - t) / 8.0F));
+        return open * open * (3 - 2 * open);
+    }
+
+    /** Standing spot in front of a door (world position). */
+    public Vec3 doorSpot(boolean driverSide) {
+        return position().add(new Vec3(driverSide ? 1.5 : -1.5, 0.0, -0.1).yRot(-getYRot() * Mth.DEG_TO_RAD));
+    }
+
+    @Override
+    protected void addPassenger(Entity passenger) {
+        super.addPassenger(passenger);
+        openDoor(getControllingPassenger() == passenger || getPassengers().size() == 1
+                && !(passenger instanceof NpcEntity npc && !npc.role().isEmpty()));
+        if (passenger instanceof LivingEntity living && !level().isClientSide()) {
+            living.setYBodyRot(getYRot());
+        }
+    }
+
+    @Override
+    protected void removePassenger(Entity passenger) {
+        boolean driver = getControllingPassenger() == passenger;
+        super.removePassenger(passenger);
+        openDoor(driver);
+        if (entityData.get(DOORS_OPEN) && !level().isClientSide()) {
+            entityData.set(DOORS_OPEN, false);
+        }
     }
 
     public CarVariant getVariant() {
@@ -297,6 +367,13 @@ public class CarEntity extends Entity {
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
+        if (player.isSecondaryUseActive() && player.getVehicle() == null && player.getMainHandItem().isEmpty()) {
+            // Sneak + right click with an empty hand: open / close the doors.
+            if (!level().isClientSide()) {
+                toggleDoors();
+            }
+            return InteractionResult.SUCCESS;
+        }
         if (player.isSecondaryUseActive() || player.getVehicle() == this) {
             return InteractionResult.PASS;
         }

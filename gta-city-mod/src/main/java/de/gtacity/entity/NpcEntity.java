@@ -62,6 +62,9 @@ public class NpcEntity extends PathfinderMob {
     public static final int[] GESTURE_TICKS = {0, 70, 40, 60};
 
     private long nextGreeting;
+    /** Walking to a car door to get in (taxi guests). */
+    private CarEntity boarding;
+    private int boardingTicks;
     /** Guides disappear a while after pointing the way (game time, 0 = never). */
     private long despawnAt;
 
@@ -209,6 +212,41 @@ public class NpcEntity extends PathfinderMob {
         return gestureAge(0) >= 0;
     }
 
+    /** Walks to the passenger door (which opens), then gets in. */
+    public void boardCar(CarEntity car) {
+        if (boarding == car || getVehicle() == car) {
+            return;
+        }
+        boarding = car;
+        boardingTicks = 24;
+        car.openDoor(false);
+    }
+
+    public boolean isBoarding() {
+        return boarding != null;
+    }
+
+    private void tickBoarding() {
+        CarEntity car = boarding;
+        if (!car.isAlive() || boardingTicks-- <= 0) {
+            boarding = null;
+            return;
+        }
+        Vec3 door = car.doorSpot(false);
+        Vec3 to = door.subtract(position()).multiply(1, 0, 1);
+        if (to.length() < 0.35 || boardingTicks < 6) {
+            boarding = null;
+            startRiding(car, true, false);
+            return;
+        }
+        float yaw = (float) (Math.toDegrees(Math.atan2(to.z, to.x)) - 90.0);
+        setYRot(yaw);
+        setYBodyRot(yaw);
+        setYHeadRot(yaw);
+        Vec3 step = to.normalize().scale(Math.min(0.22, to.length()));
+        move(net.minecraft.world.entity.MoverType.SELF, new Vec3(step.x, -0.08, step.z));
+    }
+
     public void despawnIn(int ticks) {
         despawnAt = level().getGameTime() + ticks;
     }
@@ -254,7 +292,9 @@ public class NpcEntity extends PathfinderMob {
         if (panicTicks > 0) {
             panicTicks--;
         }
-        if (!role.isEmpty() && tickCount % 10 == 0) {
+        if (boarding != null) {
+            tickBoarding();
+        } else if (!role.isEmpty() && tickCount % 10 == 0) {
             greet();
         }
         if (despawnAt > 0 && level().getGameTime() >= despawnAt) {

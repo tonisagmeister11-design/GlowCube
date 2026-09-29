@@ -1303,12 +1303,19 @@ public final class Jobs {
             }
             return;
         }
-        if (npc.startRiding(player.getVehicle(), true, false)) {
+        if (npc.getVehicle() == player.getVehicle()) {
             job.boarded = true;
             advance(level, player, job, 0);
-        } else if (now - job.lastHint > 20 * 8) {
-            job.lastHint = now;
-            player.sendOverlayMessage(Component.literal("Im Auto ist kein Platz frei.").withStyle(ChatFormatting.RED));
+        } else if (player.getVehicle().getPassengers().size() >= 2) {
+            if (now - job.lastHint > 20 * 8) {
+                job.lastHint = now;
+                player.sendOverlayMessage(Component.literal("Im Auto ist kein Platz frei.")
+                        .withStyle(ChatFormatting.RED));
+            }
+        } else if (!npc.isBoarding() && player.getVehicle() instanceof CarEntity car) {
+            // The guest walks over, the door opens, and in he gets.
+            npc.gesture(NpcEntity.WAVE, npc.getYRot());
+            npc.boardCar(car);
         }
     }
 
@@ -1322,7 +1329,7 @@ public final class Jobs {
             job.missing = 0;
             if (npc.getVehicle() == null && player.getVehicle() instanceof CarEntity car
                     && car.getControllingPassenger() == player && npc.distanceTo(player) < 8.0) {
-                npc.startRiding(car, true, false);
+                npc.boardCar(car);
             }
             return true;
         }

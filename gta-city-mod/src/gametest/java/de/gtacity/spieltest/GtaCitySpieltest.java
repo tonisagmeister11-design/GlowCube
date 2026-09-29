@@ -172,6 +172,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Autohaus", () -> carDealer(ctx, server, conn));
             check("Garage", () -> garage(ctx, server, conn));
             check("Supersportwagen", () -> superCar(ctx, server, conn));
+            check("Tueren", () -> doors(ctx, server, conn));
             check("Karte", () -> map(ctx, server, conn));
             check("Navi", () -> navi(ctx, server, conn));
             check("Laeden", () -> shops(ctx, server, conn));
@@ -1185,6 +1186,69 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         server.runOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class,
                 player(s).getBoundingBox().inflate(45), c -> c.isOwnedBy(player(s))).forEach(CarEntity::despawn));
         reset(server);
+    }
+
+    /** Car doors: open for a moment when someone gets in or out, sneak + right click holds them open. */
+    private void doors(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode creative @a");
+        double x = 5.5, z = CityLayout.CORRIDOR + 8.5;
+        server.runOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class,
+                new AABB(x - 30, CityLayout.GROUND - 5, z - 30, x + 30, CityLayout.GROUND + 10, z + 30))
+                .forEach(CarEntity::despawn));
+        teleport(server, x + 7.0, CityLayout.GROUND + 1.0, z + 4.0, 90.0F, 15.0F);
+        int[] ids = server.computeOnServer(s -> {
+            CarEntity sedan = ModEntities.CAR.create(s.overworld(), EntitySpawnReason.COMMAND);
+            sedan.setVariant(CarVariant.TAXI);
+            sedan.snapTo(x, CityLayout.GROUND + 1.0, z, 0.0F, 0.0F);
+            s.overworld().addFreshEntity(sedan);
+            CarEntity supercar = ModEntities.CAR.create(s.overworld(), EntitySpawnReason.COMMAND);
+            supercar.setVariant(CarVariant.SUPER_LIME);
+            supercar.snapTo(x, CityLayout.GROUND + 1.0, z + 8.0, 0.0F, 0.0F);
+            s.overworld().addFreshEntity(supercar);
+            return new int[]{sedan.getId(), supercar.getId()};
+        });
+        ctx.waitTicks(10);
+        server.runOnServer(s -> {
+            for (int id : ids) {
+                if (s.overworld().getEntity(id) instanceof CarEntity c) {
+                    c.toggleDoors();
+                }
+            }
+        });
+        ctx.waitTicks(10);
+        float open = ctx.computeOnClient(mc -> mc.level.getEntity(ids[0]) instanceof CarEntity c
+                ? c.doorOpen(true, 0.0F) + c.doorOpen(false, 0.0F) : 0.0F);
+        expect(open >= 2.0F, "Autotüren: Schleichen + Rechtsklick öffnet beide Türen");
+        ctx.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
+        ctx.takeScreenshot("gtacity-16c-tueren-offen");
+        // Getting in: the driver's door swings open and closes again.
+        server.runOnServer(s -> {
+            for (int id : ids) {
+                if (s.overworld().getEntity(id) instanceof CarEntity c) {
+                    c.toggleDoors();
+                }
+            }
+            if (s.overworld().getEntity(ids[0]) instanceof CarEntity c) {
+                c.interact(player(s), InteractionHand.MAIN_HAND, c.position());
+            }
+        });
+        ctx.waitTicks(5);
+        float driver = ctx.computeOnClient(mc -> mc.level.getEntity(ids[0]) instanceof CarEntity c
+                ? c.doorOpen(true, 0.0F) : 0.0F);
+        ctx.waitTicks(40);
+        float later = ctx.computeOnClient(mc -> mc.level.getEntity(ids[0]) instanceof CarEntity c
+                ? c.doorOpen(true, 0.0F) : 1.0F);
+        expect(driver > 0.5F && later == 0.0F, "Autotür: beim Einsteigen auf und wieder zu (" + driver + " / "
+                + later + ")");
+        server.runOnServer(s -> {
+            player(s).stopRiding();
+            for (int id : ids) {
+                if (s.overworld().getEntity(id) instanceof CarEntity c) {
+                    c.despawn();
+                }
+            }
+        });
     }
 
     private void superCar(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {

@@ -1,5 +1,7 @@
 # GTA City – Fabric-Mod für Minecraft 26.3
 
+Von GlowCube.
+
 Die ganze Overworld ist eine riesige Stadt im Stil von Los Santos. Das Stadtgebiet ist rund 3 × 3 km groß.
 Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die Stadt.
 
@@ -101,6 +103,9 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   du hereinkommst, und reden mit den Händen. Bei der Führung wartet Marco an jeder Station, winkt dich heran und
   zeigt mit der Hand auf das Gebäude. Fahrgäste winken dem Taxi, zeigen während der Fahrt in die Richtung des
   Ziels und bedanken sich beim Aussteigen. Der Mitarbeiter am Schalter zeigt dir, in welche Richtung dein Job geht.
+  Taxigäste laufen zum Auto, die Tür geht auf, sie steigen ein, und die Tür fällt wieder zu.
+- **Autotüren**: Beim Ein- und Aussteigen schwingt die Tür auf und wieder zu. Beim Supersportwagen sind es
+  Scherentüren, die nach oben aufgehen. Schleichen + Rechtsklick mit leerer Hand öffnet und schließt die Türen.
 - Straßenkriminalität: Taschendiebstahl (von hinten an Passanten schleichen, Schleichen + Rechtsklick mit leerer
   Hand), Ladendiebstahl im 24/7 (dasselbe an der Theke) und Überfälle (Schleichen + Rechtsklick mit Waffe)
 - Geld: Startkapital $500. Passanten lassen Geld fallen, Geldautomaten zeigen deinen Kontostand.
@@ -151,6 +156,7 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 | Schleichen + Rechtsklick mit Waffe auf Theke | Laden ausrauben |
 | Schleichen + Rechtsklick mit leerer Hand | Taschendiebstahl (Passant) / Ladendiebstahl (24/7-Theke) |
 | Rechtsklick auf Aufzug | Lobby ↔ Dach |
+| Schleichen + Rechtsklick mit leerer Hand auf ein Auto | Türen öffnen / schließen |
 
 ## Bauen
 
