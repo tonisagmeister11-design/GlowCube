@@ -199,9 +199,13 @@ public class CarEntity extends Entity {
         return !isRemoved();
     }
 
+    /**
+     * Solid for players and other cars. Pedestrians and officers walk around it instead: their path finding does
+     * not know about vehicles, so a parked patrol car would otherwise trap its own crew.
+     */
     @Override
     public boolean canBeCollidedWith(@Nullable Entity entity) {
-        return true;
+        return !(entity instanceof NpcEntity);
     }
 
     @Override

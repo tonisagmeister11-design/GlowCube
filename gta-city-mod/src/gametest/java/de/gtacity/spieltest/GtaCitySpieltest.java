@@ -1188,6 +1188,11 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             return c.getId();
         });
         ctx.waitFor(mc -> mc.player.getVehicle() instanceof CarEntity, 60);
+        // Clear the track: traffic and patrol cars left over from the police checks.
+        server.runOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class,
+                new AABB(x - 30, CityLayout.GROUND - 5, z - 30, x + 30, CityLayout.GROUND + 10, z + 900),
+                c -> c.getId() != car).forEach(CarEntity::despawn));
+        server.runCommand("kill @e[type=gtacity:police]");
         ctx.waitTicks(10);
         ctx.takeScreenshot("gtacity-16-supersportwagen");
         ctx.getInput().holdKey(o -> o.keyUp);
