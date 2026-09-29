@@ -172,6 +172,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             check("Karte", () -> map(ctx, server, conn));
             check("Navi", () -> navi(ctx, server, conn));
             check("Laeden", () -> shops(ctx, server, conn));
+            check("Alle Verkaeufer", () -> allClerks(ctx, server, conn));
             check("Jobs", () -> jobs(ctx, server, conn));
             check("Villa", () -> villa(ctx, server, conn));
             check("Taschendiebstahl", () -> pickpocket(ctx, server, conn));
@@ -1394,6 +1395,61 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         ctx.clickScreenButton("Schließen");
         ctx.waitFor(mc -> mc.gui.screen() == null, 40);
         BlockPos spawn = CityPlaces.spawn();
+        teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
+        settle(ctx, conn);
+        reset(server);
+    }
+
+    /** Walks every shop and job station near the spawn: clerk there, bright inside, counter in front, sells. */
+    private void allClerks(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode creative @a");
+        BlockPos spawn = CityPlaces.spawn();
+        List<CityMap.Place> places = new ArrayList<>(Clerks.placesWithClerks().stream()
+                .filter(p -> Math.hypot(p.x() - spawn.getX(), p.z() - spawn.getZ()) < 700).toList());
+        int ok = 0, total = 0;
+        List<String> bad = new ArrayList<>();
+        for (CityMap.Place place : places) {
+            total++;
+            Clerks.Spot spot = Clerks.spot(place);
+            teleport(server, spot.x(), spot.y() + 3, spot.z() + 5, 180.0F, 30.0F);
+            int clerk = -1;
+            for (int i = 0; i < 15 && clerk < 0; i++) {
+                ctx.waitTicks(20);
+                clerk = server.computeOnServer(s -> {
+                    var list = s.overworld().getEntitiesOfClass(NpcEntity.class, AABB.ofSize(new Vec3(spot.x(),
+                            spot.y() + 1, spot.z()), 4, 4, 4), n -> spot.role().equals(n.role()));
+                    return list.isEmpty() ? -1 : list.getFirst().getId();
+                });
+            }
+            int light = server.computeOnServer(s -> s.overworld().getBrightness(
+                    net.minecraft.world.level.LightLayer.BLOCK, BlockPos.containing(spot.x(), spot.y() + 1, spot.z())));
+            boolean counter = server.computeOnServer(s -> Clerks.counterNear(s.overworld(), spot));
+            if (clerk >= 0 && light >= 8 && counter) {
+                ok++;
+            } else {
+                bad.add(place.kind() + "@" + place.x() + "," + place.z() + " (Mitarbeiter=" + (clerk >= 0)
+                        + ", Licht=" + light + ", Theke=" + counter + ")");
+            }
+        }
+        expect(ok == total, "Alle " + total + " Läden und Jobstationen im Umkreis: Mitarbeiter da, hell, Theke ("
+                + ok + " in Ordnung" + (bad.isEmpty() ? "" : ", Probleme: " + String.join("; ", bad)) + ")");
+        // Every shop sells: buy the first offer of every catalogue on the server.
+        server.runOnServer(s -> Economy.set(player(s), 1_000_000));
+        boolean allSell = server.computeOnServer(s -> {
+            for (de.gtacity.shop.ShopType type : de.gtacity.shop.ShopType.values()) {
+                long before = Economy.get(player(s));
+                de.gtacity.shop.ShopCatalog.buy(player(s), type, 0);
+                if (Economy.get(player(s)) >= before) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        expect(allSell, "Jeder Laden verkauft (24/7, Ammu-Nation, Autohaus)");
+        server.runOnServer(s -> s.overworld().getEntitiesOfClass(CarEntity.class, player(s).getBoundingBox()
+                .inflate(20)).forEach(CarEntity::despawn));
+        server.runCommand("gamemode survival @a");
         teleport(server, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5, 0.0F, 0.0F);
         settle(ctx, conn);
         reset(server);

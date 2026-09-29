@@ -60,7 +60,7 @@ public final class CityEvents {
         UseEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
             // Talking to a clerk (right click): shop or job board.
             if (hand == InteractionHand.MAIN_HAND && !player.isShiftKeyDown() && entity instanceof NpcEntity clerk
-                    && !clerk.role().isEmpty() && !(player.getMainHandItem().getItem() instanceof GunItem)) {
+                    && !clerk.role().isEmpty()) {
                 if (player instanceof ServerPlayer serverPlayer) {
                     return Clerks.talk(serverPlayer, clerk) ? InteractionResult.SUCCESS : InteractionResult.PASS;
                 }
