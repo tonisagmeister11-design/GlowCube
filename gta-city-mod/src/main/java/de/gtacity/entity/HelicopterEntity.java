@@ -72,8 +72,8 @@ public class HelicopterEntity extends Entity {
             return;
         }
         double angle = player.getRandom().nextDouble() * Math.PI * 2;
-        double x = player.getX() + Math.cos(angle) * 90.0;
-        double z = player.getZ() + Math.sin(angle) * 90.0;
+        double x = player.getX() + Math.cos(angle) * 60.0;
+        double z = player.getZ() + Math.sin(angle) * 60.0;
         double y = Math.max(player.getY() + 45.0,
                 level.getHeight(Heightmap.Types.MOTION_BLOCKING, Mth.floor(x), Mth.floor(z)) + 10.0);
         heli.snapTo(x, y, z, (float) Math.toDegrees(-angle) + 90.0F, 0.0F);
