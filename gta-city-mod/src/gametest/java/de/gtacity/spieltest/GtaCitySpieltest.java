@@ -1595,6 +1595,9 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             }
             // The player drives the car (the client moves it): get out, move the car with the guest inside to the
             // goal, get back in behind the wheel.
+            // Load the goal first (in the game the world ahead loads while you drive).
+            server.runCommand("forceload add " + goal.x() + " " + goal.z());
+            ctx.waitTicks(40);
             server.runOnServer(s -> player(s).stopRiding());
             ctx.waitFor(mc -> mc.player.getVehicle() == null, 60);
             server.runOnServer(s -> {
@@ -1613,6 +1616,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 }
             });
             ctx.waitTicks(40);
+            server.runCommand("forceload remove " + goal.x() + " " + goal.z());
         }
         after = server.computeOnServer(s -> Economy.get(player(s)));
         expect(after - before > 500, "Taxi: Fahrgast abgeliefert, Fahrpreis kassiert (+$" + (after - before) + ")");
