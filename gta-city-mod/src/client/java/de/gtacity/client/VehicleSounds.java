@@ -43,8 +43,10 @@ public final class VehicleSounds {
             if (entity instanceof CarEntity car) {
                 if (dist < ENGINE_RANGE) {
                     boolean superCar = car.getVariant().shape == CarVariant.Shape.SUPER;
+                    // Parked, empty cars stay silent (and use no sound channel).
                     start(mc, "engine", car, superCar ? ModSounds.ENGINE_SUPER : ModSounds.ENGINE, ENGINE_RANGE,
-                            e -> true, VehicleSounds::engine);
+                            e -> e.isVehicle() || Math.abs(((CarEntity) e).measuredSpeed) > 0.01F,
+                            VehicleSounds::engine);
                     start(mc, "skid", car, ModSounds.SKID, ENGINE_RANGE, e -> ((CarEntity) e).isDrifting(),
                             (loop, e) -> {
                                 loop.volume(1.1F);
