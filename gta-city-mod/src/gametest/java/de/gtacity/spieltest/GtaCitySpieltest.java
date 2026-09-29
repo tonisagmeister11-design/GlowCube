@@ -1558,6 +1558,24 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             expect(mission != null, "Story startet von selbst nach dem Betreten der Welt ("
                     + (mission == null ? "-" : mission.label()) + ")");
             ctx.takeScreenshot("gtacity-02b-story-start");
+            // Cancel right at the start with the chat button (= /job abbrechen): no more calls after that.
+            server.runOnServer(s -> s.getCommands().performPrefixedCommand(
+                    player(s).createCommandSourceStack(), "job abbrechen"));
+            ctx.waitTicks(5);
+            boolean cancelled = ctx.computeOnClient(mc -> mc.player.getAttached(ModAttachments.MISSION) == null);
+            boolean calls = server.computeOnServer(s -> Jobs.getsCalls(player(s)));
+            expect(cancelled && !calls, "Story: Job lässt sich gleich am Anfang abbrechen, danach keine Anrufe mehr");
+            // Only the first jobs come by phone.
+            boolean limit = server.computeOnServer(s -> {
+                ServerPlayer p = player(s);
+                p.removeAttached(ModAttachments.NO_CALLS);
+                boolean before = Jobs.getsCalls(p);
+                p.setAttached(ModAttachments.JOBS_DONE, Jobs.PHONE_JOBS);
+                boolean after = Jobs.getsCalls(p);
+                p.setAttached(ModAttachments.JOBS_DONE, 0);
+                return before && !after;
+            });
+            expect(limit, "Story: nach " + Jobs.PHONE_JOBS + " Jobs werden keine Jobs mehr zugeteilt");
         } finally {
             Jobs.autoStory = false;
             server.runOnServer(s -> {

@@ -40,6 +40,12 @@ public final class ModAttachments {
                     .persistent(Codec.BOOL)
                     .copyOnDeath());
 
+    /** The player does not want to be phoned with jobs any more (cancelled a job that was handed out by phone). */
+    public static final AttachmentType<Boolean> NO_CALLS = AttachmentRegistry.create(GtaCity.id("no_calls"),
+            builder -> builder
+                    .persistent(Codec.BOOL)
+                    .copyOnDeath());
+
     /** Cars the player bought (CarVariant ordinals). They can be delivered anywhere from the phone / map. */
     public static final AttachmentType<List<Integer>> GARAGE = AttachmentRegistry.create(GtaCity.id("garage"),
             builder -> builder

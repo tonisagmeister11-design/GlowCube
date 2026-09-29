@@ -69,8 +69,9 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   Rechtsklick auf ihn oder den Schalter öffnet das Job-Board. Das erste Jobcenter liegt direkt neben dem Spawn.
   - **Story in fünf Kapiteln**: Die Story startet von selbst. Ein paar Sekunden nach dem Betreten der Welt ruft
     Marco an, und Kapitel 1 beginnt. Eine Minute nach jedem geschafften Kapitel meldet sich der nächste
-    Auftraggeber. Wer lieber frei spielt, bricht das Kapitel auf der Karte (M → Jobs) ab und setzt es später am
-    Job-Board fort. Die Kapitel: 1. Führung durch Los Santos (Marco zeigt dir Supermarkt, Waffenladen, Autohaus,
+    Auftraggeber. Die Anrufe gibt es nur für die ersten 5 Jobs. Danach suchst du dir alles selbst am Job-Board
+    aus. Jeder Job lässt sich jederzeit abbrechen: mit [Abbrechen] im Chat, mit `/job abbrechen` oder auf der
+    Karte (M → Jobs). Wer einen zugeteilten Job abbricht, bekommt keine Anrufe mehr. Die Kapitel: 1. Führung durch Los Santos (Marco zeigt dir Supermarkt, Waffenladen, Autohaus,
     Krankenhaus, Polizei und Bank), 2. der erste Lohn, 3. Fahrgäste, 4. Schattengeschäfte im Hafen und
     5. der große Coup (Thermobohrer kaufen, Banktresor knacken, Polizei abhängen). Jedes Kapitel bringt eine
     Belohnung von $1.500 bis $30.000.
@@ -167,6 +168,7 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
 | M | Karte, Navi, Jobs, Garage, Villen, Crew |
 | `/crew einladen <Name>`, `/crew annehmen`, `/crew verlassen` | Crew für Partnermissionen |
 | `/job ja`, `/job nein` | Anfrage für einen Team-Job beantworten (oder [Ja] / [Nein] im Chat anklicken) |
+| `/job abbrechen` | Aktuellen Job abbrechen (oder [Abbrechen] im Chat anklicken) |
 | `/geld`, `/geld geben/nehmen/setzen <Spieler> <Betrag>` | Kontostand; Geld geben nur mit Rechten (OP / Cheats) |
 | Rechtsklick auf Verkäufer oder Theke | Laden öffnen |
 | Rechtsklick auf Mitarbeiter oder Schalter (Jobcenter / Hafenbüro) | Job-Board mit Story und Jobs |

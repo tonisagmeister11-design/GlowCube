@@ -226,6 +226,8 @@ public final class Jobs {
 
         /** Difficulty: every "Weitermachen" is one level harder (more stops, less time, more money). */
         final int level;
+        /** Handed out by a phone call (not taken at a job board). */
+        boolean byPhone;
 
         Job(Type type, Station station, int chapter) {
             this(type, station, chapter, 1);
@@ -403,9 +405,18 @@ public final class Jobs {
     /** Players who cancelled a chapter: no more calls until they join again. */
     private static final Set<UUID> STORY_PAUSED = new HashSet<>();
 
-    /** The next chapter starts by itself after the delay: the clerk phones the player. */
+    /** Jobs are only handed out by phone at the start - after this many jobs the player picks their own. */
+    public static final int PHONE_JOBS = 5;
+
+    /** Whether the clerks still phone this player with the next story chapter. */
+    public static boolean getsCalls(ServerPlayer player) {
+        return chapter(player) < MAX_CHAPTER && done(player) < PHONE_JOBS
+                && !Boolean.TRUE.equals(player.getAttached(ModAttachments.NO_CALLS));
+    }
+
+    /** The next chapter starts by itself after the delay: the clerk phones the player (only for the first jobs). */
     public static void scheduleStory(ServerPlayer player, int delayTicks) {
-        if (chapter(player) < MAX_CHAPTER) {
+        if (getsCalls(player)) {
             STORY_DUE.put(player.getUUID(), player.level().getGameTime() + delayTicks);
         }
     }
@@ -429,7 +440,7 @@ public final class Jobs {
             }
             STORY_DUE.remove(id);
             int chapter = chapter(player) + 1;
-            if (chapter > MAX_CHAPTER || STORY_PAUSED.contains(id)) {
+            if (chapter > MAX_CHAPTER || STORY_PAUSED.contains(id) || !getsCalls(player)) {
                 continue;
             }
             Station station = CHAPTER_STATION[chapter - 1];
@@ -440,10 +451,13 @@ public final class Jobs {
             WantedSystem.title(player, Component.literal("KAPITEL " + chapter).withStyle(ChatFormatting.GOLD,
                     ChatFormatting.BOLD), Component.literal(CHAPTER_TITLES[chapter - 1])
                     .withStyle(ChatFormatting.YELLOW));
-            begin(player, new Job(storyType(chapter), station, chapter));
+            Job job = new Job(storyType(chapter), station, chapter);
+            job.byPhone = true;
+            begin(player, job);
             if (ACTIVE.containsKey(id)) {
-                player.sendSystemMessage(Component.literal("Keine Lust? Karte (M) → Jobs → Abbrechen. Später "
-                        + "geht's im " + station.label + " weiter.").withStyle(ChatFormatting.GRAY));
+                player.sendSystemMessage(Component.literal("Keine Lust? Klick auf [Abbrechen] - dann ruft dich "
+                        + "keiner mehr an, und du suchst dir Jobs selbst im " + station.label + " aus.")
+                        .withStyle(ChatFormatting.GRAY));
             }
         }
     }
@@ -487,13 +501,22 @@ public final class Jobs {
             say(p, job.station, intro(job));
             voice(p, introVoice(job));
             p.sendSystemMessage(Component.literal("Job angenommen: " + job.title() + " - das Ziel ist auf Karte und "
-                    + "Radar markiert (Navi).").withStyle(job.station.illegal ? ChatFormatting.RED
-                    : ChatFormatting.AQUA));
+                    + "Radar markiert (Navi). ").withStyle(job.station.illegal ? ChatFormatting.RED
+                    : ChatFormatting.AQUA).append(cancelButton()));
             if (job.crew.size() > 1) {
                 p.sendSystemMessage(Component.literal("Partnermission mit " + names(player.level().getServer(), job, p)
                         + " - jeder bekommt den vollen Lohn.").withStyle(ChatFormatting.GREEN));
             }
         }
+    }
+
+    /** [Abbrechen] in the chat: runs /job abbrechen. */
+    public static Component cancelButton() {
+        return Component.literal("[Abbrechen]").withStyle(style -> style.withColor(ChatFormatting.GRAY)
+                .withUnderlined(true)
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/job abbrechen"))
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(
+                        Component.literal("Den Job abbrechen (auch: Karte M → Jobs)"))));
     }
 
     private static String names(MinecraftServer server, Job job, ServerPlayer except) {
@@ -534,12 +557,31 @@ public final class Jobs {
         };
     }
 
+    /** The player cancels the job (map, job board, [Abbrechen] in the chat, /job abbrechen). */
     public static void cancel(ServerPlayer player, String reason) {
-        Job job = ACTIVE.remove(player.getUUID());
-        player.removeAttached(ModAttachments.MISSION);
-        if (job != null && job.chapter > 0) {
+        Job job = ACTIVE.get(player.getUUID());
+        if (job == null) {
+            player.removeAttached(ModAttachments.MISSION);
+            player.sendOverlayMessage(Component.literal("Du hast gerade keinen Job.").withStyle(ChatFormatting.GRAY));
+            return;
+        }
+        stop(player, reason);
+        if (job.byPhone) {
+            // Handed out by phone and not wanted: no more calls - the player picks jobs at the boards.
+            player.setAttached(ModAttachments.NO_CALLS, true);
+            STORY_DUE.remove(player.getUUID());
+            player.sendSystemMessage(Component.literal("Alles klar, ab jetzt ruft dich keiner mehr an. Jobs und die "
+                    + "Story gibt es jederzeit am Job-Board: Jobcenter (J) und Hafenbüro (D) auf der Karte.")
+                    .withStyle(ChatFormatting.GOLD));
+        } else if (job.chapter > 0) {
             STORY_PAUSED.add(player.getUUID());
         }
+    }
+
+    /** Ends the job for this player (the others of a partner mission go on). */
+    private static void stop(ServerPlayer player, String reason) {
+        Job job = ACTIVE.remove(player.getUUID());
+        player.removeAttached(ModAttachments.MISSION);
         if (job != null) {
             leaveJob(player, job);
             player.sendSystemMessage(Component.literal("Job beendet: " + reason).withStyle(ChatFormatting.GRAY));
@@ -685,7 +727,7 @@ public final class Jobs {
             return;
         }
         if (ACTIVE.containsKey(player.getUUID())) {
-            cancel(player, "du hilfst jetzt " + from.getName().getString() + ".");
+            stop(player, "du hilfst jetzt " + from.getName().getString() + ".");
         }
         player.stopRiding();
         Vec3 side = from.getLookAngle().multiply(1, 0, 1);
@@ -1101,10 +1143,16 @@ public final class Jobs {
                 : "JOB ERLEDIGT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                 Component.literal("Verdient: " + Economy.format(total) + "  -  Rang: " + rank(done(player)))
                         .withStyle(ChatFormatting.GREEN));
+        if (done(player) == PHONE_JOBS && !Boolean.TRUE.equals(player.getAttached(ModAttachments.NO_CALLS))) {
+            player.sendSystemMessage(Component.literal("Du kennst dich jetzt aus: ab jetzt ruft dich keiner mehr an. "
+                    + "Such dir deine Jobs selbst aus - Jobcenter (J) und Hafenbüro (D) auf der Karte.")
+                    .withStyle(ChatFormatting.GOLD));
+        }
         if (job.chapter > 0 && job.chapter < MAX_CHAPTER) {
             Station next = CHAPTER_STATION[job.chapter];
             player.sendSystemMessage(Component.literal("Nächstes Kapitel: " + CHAPTER_TITLES[job.chapter] + " - "
-                    + next.clerk + " meldet sich in einer Minute bei dir (oder sofort im " + next.label + ").")
+                    + (getsCalls(player) ? next.clerk + " meldet sich in einer Minute bei dir (oder sofort im "
+                    + next.label + ")." : "wann du willst, im " + next.label + " (auf der Karte)."))
                     .withStyle(ChatFormatting.GOLD));
             scheduleStory(player, 20 * 60);
         } else if (job.chapter == MAX_CHAPTER) {
@@ -1119,12 +1167,12 @@ public final class Jobs {
         if (job != null) {
             for (ServerPlayer mate : members(player, job)) {
                 if (mate != player) {
-                    cancel(mate, reason);
+                    stop(mate, reason);
                 }
             }
         }
-        cancel(player, reason);
-        if (job != null && job.chapter > 0) {
+        stop(player, reason);
+        if (job != null && job.chapter > 0 && getsCalls(player)) {
             // A lost chapter is tried again soon, it was not cancelled on purpose.
             STORY_PAUSED.remove(player.getUUID());
             scheduleStory(player, 20 * 45);
@@ -1152,7 +1200,7 @@ public final class Jobs {
             }
             if (!player.isAlive()) {
                 if (members(server, job).size() > 1) {
-                    cancel(player, "Du bist gestorben - deine Crew macht weiter.");
+                    stop(player, "Du bist gestorben - deine Crew macht weiter.");
                 } else {
                     fail(player, "Du bist gestorben.");
                 }

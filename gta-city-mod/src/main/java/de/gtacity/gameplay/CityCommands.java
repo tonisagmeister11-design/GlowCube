@@ -19,6 +19,7 @@ import java.util.Collection;
  * <ul>
  *     <li>/crew, /crew einladen &lt;Name&gt;, /crew annehmen, /crew verlassen - the crew (see {@link Crew})</li>
  *     <li>/job ja, /job nein - answer a team job request (the [Ja] / [Nein] buttons in the chat run these)</li>
+ *     <li>/job abbrechen - cancel the current job (the [Abbrechen] button in the chat runs it)</li>
  *     <li>/geld geben|nehmen|setzen &lt;Spieler&gt; &lt;Betrag&gt; - money, only for operators (cheats / server rights)</li>
  * </ul>
  */
@@ -57,6 +58,10 @@ public final class CityCommands {
                 }))
                 .then(Commands.literal("nein").executes(c -> {
                     Jobs.declineTeam(c.getSource().getPlayerOrException());
+                    return 1;
+                }))
+                .then(Commands.literal("abbrechen").executes(c -> {
+                    Jobs.cancel(c.getSource().getPlayerOrException(), "abgebrochen.");
                     return 1;
                 })));
 
