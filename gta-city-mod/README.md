@@ -43,7 +43,11 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   RPG-7 ($25.000) und Minigun ($50.000). Dazu kommen Granaten, Messer, Baseballschläger, Schutzweste und
   Thermobohrer. Es gibt Munition, Magazine, Nachladen, Kopfschüsse, Rückstoß und Mündungsfeuer. Glas geht bei
   Treffern kaputt.
-- Die 3D-Modelle, Texturen, Munitionsbilder und Schusssounds der Schusswaffen stammen aus
+- Jede Waffe hat eine **Schussanimation** (Rückstoß, Verschluss, Mündungsfeuer, auswerfende Hülse, beim
+  Scharfschützengewehr der Kammerstängel, bei der Minigun die Läufe) und eine **Nachladeanimation** (Waffe kippen,
+  altes Magazin raus, neues rein). Die Nachladeanimation dauert genau so lange wie das Nachladen. Die Animationen
+  laufen auch bei den Waffen anderer Spieler und der Polizei.
+- Die 3D-Modelle, Animationen, Texturen, Munitionsbilder und Schusssounds der Schusswaffen stammen aus
   **„Greenboy's Legendary Guns“** von GreenBoyGamerr (MIT-Lizenz, siehe `CREDITS-greenboys-legendary-guns.txt`).
   Sie sind fest in dieser Mod enthalten, du musst die andere Mod (und GeckoLib) also nicht installieren.
 - Eigene Sounds für jede Waffe, den Raketenwerfer, Explosionen, Nachladen, Hupe und Kasse. Jedes Auto brummt, und
