@@ -178,6 +178,7 @@ public final class Jobs {
         boolean boarded;
         boolean heistDone;
         long lastHint;
+        int missing;
         UUID npc;
 
         Job(Type type, Station station, int chapter) {
@@ -775,14 +776,15 @@ public final class Jobs {
     private static boolean dropoffAlive(ServerLevel level, ServerPlayer player, Job job) {
         Entity e = job.npc == null ? null : level.getEntity(job.npc);
         if (e instanceof NpcEntity npc && npc.isAlive()) {
+            job.missing = 0;
             if (npc.getVehicle() == null && player.getVehicle() instanceof CarEntity car
                     && car.getControllingPassenger() == player && npc.distanceTo(player) < 8.0) {
                 npc.startRiding(car, true, false);
             }
             return true;
         }
-        if (e == null && !level.hasChunkAt(job.step().pos)) {
-            return true; // not loaded right now
+        if (e == null && ++job.missing < 20) {
+            return true; // not loaded right now (teleport, far away) - give it ten seconds
         }
         fail(player, "Dein Fahrgast ist verletzt oder weg.");
         return false;
