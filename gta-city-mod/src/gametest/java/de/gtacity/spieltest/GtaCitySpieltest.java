@@ -1222,12 +1222,10 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         expect(open >= 2.0F, "Autotüren: Schleichen + Rechtsklick öffnet beide Türen");
         ctx.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
         ctx.takeScreenshot("gtacity-16c-tueren-offen");
-        // Getting in: the driver's door swings open and closes again.
+        // Getting in (doors still held open): the driver's door swings, then all doors are closed again.
         server.runOnServer(s -> {
-            for (int id : ids) {
-                if (s.overworld().getEntity(id) instanceof CarEntity c) {
-                    c.toggleDoors();
-                }
+            if (s.overworld().getEntity(ids[1]) instanceof CarEntity c) {
+                c.toggleDoors();
             }
             if (s.overworld().getEntity(ids[0]) instanceof CarEntity c) {
                 c.interact(player(s), InteractionHand.MAIN_HAND, c.position());
@@ -1238,7 +1236,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                 ? c.doorOpen(true, 0.0F) : 0.0F);
         ctx.waitTicks(40);
         float later = ctx.computeOnClient(mc -> mc.level.getEntity(ids[0]) instanceof CarEntity c
-                ? c.doorOpen(true, 0.0F) : 1.0F);
+                ? c.doorOpen(true, 0.0F) + c.doorOpen(false, 0.0F) : 1.0F);
         expect(driver > 0.5F && later == 0.0F, "Autotür: beim Einsteigen auf und wieder zu (" + driver + " / "
                 + later + ")");
         server.runOnServer(s -> {

@@ -149,6 +149,9 @@ public class CarEntity extends Entity {
     @Override
     protected void addPassenger(Entity passenger) {
         super.addPassenger(passenger);
+        if (!level().isClientSide()) {
+            entityData.set(DOORS_OPEN, false); // held-open doors close once someone gets in
+        }
         openDoor(getControllingPassenger() == passenger || getPassengers().size() == 1
                 && !(passenger instanceof NpcEntity npc && !npc.role().isEmpty()));
         if (passenger instanceof LivingEntity living && !level().isClientSide()) {
