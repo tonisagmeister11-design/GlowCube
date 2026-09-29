@@ -1794,12 +1794,9 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
         server.runCommand("effect clear @a");
     }
 
-    /** GlowCube billboards: on some office roofs and skyscraper fronts, glowing at night. */
-    private void billboards(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
-        reset(server);
-        server.runCommand("gamemode creative @a");
-        // Nearest billboard to the spawn: look at the office and skyscraper lots around it.
-        int[] found = server.computeOnServer(s -> {
+    /** Position (x, y, z) and facing (dx, dz) of the billboard nearest to the spawn on lots of the given types. */
+    private static int[] findBillboard(TestServerContext server, CityLayout.LotType... types) {
+        return server.computeOnServer(s -> {
             ServerLevel level = s.overworld();
             BlockPos spawn = CityPlaces.spawn();
             int cx = CityLayout.cell(spawn.getX()), cz = CityLayout.cell(spawn.getZ());
@@ -1814,7 +1811,7 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
                     for (int qx = 0; qx < n; qx++) {
                         for (int qz = 0; qz < n; qz++) {
                             de.gtacity.world.Lot lot = new de.gtacity.world.Lot(gx, gz, qx, qz, n);
-                            if (lot.type != CityLayout.LotType.OFFICE && lot.type != CityLayout.LotType.SKYSCRAPER) {
+                            if (!java.util.List.of(types).contains(lot.type)) {
                                 continue;
                             }
                             for (int x = lot.x0; x <= lot.x1; x++) {
@@ -1841,32 +1838,53 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             }
             return best;
         });
-        expect(found != null, "Werbung: GlowCube-Tafeln stehen in der Stadt"
-                + (found == null ? "" : " (" + found[0] + ", " + found[1] + ", " + found[2] + ")"));
-        if (found == null) {
-            return;
-        }
-        // In front of the billboard, looking at it.
-        double vx = found[0] + 0.5 + found[3] * 22, vz = found[2] + 0.5 + found[4] * 22;
-        float yaw = (float) Math.toDegrees(Math.atan2(-found[3], found[4])) + 180.0F;
+    }
+
+    /** Looks at a billboard from {@code distance} blocks in front of it, {@code dy} blocks above/below its middle. */
+    private void viewBillboard(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn,
+                               int[] b, double distance, double dy, float pitch) {
+        double vx = b[0] + 0.5 + b[3] * distance, vz = b[2] + 0.5 + b[4] * distance;
+        float yaw = (float) Math.toDegrees(Math.atan2(-b[3], b[4])) + 180.0F;
+        teleport(server, vx, b[1] - 1.0 + dy, vz, yaw, pitch);
+        settle(ctx, conn);
+        ctx.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
+    }
+
+    /** GlowCube billboards: on some office roofs and skyscraper fronts, on stilts in car parks and parks. */
+    private void billboards(ClientGameTestContext ctx, TestServerContext server, TestServerConnection conn) {
+        reset(server);
+        server.runCommand("gamemode creative @a");
         server.runOnServer(s -> {
             ServerPlayer p = player(s);
             p.getAbilities().flying = true;
             p.onUpdateAbilities();
         });
-        teleport(server, vx, found[1] - 1.0, vz, yaw, 0.0F);
-        settle(ctx, conn);
-        ctx.runOnClient(mc -> mc.gui.hud.getChat().clearMessages(false));
-        ctx.takeScreenshot("gtacity-25-werbung-tag");
-        server.runCommand("time set 18000");
-        ctx.waitTicks(20);
-        ctx.takeScreenshot("gtacity-25b-werbung-nacht");
-        server.runCommand("time set 6000");
-        // From the street, further away.
-        teleport(server, found[0] + 0.5 + found[3] * 45, CityLayout.GROUND + 2.0, found[2] + 0.5 + found[4] * 45, yaw,
-                -18.0F);
-        settle(ctx, conn);
-        ctx.takeScreenshot("gtacity-25c-werbung-strasse");
+        int[] high = findBillboard(server, CityLayout.LotType.OFFICE, CityLayout.LotType.SKYSCRAPER);
+        expect(high != null, "Werbung: GlowCube-Tafeln an Hochhäusern / auf Dächern"
+                + (high == null ? "" : " (" + high[0] + ", " + high[1] + ", " + high[2] + ")"));
+        if (high != null) {
+            viewBillboard(ctx, server, conn, high, 22, 0, 0.0F);
+            ctx.takeScreenshot("gtacity-25-werbung-tag");
+            server.runCommand("time set 18000");
+            ctx.waitTicks(20);
+            ctx.takeScreenshot("gtacity-25b-werbung-nacht");
+            server.runCommand("time set 6000");
+        }
+        int[] ground = findBillboard(server, CityLayout.LotType.PARKING, CityLayout.LotType.POCKET_PARK);
+        expect(ground != null, "Werbung: GlowCube-Tafeln auf Stelzen am Boden"
+                + (ground == null ? "" : " (" + ground[0] + ", " + ground[1] + ", " + ground[2] + ")"));
+        if (ground != null) {
+            // Stilts: the picture starts 6 blocks above the ground, nothing stands in the street.
+            boolean free = server.computeOnServer(s -> {
+                BlockPos street = new BlockPos(ground[0] + ground[3] * 4, CityLayout.GROUND + 1,
+                        ground[2] + ground[4] * 4);
+                return s.overworld().getBlockState(street).isAir();
+            });
+            expect(ground[1] >= CityLayout.GROUND + 6 && free, "Werbung: Stelzen-Tafel steht hoch, die Straße "
+                    + "davor bleibt frei");
+            viewBillboard(ctx, server, conn, ground, 16, -3, -12.0F);
+            ctx.takeScreenshot("gtacity-25c-werbung-stelzen");
+        }
     }
 
     /** Runs the current mission: teleports to every goal until the job is done. */

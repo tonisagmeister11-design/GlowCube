@@ -117,6 +117,10 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   Story-Einleitung, jeden Job und „Job erledigt“. Die Dateien heißen `voice_marco_courier.ogg`,
   `voice_tony_gang_car.ogg` usw. und werden mit `tools/import_voices.py` eingebaut. Fehlt eine Datei, bleibt es
   still. Lautstärke: Minecraft-Einstellungen → Musik und Geräusche → „Stimme/Sprache“.
+- **GlowCube-Werbung**: Auf manchen Bürodächern stehen große, leuchtende GlowCube-Tafeln, und an manchen
+  Hochhäusern hängen sie an der Front. In manchen Parkhäusern und kleinen Parks stehen sie auf Stelzen. Unter
+  diesen Tafeln passt ein Auto durch, die Straßen bleiben frei. Nachts leuchten sie. Die Tafeln erscheinen in
+  neu erzeugten Stadtteilen (`tools/gen_billboard.py` zerlegt das Logo in die Blockbilder).
 - **Autotüren**: Beim Ein- und Aussteigen schwingt die Tür auf und wieder zu. Beim Supersportwagen sind es
   Scherentüren, die nach oben aufgehen. Schleichen + Rechtsklick mit leerer Hand öffnet und schließt die Türen.
 - Straßenkriminalität: Taschendiebstahl (von hinten an Passanten schleichen, Schleichen + Rechtsklick mit leerer
@@ -212,5 +216,6 @@ Ohne Grafikkarte braucht Minecraft 26.3 dafür einen Software-Vulkan-Treiber (un
   bleiben im Blockbench-/GeckoLib-Format (`.geo.json`) und werden von `GeoGunRenderer` selbst gezeichnet.
 - `tools/import_voices.py name=datei.mp3 ...`: wandelt Sprachaufnahmen in Mono-Ogg um und trägt sie in
   `sounds.json` und die Untertitel ein (nach `gen_sounds.py` laufen lassen).
+- `tools/gen_billboard.py`: zerlegt `tools/art/glowcube_logo.png` in 8 × 8 Blocktexturen für die Werbetafeln
 - `tools/preview/`: lässt den Stadtgenerator ohne Minecraft laufen und rendert Vorschaubilder
   (Draufsicht oder 3D-Isometrie)

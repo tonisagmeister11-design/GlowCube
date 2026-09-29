@@ -84,6 +84,13 @@ final class Buildings {
             case JOB_CENTER -> jobOffice(lot, x, z, c, false);
             case HARBOR_OFFICE -> jobOffice(lot, x, z, c, true);
         }
+        // GlowCube billboards on stilts: every second car park (cars fit under it) and every third small park.
+        // Last, so trees and hedges do not grow through the picture.
+        if (lot.type == CityLayout.LotType.PARKING && Hash.range(lot.seed >>> 49, 2) == 0) {
+            groundBillboard(lot, x, z, c, 1);
+        } else if (lot.type == CityLayout.LotType.POCKET_PARK && Hash.range(lot.seed >>> 49, 3) == 0) {
+            groundBillboard(lot, x, z, c, 2);
+        }
     }
 
     // ------------------------------------------------------------------ helpers
@@ -220,6 +227,27 @@ final class Buildings {
         int step = right.getStepX() + right.getStepZ();
         int col = ((alongX ? x : z) - center) * step + n / 2;
         return col >= 0 && col < n ? col : -1;
+    }
+
+    /**
+     * A billboard standing on two stilts inside the lot, {@code inset} blocks behind its street edge: five blocks
+     * of free space under the picture, facing the street. Returns true for the columns of the stilts.
+     */
+    private static boolean groundBillboard(Lot lot, int x, int z, Column c, int inset) {
+        if (lot.front == null) {
+            return false;
+        }
+        int col = billboardColumn(x, z, lot.front, lot.x0, lot.z0, lot.x1, lot.z1, -inset);
+        if (col < 0) {
+            return false;
+        }
+        int n = de.gtacity.block.BillboardBlock.SIZE;
+        boolean stilt = col == 1 || col == n - 2;
+        if (stilt) {
+            c.fill(GROUND + 1, GROUND + 5, B.s(net.minecraft.world.level.block.Blocks.POLISHED_BLACKSTONE_WALL));
+        }
+        frontBillboard(c, x, z, lot.front, lot.x0, lot.z0, lot.x1, lot.z1, -inset, GROUND + 6);
+        return stilt;
     }
 
     private static void frontBillboard(Column c, int x, int z, Direction front, int x0, int z0, int x1, int z1,
