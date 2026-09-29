@@ -1666,7 +1666,9 @@ public final class GtaCitySpieltest implements FabricClientGameTest {
             Jobs.openBoard(player(s), Jobs.Station.SHADY);
         });
         ctx.waitForScreen(JobBoardScreen.class);
-        ctx.clickScreenButton("Team-Jobs (3)");
+        long teamJobs = java.util.Arrays.stream(Jobs.Type.values())
+                .filter(t -> t.station == Jobs.Station.SHADY && t.team()).count();
+        ctx.clickScreenButton("Team-Jobs (" + teamJobs + ")");
         ctx.waitTicks(5);
         ctx.takeScreenshot("gtacity-19e-team-jobs");
         closeScreen(ctx);
