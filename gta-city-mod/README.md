@@ -118,7 +118,7 @@ Rundherum liegen Promenade, Strand und Meer, und die World Border begrenzt die S
   `voice_tony_gang_car.ogg` usw. und werden mit `tools/import_voices.py` eingebaut. Fehlt eine Datei, bleibt es
   still. Lautstärke: Minecraft-Einstellungen → Musik und Geräusche → „Stimme/Sprache“.
 - **GlowCube-Werbung**: Auf manchen Bürodächern stehen große, leuchtende GlowCube-Tafeln, und an manchen
-  Hochhäusern hängen sie an der Front. In manchen Parkhäusern und kleinen Parks stehen sie auf Stelzen. Unter
+  Hochhäusern hängen sie an der Front. Auf manchen Parkplätzen und in kleinen Parks stehen sie auf Stelzen. Unter
   diesen Tafeln passt ein Auto durch, die Straßen bleiben frei. Nachts leuchten sie. Die Tafeln erscheinen in
   neu erzeugten Stadtteilen (`tools/gen_billboard.py` zerlegt das Logo in die Blockbilder).
 - **Autotüren**: Beim Ein- und Aussteigen schwingt die Tür auf und wieder zu. Beim Supersportwagen sind es
