@@ -49,10 +49,14 @@ public final class PoliceDispatch {
         }
     }
 
-    /** A driving lane far enough away that the player cannot see the car appear. */
+    /**
+     * A driving lane far enough away that the player cannot see the car appear. At a crossing every street is in
+     * view, so after a few tries the car starts further away - and if that is outside the simulated area, simply
+     * out at the normal distance: far enough that it just looks like a patrol car turning into the street.
+     */
     private static CitySpawns.Lane hiddenLane(ServerLevel level, ServerPlayer player) {
         var random = player.getRandom();
-        for (int attempt = 0; attempt < 6; attempt++) {
+        for (int attempt = 0; attempt < 8; attempt++) {
             CitySpawns.Lane lane = CitySpawns.findLane(level, player.blockPosition(),
                     CityRules.PATROL_CAR_MIN_DISTANCE, CityRules.PATROL_CAR_MAX_DISTANCE, random);
             if (lane == null) {
@@ -65,7 +69,13 @@ public final class PoliceDispatch {
                 return lane;
             }
         }
-        return null;
+        CitySpawns.Lane far = CitySpawns.findLane(level, player.blockPosition(), CityRules.PATROL_CAR_MAX_DISTANCE,
+                CityRules.PATROL_CAR_MAX_DISTANCE + 40, random);
+        if (far != null) {
+            return far;
+        }
+        return CitySpawns.findLane(level, player.blockPosition(), CityRules.PATROL_CAR_MIN_DISTANCE,
+                CityRules.PATROL_CAR_MAX_DISTANCE, random);
     }
 
     public static void forget(ServerPlayer player) {

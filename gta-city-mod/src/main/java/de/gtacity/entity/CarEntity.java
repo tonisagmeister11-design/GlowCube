@@ -419,6 +419,13 @@ public class CarEntity extends Entity {
             }
         }
         speed = Mth.clamp(speed, -0.35F, shape.maxSpeed);
+        // Never race into terrain that is not loaded yet (it would stop the car dead): brake smoothly instead.
+        if (Math.abs(speed) > 0.6F) {
+            Vec3 ahead = position().add(Vec3.directionFromRotation(0.0F, getYRot()).scale(speed * 12.0F));
+            if (!level().hasChunkAt(net.minecraft.core.BlockPos.containing(ahead))) {
+                speed *= 0.9F;
+            }
+        }
 
         steer += (Mth.clamp(turn, -1.0F, 1.0F) - steer) * 0.35F;
         float grip = Math.min(1.0F, Math.abs(speed) / 0.12F);
