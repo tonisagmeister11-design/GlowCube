@@ -145,8 +145,21 @@ public class CarEntity extends Entity {
      * blocking every car behind it, so it gets removed instead.
      */
     public boolean isStrandedTraffic(ServerLevel level) {
+        // Checked once a second. Right after a teleport the area around the player is briefly not simulated yet,
+        // so only cars that stay outside for a few checks in a row count.
+        if (!isOutsideSimulation(level)) {
+            strandedChecks = 0;
+            return false;
+        }
+        return ++strandedChecks >= 5;
+    }
+
+    /** City traffic standing where entities do not tick (frozen in its lane). */
+    public boolean isOutsideSimulation(ServerLevel level) {
         return aiDriving && !persistentCar && !level.isPositionEntityTicking(blockPosition());
     }
+
+    private int strandedChecks;
 
     @Override
     public void remove(RemovalReason reason) {
