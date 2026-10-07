@@ -104,7 +104,7 @@ public class SyringeItem extends Item {
 				player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 40, 0));
 				server.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 1.0f, 0.6f);
 				server.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.TOTEM_USE, SoundSource.PLAYERS, 0.6f, 1.4f);
-				server.sendParticles(new DustParticleOptions(kind.color, 1.5f), player.getX(), player.getY() + 1, player.getZ(), 60, 0.5, 0.8, 0.5, 0.1);
+				server.sendParticles(new DustParticleOptions(kind.color, 0.8f), player.getX(), player.getY() + 0.8, player.getZ(), 30, 0.45, 0.5, 0.45, 0.05);
 				player.sendSystemMessage(Component.translatable("message.theboys.got_power",
 						Component.translatable(power.translationKey()).withColor(power.color()).withStyle(ChatFormatting.BOLD)));
 				player.sendSystemMessage(Component.translatable("message.theboys.keys_hint").withStyle(ChatFormatting.GRAY));
@@ -116,7 +116,7 @@ public class SyringeItem extends Item {
 				player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 600, 1));
 				player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 200, 1));
 				server.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.BEACON_DEACTIVATE, SoundSource.PLAYERS, 1.0f, 0.5f);
-				server.sendParticles(new DustParticleOptions(kind.color, 1.5f), player.getX(), player.getY() + 1, player.getZ(), 60, 0.5, 0.8, 0.5, 0.1);
+				server.sendParticles(new DustParticleOptions(kind.color, 0.8f), player.getX(), player.getY() + 0.8, player.getZ(), 30, 0.45, 0.5, 0.45, 0.05);
 				player.sendSystemMessage(Component.translatable("message.theboys.power_removed").withStyle(ChatFormatting.GREEN));
 			}
 			default -> { }

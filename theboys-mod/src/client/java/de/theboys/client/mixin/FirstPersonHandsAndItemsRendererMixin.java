@@ -55,7 +55,7 @@ public abstract class FirstPersonHandsAndItemsRendererMixin {
 		// the syringe swings over to the forearm: turn it around the spot where it is normally held
 		// (vanilla holds items at about side*0.56, -0.52, -0.72) so the needle points down at the arm
 		float px = 0.56f * side, py = -0.52f, pz = -0.72f;
-		poseStack.translate(-0.62f * move * side, 0.1f * move - 0.07f * stab, -0.05f * stab + 0.02f * press);
+		poseStack.translate(-0.6f * move * side, 0.26f * move - 0.07f * stab, -0.05f * stab + 0.02f * press);
 		poseStack.translate(px, py, pz);
 		poseStack.mulPose(new Matrix4f().rotation(Axis.ZP.rotationDegrees(140f * move * side)));
 		poseStack.mulPose(new Matrix4f().rotation(Axis.XP.rotationDegrees(-15f * stab)));

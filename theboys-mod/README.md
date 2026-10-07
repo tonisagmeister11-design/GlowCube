@@ -37,7 +37,7 @@ also bei allen Mitspielern).
 | J | Anzug an/aus (du trägst den Anzug des Charakters als Skin) |
 
 Rechts am Bildschirm siehst du deine Fähigkeiten mit Abklingzeiten und der jeweiligen Anzeige
-(Hitze, Herzbelastung, Nuke-Ladung).
+(Hitze, Nuke-Ladung).
 
 ## Die Kräfte
 
@@ -76,8 +76,6 @@ genauso, und auch in der Third-Person-Ansicht (F5) sind sie zu sehen.
   Nur du selbst läufst weiter vorwärts.
 * **Blitzsprint (C):** ein kurzer, extrem schneller Sprint nach vorne.
 * **Schlaghagel (X):** ein Trommelfeuer aus Schlägen auf das Ziel vor dir.
-* Schwäche: dein **Herz**. Supertempo und vor allem der Zeitsprung füllen die Herzbelastung.
-  Ist sie voll, bekommst du einen Herzinfarkt.
 
 ### Billy Butcher (Staffel 5)
 Die **parasitären Tentakel** (in der Serie „tendrils“), die aus seiner Brust wachsen:
@@ -90,6 +88,10 @@ Die **parasitären Tentakel** (in der Serie „tendrils“), die aus seiner Brus
 * Passiv: deutlich stärker und zäher als ein Mensch. Dazu gibt es sein **Brecheisen** als Waffe.
 
 ## Items und Blöcke
+
+Im Inventar sieht man ein flaches Icon wie bei jedem Item. In der Hand sind Spritzen, Brecheisen
+und Schild echte **3D-Modelle**: Die Spritzen haben Kolben, Glaskörper mit Serum und Nadel, das
+Brecheisen eine gebogene Klaue.
 
 Compound V, V-One, Uran-Injektor, leere Spritze, Soldier Boys Schild (blockt wie ein normales
 Schild), Butchers Brecheisen, Labor-Fliesen, Laborboden, Vought-Stahlplatte, Sicherheitsglas und

@@ -109,8 +109,9 @@ SHIELD_BLOCKING = dict(SHIELD_DISPLAY)
 SHIELD_BLOCKING.update({
     'thirdperson_righthand': {'rotation': [45, 155, 0], 'translation': [-3.49, 11, -2], 'scale': [1, 1, 1]},
     'thirdperson_lefthand': {'rotation': [45, 155, 0], 'translation': [11.51, 7, 2.5], 'scale': [1, 1, 1]},
-    'firstperson_righthand': {'rotation': [0, 180, -5], 'translation': [-15, 3.25, -11], 'scale': [1.25, 1.25, 1.25]},
-    'firstperson_lefthand': {'rotation': [0, 180, -5], 'translation': [5, 5, -11], 'scale': [1.25, 1.25, 1.25]},
+    # raised in front of the player, a bit left of the crosshair (derived from the visible idle pose)
+    'firstperson_righthand': {'rotation': [0, 180, -2], 'translation': [-15, 5, -9], 'scale': [1.25, 1.25, 1.25]},
+    'firstperson_lefthand': {'rotation': [0, 180, 2], 'translation': [5, 5, -9], 'scale': [1.25, 1.25, 1.25]},
 })
 face = 'theboys:item/soldier_boy_shield_face'
 # same footprint as the vanilla shield (12 x 22 x 1 plate + handle) so the vanilla hand poses fit

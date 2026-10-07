@@ -102,17 +102,21 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 					ctx.waitTicks(4);
 					ctx.takeScreenshot("item_" + it[1] + "_first_person");
-					sideView(ctx, server, 2.6, -58.6, 2.2, 130, 18);
+					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+					ctx.waitTicks(3);
 					ctx.takeScreenshot("item_" + it[1] + "_third_person");
-					playerView(ctx, server);
+					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				}
 				// shield raised
 				ctx.getInput().holdKey(o -> o.keyUse);
 				ctx.waitTicks(8);
 				ctx.takeScreenshot("item_shield_blocking_first_person");
-				sideView(ctx, server, 2.6, -58.6, 2.2, 130, 18);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+				ctx.waitTicks(3);
 				ctx.takeScreenshot("item_shield_blocking_third_person");
-				playerView(ctx, server);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				String blocking = ctx.computeOnClient(mc -> "using=" + mc.player.isUsingItem() + " blocking=" + mc.player.isBlocking());
+				LOG.info("shield: {}", blocking);
 				ctx.getInput().releaseKey(o -> o.keyUse);
 				server.runCommand("clear @a");
 			});
