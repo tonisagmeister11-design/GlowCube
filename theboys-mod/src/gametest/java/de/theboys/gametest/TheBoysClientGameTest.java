@@ -209,6 +209,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				String direct = ctx.computeOnClient(mc -> "power(client)=" + PowerAttachments.powerOf(mc.player)
 						+ " cooldown=" + mc.player.getCooldowns().isOnCooldown(mc.player.getMainHandItem())
 						+ " mode=" + mc.gameMode.getPlayerMode()
+						+ " class=" + mc.player.getMainHandItem().getItem().getClass().getName()
 						+ " directUse=" + mc.player.getMainHandItem().use(mc.level, mc.player, net.minecraft.world.InteractionHand.MAIN_HAND)
 						+ " usingAfterDirect=" + mc.player.isUsingItem());
 				ctx.runOnClient(mc -> mc.player.stopUsingItem());
