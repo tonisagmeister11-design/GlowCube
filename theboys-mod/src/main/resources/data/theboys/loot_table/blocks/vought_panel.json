@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "theboys:vought_panel"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "theboys:blocks/vought_panel"
+}

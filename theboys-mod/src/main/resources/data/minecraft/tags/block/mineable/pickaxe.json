@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "theboys:lab_tiles",
+    "theboys:lab_floor",
+    "theboys:vought_panel",
+    "theboys:v_fridge",
+    "theboys:containment_glass"
+  ]
+}

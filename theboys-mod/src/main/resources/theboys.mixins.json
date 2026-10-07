@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "de.theboys.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"EntityAccessor",
+		"LevelMixin",
+		"ServerGamePacketListenerImplMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

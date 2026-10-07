@@ -1,0 +1,15 @@
+{
+	"required": true,
+	"package": "de.theboys.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"AbstractClientPlayerMixin",
+		"AvatarRendererMixin",
+		"FirstPersonHandsAndItemsRendererMixin",
+		"MinecraftMixin",
+		"PlayerModelMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

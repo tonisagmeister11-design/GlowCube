@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "theboys:block/v_fridge_front",
+    "side": "theboys:block/v_fridge_side",
+    "top": "theboys:block/v_fridge_top"
+  }
+}

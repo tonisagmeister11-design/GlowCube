@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=north,stocked=true": {
+      "model": "theboys:block/v_fridge"
+    },
+    "facing=north,stocked=false": {
+      "model": "theboys:block/v_fridge"
+    },
+    "facing=east,stocked=true": {
+      "model": "theboys:block/v_fridge",
+      "y": 90
+    },
+    "facing=east,stocked=false": {
+      "model": "theboys:block/v_fridge",
+      "y": 90
+    },
+    "facing=south,stocked=true": {
+      "model": "theboys:block/v_fridge",
+      "y": 180
+    },
+    "facing=south,stocked=false": {
+      "model": "theboys:block/v_fridge",
+      "y": 180
+    },
+    "facing=west,stocked=true": {
+      "model": "theboys:block/v_fridge",
+      "y": 270
+    },
+    "facing=west,stocked=false": {
+      "model": "theboys:block/v_fridge",
+      "y": 270
+    }
+  }
+}
