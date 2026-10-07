@@ -21,6 +21,13 @@ public final class ClientState {
 
 	public static int bloodTicks;
 
+	/** Short flash in the serum's colour after an injection. */
+	public static int injectFlash;
+	public static int injectColor;
+	public static boolean wasInjecting;
+	public static int lastInjectRemaining;
+	public static int lastInjectColor;
+
 	/** Smoothed speed of the local player in km/h. */
 	public static float speedKmh;
 	public static Vec3 lastPos;

@@ -84,6 +84,17 @@ public class TheBoysClient implements ClientModInitializer {
 
 		if (ClientState.rewindTicks > 0) ClientState.rewindTicks--;
 		if (ClientState.bloodTicks > 0) ClientState.bloodTicks--;
+		if (ClientState.injectFlash > 0) ClientState.injectFlash--;
+		boolean injecting = player.isUsingItem() && player.getUseItem().getItem() instanceof de.theboys.item.SyringeItem;
+		if (ClientState.wasInjecting && !injecting && ClientState.lastInjectRemaining <= 2) {
+			ClientState.injectFlash = 30;
+			ClientState.injectColor = ClientState.lastInjectColor;
+		}
+		ClientState.wasInjecting = injecting;
+		if (injecting) {
+			ClientState.lastInjectRemaining = player.getUseItemRemainingTicks();
+			ClientState.lastInjectColor = ((de.theboys.item.SyringeItem) player.getUseItem().getItem()).kind().color;
+		}
 		if (ClientState.shakeTicks > 0) {
 			ClientState.shakeTicks--;
 			float s = ClientState.shakeStrength * ClientState.shakeTicks / 12f;

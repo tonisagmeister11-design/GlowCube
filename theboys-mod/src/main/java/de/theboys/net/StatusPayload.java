@@ -8,7 +8,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 /**
  * Server -> owning client: cooldowns of the four abilities (remaining / total ticks, packed) and the
- * power's meter (Homelander heat, A-Train heart strain, Soldier Boy nuke charge) from 0 to 1000.
+ * power's meter (Homelander heat, Soldier Boy nuke charge, Butcher rip progress) from 0 to 1000.
  */
 public record StatusPayload(int cd0, int cd1, int cd2, int cd3, int meter) implements CustomPacketPayload {
 	public static final Type<StatusPayload> TYPE = new Type<>(TheBoys.id("status"));

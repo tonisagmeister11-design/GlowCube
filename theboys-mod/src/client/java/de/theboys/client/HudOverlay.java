@@ -70,20 +70,16 @@ public final class HudOverlay {
 		// meter
 		String meterKey = switch (power) {
 			case HOMELANDER -> "hud.theboys.heat";
-			case A_TRAIN -> "hud.theboys.heart";
 			case SOLDIER_BOY -> "hud.theboys.charge";
 			case BUTCHER -> "hud.theboys.rip";
 			default -> null;
 		};
 		if (meterKey != null) {
 			float m = Mth.clamp(status.meter() / 1000f, 0, 1);
-			int color = power == Power.A_TRAIN ? lerpColor(0xFF43A047, 0xFFD32F2F, m) : lerpColor(0xFFFFB300, 0xFFFF3D00, m);
+			int color = lerpColor(0xFFFFB300, 0xFFFF3D00, m);
 			g.text(font, Component.translatable(meterKey), x, y + 2, 0xFFBDBDBD, true);
 			g.fill(x, y + 12, x + panelW - 6, y + 17, 0xFF222222);
 			g.fill(x, y + 12, x + (int) ((panelW - 6) * m), y + 17, color);
-			if (power == Power.A_TRAIN && m > 0.8f && player.tickCount % 10 < 5) {
-				g.text(font, Component.translatable("hud.theboys.heart_warning"), x, y + 20, 0xFFFF5252, true);
-			}
 		}
 
 		// --- A-Train speedometer
@@ -142,6 +138,16 @@ public final class HudOverlay {
 				}
 				g.text(mc.font, Component.translatable("hud.theboys.rewind"), 18, 40, (((int) (220 * fade)) << 24) | 0xB3E5FC, true);
 			}
+		}
+		// the serum hits: a pulse of colour from the edges of the screen
+		if (ClientState.injectFlash > 0) {
+			float f = ClientState.injectFlash / 30f;
+			float pulse = 0.6f + 0.4f * Mth.sin((30 - ClientState.injectFlash) * 0.7f);
+			int a = (int) (170 * f * pulse);
+			int rgb = ClientState.injectColor & 0xFFFFFF;
+			g.fillGradient(0, 0, w, h / 3, (a << 24) | rgb, 0x00000000);
+			g.fillGradient(0, h * 2 / 3, w, h, 0x00000000, (a << 24) | rgb);
+			g.fill(0, 0, w, h, ((int) (40 * f) << 24) | rgb);
 		}
 		// blood on the screen when someone bursts right in front of you
 		if (ClientState.bloodTicks > 0) {

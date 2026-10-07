@@ -1,6 +1,23 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "theboys:item/compound_v"
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": [
+          "gui",
+          "fixed",
+          "on_shelf"
+        ],
+        "model": {
+          "type": "minecraft:model",
+          "model": "theboys:item/compound_v"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "theboys:item/compound_v_3d"
+    }
   }
 }

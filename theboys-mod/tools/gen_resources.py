@@ -24,13 +24,69 @@ def item_def(name, model):
     w(os.path.join(A, 'items', name + '.json'), {'model': {'type': 'minecraft:model', 'model': model}})
 
 
-# ------------------------------------------------------------------ simple items
+# ------------------------------------------------------------------ items: flat icon in the inventory, real 3D model in the hand
+def item_def_3d(name, flat, hand):
+    w(os.path.join(A, 'items', name + '.json'), {'model': {
+        'type': 'minecraft:select',
+        'property': 'minecraft:display_context',
+        'cases': [{'when': ['gui', 'fixed', 'on_shelf'], 'model': {'type': 'minecraft:model', 'model': flat}}],
+        'fallback': {'type': 'minecraft:model', 'model': hand}}})
+
+
+def box(frm, to, u0, v0, u1, v1, tex='#t'):
+    faces = {d: {'uv': [u0, v0, u1, v1], 'texture': tex} for d in ['north', 'south', 'east', 'west', 'up', 'down']}
+    return {'from': frm, 'to': to, 'faces': faces}
+
+
+# syringe, lying along the Y axis: needle at the bottom, thumb rest on top
+SYRINGE = [
+    box([7, 3, 7], [9, 11, 9], 0, 0, 4, 8),              # barrel with the serum
+    box([6.5, 10.5, 6.5], [9.5, 11, 9.5], 4, 0, 8, 4),   # finger flange
+    box([5.5, 10.5, 7.5], [10.5, 11.2, 8.5], 4, 0, 8, 4),
+    box([7.5, 11, 7.5], [8.5, 14, 8.5], 4, 0, 8, 4),     # plunger rod
+    box([6.75, 14, 6.75], [9.25, 14.5, 9.25], 4, 4, 8, 8),  # thumb rest (cap colour)
+    box([7.4, 2, 7.4], [8.6, 3, 8.6], 4, 4, 8, 8),       # needle hub (cap colour)
+    box([7.85, -3.5, 7.85], [8.15, 2, 8.15], 8, 0, 10, 8),  # needle
+]
+SYRINGE_DISPLAY = {
+    'firstperson_righthand': {'rotation': [70, 0, -15], 'translation': [-1, 4, -1], 'scale': [0.85, 0.85, 0.85]},
+    'firstperson_lefthand': {'rotation': [70, 0, 15], 'translation': [1, 4, -1], 'scale': [0.85, 0.85, 0.85]},
+    'thirdperson_righthand': {'rotation': [80, 0, 0], 'translation': [0, 2, 2.5], 'scale': [0.75, 0.75, 0.75]},
+    'thirdperson_lefthand': {'rotation': [80, 0, 0], 'translation': [0, 2, 2.5], 'scale': [0.75, 0.75, 0.75]},
+    'ground': {'rotation': [90, 0, 0], 'translation': [0, 2, 0], 'scale': [0.6, 0.6, 0.6]},
+    'head': {'rotation': [0, 0, 0], 'translation': [0, 13, 0], 'scale': [1, 1, 1]},
+}
 for name in ['compound_v', 'compound_v1', 'uranium_injector', 'empty_syringe']:
     w(os.path.join(A, 'models', 'item', name + '.json'), {'parent': 'minecraft:item/generated', 'textures': {'layer0': 'theboys:item/' + name}})
-    item_def(name, 'theboys:item/' + name)
+    tex = 'theboys:item/' + name + '_3d'
+    w(os.path.join(A, 'models', 'item', name + '_3d.json'), {
+        'gui_light': 'front',
+        'textures': {'t': {'sprite': tex, 'force_translucent': True} if name == 'empty_syringe' else tex, 'particle': tex},
+        'elements': SYRINGE,
+        'display': SYRINGE_DISPLAY})
+    item_def_3d(name, 'theboys:item/' + name, 'theboys:item/' + name + '_3d')
 
+# crowbar: straight shaft with a curled claw on top and a flat chisel end
+CROWBAR = [
+    box([7.4, -2, 7.4], [8.6, 14, 8.6], 0, 0, 2, 16),
+    box([8.6, 13, 7.4], [10.6, 14.2, 8.6], 2, 0, 6, 2),
+    box([10, 11, 7.4], [11.2, 13.2, 8.6], 2, 2, 4, 6),
+    box([10.6, 10.2, 7.4], [12, 11.2, 8.6], 2, 6, 4, 8),
+    box([6.8, -2.8, 7.4], [8.6, -2, 8.6], 4, 8, 8, 10),
+]
 w(os.path.join(A, 'models', 'item', 'crowbar.json'), {'parent': 'minecraft:item/handheld', 'textures': {'layer0': 'theboys:item/crowbar'}})
-item_def('crowbar', 'theboys:item/crowbar')
+w(os.path.join(A, 'models', 'item', 'crowbar_3d.json'), {
+    'gui_light': 'front',
+    'textures': {'t': 'theboys:item/crowbar_3d', 'particle': 'theboys:item/crowbar_3d'},
+    'elements': CROWBAR,
+    'display': {
+        'firstperson_righthand': {'rotation': [0, -90, 25], 'translation': [1.13, 3.2, 1.13], 'scale': [0.68, 0.68, 0.68]},
+        'firstperson_lefthand': {'rotation': [0, 90, -25], 'translation': [1.13, 3.2, 1.13], 'scale': [0.68, 0.68, 0.68]},
+        'thirdperson_righthand': {'rotation': [0, -90, 10], 'translation': [0, 4.5, 1], 'scale': [0.85, 0.85, 0.85]},
+        'thirdperson_lefthand': {'rotation': [0, 90, -10], 'translation': [0, 4.5, 1], 'scale': [0.85, 0.85, 0.85]},
+        'ground': {'rotation': [90, 0, 0], 'translation': [0, 2, 0], 'scale': [0.5, 0.5, 0.5]},
+    }})
+item_def_3d('crowbar', 'theboys:item/crowbar', 'theboys:item/crowbar_3d')
 
 # ------------------------------------------------------------------ shield: flat icon in GUI, 3D heater shield in hand
 SHIELD_DISPLAY = {
@@ -52,7 +108,7 @@ SHIELD_BLOCKING.update({
 face = 'theboys:item/soldier_boy_shield_face'
 # same footprint as the vanilla shield (12 x 22 x 1 plate + handle) so the vanilla hand poses fit
 shield_elements = [
-    {'from': [2, -3, 9], 'to': [14, 19, 10],
+    {'from': [-6, -11, 1], 'to': [6, 11, 2],
      'faces': {
          'north': {'uv': [0, 0, 16, 16], 'texture': '#face'},
          'south': {'uv': [16, 0, 0, 16], 'texture': '#face'},
@@ -60,7 +116,7 @@ shield_elements = [
          'west': {'uv': [0, 0, 0.5, 16], 'texture': '#face'},
          'up': {'uv': [0, 0, 16, 0.5], 'texture': '#face'},
          'down': {'uv': [0, 15.5, 16, 16], 'texture': '#face'}}},
-    {'from': [7, 5, 10], 'to': [9, 11, 12],
+    {'from': [-1, -3, -5], 'to': [1, 3, 1],
      'faces': {d: {'uv': [7.5, 0, 8.5, 0.5], 'texture': '#face'} for d in ['north', 'south', 'east', 'west', 'up', 'down']}},
 ]
 for name, display in [('soldier_boy_shield_3d', SHIELD_DISPLAY), ('soldier_boy_shield_blocking', SHIELD_BLOCKING)]:

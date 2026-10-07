@@ -1,6 +1,23 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "theboys:item/uranium_injector"
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": [
+          "gui",
+          "fixed",
+          "on_shelf"
+        ],
+        "model": {
+          "type": "minecraft:model",
+          "model": "theboys:item/uranium_injector"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "theboys:item/uranium_injector_3d"
+    }
   }
 }

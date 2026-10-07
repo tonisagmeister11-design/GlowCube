@@ -12,8 +12,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -24,7 +22,6 @@ import net.minecraft.world.phys.Vec3;
 /**
  * A-Train: super speed (toggle) with auto-step and run-through kills, the Time Jump (runs so fast
  * that time flows backwards for everybody else), a blitz dash and a punch barrage.
- * Weakness: his heart. Pushing the speed fills the strain meter; when it is full he has a heart attack.
  */
 public final class ATrain {
 	/** Movement speed multiplier while running (on top of his base speed). */
@@ -57,7 +54,6 @@ public final class ATrain {
 		boolean running = s.speed || s.rewindTicks > 0 || s.dashTicks > 0;
 		if (s.rewindTicks > 0) {
 			s.rewindTicks--;
-			s.strain += 0.45f;
 			if (s.rewindTicks == 0) {
 				PowerManager.modifier(player, Attributes.MOVEMENT_SPEED, PowerManager.RUN, s.speed ? RUN_MULTIPLIER : 0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 				Supe.sound(level, player.position(), SoundEvents.BEACON_DEACTIVATE, 1.5f, 1.5f);
@@ -71,11 +67,7 @@ public final class ATrain {
 			player.needsSync = true;
 		}
 		if (s.speed) {
-			s.strain += 0.035f;
 			player.causeFoodExhaustion(0.02f);
-		}
-		if (!running) {
-			s.strain = Math.max(0, s.strain - 0.12f);
 		}
 		if (running) {
 			runThrough(player, s, level);
@@ -105,14 +97,9 @@ public final class ATrain {
 			}
 		}
 
-		// heart attack
-		if (s.strain >= 100) {
-			heartAttack(player, s);
-		}
-
 		state = state.with(ActiveState.SPEED, running).with(ActiveState.REWIND, s.rewindTicks > 0);
 		PowerAttachments.setActive(player, state);
-		return (int) Math.min(1000, s.strain * 10);
+		return 0;
 	}
 
 	public static void setSpeed(ServerPlayer player, PlayerSession s, boolean on) {
@@ -174,7 +161,6 @@ public final class ATrain {
 		}
 		s.cool(2, 140);
 		s.dashTicks = 7;
-		s.strain += 6;
 		Supe.sound(player.level(), player.position(), SoundEvents.BREEZE_JUMP, 1.4f, 1.6f);
 	}
 
@@ -191,19 +177,6 @@ public final class ATrain {
 		s.cool(3, 200);
 		s.barrageTicks = 14;
 		s.barrageTarget = target.getId();
-	}
-
-	private static void heartAttack(ServerPlayer player, PlayerSession s) {
-		s.strain = 55;
-		if (s.speed) setSpeed(player, s, false);
-		s.dashTicks = 0;
-		player.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 200, 3));
-		player.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 200, 1));
-		player.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 160, 0));
-		player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 100, 0));
-		player.hurtServer(player.level(), player.level().damageSources().magic(), 8);
-		Supe.sound(player.level(), player.position(), SoundEvents.WARDEN_SONIC_CHARGE, 1.0f, 0.5f);
-		player.sendSystemMessage(Component.translatable("message.theboys.heart_attack").withStyle(ChatFormatting.DARK_RED));
 	}
 
 	static void stop(ServerPlayer player, PlayerSession s) {

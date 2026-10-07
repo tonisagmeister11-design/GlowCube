@@ -71,17 +71,50 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(10);
 				ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
 				ctx.waitTicks(5);
+				ctx.takeScreenshot("hold_syringe_first_person");
 				ctx.getInput().pressKey(Keys.INJECT);
-				ctx.waitTicks(14);
-				ctx.takeScreenshot("inject_first_person");
+				ctx.waitTicks(5);
+				ctx.takeScreenshot("inject_first_person_1");
+				ctx.waitTicks(7);
+				ctx.takeScreenshot("inject_first_person_2");
+				ctx.waitTicks(8);
+				ctx.takeScreenshot("inject_first_person_3");
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
 				ctx.waitTicks(4);
 				ctx.takeScreenshot("inject_third_person");
-				ctx.waitTicks(30);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				ctx.waitTicks(16);
+				ctx.takeScreenshot("inject_flash");
+				ctx.waitTicks(14);
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				Power got = server.computeOnServer(s -> PowerAttachments.powerOf(s.getPlayerList().getPlayers().get(0)));
 				LOG.info("Compound V gave: {}", got);
 				if (got != Power.A_TRAIN && got != Power.BUTCHER) throw new AssertionError("Compound V gave " + got);
+			});
+
+			step(ctx, "items_3d", () -> {
+				String[][] items = {{"theboys:compound_v1", "v1"}, {"theboys:crowbar", "crowbar"}, {"theboys:soldier_boy_shield", "shield"}};
+				for (String[] it : items) {
+					server.runCommand("clear @a");
+					server.runCommand("give @a " + it[0]);
+					ctx.waitTicks(8);
+					ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
+					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+					ctx.waitTicks(4);
+					ctx.takeScreenshot("item_" + it[1] + "_first_person");
+					sideView(ctx, server, 2.2, -59, 1.6, 135, 15);
+					ctx.takeScreenshot("item_" + it[1] + "_third_person");
+					playerView(ctx, server);
+				}
+				// shield raised
+				ctx.getInput().holdKey(o -> o.keyUse);
+				ctx.waitTicks(8);
+				ctx.takeScreenshot("item_shield_blocking_first_person");
+				sideView(ctx, server, 2.2, -59, 1.6, 135, 15);
+				ctx.takeScreenshot("item_shield_blocking_third_person");
+				playerView(ctx, server);
+				ctx.getInput().releaseKey(o -> o.keyUse);
+				server.runCommand("clear @a");
 			});
 
 			for (Power p : new Power[] {Power.HOMELANDER, Power.SOLDIER_BOY, Power.A_TRAIN, Power.BUTCHER}) {
@@ -142,6 +175,10 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().holdKey(Keys.ABILITY[1]);
 				ctx.waitTicks(50);
 				ctx.takeScreenshot("soldier_boy_nuke_charge");
+				sideView(ctx, server, 3, -59, 3, 135, 10);
+				ctx.takeScreenshot("soldier_boy_nuke_pose");
+				playerView(ctx, server);
+				sideView(ctx, server, 8, -58, 8, 120, 10);
 				ctx.getInput().releaseKey(Keys.ABILITY[1]);
 				ctx.waitTicks(4);
 				ctx.takeScreenshot("soldier_boy_nuke");

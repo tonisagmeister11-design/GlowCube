@@ -1,6 +1,23 @@
 {
   "model": {
-    "type": "minecraft:model",
-    "model": "theboys:item/crowbar"
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": [
+          "gui",
+          "fixed",
+          "on_shelf"
+        ],
+        "model": {
+          "type": "minecraft:model",
+          "model": "theboys:item/crowbar"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "theboys:item/crowbar_3d"
+    }
   }
 }

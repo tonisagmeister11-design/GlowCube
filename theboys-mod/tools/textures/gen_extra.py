@@ -182,3 +182,60 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+# ---------------------------------------------------------------- textures for the 3D in-hand models
+def syringe_sheet(liquid, liquid_light, cap):
+    """16x16 sheet for the 3D syringe model.
+
+    Regions: x0-3 y0-7 barrel with liquid + glass glint, x4-7 y0-3 metal, x4-7 y4-7 cap colour,
+    x8-9 y0-7 needle steel, x10-15 y0-3 scale markings / glass.
+    """
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(8):
+        for x in range(4):
+            c = liquid_light if (x == 1 and y % 3 != 2) else liquid
+            if y in (2, 5) and x != 1:
+                c = (220, 230, 240, 255)  # scale marks
+            px[x, y] = c
+    for y in range(4):
+        for x in range(4, 8):
+            px[x, y] = (190, 196, 204, 255) if (x + y) % 3 else (150, 156, 166, 255)
+    for y in range(4, 8):
+        for x in range(4, 8):
+            px[x, y] = cap
+    for y in range(8):
+        for x in range(8, 10):
+            px[x, y] = (232, 236, 240, 255) if x == 8 else (170, 176, 184, 255)
+    for y in range(4):
+        for x in range(10, 16):
+            px[x, y] = (210, 230, 245, 255) if (x + y) % 2 else (180, 205, 225, 255)
+    return img
+
+
+def crowbar_sheet():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(16):
+        for x in range(16):
+            base = (58, 60, 66, 255) if (x * 3 + y * 5) % 7 else (78, 82, 88, 255)
+            if x < 2:
+                base = (96, 100, 108, 255)  # worn edge
+            if (x * 13 + y * 7) % 23 == 0:
+                base = (118, 12, 12, 255)  # blood
+            px[x, y] = base
+    return img
+
+
+def write_3d_sheets():
+    syringe_sheet((40, 140, 255, 255), (150, 210, 255, 255), (60, 70, 90, 255)).save(os.path.join(ROOT, 'item', 'compound_v_3d.png'))
+    syringe_sheet((190, 228, 255, 255), (240, 250, 255, 255), (201, 162, 39, 255)).save(os.path.join(ROOT, 'item', 'compound_v1_3d.png'))
+    syringe_sheet((110, 230, 60, 255), (190, 255, 150, 255), (230, 200, 30, 255)).save(os.path.join(ROOT, 'item', 'uranium_injector_3d.png'))
+    syringe_sheet((200, 220, 235, 120), (235, 245, 250, 150), (60, 70, 90, 255)).save(os.path.join(ROOT, 'item', 'empty_syringe_3d.png'))
+    crowbar_sheet().save(os.path.join(ROOT, 'item', 'crowbar_3d.png'))
+    print('3d sheets written')
+
+
+if __name__ == '__main__':
+    write_3d_sheets()

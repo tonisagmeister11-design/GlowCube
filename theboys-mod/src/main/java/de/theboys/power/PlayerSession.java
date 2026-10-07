@@ -26,7 +26,6 @@ public final class PlayerSession {
 
 	// A-Train
 	public boolean speed;
-	public float strain;
 	public int rewindTicks;
 	public int dashTicks;
 	public int barrageTicks;
