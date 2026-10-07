@@ -34,10 +34,10 @@
   "ability.theboys.a_train.1": "Time Jump",
   "ability.theboys.a_train.2": "Blitz Dash",
   "ability.theboys.a_train.3": "Punch Barrage",
-  "ability.theboys.butcher.0": "Tendril Lash",
+  "ability.theboys.butcher.0": "Super Cancer: Tendril Lash",
   "ability.theboys.butcher.1": "Grab / Throw",
-  "ability.theboys.butcher.2": "Rip Apart",
-  "ability.theboys.butcher.3": "Tendril Grapple",
+  "ability.theboys.butcher.2": "Tear in Half",
+  "ability.theboys.butcher.3": "Cancer Walk (sneak: grapple)",
   "key.category.theboys.the_boys": "The Boys",
   "key.theboys.ability_1": "Ability 1",
   "key.theboys.ability_2": "Ability 2",
@@ -68,5 +68,8 @@
   "command.theboys.unknown_power": "Unknown power: %s",
   "command.theboys.set": "%s players now have the power %s",
   "command.theboys.clear": "Removed the power of %s players",
-  "command.theboys.get": "%s has: %s"
+  "command.theboys.get": "%s has: %s",
+  "message.theboys.super_cancer": "SUPER CANCER! The tendrils take over...",
+  "message.theboys.cancer_walk_on": "Cancer Walk - the tendrils carry you",
+  "message.theboys.cancer_walk_off": "Cancer Walk ended"
 }

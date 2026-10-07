@@ -91,6 +91,9 @@ public final class Homelander {
 				}
 			}
 		}
+		if (s.flying && player.getAbilities().flying && s.motion.length() > 0.75) {
+			smashThrough(player, s, level);
+		}
 		state = state.with(ActiveState.FLYING, s.flying && player.getAbilities().flying);
 
 		PowerAttachments.setActive(player, state);
@@ -116,6 +119,37 @@ public final class Homelander {
 			}
 		} else if (ray.block() != null) {
 			burn(player, s, level, ray.block());
+		}
+	}
+
+	/**
+	 * Flying at full speed he does not stop for walls: everything in his flight path is smashed
+	 * (cleared a few blocks ahead, so the client never bumps into it) and whoever is in the way gets hit.
+	 */
+	private static void smashThrough(ServerPlayer player, PlayerSession s, ServerLevel level) {
+		Vec3 dir = s.motion.normalize();
+		Vec3 from = player.position().add(0, 0.9, 0);
+		java.util.Set<BlockPos> done = new java.util.HashSet<>();
+		int broken = 0;
+		for (double d = 0; d <= 6 && broken < 48; d += 0.5) {
+			Vec3 c = from.add(dir.scale(d));
+			for (BlockPos p : BlockPos.betweenClosed(BlockPos.containing(c.x - 0.9, c.y - 0.85, c.z - 0.9), BlockPos.containing(c.x + 0.9, c.y + 1.2, c.z + 0.9))) {
+				if (broken >= 48) break;
+				BlockPos im = p.immutable();
+				if (!done.add(im) || !Supe.breakable(level, im, 60)) continue;
+				level.destroyBlock(im, false, player, 512);
+				broken++;
+			}
+		}
+		if (broken > 0 && player.tickCount % 2 == 0) {
+			Supe.sound(level, from, SoundEvents.GENERIC_EXPLODE, 0.8f, 1.4f);
+			level.sendParticles(ParticleTypes.EXPLOSION, from.x + dir.x * 2, from.y, from.z + dir.z * 2, 1, 0.2, 0.2, 0.2, 0);
+		}
+		for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().expandTowards(s.motion.scale(2)).inflate(0.6),
+				e -> e != player && e.isAlive() && !e.isSpectator())) {
+			Supe.hurt(player, e, (float) (18 + s.motion.length() * 10));
+			Supe.push(e, dir.scale(2.5).add(0, 0.4, 0));
+			Supe.blood(level, e.position().add(0, e.getBbHeight() / 2, 0), e.isDeadOrDying() ? 3f : 1f);
 		}
 	}
 

@@ -41,6 +41,11 @@ public final class PlayerSession {
 	public int grappleTicks;
 	public Vec3 grappleTarget;
 	public int strikeDelay = -1;
+	public boolean cancerWalk;
+	public int frenzyCooldown;
+	public int frenzyTicks;
+	public final java.util.Map<Integer, Integer> frenzyVictims = new java.util.HashMap<>();
+	public final java.util.Map<Integer, net.minecraft.world.phys.Vec3> frenzySpots = new java.util.HashMap<>();
 	public Vec3 strikePoint;
 
 	// shared

@@ -228,7 +228,45 @@ def crowbar_sheet():
     return img
 
 
+def gore_sheet():
+    """32x32: left half = bloody outside of a torn body, right half = the torn cross-section with bone."""
+    import random
+    rnd = random.Random(7)
+    img = Image.new('RGBA', (32, 32), (0, 0, 0, 255))
+    px = img.load()
+    for y in range(32):
+        for x in range(16):
+            r = 92 + rnd.randint(-18, 18)
+            px[x, y] = (r, 14 + rnd.randint(0, 10), 12 + rnd.randint(0, 8), 255)
+            if rnd.random() < 0.08:
+                px[x, y] = (150, 20, 18, 255)
+            if rnd.random() < 0.05:
+                px[x, y] = (45, 4, 4, 255)
+    for y in range(32):
+        for x in range(16, 32):
+            r = 168 + rnd.randint(-25, 20)
+            c = (r, 30 + rnd.randint(0, 20), 34 + rnd.randint(0, 16), 255)
+            if (x + y) % 7 == 0:
+                c = (215, 120, 110, 255)  # fat / muscle fibres
+            if rnd.random() < 0.06:
+                c = (90, 6, 6, 255)
+            px[x, y] = c
+    # bone: spine and ribs, white with a marrow centre
+    for y in range(32):
+        for x in range(21, 27):
+            px[x, y] = (236, 228, 210, 255) if (x in (21, 26) or y % 5 == 0) else (222, 212, 190, 255)
+        if y % 5 == 2:
+            for x in range(17, 31):
+                if x < 21 or x > 26:
+                    px[x, y] = (230, 222, 204, 255)
+    for y in range(32):
+        px[23, y] = (160, 40, 40, 255)
+        px[24, y] = (160, 40, 40, 255)
+    return img
+
+
 def write_3d_sheets():
+    gore_sheet().save(os.path.join(ROOT, 'entity', 'gore.png'))
     syringe_sheet((40, 140, 255, 255), (150, 210, 255, 255), (60, 70, 90, 255)).save(os.path.join(ROOT, 'item', 'compound_v_3d.png'))
     syringe_sheet((190, 228, 255, 255), (240, 250, 255, 255), (201, 162, 39, 255)).save(os.path.join(ROOT, 'item', 'compound_v1_3d.png'))
     syringe_sheet((110, 230, 60, 255), (190, 255, 150, 255), (230, 200, 30, 255)).save(os.path.join(ROOT, 'item', 'uranium_injector_3d.png'))

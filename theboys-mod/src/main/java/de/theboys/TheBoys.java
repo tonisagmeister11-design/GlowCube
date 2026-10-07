@@ -56,6 +56,8 @@ public class TheBoys implements ModInitializer {
 			if (power == Power.HOMELANDER && source.is(DamageTypeTags.IS_FIRE)) return false;
 			// nobody is hurt by his own nuke / explosions
 			if (power != Power.NONE && source.is(DamageTypeTags.IS_EXPLOSION) && source.getEntity() == player) return false;
+			// Butcher's tendrils catch him
+			if (power == Power.BUTCHER && source.is(DamageTypeTags.IS_FALL) && PowerAttachments.active(player).has(ActiveState.CANCER_WALK)) return false;
 			// A-Train does not trip over his own feet while running
 			if (power == Power.A_TRAIN && source.is(DamageTypeTags.IS_FALL) && PowerAttachments.active(player).has(ActiveState.SPEED)) return false;
 			return true;

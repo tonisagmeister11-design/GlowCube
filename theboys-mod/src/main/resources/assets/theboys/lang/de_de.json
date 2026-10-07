@@ -34,10 +34,10 @@
   "ability.theboys.a_train.1": "Zeitsprung",
   "ability.theboys.a_train.2": "Blitzsprint",
   "ability.theboys.a_train.3": "Schlaghagel",
-  "ability.theboys.butcher.0": "Tentakelhieb",
+  "ability.theboys.butcher.0": "Super Cancer: Tentakelhieb",
   "ability.theboys.butcher.1": "Packen / Werfen",
-  "ability.theboys.butcher.2": "Zerreißen",
-  "ability.theboys.butcher.3": "Tentakel-Enterhaken",
+  "ability.theboys.butcher.2": "In zwei Hälften reißen",
+  "ability.theboys.butcher.3": "Cancer Walk (Schleichen: Enterhaken)",
   "key.category.theboys.the_boys": "The Boys",
   "key.theboys.ability_1": "Fähigkeit 1",
   "key.theboys.ability_2": "Fähigkeit 2",
@@ -68,5 +68,8 @@
   "command.theboys.unknown_power": "Unbekannte Kraft: %s",
   "command.theboys.set": "%s Spieler haben jetzt die Kraft %s",
   "command.theboys.clear": "%s Spielern wurde die Kraft genommen",
-  "command.theboys.get": "%s hat: %s"
+  "command.theboys.get": "%s hat: %s",
+  "message.theboys.super_cancer": "SUPER CANCER! Die Tentakel übernehmen …",
+  "message.theboys.cancer_walk_on": "Cancer Walk – die Tentakel tragen dich",
+  "message.theboys.cancer_walk_off": "Cancer Walk beendet"
 }

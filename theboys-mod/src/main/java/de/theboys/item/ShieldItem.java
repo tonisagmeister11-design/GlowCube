@@ -4,13 +4,12 @@ import java.util.function.Consumer;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.component.TooltipDisplay;
 
 /** Soldier Boy's shield. Blocks like a vanilla shield (BLOCKS_ATTACKS component); Soldier Boy can also throw it. */
-public class ShieldItem extends Item {
+public class ShieldItem extends net.minecraft.world.item.ShieldItem {
 	public ShieldItem(Properties properties) {
 		super(properties);
 	}

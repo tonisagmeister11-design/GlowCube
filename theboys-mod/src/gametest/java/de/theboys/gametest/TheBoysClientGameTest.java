@@ -161,9 +161,31 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.takeScreenshot("homelander_flight");
 				boolean flying = ctx.computeOnClient(mc -> mc.player.getAbilities().flying);
 				if (!flying) throw new AssertionError("Homelander is not flying");
+				// full speed through a wall
+				server.runCommand("fill -2 -60 30 2 -54 31 minecraft:stone");
+				ctx.getInput().lookAt(0, 0);
+				ctx.getInput().holdKey(o -> o.keySprint);
+				ctx.getInput().holdKey(o -> o.keyUp);
+				ctx.waitTicks(14);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.waitTicks(6);
+				ctx.takeScreenshot("homelander_smash");
+				ctx.waitTicks(20);
+				ctx.getInput().releaseKey(o -> o.keyUp);
+				ctx.getInput().releaseKey(o -> o.keySprint);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				int wall = server.computeOnServer(s -> {
+					int n = 0;
+					for (BlockPos p : BlockPos.betweenClosed(-2, -60, 30, 2, -54, 31)) if (!s.overworld().getBlockState(p).isAir()) n++;
+					return n;
+				});
+				double z = ctx.computeOnClient(mc -> mc.player.getZ());
+				LOG.info("homelander smash: wall blocks left={} of 70, player z={}", wall, z);
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
 				server.runCommand("kill @e[type=!player]");
+				server.runCommand("tp @a 0 -60 0 0 0");
 				ctx.waitTicks(20);
+				if (wall > 60 || z < 31) throw new AssertionError("Homelander did not smash through the wall (left=" + wall + ", z=" + z + ")");
 			});
 
 			step(ctx, "soldier_boy", () -> {
@@ -212,11 +234,20 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().releaseKey(o -> o.keyUp);
 				ctx.getInput().releaseKey(o -> o.keySprint);
 				ctx.waitTicks(10);
-				// drop an item, then rewind: it must fly back into the inventory
+				// things that happen now must be undone by the Time Jump:
+				// a dropped item, a placed block, a mob that walks away
+				server.runCommand("tp @a 0 -60 0 0 0");
+				server.runCommand("summon minecraft:zombie 6 -60 6 {NoAI:1b,Tags:[\"rewind\"]}");
+				ctx.waitTicks(10);
 				server.runCommand("give @a minecraft:diamond 1");
 				ctx.waitTicks(4);
 				ctx.getInput().pressKey(o -> o.keyDrop);
-				ctx.waitTicks(30);
+				server.runCommand("setblock 4 -60 -4 minecraft:gold_block");
+				for (int i = 1; i <= 6; i++) {
+					server.runCommand("tp @e[tag=rewind] 6 -60 " + (6 + i * 2));
+					ctx.waitTicks(4);
+				}
+				ctx.waitTicks(6);
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
 				ctx.getInput().holdKey(o -> o.keyUp);
 				ctx.waitTicks(25);
@@ -224,7 +255,17 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().releaseKey(o -> o.keyUp);
 				ctx.waitTicks(100);
 				boolean hasDiamond = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getInventory().countItem(net.minecraft.world.item.Items.DIAMOND) > 0);
-				LOG.info("diamond returned by time jump: {}", hasDiamond);
+				String gold = server.computeOnServer(s -> s.overworld().getBlockState(new BlockPos(4, -60, -4)).toString());
+				double zombieZ = server.computeOnServer(s -> {
+					for (var e : s.overworld().getAllEntities()) {
+						if (e.entityTags().contains("rewind")) return e.getZ();
+					}
+					return -999.0;
+				});
+				LOG.info("time jump: diamond back={} gold block now={} zombie z={}", hasDiamond, gold, zombieZ);
+				if (!hasDiamond) throw new AssertionError("dropped diamond did not come back");
+				if (gold.contains("gold_block")) throw new AssertionError("placed block was not undone");
+				if (zombieZ > 8.5) throw new AssertionError("zombie did not walk back, z=" + zombieZ);
 				ctx.getInput().pressKey(Keys.ABILITY[0]);
 				server.runCommand("kill @e[type=!player]");
 				ctx.waitTicks(10);
@@ -254,6 +295,87 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(3);
 				ctx.takeScreenshot("butcher_lash");
 				playerView(ctx, server);
+				ctx.waitTicks(30);
+			});
+
+			step(ctx, "butcher_torn", () -> {
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("tp @a 0 -60 0 0 15");
+				server.runCommand("summon minecraft:zombie 0 -60 4 {NoAI:1b}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 15);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				sideView(ctx, server, 6, -58, 4, 90, 15);
+				ctx.waitTicks(38);
+				ctx.takeScreenshot("butcher_tear_1");
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("butcher_tear_2");
+				ctx.waitTicks(14);
+				ctx.takeScreenshot("butcher_tear_3");
+				playerView(ctx, server);
+			});
+
+			step(ctx, "super_cancer", () -> {
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("tp @a 0 -60 0 0 0");
+				server.runCommand("summon minecraft:zombie 4 -60 3 {NoAI:1b,Tags:[\"threat\"]}");
+				server.runCommand("summon minecraft:skeleton -4 -60 3 {NoAI:1b,Tags:[\"threat\"]}");
+				server.runCommand("summon minecraft:zombie 0 -60 6 {NoAI:1b,Tags:[\"threat\"]}");
+				server.runCommand("summon minecraft:cow 0 -60 -5");
+				ctx.waitTicks(30);
+				server.runOnServer(s -> s.getPlayerList().getPlayers().get(0).setHealth(5.0f));
+				sideView(ctx, server, 9, -57, -5, 50, 20);
+				ctx.waitTicks(14);
+				ctx.takeScreenshot("super_cancer_1");
+				ctx.waitTicks(16);
+				ctx.takeScreenshot("super_cancer_2");
+				ctx.waitTicks(12);
+				ctx.takeScreenshot("super_cancer_3");
+				playerView(ctx, server);
+				int threats = server.computeOnServer(s -> {
+					int n = 0;
+					for (var e : s.overworld().getAllEntities()) if (e.entityTags().contains("threat") && e.isAlive()) n++;
+					return n;
+				});
+				boolean cowAlive = server.computeOnServer(s -> {
+					for (var e : s.overworld().getAllEntities()) if (e instanceof net.minecraft.world.entity.animal.cow.Cow && e.isAlive()) return true;
+					return false;
+				});
+				LOG.info("super cancer: threats left={} cow alive={}", threats, cowAlive);
+				if (threats > 0) throw new AssertionError(threats + " monsters survived the Super Cancer");
+				server.runOnServer(s -> s.getPlayerList().getPlayers().get(0).setHealth(20.0f));
+			});
+
+			step(ctx, "cancer_walk", () -> {
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("tp @a 0 -60 0 0 0");
+				server.runCommand("fill -2 -60 8 2 -56 9 minecraft:stone");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 10);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(30);
+				double y = ctx.computeOnClient(mc -> mc.player.getY());
+				LOG.info("cancer walk height: {}", y);
+				sideView(ctx, server, 7, -57, 2, 70, 10);
+				ctx.takeScreenshot("cancer_walk_1");
+				playerView(ctx, server);
+				ctx.getInput().holdKey(o -> o.keyUp);
+				ctx.waitTicks(10);
+				sideView(ctx, server, 7, -57, 8, 90, 10);
+				ctx.waitTicks(14);
+				ctx.takeScreenshot("cancer_walk_2");
+				playerView(ctx, server);
+				ctx.getInput().releaseKey(o -> o.keyUp);
+				int stone = server.computeOnServer(s -> {
+					int n = 0;
+					for (BlockPos p : BlockPos.betweenClosed(-2, -60, 8, 2, -56, 9)) if (!s.overworld().getBlockState(p).isAir()) n++;
+					return n;
+				});
+				LOG.info("cancer walk: wall blocks left={} of 50", stone);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(20);
+				if (y < -57.5) throw new AssertionError("Cancer Walk did not lift him, y=" + y);
+				if (stone > 35) throw new AssertionError("Cancer Walk did not crush the wall, left=" + stone);
 				ctx.waitTicks(20);
 			});
 

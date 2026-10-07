@@ -32,6 +32,8 @@ public record FxPayload(int kind, int entityId, float x, float y, float z, float
 	public static final int SHAKE = 4;
 	/** Blood burst at x/y/z with strength x2 (client adds extra gore on top of the server particles). */
 	public static final int GORE = 5;
+	/** A body torn in two at x/y/z: x2 = width, y2 = height, z2 = yaw of the tearing axis. */
+	public static final int TORN = 6;
 
 	@Override
 	public Type<? extends CustomPacketPayload> type() {

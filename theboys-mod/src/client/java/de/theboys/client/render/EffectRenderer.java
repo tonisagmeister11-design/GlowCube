@@ -40,6 +40,9 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class EffectRenderer {
 	private static final Identifier TENTACLE = TheBoys.id("textures/entity/tentacle.png");
+	private static final Identifier GORE = TheBoys.id("textures/entity/gore.png");
+	/** Where each tendril leg of a Cancer-Walking Butcher stands (per player id). */
+	private static final Map<Integer, Vec3[]> FEET = new HashMap<>();
 	private static final Map<Integer, ArrayDeque<Vec3>> TRAILS = new HashMap<>();
 
 	/** Which level render phase draws the effects (switchable for testing). */
@@ -119,6 +122,14 @@ public final class EffectRenderer {
 				glows.add(Glow.sphere(chest, (0.2 + 0.55 * c) * pulse, argb(0.35f + 0.4f * c, 0xFF8C1A)));
 				glows.add(Glow.sphere(chest, (0.08 + 0.25 * c) * pulse, argb(0.8f, 0xFFF2CC)));
 			}
+			if (power == Power.BUTCHER && state.has(ActiveState.FRENZY)) {
+				frenzyTendrils(p, pt, time, self, tendrils);
+			}
+			if (power == Power.BUTCHER && state.has(ActiveState.CANCER_WALK)) {
+				walkingLegs(level, p, pt, time, self, tendrils);
+			} else {
+				FEET.remove(p.getId());
+			}
 			if (power == Power.BUTCHER && (state.has(ActiveState.HOLD) || state.has(ActiveState.RIP))) {
 				Entity target = level.getEntity(state.targetId());
 				if (target != null) {
@@ -183,6 +194,11 @@ public final class EffectRenderer {
 		if (!glows.isEmpty()) {
 			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.lightning(), (pose, buffer) -> {
 				for (Glow g : glows) g.draw(buffer, pose, cam);
+			});
+		}
+		if (!TornBodies.isEmpty()) {
+			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.entityCutout(GORE), (pose, buffer) -> {
+				TornBodies.draw(buffer, pose, cam, pt, level);
 			});
 		}
 		if (!tendrils.isEmpty()) {
@@ -283,6 +299,50 @@ public final class EffectRenderer {
 			double a = t * 0.2 + i * 2.1;
 			Vec3 tip = from.add(Math.cos(a) * 0.7, 0.35 + Math.sin(a * 1.3) * 0.4, Math.sin(a) * 0.7);
 			out.add(Tendril.curve(from, tip, 1f, t, butcher.getId() * 13 + i, 0.11, self));
+		}
+	}
+
+	/** Super Cancer: a nest of tendrils bursting out of his whole body. */
+	private static void frenzyTendrils(AbstractClientPlayer p, float pt, long time, boolean self, List<Tendril> out) {
+		Vec3 base = p.getPosition(pt);
+		double t = time + pt;
+		for (int i = 0; i < 9; i++) {
+			double a = i * 0.7 + t * 0.12;
+			double h = 0.5 + (i % 3) * 0.45;
+			Vec3 root = base.add(Math.cos(a) * 0.25, h, Math.sin(a) * 0.25);
+			double reach = 1.8 + Math.sin(t * 0.3 + i) * 0.6;
+			Vec3 tip = root.add(Math.cos(a) * reach, 0.6 + Math.sin(t * 0.25 + i * 1.7) * 0.9, Math.sin(a) * reach);
+			out.add(Tendril.curve(root, tip, 1f, t, p.getId() * 31 + i, 0.13, self));
+		}
+	}
+
+	/** Cancer Walk: six tendril legs that step along the ground and carry him. */
+	private static void walkingLegs(ClientLevel level, AbstractClientPlayer p, float pt, long time, boolean self, List<Tendril> out) {
+		Vec3 body = p.getPosition(pt);
+		Vec3 hip = body.add(0, 0.55, 0);
+		Vec3 motion = p.position().subtract(p.xo, p.yo, p.zo);
+		Vec3[] feet = FEET.computeIfAbsent(p.getId(), id -> new Vec3[6]);
+		double yaw = Math.toRadians(p.yBodyRot);
+		for (int i = 0; i < 6; i++) {
+			double a = yaw + Math.PI / 2 + (i - 2.5) * (Math.PI / 3.2);
+			// feet are placed a little ahead when walking so the legs reach forward
+			Vec3 desiredXZ = body.add(Math.cos(a) * 2.1, 0, Math.sin(a) * 2.1).add(motion.x * 6, 0, motion.z * 6);
+			double gy = de.theboys.client.SupeMovement.groundBelow(level, new Vec3(desiredXZ.x, body.y, desiredXZ.z));
+			Vec3 desired = new Vec3(desiredXZ.x, gy, desiredXZ.z);
+			if (feet[i] == null || feet[i].distanceToSqr(desired) > 2.6 * 2.6 && (time + i) % 3 == 0) {
+				feet[i] = desired;
+			}
+			Vec3 foot = feet[i];
+			// small lift on the foot that is moving
+			double sway = Math.sin(time * 0.4 + i * 1.1) * 0.08;
+			Vec3 knee = hip.add(foot.subtract(hip).scale(0.5)).add(0, 1.4 + sway, 0);
+			List<Vec3> pts = new ArrayList<>();
+			for (int k = 0; k <= 12; k++) {
+				double s = k / 12.0;
+				double u = 1 - s;
+				pts.add(hip.scale(u * u).add(knee.scale(2 * u * s)).add(foot.scale(s * s)));
+			}
+			out.add(new Tendril(pts, 0.17));
 		}
 	}
 
