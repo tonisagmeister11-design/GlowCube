@@ -25,9 +25,7 @@ public final class ModBlocks {
 	public static final Block VOUGHT_PANEL = register("vought_panel", Block::new,
 			BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(4.0f, 9.0f).sound(SoundType.METAL).requiresCorrectToolForDrops());
 	public static final Block CONTAINMENT_GLASS = register("containment_glass", TransparentBlock::new,
-			BlockBehaviour.Properties.of().mapColor(MapColor.NONE).strength(3.0f, 12.0f).sound(SoundType.GLASS).noOcclusion()
-					.isValidSpawn((s, l, p, e) -> false).isRedstoneConductor((s, l, p) -> false)
-					.isSuffocating((s, l, p) -> false).isViewBlocking((s, l, p) -> false));
+			BlockBehaviour.Properties.of().mapColor(MapColor.NONE).strength(3.0f, 12.0f).sound(SoundType.GLASS).noOcclusion());
 	public static final Block V_FRIDGE = register("v_fridge", VFridgeBlock::new,
 			BlockBehaviour.Properties.of().mapColor(MapColor.SNOW).strength(3.0f, 6.0f).sound(SoundType.METAL).lightLevel(s -> 4));
 
