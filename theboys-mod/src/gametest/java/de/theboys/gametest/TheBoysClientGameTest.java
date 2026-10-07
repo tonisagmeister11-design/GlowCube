@@ -258,7 +258,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				String gold = server.computeOnServer(s -> s.overworld().getBlockState(new BlockPos(4, -60, -4)).toString());
 				double zombieZ = server.computeOnServer(s -> {
 					for (var e : s.overworld().getAllEntities()) {
-						if (e.entityTags().contains("rewind")) return e.getZ();
+						if (e.getType() == net.minecraft.world.entity.EntityTypes.ZOMBIE) return e.getZ();
 					}
 					return -999.0;
 				});
@@ -334,11 +334,11 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				playerView(ctx, server);
 				int threats = server.computeOnServer(s -> {
 					int n = 0;
-					for (var e : s.overworld().getAllEntities()) if (e.entityTags().contains("threat") && e.isAlive()) n++;
+					for (var e : s.overworld().getAllEntities()) if ((e.getType() == net.minecraft.world.entity.EntityTypes.ZOMBIE || e.getType() == net.minecraft.world.entity.EntityTypes.SKELETON) && e.isAlive()) n++;
 					return n;
 				});
 				boolean cowAlive = server.computeOnServer(s -> {
-					for (var e : s.overworld().getAllEntities()) if (e instanceof net.minecraft.world.entity.animal.cow.Cow && e.isAlive()) return true;
+					for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.COW && e.isAlive()) return true;
 					return false;
 				});
 				LOG.info("super cancer: threats left={} cow alive={}", threats, cowAlive);
