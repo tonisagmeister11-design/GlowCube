@@ -495,6 +495,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					server.runCommand("item replace entity @a weapon.mainhand with minecraft:" + w[0]);
 					ctx.waitTicks(30);
 					sideView(ctx, server, 4.8, -58.7, 1.2, 90, 8);
+					LOG.info("fight camera: player={} camera={} invisible={}", ctx.computeOnClient(mc -> mc.player.position().toString()),
+							ctx.computeOnClient(mc -> mc.getCameraEntity().toString()), ctx.computeOnClient(mc -> mc.player.isInvisible()));
 					int swings = Integer.parseInt(w[1]);
 					for (int i = 0; i < swings; i++) {
 						ctx.getInput().pressKey(o -> o.keyAttack);
@@ -502,6 +504,17 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 						ctx.takeScreenshot("fight_" + w[0] + "_" + i);
 						ctx.waitTicks(6);
 					}
+					// the same moves seen from the front (F5)
+					playerView(ctx, server);
+					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+					ctx.waitTicks(30);
+					for (int i = 0; i < swings; i++) {
+						ctx.getInput().pressKey(o -> o.keyAttack);
+						ctx.waitTicks(2);
+						ctx.takeScreenshot("fight_front_" + w[0] + "_" + i);
+						ctx.waitTicks(6);
+					}
+					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 					int combo = ctx.computeOnClient(mc -> {
 						var sw = de.theboys.client.CombatAnim.get(mc.player.getId());
 						return sw == null ? -1 : sw.combo;
