@@ -135,8 +135,8 @@ public final class TornBodies {
 			ps.last().pose().set(pose.pose());
 			ps.last().normal().set(pose.normal());
 			ps.translate((float) (p.x - cam.x), (float) (p.y - cam.y - sink), (float) (p.z - cam.z));
-			ps.mulPose(new org.joml.Quaternionf().rotationY((float) Math.toRadians(-b.yaw)));
-			ps.mulPose(new org.joml.Quaternionf().rotationZ((float) Math.toRadians(roll)));
+			ps.mulPose(new org.joml.Matrix4f().rotationY((float) Math.toRadians(-b.yaw)));
+			ps.mulPose(new org.joml.Matrix4f().rotationZ((float) Math.toRadians(roll)));
 			box(buf, ps.last(), b, light);
 		}
 	}
