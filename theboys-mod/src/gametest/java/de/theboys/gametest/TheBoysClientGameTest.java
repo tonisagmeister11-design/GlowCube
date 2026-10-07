@@ -278,7 +278,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			step(ctx, "butcher", () -> {
 				server.runCommand("tp @a 0 -60 0 0 0");
 				server.runCommand("theboys power set @a butcher");
-				server.runCommand("summon minecraft:pig 0 -60 6");
+				server.runCommand("summon minecraft:pig 0 -60 6 {NoAI:1b}");
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 				ctx.getInput().lookAt(0, 15);
 				ctx.waitTicks(10);

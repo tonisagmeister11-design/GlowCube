@@ -82,7 +82,8 @@ genauso, und auch in der Third-Person-Ansicht (F5) sind sie zu sehen.
 Die Tentakel, die aus seiner Brust wachsen, heißen in der Serie **Super Cancer**:
 * **Tentakelhieb (R):** Ein Tentakel schießt heraus und zertrümmert Gegner und Blöcke. Trifft er
   einen Baumstamm, **fällt der ganze Baum**.
-* **Packen / Werfen (G):** einen Mob oder Spieler packen und in der Luft halten. Nochmal G wirft ihn.
+* **Packen / Werfen (G):** einen Mob oder Spieler packen und in der Luft halten. Die Tentakel
+  **schlingen sich um das Opfer** (Brust und Beine). Nochmal G wirft es.
 * **In zwei Hälften reißen (C):** Das Opfer wird hochgehoben, die Tentakel ziehen an beiden Seiten,
   und es **reißt in zwei Hälften**. Dabei wird das echte Modell des Opfers durchgeschnitten, egal ob
   Zombie, Kuh, Spinne, Eisengolem, Spieler oder Mob aus einer anderen Mod. Jede Hälfte sieht also aus
@@ -92,10 +93,24 @@ Die Tentakel, die aus seiner Brust wachsen, heißen in der Serie **Super Cancer*
 * **Cancer Walk (X):** Die Tentakel werden zu Beinen, tragen dich **4–5 Blöcke hoch** und laufen
   für dich. Du springst höher, bekommst keinen Fallschaden, und alles vor dir wird zertrümmert.
   **Schleichen + X** ist der Tentakel-Enterhaken.
-* **Super Cancer rettet dich:** Fällst du im Survival unter etwa 3,5 Herzen, brechen viele Tentakel
-  aus dir heraus. Sie packen jedes Monster und jeden Gegner in 20 Blöcken Umkreis und **zerreißen sie**.
-  Danach bekommst du kurz Widerstand und Regeneration. Abklingzeit: 45 Sekunden.
+* **Super Cancer rettet dich – jedes Mal:** Fällst du im Survival unter etwa 3,5 Herzen, brechen viele
+  Tentakel aus dir heraus. Sie umschlingen jedes Monster und jeden, der dich angegriffen hat (auch
+  Spieler), in 20 Blöcken Umkreis und **zerreißen sie**. Solange die Tentakel draußen sind, fangen sie
+  den tödlichen Schlag ab. Danach bekommst du kurz Widerstand und Regeneration. Nach 2 Sekunden ist
+  Super Cancer wieder bereit und kommt jedes Mal, wenn du wieder in Gefahr bist.
 * Passiv: deutlich stärker und zäher als ein Mensch. Dazu gibt es sein **Brecheisen** als Waffe.
+
+## Animationen
+
+* **Kampf-Kombos für alle Spieler** (sieht man in F5 und bei anderen Spielern): Jeder Schlag ist ein
+  eigener Move. Mit dem Schwert: Vorhand-Hieb, Rückhand, Überkopf-Hieb, Ausfallstich. Mit der Axt: beidhändiger
+  Überkopf-Hieb und Rundumschlag. Mit den Fäusten: Jab, Cross mit der anderen Faust, Uppercut, Haken.
+  Der Körper dreht sich mit, man macht einen Ausfallschritt und lehnt sich in den Schlag. Schwert- und
+  Axtschläge ziehen eine leuchtende Schwung-Spur durch die Luft. Beim Abbauen bleibt der normale Schwung.
+* **Homelander fliegt wie Superman:** Er legt sich in Flugrichtung. Fliegt er geradeaus, liegt er waagerecht
+  mit der Faust nach vorn, beim Steigen steht er senkrecht mit der Faust nach oben, beim Schweben hängt er
+  locker in der Luft.
+* **A-Train** lehnt sich beim Supertempo nach vorn.
 
 ## Items und Blöcke
 
