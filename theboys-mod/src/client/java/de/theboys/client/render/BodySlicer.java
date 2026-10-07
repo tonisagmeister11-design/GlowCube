@@ -236,15 +236,16 @@ public final class BodySlicer {
 				bestArea = area;
 				bestCentre = new float[] {cx, cy, cz};
 			}
-			if (area > 0.0035f) {
+			// bones only where something big was cut (torso, thick limbs), not in every toe
+			if (area > 0.02f) {
 				for (float[] b : bones) {
 					float ddx = b[0] - cx, ddy = b[1] - cy, ddz = b[2] - cz;
-					if (ddx * ddx + ddy * ddy + ddz * ddz < 0.012f) return;
+					if (ddx * ddx + ddy * ddy + ddz * ddz < 0.04f) return;
 				}
 				bones.add(new float[] {cx, cy, cz});
 				float size = (float) Math.sqrt(area);
-				float thick = Math.max(0.035f, Math.min(0.14f, size * 0.32f));
-				float len = Math.max(0.07f, Math.min(0.3f, size * 0.55f));
+				float thick = Math.max(0.04f, Math.min(0.12f, size * 0.25f));
+				float len = Math.max(0.06f, Math.min(0.2f, size * 0.35f));
 				bone(cx, cy, cz, nx, nz, thick, len);
 			}
 		}

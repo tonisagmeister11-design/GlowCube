@@ -369,27 +369,27 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			});
 
 			step(ctx, "tear_closeup", () -> {
-				server.runCommand("kill @e[type=!player]");
-				server.runCommand("tp @a 0 -60 -6 0 0");
-				server.runCommand("summon minecraft:zombie -5 -60 5 {NoAI:1b,Silent:1b,Rotation:[180f,0f]}");
-				server.runCommand("summon minecraft:cow 5 -60 5 {NoAI:1b,Silent:1b,Rotation:[90f,0f]}");
-				server.runCommand("summon minecraft:iron_golem 0 -60 9 {NoAI:1b,Silent:1b,Rotation:[180f,0f]}");
-				ctx.waitTicks(20);
-				sideView(ctx, server, 0, -57.2, -3, 0, 24);
-				ctx.takeScreenshot("tear_closeup_0_before");
-				server.runOnServer(s -> {
-					var player = s.getPlayerList().getPlayers().get(0);
-					List<net.minecraft.world.entity.Entity> victims = new ArrayList<>();
-					for (var e : s.overworld().getAllEntities()) if (e instanceof net.minecraft.world.entity.Mob && e.isAlive()) victims.add(e);
-					for (var e : victims) de.theboys.power.Butcher.tearApart(player, e, 90f);
-				});
-				ctx.waitTicks(4);
-				ctx.takeScreenshot("tear_closeup_1_flying");
-				ctx.waitTicks(30);
-				ctx.takeScreenshot("tear_closeup_2_landed");
-				ctx.waitTicks(60);
-				ctx.takeScreenshot("tear_closeup_3_lying");
-				playerView(ctx, server);
+				String[] mobs = {"zombie", "cow", "spider"};
+				for (String mob : mobs) {
+					server.runCommand("kill @e[type=!player]");
+					server.runCommand("tp @a 0 -60 -8 0 0");
+					ctx.runOnClient(mc -> de.theboys.client.render.TornBodies.clear());
+					server.runCommand("summon minecraft:" + mob + " 0 -60 4 {NoAI:1b,Silent:1b,Rotation:[" + (mob.equals("zombie") ? "180" : "90") + "f,0f]}");
+					ctx.waitTicks(20);
+					sideView(ctx, server, 0, -57.6, 0.8, 0, 32);
+					ctx.takeScreenshot("tear_closeup_" + mob + "_0");
+					server.runOnServer(s -> {
+						var player = s.getPlayerList().getPlayers().get(0);
+						List<net.minecraft.world.entity.Entity> victims = new ArrayList<>();
+						for (var e : s.overworld().getAllEntities()) if (e instanceof net.minecraft.world.entity.Mob && e.isAlive()) victims.add(e);
+						for (var e : victims) de.theboys.power.Butcher.tearApart(player, e, 90f);
+					});
+					ctx.waitTicks(4);
+					ctx.takeScreenshot("tear_closeup_" + mob + "_1");
+					ctx.waitTicks(70);
+					ctx.takeScreenshot("tear_closeup_" + mob + "_2");
+					playerView(ctx, server);
+				}
 			});
 
 			step(ctx, "super_cancer", () -> {

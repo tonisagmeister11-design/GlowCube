@@ -285,6 +285,10 @@ public final class TornBodies {
 		}
 	}
 
+	public static void clear() {
+		HALVES.clear();
+	}
+
 	public static boolean isEmpty() {
 		return HALVES.isEmpty();
 	}
