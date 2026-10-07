@@ -88,23 +88,36 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().holdKey(Keys.ABILITY[0]);
 				ctx.waitTicks(10);
 				ctx.takeScreenshot("homelander_laser_third_person");
-				for (int phase = 0; phase < 3; phase++) {
-					int ph = phase;
-					ctx.runOnClient(mc -> EffectRenderer.phase = ph);
+				for (int combo = 0; combo < 12; combo++) {
+					int ph = combo % 3;
+					int type = combo / 3;
+					ctx.runOnClient(mc -> {
+						EffectRenderer.phase = ph;
+						EffectRenderer.glowType = type;
+					});
 					ctx.waitTicks(3);
-					ctx.takeScreenshot("laser_phase_" + phase);
+					ctx.takeScreenshot("laser_phase_" + ph + "_type_" + type);
 					String info = ctx.computeOnClient(mc -> "flags=" + PowerAttachments.active(mc.player).flags()
 							+ " calls=" + EffectRenderer.debugCalls + " glows=" + EffectRenderer.debugGlows);
 					LOG.info("laser render phase {}: {}", ph, info);
 				}
-				ctx.runOnClient(mc -> EffectRenderer.phase = 0);
+				ctx.runOnClient(mc -> {
+					EffectRenderer.phase = 0;
+					EffectRenderer.glowType = 0;
+				});
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				ctx.waitTicks(3);
 				ctx.takeScreenshot("homelander_laser_first_person");
 				ctx.getInput().releaseKey(Keys.ABILITY[0]);
 				ctx.waitTicks(5);
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
-				ctx.waitTicks(10);
+				for (int i = 0; i < 5; i++) {
+					ctx.waitTicks(2);
+					String info = ctx.computeOnClient(mc -> "mayfly=" + mc.player.getAbilities().mayfly + " flying=" + mc.player.getAbilities().flying + " y=" + mc.player.getY());
+					String srv = server.computeOnServer(s -> "server mayfly=" + s.getPlayerList().getPlayers().get(0).getAbilities().mayfly + " flying=" + s.getPlayerList().getPlayers().get(0).getAbilities().flying);
+					LOG.info("flight check {}: {} | {}", i, info, srv);
+				}
+				ctx.takeScreenshot("homelander_flight");
 				boolean flying = ctx.computeOnClient(mc -> mc.player.getAbilities().flying);
 				if (!flying) throw new AssertionError("Homelander is not flying");
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
@@ -189,6 +202,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("give @a theboys:uranium_injector");
 				ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				String direct = ctx.computeOnClient(mc -> "power(client)=" + PowerAttachments.powerOf(mc.player) + " use=" + mc.gameMode.useItem(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND) + " using=" + mc.player.isUsingItem());
+				LOG.info("remove step direct use: {}", direct);
 				ctx.getInput().pressKey(Keys.INJECT);
 				for (int i = 0; i < 6; i++) {
 					ctx.waitTicks(10);

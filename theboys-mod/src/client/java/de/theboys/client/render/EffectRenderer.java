@@ -44,6 +44,8 @@ public final class EffectRenderer {
 
 	/** Which level render phase draws the effects (switchable for testing). */
 	public static int phase = 0;
+	/** Render type used for glowing geometry (switchable for testing). */
+	public static int glowType = 0;
 	public static int debugCalls;
 	public static int debugGlows;
 	public static int debugTendrils;
@@ -181,7 +183,13 @@ public final class EffectRenderer {
 		debugGlows = glows.size();
 		debugTendrils = tendrils.size();
 		if (!glows.isEmpty()) {
-			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.lightning(), (pose, buffer) -> {
+			var type = switch (glowType) {
+				case 1 -> RenderTypes.debugFilledBox();
+				case 2 -> RenderTypes.debugQuads();
+				case 3 -> RenderTypes.dragonRays();
+				default -> RenderTypes.lightning();
+			};
+			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), type, (pose, buffer) -> {
 				for (Glow g : glows) g.draw(buffer, pose, cam);
 			});
 		}
