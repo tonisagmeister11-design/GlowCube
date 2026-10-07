@@ -2,7 +2,6 @@
   "gui_light": "front",
   "textures": {
     "face": "theboys:item/soldier_boy_shield_face",
-    "handle": "minecraft:block/dark_oak_planks",
     "particle": "theboys:item/soldier_boy_shield_face"
   },
   "elements": [
@@ -88,57 +87,57 @@
       "faces": {
         "north": {
           "uv": [
+            7.5,
             0,
-            15,
-            1,
-            16
+            8.5,
+            0.5
           ],
-          "texture": "#handle"
+          "texture": "#face"
         },
         "south": {
           "uv": [
+            7.5,
             0,
-            15,
-            1,
-            16
+            8.5,
+            0.5
           ],
-          "texture": "#handle"
+          "texture": "#face"
         },
         "east": {
           "uv": [
+            7.5,
             0,
-            15,
-            1,
-            16
+            8.5,
+            0.5
           ],
-          "texture": "#handle"
+          "texture": "#face"
         },
         "west": {
           "uv": [
+            7.5,
             0,
-            15,
-            1,
-            16
+            8.5,
+            0.5
           ],
-          "texture": "#handle"
+          "texture": "#face"
         },
         "up": {
           "uv": [
+            7.5,
             0,
-            15,
-            1,
-            16
+            8.5,
+            0.5
           ],
-          "texture": "#handle"
+          "texture": "#face"
         },
         "down": {
           "uv": [
+            7.5,
             0,
-            15,
-            1,
-            16
+            8.5,
+            0.5
           ],
-          "texture": "#handle"
+          "texture": "#face"
         }
       }
     }

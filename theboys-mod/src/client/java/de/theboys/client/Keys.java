@@ -44,12 +44,22 @@ public final class Keys {
 		}
 		for (int i = 0; i < 4; i++) {
 			boolean down = ABILITY[i].isDown();
+			boolean clicked = false;
+			while (ABILITY[i].consumeClick()) {
+				clicked = true;
+			}
+			if (clicked && !WAS_DOWN[i] && !down) {
+				// pressed and released within one tick
+				ClientPlayNetworking.send(new AbilityKeyPayload(i, true));
+				ClientPlayNetworking.send(new AbilityKeyPayload(i, false));
+				continue;
+			}
+			if (clicked && !WAS_DOWN[i]) {
+				down = true;
+			}
 			if (down != WAS_DOWN[i]) {
 				WAS_DOWN[i] = down;
 				ClientPlayNetworking.send(new AbilityKeyPayload(i, down));
-			}
-			while (ABILITY[i].consumeClick()) {
-				// state is tracked through isDown(); just drain the queue
 			}
 		}
 		while (SUIT.consumeClick()) {

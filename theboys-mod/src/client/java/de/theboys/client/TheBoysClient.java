@@ -31,7 +31,9 @@ public class TheBoysClient implements ClientModInitializer {
 
 		ClientTickEvents.END_CLIENT_TICK.register(TheBoysClient::tick);
 		HudElementRegistry.addLast(TheBoys.id("hud"), HudOverlay::extract);
-		LevelRenderEvents.COLLECT_SUBMITS.register(EffectRenderer::render);
+		LevelRenderEvents.COLLECT_SUBMITS.register(EffectRenderer::renderCollect);
+		LevelRenderEvents.BEFORE_TRANSLUCENT_TERRAIN.register(EffectRenderer::renderBeforeTranslucent);
+		LevelRenderEvents.AFTER_TRANSLUCENT_FEATURES.register(EffectRenderer::renderAfterTranslucentFeatures);
 	}
 
 	private static void onFx(Minecraft mc, FxPayload fx) {

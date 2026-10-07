@@ -181,8 +181,8 @@ def state_tag(s):
     if '[' in s:
         name, props = s[:-1].split('[', 1)
         p = dict(kv.split('=') for kv in props.split(','))
-        return {'Name': name, 'Properties': p}
-    return {'Name': s}
+        return {'id': name, 'properties': p}
+    return {'id': s}
 
 
 out_blocks = []

@@ -42,7 +42,25 @@ public final class EffectRenderer {
 	private static final Identifier TENTACLE = TheBoys.id("textures/entity/tentacle.png");
 	private static final Map<Integer, ArrayDeque<Vec3>> TRAILS = new HashMap<>();
 
+	/** Which level render phase draws the effects (switchable for testing). */
+	public static int phase = 0;
+	public static int debugCalls;
+	public static int debugGlows;
+	public static int debugTendrils;
+
 	private EffectRenderer() {
+	}
+
+	public static void renderCollect(LevelRenderContext context) {
+		if (phase == 0) render(context);
+	}
+
+	public static void renderBeforeTranslucent(LevelRenderContext context) {
+		if (phase == 1) render(context);
+	}
+
+	public static void renderAfterTranslucentFeatures(LevelRenderContext context) {
+		if (phase == 2) render(context);
 	}
 
 	/** Called every client tick: remembers where speedsters were, for the lightning trail. */
@@ -159,6 +177,9 @@ public final class EffectRenderer {
 			}
 		}
 
+		debugCalls++;
+		debugGlows = glows.size();
+		debugTendrils = tendrils.size();
 		if (!glows.isEmpty()) {
 			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.lightning(), (pose, buffer) -> {
 				for (Glow g : glows) g.draw(buffer, pose, cam);

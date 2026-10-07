@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.theboys.client.Keys;
+import de.theboys.client.render.EffectRenderer;
 import de.theboys.power.Power;
 import de.theboys.power.PowerAttachments;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -44,7 +45,9 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("tp @a 14 -60 15 160 15");
 				ctx.waitTicks(20);
 				ctx.takeScreenshot("lab_inside");
-				boolean fridge = server.computeOnServer(s -> s.overworld().getBlockState(new BlockPos(7, -60, 23)).getBlock().toString().contains("v_fridge"));
+				String at = server.computeOnServer(s -> s.overworld().getBlockState(new BlockPos(7, -60, 23)).toString() + " / " + s.overworld().getBlockState(new BlockPos(7, -61, 13)));
+				LOG.info("lab blocks: {}", at);
+				boolean fridge = at.contains("v_fridge");
 				if (!fridge) throw new AssertionError("no V fridge where the template should have placed one");
 				server.runCommand("tp @a 0 -60 0 0 0");
 			});
@@ -85,6 +88,16 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().holdKey(Keys.ABILITY[0]);
 				ctx.waitTicks(10);
 				ctx.takeScreenshot("homelander_laser_third_person");
+				for (int phase = 0; phase < 3; phase++) {
+					int ph = phase;
+					ctx.runOnClient(mc -> EffectRenderer.phase = ph);
+					ctx.waitTicks(3);
+					ctx.takeScreenshot("laser_phase_" + phase);
+					String info = ctx.computeOnClient(mc -> "flags=" + PowerAttachments.active(mc.player).flags()
+							+ " calls=" + EffectRenderer.debugCalls + " glows=" + EffectRenderer.debugGlows);
+					LOG.info("laser render phase {}: {}", ph, info);
+				}
+				ctx.runOnClient(mc -> EffectRenderer.phase = 0);
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				ctx.waitTicks(3);
 				ctx.takeScreenshot("homelander_laser_first_person");
@@ -177,7 +190,11 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				ctx.getInput().pressKey(Keys.INJECT);
-				ctx.waitTicks(50);
+				for (int i = 0; i < 6; i++) {
+					ctx.waitTicks(10);
+					String info = ctx.computeOnClient(mc -> "using=" + mc.player.isUsingItem() + " item=" + mc.player.getMainHandItem() + " remaining=" + mc.player.getUseItemRemainingTicks());
+					LOG.info("remove step tick {}: {}", i * 10, info);
+				}
 				Power after = server.computeOnServer(s -> PowerAttachments.powerOf(s.getPlayerList().getPlayers().get(0)));
 				if (after != Power.NONE) throw new AssertionError("uranium injector did not remove the power: " + after);
 			});

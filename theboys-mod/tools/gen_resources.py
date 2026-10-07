@@ -61,12 +61,12 @@ shield_elements = [
          'up': {'uv': [0, 0, 16, 0.5], 'texture': '#face'},
          'down': {'uv': [0, 15.5, 16, 16], 'texture': '#face'}}},
     {'from': [7, 5, 10], 'to': [9, 11, 12],
-     'faces': {d: {'uv': [0, 15, 1, 16], 'texture': '#handle'} for d in ['north', 'south', 'east', 'west', 'up', 'down']}},
+     'faces': {d: {'uv': [7.5, 0, 8.5, 0.5], 'texture': '#face'} for d in ['north', 'south', 'east', 'west', 'up', 'down']}},
 ]
 for name, display in [('soldier_boy_shield_3d', SHIELD_DISPLAY), ('soldier_boy_shield_blocking', SHIELD_BLOCKING)]:
     w(os.path.join(A, 'models', 'item', name + '.json'), {
         'gui_light': 'front',
-        'textures': {'face': face, 'handle': 'minecraft:block/dark_oak_planks', 'particle': face},
+        'textures': {'face': face, 'particle': face},
         'elements': shield_elements,
         'display': display,
     })
