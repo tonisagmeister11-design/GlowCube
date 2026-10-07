@@ -320,6 +320,53 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				playerView(ctx, server);
 			});
 
+			step(ctx, "tear_every_mob", () -> {
+				String[][] batches = {
+						{"zombie", "skeleton", "creeper", "spider", "cow", "pig", "sheep", "chicken", "wolf", "villager", "iron_golem", "enderman"},
+						{"slime{Size:2}", "horse", "zombie{IsBaby:1b}", "cat", "witch", "piglin", "fox", "goat", "llama", "polar_bear", "frog", "camel"}};
+				int total = 0;
+				for (int batch = 0; batch < batches.length; batch++) {
+					server.runCommand("kill @e[type=!player]");
+					server.runCommand("tp @a 0 -60 -3 0 0");
+					String[] mobs = batches[batch];
+					for (int i = 0; i < mobs.length; i++) {
+						String id = mobs[i];
+						String nbt = "{NoAI:1b,Silent:1b,Tags:[\"cut\"]}";
+						if (id.contains("{")) {
+							nbt = "{NoAI:1b,Silent:1b,Tags:[\"cut\"]," + id.substring(id.indexOf('{') + 1);
+							id = id.substring(0, id.indexOf('{'));
+						}
+						double x = -11 + i * 2.0;
+						server.runCommand(String.format(java.util.Locale.ROOT, "summon minecraft:%s %.1f -60 6 %s", id, x, nbt));
+					}
+					ctx.waitTicks(20);
+					int[] before = ctx.computeOnClient(mc -> de.theboys.client.render.TornBodies.STATS.clone());
+					sideView(ctx, server, 0, -55.5, -9, 0, 22);
+					int torn = server.computeOnServer(s -> {
+						var player = s.getPlayerList().getPlayers().get(0);
+						List<net.minecraft.world.entity.Entity> victims = new ArrayList<>();
+						for (var e : s.overworld().getAllEntities()) if (e instanceof net.minecraft.world.entity.Mob && e.isAlive()) victims.add(e);
+						for (var e : victims) de.theboys.power.Butcher.tearApart(player, e, 90f);
+						return victims.size();
+					});
+					ctx.waitTicks(5);
+					ctx.takeScreenshot("tear_every_mob_" + batch + "_a");
+					ctx.waitTicks(25);
+					ctx.takeScreenshot("tear_every_mob_" + batch + "_b");
+					int[] after = ctx.computeOnClient(mc -> de.theboys.client.render.TornBodies.STATS.clone());
+					List<String> log = ctx.computeOnClient(mc -> new ArrayList<>(de.theboys.client.render.TornBodies.LOG));
+					for (String l : log.subList(Math.max(0, log.size() - torn), log.size())) LOG.info("torn: {}", l);
+					playerView(ctx, server);
+					LOG.info("tear batch {}: victims={} cut={} fallback={}", batch, torn, after[0] - before[0], after[1] - before[1]);
+					if (torn != mobs.length) throw new AssertionError("only " + torn + " of " + mobs.length + " mobs spawned");
+					if (after[0] - before[0] != torn) {
+						throw new AssertionError("only " + (after[0] - before[0]) + " of " + torn + " mobs were cut through their model");
+					}
+					total += torn;
+				}
+				LOG.info("every mob torn through its model: {}", total);
+			});
+
 			step(ctx, "super_cancer", () -> {
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("tp @a 0 -60 0 0 0");

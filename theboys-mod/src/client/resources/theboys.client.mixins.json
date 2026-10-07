@@ -4,9 +4,13 @@
 	"compatibilityLevel": "JAVA_25",
 	"client": [
 		"AbstractClientPlayerMixin",
+		"AgeableMobRendererAccessor",
 		"AvatarRendererMixin",
+		"EntityRenderDispatcherMixin",
 		"FirstPersonHandsAndItemsRendererMixin",
+		"LivingEntityRendererInvoker",
 		"MinecraftMixin",
+		"ModelPartAccessor",
 		"PlayerModelMixin"
 	],
 	"injectors": {

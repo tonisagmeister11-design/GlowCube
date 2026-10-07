@@ -200,6 +200,12 @@ public final class EffectRenderer {
 			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.entityCutout(GORE), (pose, buffer) -> {
 				TornBodies.draw(buffer, pose, cam, pt, level);
 			});
+			// halves cut out of the victim's own model, drawn with its own skin
+			for (TornBodies.Half half : TornBodies.meshHalves()) {
+				context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.entityCutout(TornBodies.texture(half)), (pose, buffer) -> {
+					TornBodies.drawSkin(half, buffer, pose, cam, pt, level);
+				});
+			}
 		}
 		if (!tendrils.isEmpty()) {
 			List<Integer> lights = new ArrayList<>();

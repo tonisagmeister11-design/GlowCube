@@ -56,7 +56,7 @@ public class TheBoysClient implements ClientModInitializer {
 					}
 				}
 			}
-			case FxPayload.TORN -> de.theboys.client.render.TornBodies.spawn(new Vec3(fx.x(), fx.y(), fx.z()), fx.x2(), fx.y2(), fx.z2());
+			case FxPayload.TORN -> de.theboys.client.render.TornBodies.spawn(mc.level == null ? null : mc.level.getEntity(fx.entityId()), new Vec3(fx.x(), fx.y(), fx.z()), fx.x2(), fx.y2(), fx.z2());
 			case FxPayload.GORE -> {
 				if (mc.player != null && mc.player.getEyePosition().distanceTo(new Vec3(fx.x(), fx.y(), fx.z())) < 4.5) {
 					ClientState.bloodTicks = 50;

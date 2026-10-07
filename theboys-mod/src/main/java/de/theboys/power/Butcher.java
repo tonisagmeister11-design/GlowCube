@@ -314,15 +314,19 @@ public final class Butcher {
 		float h = victim.getBbHeight();
 		if (victim instanceof LivingEntity living) {
 			Supe.burst(player, living, 10000);
-			// the halves replace the body; mobs skip the usual death animation (their drops are already out)
-			if (!(victim instanceof ServerPlayer) && living.isDeadOrDying()) {
-				victim.discard();
+			if (!living.isDeadOrDying()) {
+				// survived (creative, totem): only blood, no halves
+				Supe.blood(level, at.add(0, h / 2, 0), 2.5f);
+				return;
 			}
-		} else {
+		}
+		// the client cuts the victim's own model in two, so the fx has to arrive before the entity is removed
+		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.TORN, victim.getId(), (float) at.x, (float) at.y, (float) at.z, w, h, axisYaw));
+		// the halves replace the body; mobs skip the usual death animation (their drops are already out)
+		if (!(victim instanceof ServerPlayer)) {
 			victim.discard();
 		}
 		Supe.blood(level, at.add(0, h / 2, 0), 4.5f);
-		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.TORN, player.getId(), (float) at.x, (float) at.y, (float) at.z, w, h, axisYaw));
 		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.SHAKE, player.getId(), (float) at.x, (float) at.y, (float) at.z, 1.2f, 0, 0));
 		Supe.sound(level, at, SoundEvents.PLAYER_HURT, 1.5f, 0.5f);
 		Supe.sound(level, at, SoundEvents.ZOMBIE_BREAK_WOODEN_DOOR, 0.8f, 1.6f);

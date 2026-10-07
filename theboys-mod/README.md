@@ -84,8 +84,11 @@ Die Tentakel, die aus seiner Brust wachsen, heißen in der Serie **Super Cancer*
   einen Baumstamm, **fällt der ganze Baum**.
 * **Packen / Werfen (G):** einen Mob oder Spieler packen und in der Luft halten. Nochmal G wirft ihn.
 * **In zwei Hälften reißen (C):** Das Opfer wird hochgehoben, die Tentakel ziehen an beiden Seiten,
-  und es **reißt in zwei Hälften**. Die Hälften fliegen auseinander, und aus der Rissstelle mit
-  Wirbelsäule und Rippen spritzt noch eine Weile Blut.
+  und es **reißt in zwei Hälften**. Dabei wird das echte Modell des Opfers durchgeschnitten, egal ob
+  Zombie, Kuh, Spinne, Eisengolem, Spieler oder Mob aus einer anderen Mod. Jede Hälfte sieht also aus
+  wie eine halbe Kuh, ein halber Zombie und so weiter. An jeder Schnittstelle sieht man Fleisch und
+  Knochen. Die Hälften fliegen auseinander, bleiben mit der Wunde nach oben liegen, und es spritzt noch
+  eine Weile Blut heraus.
 * **Cancer Walk (X):** Die Tentakel werden zu Beinen, tragen dich **4–5 Blöcke hoch** und laufen
   für dich. Du springst höher, bekommst keinen Fallschaden, und alles vor dir wird zertrümmert.
   **Schleichen + X** ist der Tentakel-Enterhaken.
