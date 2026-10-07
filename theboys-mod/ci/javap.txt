@@ -1,49 +1,55 @@
-find renderer/rendertype/RenderTypes
-find SubmitNodeCollector
-find ItemInHandRenderer
-find player/PlayerSkin
-find (AvatarRenderState|HumanoidRenderState|PlayerModel|HumanoidModel|AvatarRenderer)\.class
-find ClientAvatar
-find GuiGraphicsExtractor
-find ItemUseAnimation
-find world/entity/Relative
-find DustParticleOptions
-net.minecraft.client.renderer.rendertype.RenderTypes
-com.mojang.blaze3d.vertex.VertexConsumer
-net.minecraft.client.renderer.SubmitNodeCollector
-net.minecraft.client.renderer.ItemInHandRenderer
-net.minecraft.world.entity.player.PlayerSkin
-net.minecraft.client.player.AbstractClientPlayer
-net.minecraft.client.gui.GuiGraphicsExtractor
-net.minecraft.world.item.Item | (use|Use|finishUsing|inventoryTick|appendHover|Properties|getDefault)
-net.minecraft.world.item.Item$Properties
-net.minecraft.world.entity.LivingEntity | (hurt|heal|setHealth|getHealth|Attribute|startUsing|stopUsing|getUseItem|isUsingItem|knockback|addEffect|getMainHand|swing|kill|die|isDeadOrDying|travel|jump|getJumpPower|setSprinting|setSpeed|getSpeed|lerp)
-net.minecraft.world.entity.Entity | (teleport|setPos|moveTo|snapTo|getEyePosition|getLookAngle|getViewVector|level\(|setDeltaMovement|getDeltaMovement|hurtServer|discard|remove|push|setNoGravity|getBoundingBox|position|getX|getUUID|getId|horizontalCollision|setYRot|setXRot|resetFallDistance|fallDistance|setOnGround|onGround|hasPose|getBbHeight|isAlive|kill|startRiding|setInvisible|setGlowing|getEyeHeight|getBbWidth|absSnap|lerp|yRot|xRot|tickCount|noPhysics|walkDist|maxUpStep|isSpectator|blockPosition)
-net.minecraft.world.entity.player.Player | (getAbilities|onUpdateAbilities|getInventory|addItem|drop|getCooldowns|isCreative|displayClientMessage|sendSystemMessage|giveExperience|isSpectator|getName|causeFoodExhaustion)
-net.minecraft.server.level.ServerPlayer | (teleport|connection|sendSystemMessage|level\(|serverLevel|getGameProfile|isCreative|hurtServer)
-net.minecraft.server.level.ServerLevel | (sendParticles|playSound|explode|getEntities|getEntity|destroyBlock|setBlock|players\(|getServer|getAllEntities|getPlayers|getGameTime|broadcast)
-net.minecraft.world.level.Level | (explode|playSound|destroyBlock|getEntities|clip|isClientSide|getBlockState|setBlock|addParticle|getEntitiesOfClass|getGameTime|random)
-net.minecraft.world.entity.ai.attributes.Attributes
-net.minecraft.world.entity.ai.attributes.AttributeModifier
-net.minecraft.world.entity.ai.attributes.AttributeInstance
-net.minecraft.world.entity.player.Abilities
-net.minecraft.world.entity.item.ItemEntity | (getOwner|thrower|Thrower|getItem|setItem|setPickUpDelay|setNoPickUpDelay|age|getAge|setTarget)
-net.minecraft.world.damagesource.DamageSources | (playerAttack|generic|magic|explosion|mobAttack|sonic|indirect)
-net.minecraft.core.particles.ParticleTypes
-net.minecraft.core.particles.DustParticleOptions
-net.minecraft.world.item.ItemUseAnimation
-net.minecraft.world.entity.Relative
-net.minecraft.client.KeyMapping | (public|Category)
-net.minecraft.client.Minecraft | (player|level|options|gameMode|getCameraEntity|getInstance|gui|font|getDeltaTracker|isPaused|screen|hitResult|crosshairPickEntity)
-net.minecraft.client.Camera | (position|getPosition|pos|yRot|xRot|getYRot|getXRot|isDetached|entity|getEntity)
-net.minecraft.client.renderer.state.level.LevelRenderState | (camera|cameraRenderState)
-net.minecraft.client.renderer.state.level.CameraRenderState
-net.minecraft.world.level.block.state.BlockBehaviour$Properties | (static|strength|sound|noOcclusion|lightLevel|requiresCorrectToolForDrops|setId|mapColor|destroyTime|explosionResistance)
-net.minecraft.world.InteractionResult
-net.minecraft.sounds.SoundEvents | (LIGHTNING|BEACON|GENERIC_EXPLODE|PLAYER_ATTACK_STRONG|ELYTRA|WARDEN_SONIC|BREEZE|TRIDENT|SLIME|HONEY|PLAYER_HURT|BOTTLE|ANVIL|SHIELD|IRON_GOLEM|TOTEM|BEACON|RESPAWN|BREWING|ITEM_PICKUP|GUARDIAN|FIRECHARGE|DRAGON|WITHER)
-net.minecraft.world.item.component.BlocksAttacks
-net.minecraft.core.component.DataComponents | (BLOCKS_ATTACKS|EQUIPPABLE|CUSTOM_NAME|MAX_STACK|RARITY|ENCHANTMENT_GLINT|TOOLTIP|LORE|ATTRIBUTE_MODIFIERS|CONSUMABLE|USE_COOLDOWN|WEAPON)
-net.minecraft.client.renderer.entity.state.AvatarRenderState
-net.minecraft.client.renderer.entity.state.HumanoidRenderState
-net.minecraft.client.model.player.PlayerModel
-net.minecraft.client.model.HumanoidModel | (setupAnim|rightArm|leftArm|head|body|poseRightArm|poseLeftArm|ArmPose)
+find (InHand|FirstPerson|HandRender|HeldItem)
+find core/ClientAsset
+find (ThrownItemRenderer|ThrowableItemProjectile)
+find LightTexture|LightCoords
+find PlayerModelType
+net.minecraft.core.ClientAsset$Texture
+net.minecraft.core.ClientAsset$ResourceTexture
+net.minecraft.world.entity.player.PlayerModelType
+net.minecraft.client.renderer.OrderedSubmitNodeCollector
+net.minecraft.client.renderer.SubmitNodeCollector$CustomGeometryRenderer
+net.minecraft.world.level.Level$ExplosionInteraction
+net.minecraft.client.Minecraft | (lowing|utline)
+net.minecraft.world.entity.projectile.ProjectileUtil | static
+net.minecraft.world.level.ClipContext | (ClipContext\(|Block |Fluid )
+net.minecraft.world.level.ClipContext$Block
+net.minecraft.world.level.ClipContext$Fluid
+net.minecraft.world.level.EntityGetter | getEntitiesOfClass
+net.minecraft.world.level.BlockGetter | clip
+net.minecraft.world.entity.EntityType$Builder | (of|sized|clientTrackingRange|updateInterval|build|noLootTable)
+net.minecraft.client.renderer.entity.ThrownItemRenderer
+net.minecraft.world.level.block.HorizontalDirectionalBlock
+net.minecraft.world.level.block.Block | (createBlockStateDefinition|defaultBlockState|registerDefaultState|getStateForPlacement|stateDefinition|popResource|Block\()
+net.minecraft.world.level.block.state.BlockBehaviour | (useWithoutItem|useItemOn|codec|MapCodec)
+net.minecraft.world.level.block.state.properties.BlockStateProperties | (HORIZONTAL_FACING)
+net.minecraft.world.level.block.state.properties.BooleanProperty | create
+net.minecraft.world.level.block.state.StateDefinition$Builder | add
+net.minecraft.world.item.BlockItem | BlockItem\(
+net.minecraft.world.item.context.BlockPlaceContext | getHorizontalDirection
+net.minecraft.world.effect.MobEffects
+net.minecraft.world.effect.MobEffectInstance | MobEffectInstance\(
+net.minecraft.client.player.LocalPlayer | (input|isMovingSlowly|connection)
+net.minecraft.client.renderer.entity.player.AvatarRenderer | (extractRenderState|submit|getTextureLocation|AvatarRenderer\()
+net.minecraft.client.renderer.texture.OverlayTexture | static
+net.minecraft.world.entity.LivingEntity | (YHeadRot|yBodyRot|yHeadRot|isFallFlying|invulnerableTime|getMaxHealth|isBlocking|removeEffect|hasEffect|getItemInHand|setItemInHand|getOffhandItem|lastHurt)
+net.minecraft.world.entity.Entity | (getYRot|isShiftKeyDown|getRandom|distanceTo|getType|isPassenger|stopRiding|igniteForSeconds|RemainingFireTicks|isInWater|getPassengers|ejectPassengers|hurtMarked|getY|getZ| xo| yo| zo|isNoGravity|setSilent|addTag|isInvulnerable|isRemoved|getYHeadRot|setYHeadRot|isPickable|canBeHitByProjectile|getRootVehicle|getVehicle|setOldPosAndRot|setOldPos|isPushable|getDimensions|setSharedFlag|makeBoundingBox|setBoundingBox|isOnFire|clearFire|getHeight|getPosition\(|getEyeY|onGround|verticalCollision|minorHorizontalCollision)
+net.minecraft.server.network.ServerGamePacketListenerImpl | (teleport|send\()
+net.minecraft.world.entity.player.Inventory | (add|getSelected|selected|setItem|getContainerSize|getItem\(|placeItemBackInInventory|removeItem)
+net.minecraft.commands.Commands | (literal|argument|hasPermission|LEVEL|static)
+net.minecraft.commands.CommandSourceStack | (getPlayer|sendSuccess|sendFailure|permissions|hasPermission|getLevel|getEntity)
+net.minecraft.commands.arguments.EntityArgument | (player|getPlayer)
+net.minecraft.world.level.block.state.BlockBehaviour$BlockStateBase | (getDestroySpeed|isAir|is\(|getBlock|canBeReplaced|hasBlockEntity|getFluidState|isSolid|blocksMotion|getCollisionShape|isCollisionShapeFullBlock)
+net.minecraft.tags.BlockTags | (LOGS|LEAVES|WOOL)
+net.minecraft.client.multiplayer.ClientLevel | (entitiesForRendering|getEntity|players)
+net.minecraft.client.DeltaTracker | Partial
+net.minecraft.world.entity.item.ItemEntity | (ItemEntity\(|thrower|getThrower|Owner)
+net.minecraft.world.entity.projectile.Projectile | (shootFromRotation|setOwner|getOwner|shoot\()
+net.minecraft.world.phys.EntityHitResult
+net.minecraft.world.level.storage.loot.LootTable | static
+net.minecraft.network.codec.ByteBufCodecs | (VAR_INT|BOOL|FLOAT|DOUBLE|INT|STRING_UTF8|BYTE|VECTOR3F)
+net.minecraft.network.codec.StreamCodec | composite
+net.minecraft.client.gui.Font | (width|lineHeight)
+net.minecraft.client.renderer.RenderPipelines | (GUI|static final)
+net.minecraft.world.entity.Avatar
+net.minecraft.client.renderer.entity.state.EntityRenderState | (outline|x;|y;|z;|ageInTicks|lightCoords|boundingBox)
+net.minecraft.client.renderer.entity.state.LivingEntityRenderState | (yRot|bodyRot|xRot|isInvisible|deathTime|hasRedOverlay|scale)
