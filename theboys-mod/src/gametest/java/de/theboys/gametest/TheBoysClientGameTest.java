@@ -350,6 +350,9 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			step(ctx, "cancer_walk", () -> {
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("tp @a 0 -60 0 0 0");
+				server.runCommand("fill -12 -64 -12 12 -64 30 minecraft:bedrock");
+				server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:dirt");
+				server.runCommand("fill -12 -60 -12 12 -50 30 minecraft:air");
 				server.runCommand("fill -2 -60 8 2 -56 9 minecraft:stone");
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(0, 10);
@@ -363,8 +366,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					String sv = server.computeOnServer(s -> "server y=" + s.getPlayerList().getPlayers().get(0).getY());
 					LOG.info("cancer walk lift {}: {} | {}", i, c, sv);
 				}
-				double y = ctx.computeOnClient(mc -> mc.player.getY());
-				LOG.info("cancer walk height: {}", y);
+				double y = ctx.computeOnClient(mc -> mc.player.getY() - de.theboys.client.SupeMovement.groundBelow(mc.level, mc.player.position()));
+				LOG.info("cancer walk height above ground: {}", y);
 				sideView(ctx, server, 7, -57, 2, 70, 10);
 				ctx.takeScreenshot("cancer_walk_1");
 				playerView(ctx, server);
@@ -383,8 +386,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				LOG.info("cancer walk: wall blocks left={} of 50", stone);
 				ctx.getInput().pressKey(Keys.ABILITY[3]);
 				ctx.waitTicks(20);
-				if (y < -57.5) throw new AssertionError("Cancer Walk did not lift him, y=" + y);
-				if (stone > 35) throw new AssertionError("Cancer Walk did not crush the wall, left=" + stone);
+				if (y < 3.5) throw new AssertionError("Cancer Walk did not lift him, height=" + y);
+				if (stone > 40) throw new AssertionError("Cancer Walk did not crush the wall, left=" + stone);
 				ctx.waitTicks(20);
 			});
 

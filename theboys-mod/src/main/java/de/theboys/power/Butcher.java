@@ -410,10 +410,10 @@ public final class Butcher {
 	private static void crushAhead(ServerPlayer player, ServerLevel level, PlayerSession s) {
 		Vec3 dir = new Vec3(s.motion.x, 0, s.motion.z).normalize();
 		Vec3 base = player.position().add(dir.scale(1.2));
-		AABB box = new AABB(base.x - 1.1, base.y - 5.5, base.z - 1.1, base.x + 1.1, base.y + 2.2, base.z + 1.1);
+		AABB box = new AABB(base.x - 1.7, base.y - 5.5, base.z - 1.7, base.x + 1.7, base.y + 2.2, base.z + 1.7);
 		int broken = 0;
 		for (BlockPos p : BlockPos.betweenClosed(BlockPos.containing(box.minX, box.minY, box.minZ), BlockPos.containing(box.maxX, box.maxY, box.maxZ))) {
-			if (broken >= 16) break;
+			if (broken >= 24) break;
 			// keep the ground he walks on: only what sticks out above the tendril feet
 			if (p.getY() < groundBelow(level, player) + 1) continue;
 			if (!Supe.breakable(level, p, 6)) continue;
