@@ -278,13 +278,18 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			step(ctx, "butcher", () -> {
 				server.runCommand("tp @a 0 -60 0 0 0");
 				server.runCommand("theboys power set @a butcher");
-				server.runCommand("summon minecraft:pig 0 -60 6 {NoAI:1b}");
+				server.runCommand("fill -12 -64 -12 12 -64 30 minecraft:bedrock");
+				server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:grass_block");
+				server.runCommand("fill -12 -60 -12 12 -50 30 minecraft:air");
+				server.runCommand("tp @a 0 -60 0 0 0");
+				server.runCommand("summon minecraft:pig 0 -60 4 {NoAI:1b}");
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
-				ctx.getInput().lookAt(0, 15);
 				ctx.waitTicks(10);
+				ctx.getInput().lookAt(new BlockPos(0, -60, 4));
+				ctx.waitTicks(2);
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
 				ctx.waitTicks(12);
-				sideView(ctx, server, 6, -58.5, 3, 90, 10);
+				sideView(ctx, server, 5.5, -58.4, 2.2, 90, 10);
 				ctx.takeScreenshot("butcher_grab");
 				ctx.getInput().pressKey(Keys.ABILITY[2]);
 				ctx.waitTicks(25);
