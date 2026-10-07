@@ -88,6 +88,19 @@ tasks.register('dumpApi') {
 				}
 				return
 			}
+			if (line.startsWith('-c ')) {
+				def cparts = line.substring(3).trim().split(/\s*\|\s*/, 2)
+				def printing = false
+				providers.exec {
+					commandLine 'javap', '-c', '-p', '-cp', cp, cparts[0]
+					ignoreExitValue = true
+				}.standardOutput.asText.get().eachLine { l ->
+					if (l =~ cparts[1] && l.contains('(')) printing = true
+					else if (printing && l.trim().isEmpty()) printing = false
+					if (printing) println l
+				}
+				return
+			}
 			def priv = line.startsWith('-p ')
 			if (priv) line = line.substring(3).trim()
 			def parts = line.split(/\s*\|\s*/, 2)

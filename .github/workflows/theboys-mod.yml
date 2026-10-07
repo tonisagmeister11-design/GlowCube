@@ -30,6 +30,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: API reference
+        if: hashFiles('theboys-mod/ci/javap.txt') != ''
+        run: ./gradlew dumpApi --quiet --console=plain > /tmp/api.txt 2>&1 || true
+
       - name: Build
         run: ./gradlew build --console=plain
 
@@ -53,6 +57,7 @@ jobs:
           if [ -n "$JAR" ]; then cp "$JAR" /tmp/out/theboys.jar; fi
           cp run/screenshots/*.png /tmp/out/screenshots/ 2>/dev/null || true
           if [ -f run/logs/latest.log ]; then grep -v "^\s*$" run/logs/latest.log | tail -c 400000 > /tmp/out/gametest.log; fi
+          cp /tmp/api.txt /tmp/out/api.txt 2>/dev/null || true
           echo "Built from ${GITHUB_SHA}" > /tmp/out/BUILD.txt
           echo "gametest: ${{ steps.gametest.outcome }}" >> /tmp/out/BUILD.txt
           cd /tmp/out

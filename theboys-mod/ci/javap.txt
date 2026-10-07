@@ -1,0 +1,2 @@
+-c net.minecraft.world.item.ItemStack | InteractionResult use\(
+-c net.minecraft.client.multiplayer.MultiPlayerGameMode | InteractionResult useItem\(
