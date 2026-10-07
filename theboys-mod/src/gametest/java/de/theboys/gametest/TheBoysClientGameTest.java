@@ -88,7 +88,11 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().holdKey(Keys.ABILITY[0]);
 				ctx.waitTicks(10);
 				ctx.takeScreenshot("homelander_laser_third_person");
-				for (int combo = 0; combo < 12; combo++) {
+				ctx.runOnClient(mc -> EffectRenderer.debugBoxes = true);
+				ctx.waitTicks(3);
+				ctx.takeScreenshot("debug_boxes");
+				ctx.runOnClient(mc -> EffectRenderer.debugBoxes = false);
+				for (int combo = 0; combo < 3; combo++) {
 					int ph = combo % 3;
 					int type = combo / 3;
 					ctx.runOnClient(mc -> {

@@ -24,6 +24,23 @@ public final class Geo {
 		return new Vec3[] {u, v};
 	}
 
+	/** Axis aligned box, single-sided faces exactly like Fabric's test utility. */
+	public static void box(VertexConsumer b, PoseStack.Pose pose, net.minecraft.world.phys.AABB box, int color) {
+		float x0 = (float) box.minX, y0 = (float) box.minY, z0 = (float) box.minZ, x1 = (float) box.maxX, y1 = (float) box.maxY, z1 = (float) box.maxZ;
+		float[][] f = {
+				{x0, y0, z0, x1, y0, z0, x1, y1, z0, x0, y1, z0},
+				{x1, y0, z1, x0, y0, z1, x0, y1, z1, x1, y1, z1},
+				{x0, y0, z1, x0, y0, z0, x0, y1, z0, x0, y1, z1},
+				{x1, y0, z0, x1, y0, z1, x1, y1, z1, x1, y1, z0},
+				{x0, y1, z0, x1, y1, z0, x1, y1, z1, x0, y1, z1},
+				{x0, y0, z1, x1, y0, z1, x1, y0, z0, x0, y0, z0}};
+		for (float[] q : f) {
+			for (int i = 0; i < 12; i += 3) {
+				b.addVertex(pose, q[i], q[i + 1], q[i + 2]).setColor(color);
+			}
+		}
+	}
+
 	public static void quad(VertexConsumer b, PoseStack.Pose pose, Vec3 p1, Vec3 p2, Vec3 p3, Vec3 p4, int argb) {
 		v(b, pose, p1, argb);
 		v(b, pose, p2, argb);

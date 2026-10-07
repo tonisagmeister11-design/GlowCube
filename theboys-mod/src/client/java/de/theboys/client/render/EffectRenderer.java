@@ -57,8 +57,23 @@ public final class EffectRenderer {
 		if (phase == 0) render(context);
 	}
 
+	public static boolean debugBoxes;
+
 	public static void renderBeforeTranslucent(LevelRenderContext context) {
 		if (phase == 1) render(context);
+		if (debugBoxes) {
+			// exact copy of Fabric's own LevelRenderEventsTests: world coordinates after translate(-camera)
+			Minecraft mc = Minecraft.getInstance();
+			Vec3 camera = context.levelState().cameraRenderState.pos;
+			Vec3 p = mc.player.position().add(0, 3, 3);
+			context.poseStack().pushPose();
+			context.poseStack().translate(-camera.x, -camera.y, -camera.z);
+			net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(p.x, p.y, p.z, p.x + 1, p.y + 1, p.z + 1);
+			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.debugFilledBox(), (pose, buffer) -> {
+				Geo.box(buffer, pose, box, 0xFF00FF00);
+			});
+			context.poseStack().popPose();
+		}
 	}
 
 	public static void renderAfterTranslucentFeatures(LevelRenderContext context) {
