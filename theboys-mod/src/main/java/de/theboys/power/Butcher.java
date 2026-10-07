@@ -269,7 +269,7 @@ public final class Butcher {
 	}
 
 	private static Entity grabTarget(ServerPlayer player) {
-		Supe.Ray ray = Supe.ray(player, player.getEyePosition(), 22);
+		Supe.Ray ray = Supe.ray(player, player.getEyePosition(), 22, 0.8f);
 		Entity target = ray.entity();
 		if (target == null || target.isPassenger() && target.getVehicle() == player) {
 			player.sendSystemMessage(Component.translatable("message.theboys.no_target").withStyle(ChatFormatting.GRAY), true);

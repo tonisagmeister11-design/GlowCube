@@ -301,10 +301,14 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			step(ctx, "butcher_torn", () -> {
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("tp @a 0 -60 0 0 15");
+				server.runCommand("fill -12 -64 -12 12 -64 30 minecraft:bedrock");
+				server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:grass_block");
+				server.runCommand("fill -12 -60 -12 12 -50 30 minecraft:air");
 				server.runCommand("theboys power set @a butcher");
+				server.runCommand("tp @a 0 -60 0 0 0");
 				server.runCommand("summon minecraft:zombie 0 -60 4 {NoAI:1b}");
 				ctx.waitTicks(10);
-				ctx.getInput().lookAt(0, 15);
+				ctx.getInput().lookAt(new BlockPos(0, -59, 4));
 				ctx.getInput().pressKey(Keys.ABILITY[2]);
 				sideView(ctx, server, 6, -58, 4, 90, 15);
 				ctx.waitTicks(38);

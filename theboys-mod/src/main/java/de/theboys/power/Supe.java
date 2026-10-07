@@ -39,6 +39,11 @@ public final class Supe {
 	}
 
 	public static Ray ray(ServerPlayer player, Vec3 start, double range) {
+		return ray(player, start, range, 0.3f);
+	}
+
+	/** Ray cast with a custom entity margin (bigger = more forgiving aim). */
+	public static Ray ray(ServerPlayer player, Vec3 start, double range, float margin) {
 		Vec3 dir = player.getLookAngle();
 		Vec3 end = start.add(dir.scale(range));
 		ServerLevel level = player.level();
@@ -46,7 +51,7 @@ public final class Supe {
 		Vec3 blockEnd = blockHit.getType() == HitResult.Type.MISS ? end : blockHit.getLocation();
 		AABB box = new AABB(start, blockEnd).inflate(1.0);
 		Predicate<Entity> pred = e -> e != player && e.isAlive() && e.isPickable() && !e.isSpectator();
-		EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(level, player, start, blockEnd, box, pred, 0.3f);
+		EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(level, player, start, blockEnd, box, pred, margin);
 		if (entityHit != null) {
 			return new Ray(start, entityHit.getLocation(), entityHit.getEntity(), null);
 		}
