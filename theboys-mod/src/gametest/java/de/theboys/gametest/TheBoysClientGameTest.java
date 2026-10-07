@@ -301,6 +301,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			step(ctx, "butcher_torn", () -> {
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("tp @a 0 -60 0 0 15");
+				server.runCommand("theboys power set @a butcher");
 				server.runCommand("summon minecraft:zombie 0 -60 4 {NoAI:1b}");
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(0, 15);
@@ -352,8 +353,16 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("fill -2 -60 8 2 -56 9 minecraft:stone");
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(0, 10);
+				server.runCommand("theboys power set @a butcher");
+				ctx.waitTicks(5);
 				ctx.getInput().pressKey(Keys.ABILITY[3]);
-				ctx.waitTicks(30);
+				for (int i = 0; i < 6; i++) {
+					ctx.waitTicks(5);
+					String c = ctx.computeOnClient(mc -> "client y=" + mc.player.getY() + " v=" + mc.player.getDeltaMovement() + " onGround=" + mc.player.onGround()
+							+ " flag=" + PowerAttachments.active(mc.player).has(de.theboys.power.ActiveState.CANCER_WALK));
+					String sv = server.computeOnServer(s -> "server y=" + s.getPlayerList().getPlayers().get(0).getY());
+					LOG.info("cancer walk lift {}: {} | {}", i, c, sv);
+				}
 				double y = ctx.computeOnClient(mc -> mc.player.getY());
 				LOG.info("cancer walk height: {}", y);
 				sideView(ctx, server, 7, -57, 2, 70, 10);
