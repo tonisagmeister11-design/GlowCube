@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: theboys-mod
@@ -30,24 +30,35 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: API reference
-        if: hashFiles('theboys-mod/ci/javap.txt') != ''
-        run: ./gradlew dumpApi --quiet --console=plain || true
-
       - name: Build
         run: ./gradlew build --console=plain
 
-      - name: Publish jar to build branch
-        if: success()
+      - name: Install software rendering for the game test
+        run: sudo apt-get update -q && sudo apt-get install -y -q mesa-vulkan-drivers libgl1-mesa-dri xvfb
+
+      - name: Client game test (starts Minecraft, tries every power, takes screenshots)
+        id: gametest
+        continue-on-error: true
+        timeout-minutes: 20
         run: |
-          JAR=$(ls build/libs/theboys-*.jar | grep -v sources | head -n1)
-          echo "Built: $JAR"
-          mkdir -p /tmp/out && cp "$JAR" /tmp/out/theboys.jar
+          mkdir -p run
+          echo 'preferredGraphicsBackend:"opengl"' >> run/options.txt
+          xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGametest --console=plain
+
+      - name: Publish jar, screenshots and log to the build branch
+        if: always()
+        run: |
+          mkdir -p /tmp/out/screenshots
+          JAR=$(ls build/libs/theboys-*.jar 2>/dev/null | grep -v sources | head -n1 || true)
+          if [ -n "$JAR" ]; then cp "$JAR" /tmp/out/theboys.jar; fi
+          cp run/screenshots/*.png /tmp/out/screenshots/ 2>/dev/null || true
+          if [ -f run/logs/latest.log ]; then grep -v "^\s*$" run/logs/latest.log | tail -c 400000 > /tmp/out/gametest.log; fi
+          echo "Built from ${GITHUB_SHA}" > /tmp/out/BUILD.txt
+          echo "gametest: ${{ steps.gametest.outcome }}" >> /tmp/out/BUILD.txt
           cd /tmp/out
           git init -q -b theboys-mod-build
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          echo "Built from ${GITHUB_SHA}" > BUILD.txt
-          git add theboys.jar BUILD.txt
+          git add -A
           git commit -q -m "Build ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" theboys-mod-build

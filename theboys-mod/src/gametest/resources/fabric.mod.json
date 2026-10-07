@@ -1,0 +1,13 @@
+{
+	"schemaVersion": 1,
+	"id": "theboys-gametest",
+	"version": "1.0.0",
+	"name": "The Boys - Client Game Test",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": ["de.theboys.gametest.TheBoysClientGameTest"]
+	},
+	"depends": {
+		"theboys": "*"
+	}
+}

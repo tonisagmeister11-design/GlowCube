@@ -6,6 +6,13 @@ base {
 	archivesName = 'theboys'
 }
 
+sourceSets {
+	gametest {
+		compileClasspath += main.compileClasspath + main.output
+		runtimeClasspath += main.runtimeClasspath + main.output
+	}
+}
+
 loom {
 	splitEnvironmentSourceSets()
 
@@ -14,7 +21,26 @@ loom {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
+		"theboys-gametest" {
+			sourceSet sourceSets.gametest
+		}
 	}
+
+	runs {
+		// ./gradlew runClientGametest - starts a client, tries every power and takes screenshots
+		clientGametest {
+			client()
+			name "Client Game Test"
+			vmArg "-Dfabric.client.gametest"
+			source sourceSets.gametest
+			runDir "run"
+		}
+	}
+}
+
+sourceSets.gametest {
+	compileClasspath += sourceSets.client.compileClasspath + sourceSets.client.output
+	runtimeClasspath += sourceSets.client.runtimeClasspath + sourceSets.client.output
 }
 
 dependencies {
