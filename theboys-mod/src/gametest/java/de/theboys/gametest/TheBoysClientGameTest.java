@@ -102,7 +102,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 					ctx.waitTicks(4);
 					ctx.takeScreenshot("item_" + it[1] + "_first_person");
-					sideView(ctx, server, 2.2, -59, 1.6, 135, 15);
+					sideView(ctx, server, 2.6, -58.6, 2.2, 130, 18);
 					ctx.takeScreenshot("item_" + it[1] + "_third_person");
 					playerView(ctx, server);
 				}
@@ -110,7 +110,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().holdKey(o -> o.keyUse);
 				ctx.waitTicks(8);
 				ctx.takeScreenshot("item_shield_blocking_first_person");
-				sideView(ctx, server, 2.2, -59, 1.6, 135, 15);
+				sideView(ctx, server, 2.6, -58.6, 2.2, 130, 18);
 				ctx.takeScreenshot("item_shield_blocking_third_person");
 				playerView(ctx, server);
 				ctx.getInput().releaseKey(o -> o.keyUse);
@@ -291,7 +291,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 		ctx.waitTicks(3);
 		ctx.runOnClient(mc -> {
 			for (var e : mc.level.entitiesForRendering()) {
-				if (e instanceof net.minecraft.world.entity.decoration.ArmorStand) {
+				if (e instanceof net.minecraft.world.entity.decoration.ArmorStand && !e.isRemoved()) {
 					mc.setCameraEntity(e);
 				}
 			}
@@ -302,6 +302,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 	private static void playerView(ClientGameTestContext ctx, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server) {
 		ctx.runOnClient(mc -> mc.setCameraEntity(mc.player));
 		server.runCommand("kill @e[type=minecraft:armor_stand]");
+		ctx.waitTicks(3);
 	}
 
 	private interface Step {
