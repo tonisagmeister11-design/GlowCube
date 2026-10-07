@@ -46,6 +46,9 @@ public class SyringeItem extends Item {
 
 	public static final int INJECT_TICKS = 36;
 
+	/** When each player last finished an injection (server side), to ignore the click that follows right after. */
+	private static final java.util.Map<java.util.UUID, Long> LAST_INJECTION = new java.util.HashMap<>();
+
 	private final Kind kind;
 
 	public SyringeItem(Kind kind, Properties properties) {
@@ -61,7 +64,9 @@ public class SyringeItem extends Item {
 	public InteractionResult use(Level level, Player player, InteractionHand hand) {
 		Power current = PowerAttachments.powerOf(player);
 		if (kind == Kind.URANIUM ? current == Power.NONE : current != Power.NONE) {
-			if (player instanceof ServerPlayer sp) {
+			Long last = LAST_INJECTION.get(player.getUUID());
+			boolean justInjected = last != null && level.getGameTime() - last < 15;
+			if (player instanceof ServerPlayer sp && !justInjected) {
 				sp.sendSystemMessage(Component.translatable(kind == Kind.URANIUM
 						? "message.theboys.nothing_to_remove" : "message.theboys.already_powered").withStyle(ChatFormatting.RED), true);
 			}
@@ -88,6 +93,7 @@ public class SyringeItem extends Item {
 			return stack;
 		}
 		Power current = PowerAttachments.powerOf(player);
+		LAST_INJECTION.put(player.getUUID(), level.getGameTime());
 		switch (kind) {
 			case COMPOUND_V, V_ONE -> {
 				if (current != Power.NONE) return stack;
