@@ -254,6 +254,9 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.takeScreenshot("a_train_time_jump");
 				ctx.getInput().releaseKey(o -> o.keyUp);
 				ctx.waitTicks(100);
+				// at 1000 km/h he ends up hundreds of blocks away and the test area unloads: go back before checking
+				server.runCommand("tp @a 0 -60 0 0 0");
+				ctx.waitTicks(30);
 				boolean hasDiamond = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getInventory().countItem(net.minecraft.world.item.Items.DIAMOND) > 0);
 				String gold = server.computeOnServer(s -> s.overworld().getBlockState(new BlockPos(4, -60, -4)).toString());
 				double zombieZ = server.computeOnServer(s -> {
@@ -506,6 +509,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					}
 					// the same moves seen from the front (F5)
 					playerView(ctx, server);
+					server.runCommand("kill @e[type=minecraft:husk]");
+					ctx.getInput().lookAt(0, 0);
 					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
 					ctx.waitTicks(30);
 					for (int i = 0; i < swings; i++) {
@@ -515,6 +520,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 						ctx.waitTicks(6);
 					}
 					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+					server.runCommand("summon minecraft:husk 0.5 -60 2.8 {NoAI:1b,Invulnerable:1b,Silent:1b,Rotation:[180f,0f]}");
+					ctx.getInput().lookAt(new BlockPos(0, -59, 2));
 					int combo = ctx.computeOnClient(mc -> {
 						var sw = de.theboys.client.CombatAnim.get(mc.player.getId());
 						return sw == null ? -1 : sw.combo;
@@ -540,14 +547,20 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				float lean = ctx.computeOnClient(mc -> de.theboys.client.BodyLean.current(mc.player));
 				ctx.takeScreenshot("fight_homelander_flight_back");
 				// a camera beside his flight path for one frame
-				server.runCommand("execute at @p run summon minecraft:armor_stand ~5.5 ~0.2 ~7 {Invisible:1b,NoGravity:1b,Marker:1b,Rotation:[90f,4f]}");
+				server.runCommand("execute at @p run summon minecraft:armor_stand ~5.5 ~0.2 ~ {Invisible:1b,NoGravity:1b,Marker:1b,Rotation:[90f,4f]}");
 				ctx.waitTicks(1);
-				ctx.runOnClient(mc -> {
-					for (var e : mc.level.entitiesForRendering()) {
-						if (e instanceof net.minecraft.world.entity.decoration.ArmorStand && !e.isRemoved()) mc.setCameraEntity(e);
-					}
-				});
-				ctx.waitTicks(2);
+				for (int i = 0; i < 3; i++) {
+					// the camera stand follows him client side, beside his flight path
+					ctx.runOnClient(mc -> {
+						for (var e : mc.level.entitiesForRendering()) {
+							if (e instanceof net.minecraft.world.entity.decoration.ArmorStand && !e.isRemoved()) {
+								e.snapTo(mc.player.getX() + 5.5, mc.player.getY() + 0.3, mc.player.getZ() + 0.6, 90f, 4f);
+								mc.setCameraEntity(e);
+							}
+						}
+					});
+					ctx.waitTicks(1);
+				}
 				ctx.takeScreenshot("fight_homelander_flight_side");
 				playerView(ctx, server);
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
