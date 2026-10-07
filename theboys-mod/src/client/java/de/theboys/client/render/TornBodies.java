@@ -232,8 +232,8 @@ public final class TornBodies {
 			org.joml.Matrix4f m = rotation(b, b.roll);
 			Vec3 wound = b.pos.add(rotate(m, b.mesh.wound));
 			Vec3 out = rotate(m, b.mesh.woundNormal);
-			int n = b.age < 15 ? 7 : 2;
-			double reach = Math.max(0.1, b.h * 0.25);
+			int n = b.age < 10 ? 3 : 1;
+			double reach = Math.max(0.08, b.h * 0.12);
 			for (int i = 0; i < n; i++) {
 				Vec3 spray = out.scale(0.18 + rnd.nextDouble() * 0.12).add(0, 0.12 + rnd.nextDouble() * 0.2, 0);
 				level.addParticle(new DustParticleOptions(i % 3 == 0 ? 0x5A0000 : 0x9A0606, 1.3f),

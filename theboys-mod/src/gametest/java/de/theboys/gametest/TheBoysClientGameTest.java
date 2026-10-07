@@ -237,7 +237,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				// things that happen now must be undone by the Time Jump:
 				// a dropped item, a placed block, a mob that walks away
 				server.runCommand("tp @a 0 -60 0 0 0");
-				server.runCommand("summon minecraft:zombie 6 -60 6 {NoAI:1b,Tags:[\"rewind\"]}");
+				server.runCommand("summon minecraft:husk 6 -60 6 {NoAI:1b,PersistenceRequired:1b,Tags:[\"rewind\"]}");
 				ctx.waitTicks(10);
 				server.runCommand("give @a minecraft:diamond 1");
 				ctx.waitTicks(4);
@@ -258,13 +258,14 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				String gold = server.computeOnServer(s -> s.overworld().getBlockState(new BlockPos(4, -60, -4)).toString());
 				double zombieZ = server.computeOnServer(s -> {
 					for (var e : s.overworld().getAllEntities()) {
-						if (e.getType() == net.minecraft.world.entity.EntityTypes.ZOMBIE) return e.getZ();
+						if (e.getType() == net.minecraft.world.entity.EntityTypes.HUSK) return e.getZ();
 					}
 					return -999.0;
 				});
 				LOG.info("time jump: diamond back={} gold block now={} zombie z={}", hasDiamond, gold, zombieZ);
 				if (!hasDiamond) throw new AssertionError("dropped diamond did not come back");
 				if (gold.contains("gold_block")) throw new AssertionError("placed block was not undone");
+				if (zombieZ < -900) throw new AssertionError("rewound mob is gone");
 				if (zombieZ > 8.5) throw new AssertionError("zombie did not walk back, z=" + zombieZ);
 				ctx.getInput().pressKey(Keys.ABILITY[0]);
 				server.runCommand("kill @e[type=!player]");
@@ -365,6 +366,30 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					total += torn;
 				}
 				LOG.info("every mob torn through its model: {}", total);
+			});
+
+			step(ctx, "tear_closeup", () -> {
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("tp @a 0 -60 -6 0 0");
+				server.runCommand("summon minecraft:zombie -5 -60 5 {NoAI:1b,Silent:1b,Rotation:[180f,0f]}");
+				server.runCommand("summon minecraft:cow 5 -60 5 {NoAI:1b,Silent:1b,Rotation:[90f,0f]}");
+				server.runCommand("summon minecraft:iron_golem 0 -60 9 {NoAI:1b,Silent:1b,Rotation:[180f,0f]}");
+				ctx.waitTicks(20);
+				sideView(ctx, server, 0, -57.2, -3, 0, 24);
+				ctx.takeScreenshot("tear_closeup_0_before");
+				server.runOnServer(s -> {
+					var player = s.getPlayerList().getPlayers().get(0);
+					List<net.minecraft.world.entity.Entity> victims = new ArrayList<>();
+					for (var e : s.overworld().getAllEntities()) if (e instanceof net.minecraft.world.entity.Mob && e.isAlive()) victims.add(e);
+					for (var e : victims) de.theboys.power.Butcher.tearApart(player, e, 90f);
+				});
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("tear_closeup_1_flying");
+				ctx.waitTicks(30);
+				ctx.takeScreenshot("tear_closeup_2_landed");
+				ctx.waitTicks(60);
+				ctx.takeScreenshot("tear_closeup_3_lying");
+				playerView(ctx, server);
 			});
 
 			step(ctx, "super_cancer", () -> {

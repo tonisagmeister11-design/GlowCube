@@ -326,7 +326,7 @@ public final class Butcher {
 		if (!(victim instanceof ServerPlayer)) {
 			victim.discard();
 		}
-		Supe.blood(level, at.add(0, h / 2, 0), 4.5f);
+		Supe.blood(level, at.add(0, h / 2, 0), 2.0f);
 		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.SHAKE, player.getId(), (float) at.x, (float) at.y, (float) at.z, 1.2f, 0, 0));
 		Supe.sound(level, at, SoundEvents.PLAYER_HURT, 1.5f, 0.5f);
 		Supe.sound(level, at, SoundEvents.ZOMBIE_BREAK_WOODEN_DOOR, 0.8f, 1.6f);
