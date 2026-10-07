@@ -2,6 +2,7 @@ package de.theboys.client.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -37,9 +38,9 @@ public abstract class FirstPersonHandsAndItemsRendererMixin {
 		float stab = p < 0.3f ? 0f : p < 0.45f ? smooth((p - 0.3f) / 0.15f) : p < 0.85f ? 1f : 1f - smooth((p - 0.85f) / 0.15f);
 		float shake = p > 0.45f && p < 0.85f ? Mth.sin(used * 2.4f) * 0.008f : 0f;
 		poseStack.translate(-0.55f * move * side, -0.18f * move + 0.06f * stab, 0.1f * move - 0.12f * stab);
-		poseStack.mulPose(Axis.YP.rotationDegrees(-35f * move * side));
-		poseStack.mulPose(Axis.ZP.rotationDegrees(60f * move * side));
-		poseStack.mulPose(Axis.XP.rotationDegrees(-20f * stab));
+		poseStack.mulPose(new Matrix4f().rotation(Axis.YP.rotationDegrees(-35f * move * side)));
+		poseStack.mulPose(new Matrix4f().rotation(Axis.ZP.rotationDegrees(60f * move * side)));
+		poseStack.mulPose(new Matrix4f().rotation(Axis.XP.rotationDegrees(-20f * stab)));
 		poseStack.translate(shake, shake, 0);
 	}
 

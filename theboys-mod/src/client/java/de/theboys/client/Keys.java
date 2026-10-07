@@ -43,7 +43,7 @@ public final class Keys {
 			return;
 		}
 		for (int i = 0; i < 4; i++) {
-			boolean down = ABILITY[i].isDown() && mc.screen == null;
+			boolean down = ABILITY[i].isDown();
 			if (down != WAS_DOWN[i]) {
 				WAS_DOWN[i] = down;
 				ClientPlayNetworking.send(new AbilityKeyPayload(i, down));
