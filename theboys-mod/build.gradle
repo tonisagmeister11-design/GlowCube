@@ -61,10 +61,11 @@ tasks.register('dumpApi') {
 				}
 				return
 			}
+			def priv = line.startsWith('-p ')
+			if (priv) line = line.substring(3).trim()
 			def parts = line.split(/\s*\|\s*/, 2)
-			def out = new ByteArrayOutputStream()
 			providers.exec {
-				commandLine 'javap', '-cp', cp, parts[0]
+				commandLine priv ? ['javap', '-p', '-cp', cp, parts[0]] : ['javap', '-cp', cp, parts[0]]
 				ignoreExitValue = true
 			}.standardOutput.asText.get().eachLine { l ->
 				if (parts.length == 1 || l =~ parts[1] || l.contains('class ') || l.contains('interface ')) println l

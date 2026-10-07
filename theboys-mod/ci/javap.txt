@@ -1,39 +1,22 @@
-net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer
-net.minecraft.client.player.FirstPersonHandsAndItems
-net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState
-net.minecraft.util.LightCoordsUtil
-net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile
-net.minecraft.world.entity.projectile.ThrowableProjectile | (protected|public)
-net.minecraft.world.entity.projectile.Projectile | (onHit|tick|canHitEntity|onHitEntity|onHitBlock|setNoGravity|isNoGravity|getDefaultGravity)
-net.minecraft.world.entity.Entity | (tick\(|defineSynchedData|addAdditionalSaveData|readAdditionalSaveData|getDefaultGravity|applyGravity|move\(|MoverType|setRot|getItemOwner)
-net.minecraft.client.multiplayer.MultiPlayerGameMode | (useItem|releaseUsingItem)
-net.minecraft.server.network.ServerGamePacketListenerImpl | (shouldCheck|isSingleplayerOwner|aboveGroundTickCount|resetPosition)
-net.minecraft.tags.DamageTypeTags | (IS_FIRE|IS_FALL|IS_EXPLOSION)
-net.minecraft.world.damagesource.DamageSource | (is\(|getEntity|getDirectEntity)
-net.minecraft.client.player.ClientInput
-net.minecraft.world.phys.Vec2
-net.minecraft.world.item.ItemStack | (isEmpty|getItem|shrink|copy|is\(|EMPTY|getCount|split|copyWithCount|ItemStack\()
-net.minecraft.world.entity.player.Player | (getUseItem|isLocalPlayer|getMainArm|attack\(|hurtServer|isHurt|getFoodData)
-net.minecraft.client.renderer.entity.EntityRendererProvider$Context | (get)
-net.minecraft.world.entity.MobCategory | MISC
-net.minecraft.world.level.levelgen.Heightmap$Types
-net.minecraft.world.level.LightLayer
-net.minecraft.world.level.Level | (getBrightness|getMaxLocalRawBrightness|getRawBrightness|getLightEngine|getSharedSpawnPos|getGameRules|dimension\(|isLoaded|hasChunkAt)
-net.minecraft.world.level.BlockAndTintGetter | (getBrightness|getRawBrightness)
-net.minecraft.world.level.gamerules.GameRules | (MOB_GRIEFING|get\()
-net.minecraft.network.chat.Component | static
-net.minecraft.network.chat.MutableComponent | (withStyle|withColor|append)
-net.minecraft.ChatFormatting | static final
-net.minecraft.world.item.Rarity
-net.minecraft.sounds.SoundSource
-net.minecraft.world.item.component.ItemAttributeModifiers | (builder|add|EMPTY)
-net.minecraft.world.item.component.ItemAttributeModifiers$Builder
-net.minecraft.world.entity.EquipmentSlotGroup | MAINHAND
-net.minecraft.world.entity.ai.attributes.AttributeModifier$Operation
-net.minecraft.world.item.Item | (BASE_ATTACK_DAMAGE_ID|BASE_ATTACK_SPEED_ID)
-net.minecraft.client.Options | (keyUse|keyUp|keyJump|keySprint|getCameraType|fov|keyAttack)
-net.minecraft.client.player.LocalPlayer | (tick|aiStep|sendPosition|getXRot)
-net.minecraft.world.entity.LivingEntity | (getArmorValue|isSprinting|setJumping|hurtTime|deathTime|getLastDamageSource)
-net.minecraft.core.BlockPos | (containing|offset|above|below|relative|immutable|getCenter|betweenClosed|MutableBlockPos)
-net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry
-net.minecraft.world.entity.projectile.ItemSupplier
+-p net.minecraft.server.network.ServerGamePacketListenerImpl | (shouldCheck|isSingleplayerOwner|aboveGroundTick|clientIsFloating|handleMovePlayer)
+-p net.minecraft.world.entity.Entity | (hurtMarked|needsSync|markHurt|invulnerableTime)
+-p net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer | (private|protected)
+-p net.minecraft.world.level.Level | (boolean setBlock)
+-p net.minecraft.world.entity.LivingEntity | (invulnerableTime)
+net.minecraft.world.level.block.TransparentBlock
+net.minecraft.world.item.component.BlocksAttacks$DamageReduction
+net.minecraft.world.item.component.BlocksAttacks$ItemDamageFunction
+net.minecraft.world.item.ToolMaterial | static
+net.minecraft.world.level.block.SoundType | (METAL|GLASS|STONE|NETHERITE)
+net.minecraft.world.level.material.MapColor | (SNOW|COLOR_GRAY|METAL|COLOR_BLUE)
+net.minecraft.world.entity.player.Player | (hurtMarked|getUseItemRemainingTicks)
+net.minecraft.world.level.block.LiquidBlock | class
+net.minecraft.core.particles.BlockParticleOption | BlockParticleOption\(
+net.minecraft.world.entity.Entity$RemovalReason
+net.minecraft.client.renderer.state.level.LevelRenderState | (public|final)
+net.minecraft.client.renderer.entity.state.PlayerRenderState
+net.minecraft.world.level.block.state.BlockBehaviour | (codec|simpleCodec)
+net.minecraft.world.level.block.Block | (codec|simpleCodec|propagatesSkylightDown|skipRendering)
+net.minecraft.world.level.block.HorizontalDirectionalBlock | codec
+net.minecraft.world.item.Item$TooltipContext
+net.minecraft.network.chat.Style | (withColor|withBold)
