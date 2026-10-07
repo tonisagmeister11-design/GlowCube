@@ -73,6 +73,22 @@ public final class EffectRenderer {
 				Geo.box(buffer, pose, box, 0xFF00FF00);
 			});
 			context.poseStack().popPose();
+			// my own beam geometry, once in world coordinates (translated pose) and once camera-relative
+			Vec3 a = mc.player.position().add(-2, 2, 2);
+			Vec3 b2 = mc.player.position().add(-2, 2, 12);
+			context.poseStack().pushPose();
+			context.poseStack().translate(-camera.x, -camera.y, -camera.z);
+			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.debugFilledBox(), (pose, buffer) -> {
+				Geo.beam(buffer, pose, a, b2, 0.3, 0xFFFFFF00);
+			});
+			context.poseStack().popPose();
+			Vec3 c1 = mc.player.position().add(2, 2, 2).subtract(camera);
+			Vec3 c2 = mc.player.position().add(2, 2, 12).subtract(camera);
+			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.debugFilledBox(), (pose, buffer) -> {
+				Geo.beam(buffer, pose, c1, c2, 0.3, 0xFF00FFFF);
+			});
+			org.joml.Matrix4f m = context.poseStack().last().pose();
+			de.theboys.TheBoys.LOGGER.info("level pose: {} camera {}", m, camera);
 		}
 	}
 
