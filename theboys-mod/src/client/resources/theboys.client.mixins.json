@@ -6,7 +6,6 @@
 		"AbstractClientPlayerMixin",
 		"AvatarRendererMixin",
 		"FirstPersonHandsAndItemsRendererMixin",
-		"LivingEntityRendererMixin",
 		"MinecraftMixin",
 		"PlayerModelMixin"
 	],

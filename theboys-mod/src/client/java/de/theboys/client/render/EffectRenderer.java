@@ -44,8 +44,6 @@ public final class EffectRenderer {
 
 	/** Which level render phase draws the effects (switchable for testing). */
 	public static int phase = 0;
-	/** Render type used for glowing geometry (switchable for testing). */
-	public static int glowType = 0;
 	public static int debugCalls;
 	public static int debugGlows;
 	public static int debugTendrils;
@@ -57,39 +55,8 @@ public final class EffectRenderer {
 		if (phase == 0) render(context);
 	}
 
-	public static boolean debugBoxes;
-
 	public static void renderBeforeTranslucent(LevelRenderContext context) {
 		if (phase == 1) render(context);
-		if (debugBoxes) {
-			// exact copy of Fabric's own LevelRenderEventsTests: world coordinates after translate(-camera)
-			Minecraft mc = Minecraft.getInstance();
-			Vec3 camera = context.levelState().cameraRenderState.pos;
-			Vec3 p = mc.player.position().add(0, 3, 3);
-			context.poseStack().pushPose();
-			context.poseStack().translate(-camera.x, -camera.y, -camera.z);
-			net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(p.x, p.y, p.z, p.x + 1, p.y + 1, p.z + 1);
-			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.debugFilledBox(), (pose, buffer) -> {
-				Geo.box(buffer, pose, box, 0xFF00FF00);
-			});
-			context.poseStack().popPose();
-			// my own beam geometry, once in world coordinates (translated pose) and once camera-relative
-			Vec3 a = mc.player.position().add(-2, 2, 2);
-			Vec3 b2 = mc.player.position().add(-2, 2, 12);
-			context.poseStack().pushPose();
-			context.poseStack().translate(-camera.x, -camera.y, -camera.z);
-			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.debugFilledBox(), (pose, buffer) -> {
-				Geo.beam(buffer, pose, a, b2, 0.3, 0xFFFFFF00);
-			});
-			context.poseStack().popPose();
-			Vec3 c1 = mc.player.position().add(2, 2, 2).subtract(camera);
-			Vec3 c2 = mc.player.position().add(2, 2, 12).subtract(camera);
-			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.debugFilledBox(), (pose, buffer) -> {
-				Geo.beam(buffer, pose, c1, c2, 0.3, 0xFF00FFFF);
-			});
-			org.joml.Matrix4f m = context.poseStack().last().pose();
-			de.theboys.TheBoys.LOGGER.info("level pose: {} camera {}", m, camera);
-		}
 	}
 
 	public static void renderAfterTranslucentFeatures(LevelRenderContext context) {
@@ -143,7 +110,7 @@ public final class EffectRenderer {
 				heatVision(level, p, pt, self, time, glows);
 			}
 			if (state.has(ActiveState.CHEST_BEAM)) {
-				chestBeam(level, p, pt, time, glows);
+				chestBeam(level, p, pt, time, self, glows);
 			}
 			if (state.has(ActiveState.NUKE_CHARGE)) {
 				float c = Math.min(1f, state.charge() / (float) SoldierBoy.MAX_CHARGE);
@@ -214,13 +181,7 @@ public final class EffectRenderer {
 		debugGlows = glows.size();
 		debugTendrils = tendrils.size();
 		if (!glows.isEmpty()) {
-			var type = switch (glowType) {
-				case 1 -> RenderTypes.debugFilledBox();
-				case 2 -> RenderTypes.debugQuads();
-				case 3 -> RenderTypes.dragonRays();
-				default -> RenderTypes.lightning();
-			};
-			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), type, (pose, buffer) -> {
+			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.lightning(), (pose, buffer) -> {
 				for (Glow g : glows) g.draw(buffer, pose, cam);
 			});
 		}
@@ -244,21 +205,22 @@ public final class EffectRenderer {
 		Vec3 right = dir.cross(new Vec3(0, 1, 0)).normalize();
 		if (right.lengthSqr() < 0.01) right = new Vec3(1, 0, 0);
 		double flicker = 1 + 0.15 * Math.sin((time + pt) * 2.3);
+		double scale = self ? 0.45 : 1.0;
 		for (int side = -1; side <= 1; side += 2) {
-			Vec3 start = eye.add(right.scale(0.095 * side)).add(dir.scale(self ? 0.35 : 0.2));
-			if (self) start = start.add(0, -0.12, 0);
-			glows.add(Glow.beam(start, end, 0.075 * flicker, argb(0.35f, 0xFF1A1A)));
-			glows.add(Glow.beam(start, end, 0.035, argb(0.75f, 0xFF3020)));
-			glows.add(Glow.beam(start, end, 0.012, argb(0.95f, 0xFFE0D0)));
+			Vec3 start = eye.add(right.scale((self ? 0.16 : 0.095) * side)).add(dir.scale(self ? 1.1 : 0.2));
+			if (self) start = start.add(0, -0.2, 0);
+			glows.add(Glow.beam(start, end, 0.075 * flicker * scale, argb(0.35f, 0xFF1A1A)));
+			glows.add(Glow.beam(start, end, 0.035 * scale, argb(0.75f, 0xFF3020)));
+			glows.add(Glow.beam(start, end, 0.012 * scale, argb(0.95f, 0xFFE0D0)));
 			if (!self) glows.add(Glow.sphere(start, 0.06, argb(0.9f, 0xFF2A1A)));
 		}
 		glows.add(Glow.sphere(end, 0.25 * flicker, argb(0.6f, 0xFF4020)));
 		glows.add(Glow.sphere(end, 0.1, argb(0.9f, 0xFFF0C0)));
 	}
 
-	private static void chestBeam(ClientLevel level, AbstractClientPlayer p, float pt, long time, List<Glow> glows) {
+	private static void chestBeam(ClientLevel level, AbstractClientPlayer p, float pt, long time, boolean self, List<Glow> glows) {
 		Vec3 dir = p.getViewVector(pt);
-		Vec3 start = chest(p, pt).add(dir.scale(0.35));
+		Vec3 start = chest(p, pt).add(dir.scale(self ? 1.2 : 0.35));
 		Vec3 end = hit(level, p, start, dir, 40);
 		double wobble = 1 + 0.1 * Math.sin((time + pt) * 1.7);
 		glows.add(Glow.beam(start, end, 0.38 * wobble, argb(0.3f, 0xFF6A00)));

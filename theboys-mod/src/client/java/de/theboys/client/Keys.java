@@ -26,9 +26,28 @@ public final class Keys {
 	public static final KeyMapping SUIT = register("suit", SDLScancode.SDL_SCANCODE_J);
 
 	private static final boolean[] WAS_DOWN = new boolean[4];
+	private static boolean pressedFlight;
 	private static int injectHold;
 
 	private Keys() {
+	}
+
+	/** Homelander's flight key: take off right away (the server only grants the ability). */
+	private static void homelanderFlight(Minecraft mc) {
+		var player = mc.player;
+		if (de.theboys.power.PowerAttachments.powerOf(player) != de.theboys.power.Power.HOMELANDER || player.isCreative() || player.isSpectator()) {
+			return;
+		}
+		var abilities = player.getAbilities();
+		if (!abilities.mayfly) {
+			// flight is being switched on: the key packet was sent first, so the server allows it
+			abilities.mayfly = true;
+			abilities.flying = true;
+			player.setDeltaMovement(player.getDeltaMovement().x, 0.9, player.getDeltaMovement().z);
+		} else {
+			abilities.flying = false;
+		}
+		player.onUpdateAbilities();
 	}
 
 	private static KeyMapping register(String name, int scancode) {
@@ -42,6 +61,7 @@ public final class Keys {
 		if (mc.player == null || !ClientPlayNetworking.canSend(AbilityKeyPayload.TYPE)) {
 			return;
 		}
+		boolean flightKey = ABILITY[1].isDown() && !WAS_DOWN[1];
 		for (int i = 0; i < 4; i++) {
 			boolean down = ABILITY[i].isDown();
 			boolean clicked = false;
@@ -49,6 +69,7 @@ public final class Keys {
 				clicked = true;
 			}
 			if (clicked && !WAS_DOWN[i] && !down) {
+				if (i == 1) pressedFlight = true;
 				// pressed and released within one tick
 				ClientPlayNetworking.send(new AbilityKeyPayload(i, true));
 				ClientPlayNetworking.send(new AbilityKeyPayload(i, false));
@@ -62,6 +83,10 @@ public final class Keys {
 				ClientPlayNetworking.send(new AbilityKeyPayload(i, down));
 			}
 		}
+		if (flightKey || pressedFlight) {
+			homelanderFlight(mc);
+		}
+		pressedFlight = false;
 		while (SUIT.consumeClick()) {
 			ClientPlayNetworking.send(new AbilityKeyPayload(AbilityKeyPayload.SUIT, true));
 		}

@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import de.theboys.client.Keys;
-import de.theboys.client.render.EffectRenderer;
 import de.theboys.power.Power;
 import de.theboys.power.PowerAttachments;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -88,27 +87,13 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().holdKey(Keys.ABILITY[0]);
 				ctx.waitTicks(10);
 				ctx.takeScreenshot("homelander_laser_third_person");
-				ctx.runOnClient(mc -> EffectRenderer.debugBoxes = true);
-				ctx.waitTicks(3);
-				ctx.takeScreenshot("debug_boxes");
-				ctx.runOnClient(mc -> EffectRenderer.debugBoxes = false);
-				for (int combo = 0; combo < 3; combo++) {
-					int ph = combo % 3;
-					int type = combo / 3;
-					ctx.runOnClient(mc -> {
-						EffectRenderer.phase = ph;
-						EffectRenderer.glowType = type;
-					});
-					ctx.waitTicks(3);
-					ctx.takeScreenshot("laser_phase_" + ph + "_type_" + type);
-					String info = ctx.computeOnClient(mc -> "flags=" + PowerAttachments.active(mc.player).flags()
-							+ " calls=" + EffectRenderer.debugCalls + " glows=" + EffectRenderer.debugGlows);
-					LOG.info("laser render phase {}: {}", ph, info);
-				}
-				ctx.runOnClient(mc -> {
-					EffectRenderer.phase = 0;
-					EffectRenderer.glowType = 0;
-				});
+				sideView(ctx, server, 7, -58.5, 5, 90, 5);
+				ctx.takeScreenshot("homelander_laser_side");
+				ctx.getInput().lookAt(-25, -20);
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("homelander_laser_sky");
+				ctx.getInput().lookAt(0, 0);
+				playerView(ctx, server);
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				ctx.waitTicks(3);
 				ctx.takeScreenshot("homelander_laser_first_person");
@@ -133,6 +118,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("tp @a 0 -60 0 0 0");
 				server.runCommand("theboys power set @a soldier_boy");
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.getInput().lookAt(30, 0);
+				sideView(ctx, server, 8, -58, 8, 120, 10);
 				ctx.getInput().holdKey(Keys.ABILITY[0]);
 				ctx.waitTicks(12);
 				ctx.takeScreenshot("soldier_boy_beam");
@@ -141,8 +128,11 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(50);
 				ctx.takeScreenshot("soldier_boy_nuke_charge");
 				ctx.getInput().releaseKey(Keys.ABILITY[1]);
-				ctx.waitTicks(6);
+				ctx.waitTicks(4);
 				ctx.takeScreenshot("soldier_boy_nuke");
+				ctx.waitTicks(6);
+				ctx.takeScreenshot("soldier_boy_nuke_2");
+				playerView(ctx, server);
 				ctx.waitTicks(40);
 			});
 
@@ -158,6 +148,10 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().holdKey(o -> o.keySprint);
 				ctx.waitTicks(12);
 				ctx.takeScreenshot("a_train_running");
+				sideView(ctx, server, 10, -58, 30, 110, 5);
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("a_train_running_side");
+				playerView(ctx, server);
 				ctx.waitTicks(20);
 				ctx.getInput().releaseKey(o -> o.keyUp);
 				ctx.getInput().releaseKey(o -> o.keySprint);
@@ -189,15 +183,21 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(10);
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
 				ctx.waitTicks(12);
+				sideView(ctx, server, 6, -58.5, 3, 90, 10);
 				ctx.takeScreenshot("butcher_grab");
 				ctx.getInput().pressKey(Keys.ABILITY[2]);
 				ctx.waitTicks(25);
 				ctx.takeScreenshot("butcher_rip");
+				ctx.waitTicks(16);
+				ctx.takeScreenshot("butcher_rip_end");
+				playerView(ctx, server);
 				ctx.waitTicks(30);
 				ctx.getInput().lookAt(0, 30);
+				sideView(ctx, server, 6, -58.5, 3, 90, 10);
 				ctx.getInput().pressKey(Keys.ABILITY[0]);
-				ctx.waitTicks(4);
+				ctx.waitTicks(3);
 				ctx.takeScreenshot("butcher_lash");
+				playerView(ctx, server);
 				ctx.waitTicks(20);
 			});
 
@@ -206,7 +206,12 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("give @a theboys:uranium_injector");
 				ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
-				String direct = ctx.computeOnClient(mc -> "power(client)=" + PowerAttachments.powerOf(mc.player) + " use=" + mc.gameMode.useItem(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND) + " using=" + mc.player.isUsingItem());
+				String direct = ctx.computeOnClient(mc -> "power(client)=" + PowerAttachments.powerOf(mc.player)
+						+ " cooldown=" + mc.player.getCooldowns().isOnCooldown(mc.player.getMainHandItem())
+						+ " mode=" + mc.gameMode.getPlayerMode()
+						+ " directUse=" + mc.player.getMainHandItem().use(mc.level, mc.player, net.minecraft.world.InteractionHand.MAIN_HAND)
+						+ " usingAfterDirect=" + mc.player.isUsingItem());
+				ctx.runOnClient(mc -> mc.player.stopUsingItem());
 				LOG.info("remove step direct use: {}", direct);
 				ctx.getInput().pressKey(Keys.INJECT);
 				for (int i = 0; i < 6; i++) {
@@ -221,6 +226,27 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 		if (!failures.isEmpty()) {
 			throw new AssertionError("The Boys game test failures: " + failures);
 		}
+	}
+
+	/** Looks at the player from the side through an invisible armor stand. */
+	private static void sideView(ClientGameTestContext ctx, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server,
+			double x, double y, double z, float yaw, float pitch) {
+		server.runCommand(String.format(java.util.Locale.ROOT,
+				"summon minecraft:armor_stand %.2f %.2f %.2f {Invisible:1b,NoGravity:1b,Marker:1b,Rotation:[%.1ff,%.1ff]}", x, y, z, yaw, pitch));
+		ctx.waitTicks(3);
+		ctx.runOnClient(mc -> {
+			for (var e : mc.level.entitiesForRendering()) {
+				if (e instanceof net.minecraft.world.entity.decoration.ArmorStand) {
+					mc.setCameraEntity(e);
+				}
+			}
+		});
+		ctx.waitTicks(2);
+	}
+
+	private static void playerView(ClientGameTestContext ctx, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server) {
+		ctx.runOnClient(mc -> mc.setCameraEntity(mc.player));
+		server.runCommand("kill @e[type=minecraft:armor_stand]");
 	}
 
 	private interface Step {
