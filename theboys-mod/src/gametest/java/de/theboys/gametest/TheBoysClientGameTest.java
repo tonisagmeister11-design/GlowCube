@@ -520,23 +520,31 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
 				ctx.waitTicks(4);
 				ctx.getInput().lookAt(0, 0);
-				sideView(ctx, server, 6, -45, -30, 90, 5);
-				// with the camera on the armor stand the player takes no key input, so push him directly
-				for (int i = 0; i < 16; i++) {
-					ctx.runOnClient(mc -> mc.player.setDeltaMovement(0, 0, 1.3));
-					server.runCommand("execute as @e[type=minecraft:armor_stand] at @p run tp @s ~6.5 ~0.3 ~1 90 4");
-					ctx.waitTicks(1);
-				}
-				ctx.takeScreenshot("fight_homelander_flight_side");
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.getInput().holdKey(o -> o.keyUp);
+				ctx.getInput().holdKey(o -> o.keySprint);
+				ctx.waitTicks(20);
 				float lean = ctx.computeOnClient(mc -> de.theboys.client.BodyLean.current(mc.player));
-				ctx.getInput().lookAt(0, -70);
-				for (int i = 0; i < 14; i++) {
-					ctx.runOnClient(mc -> mc.player.setDeltaMovement(0, 1.0, 0.05));
-					server.runCommand("execute as @e[type=minecraft:armor_stand] at @p run tp @s ~6.5 ~0.3 ~ 90 0");
-					ctx.waitTicks(1);
-				}
-				ctx.takeScreenshot("fight_homelander_flight_up");
+				ctx.takeScreenshot("fight_homelander_flight_back");
+				// a camera beside his flight path for one frame
+				server.runCommand("execute at @p run summon minecraft:armor_stand ~5.5 ~0.2 ~7 {Invisible:1b,NoGravity:1b,Marker:1b,Rotation:[90f,4f]}");
+				ctx.waitTicks(1);
+				ctx.runOnClient(mc -> {
+					for (var e : mc.level.entitiesForRendering()) {
+						if (e instanceof net.minecraft.world.entity.decoration.ArmorStand && !e.isRemoved()) mc.setCameraEntity(e);
+					}
+				});
+				ctx.waitTicks(2);
+				ctx.takeScreenshot("fight_homelander_flight_side");
+				playerView(ctx, server);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.getInput().lookAt(0, -75);
+				ctx.waitTicks(16);
 				float leanUp = ctx.computeOnClient(mc -> de.theboys.client.BodyLean.current(mc.player));
+				ctx.takeScreenshot("fight_homelander_flight_up");
+				ctx.getInput().releaseKey(o -> o.keyUp);
+				ctx.getInput().releaseKey(o -> o.keySprint);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				LOG.info("homelander flight lean up={}", leanUp);
 				playerView(ctx, server);
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
