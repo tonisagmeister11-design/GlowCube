@@ -49,7 +49,8 @@ genauso, und auch in der Third-Person-Ansicht (F5) sind sie zu sehen.
   verbrennt Gegner, schmilzt sich durch Blöcke und setzt Dinge in Brand. Nach etwa 7 Sekunden
   überhitzt er.
 * **Fliegen (G):** schnelles Fliegen. Bei hoher Geschwindigkeit gibt es einen Überschallknall mit
-  Druckwelle.
+  Druckwelle. Fliegt er mit voller Geschwindigkeit, **bricht er durch Wände** und rammt alles weg,
+  was im Weg ist.
 * **Röntgenblick (C):** Lebewesen leuchten 12 Sekunden lang durch Wände.
 * **Donnerklatscher (X):** eine Druckwelle als Kegel nach vorne.
 * Passiv: enorme Stärke und Härte, kein Fallschaden, immun gegen Feuer.
@@ -77,14 +78,20 @@ genauso, und auch in der Third-Person-Ansicht (F5) sind sie zu sehen.
 * **Blitzsprint (C):** ein kurzer, extrem schneller Sprint nach vorne.
 * **Schlaghagel (X):** ein Trommelfeuer aus Schlägen auf das Ziel vor dir.
 
-### Billy Butcher (Staffel 5)
-Die **parasitären Tentakel** (in der Serie „tendrils“), die aus seiner Brust wachsen:
-* **Tentakelhieb (R):** ein Tentakel schießt heraus und zertrümmert Gegner und Blöcke. Trifft er
+### Billy Butcher (Staffel 5) – „Super Cancer“
+Die Tentakel, die aus seiner Brust wachsen, heißen in der Serie **Super Cancer**:
+* **Tentakelhieb (R):** Ein Tentakel schießt heraus und zertrümmert Gegner und Blöcke. Trifft er
   einen Baumstamm, **fällt der ganze Baum**.
 * **Packen / Werfen (G):** einen Mob oder Spieler packen und in der Luft halten. Nochmal G wirft ihn.
-* **Zerreißen (C):** das Opfer wird hochgehoben, die Tentakel ziehen an beiden Seiten,
-  und es wird **in der Luft zerrissen**.
-* **Tentakel-Enterhaken (X):** sich mit einem Tentakel zu einem Punkt ziehen.
+* **In zwei Hälften reißen (C):** Das Opfer wird hochgehoben, die Tentakel ziehen an beiden Seiten,
+  und es **reißt in zwei Hälften**. Die Hälften fliegen auseinander, und aus der Rissstelle mit
+  Wirbelsäule und Rippen spritzt noch eine Weile Blut.
+* **Cancer Walk (X):** Die Tentakel werden zu Beinen, tragen dich **4–5 Blöcke hoch** und laufen
+  für dich. Du springst höher, bekommst keinen Fallschaden, und alles vor dir wird zertrümmert.
+  **Schleichen + X** ist der Tentakel-Enterhaken.
+* **Super Cancer rettet dich:** Fällst du im Survival unter etwa 3,5 Herzen, brechen viele Tentakel
+  aus dir heraus. Sie packen jedes Monster und jeden Gegner in 20 Blöcken Umkreis und **zerreißen sie**.
+  Danach bekommst du kurz Widerstand und Regeneration. Abklingzeit: 45 Sekunden.
 * Passiv: deutlich stärker und zäher als ein Mensch. Dazu gibt es sein **Brecheisen** als Waffe.
 
 ## Items und Blöcke
