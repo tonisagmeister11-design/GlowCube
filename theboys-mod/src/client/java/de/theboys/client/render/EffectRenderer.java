@@ -132,7 +132,7 @@ public final class EffectRenderer {
 			Entity e = level.getEntity(en.getKey());
 			if (e == null || e == mc.player && firstPerson) continue;
 			boolean rewind = PowerAttachments.active(e).has(ActiveState.REWIND);
-			lightningTrail(e, en.getKey(), en.getValue(), pt, time, rewind, glows);
+			lightningTrail(e, en.getKey(), en.getValue(), pt, time, rewind, cam, glows);
 		}
 
 		// one-off effects
@@ -230,11 +230,16 @@ public final class EffectRenderer {
 		glows.add(Glow.sphere(end, 0.9 * wobble, argb(0.45f, 0xFF7A00)));
 	}
 
-	private static void lightningTrail(Entity e, int id, ArrayDeque<Vec3> trail, float pt, long time, boolean rewind, List<Glow> glows) {
+	private static void lightningTrail(Entity e, int id, ArrayDeque<Vec3> trail, float pt, long time, boolean rewind, Vec3 cam, List<Glow> glows) {
 		if (trail.size() < 2) return;
 		List<Vec3> path = new ArrayList<>();
 		path.add(e.getPosition(pt));
-		path.addAll(trail);
+		for (Vec3 p : trail) {
+			// the trail runs right through a third-person camera behind the runner; stop before it
+			if (p.add(0, 1, 0).distanceToSqr(cam) < 6.0) break;
+			path.add(p);
+		}
+		if (path.size() < 2) return;
 		int bolts = rewind ? 5 : 3;
 		int outer = rewind ? 0x40E0FF : 0x5AA9FF;
 		Random rnd = new Random(id * 31L + time * 7L);

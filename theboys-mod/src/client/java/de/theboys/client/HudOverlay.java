@@ -96,7 +96,7 @@ public final class HudOverlay {
 		int kmh = Math.round(ClientState.speedKmh);
 		String number = Integer.toString(kmh);
 		int cx = w / 2;
-		int cy = h - 72;
+		int cy = h - 100;
 		boolean timeJump = active.has(ActiveState.REWIND);
 		int color = timeJump ? 0xFF7FDBFF : kmh > 300 ? 0xFFFFEB3B : 0xFFFFFFFF;
 		g.fill(cx - 46, cy - 6, cx + 46, cy + 26, 0x99000000);
