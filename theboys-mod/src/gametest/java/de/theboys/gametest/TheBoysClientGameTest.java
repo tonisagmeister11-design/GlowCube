@@ -420,6 +420,21 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				});
 				LOG.info("super cancer: threats left={} cow alive={}", threats, cowAlive);
 				if (threats > 0) throw new AssertionError(threats + " monsters survived the Super Cancer");
+				// it has to come again, every time
+				for (int round = 2; round <= 3; round++) {
+					server.runCommand("summon minecraft:zombie 3 -60 4 {NoAI:1b}");
+					server.runCommand("summon minecraft:husk -3 -60 4 {NoAI:1b}");
+					ctx.waitTicks(15);
+					server.runOnServer(s -> s.getPlayerList().getPlayers().get(0).setHealth(5.0f));
+					ctx.waitTicks(50);
+					int left = server.computeOnServer(s -> {
+						int n = 0;
+						for (var e : s.overworld().getAllEntities()) if ((e.getType() == net.minecraft.world.entity.EntityTypes.ZOMBIE || e.getType() == net.minecraft.world.entity.EntityTypes.HUSK) && e.isAlive()) n++;
+						return n;
+					});
+					LOG.info("super cancer round {}: monsters left={}", round, left);
+					if (left > 0) throw new AssertionError("Super Cancer did not come again in round " + round);
+				}
 				server.runOnServer(s -> s.getPlayerList().getPlayers().get(0).setHealth(20.0f));
 			});
 
@@ -465,6 +480,72 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				if (y < 3.5) throw new AssertionError("Cancer Walk did not lift him, height=" + y);
 				if (stone > 40) throw new AssertionError("Cancer Walk did not crush the wall, left=" + stone);
 				ctx.waitTicks(20);
+			});
+
+			step(ctx, "animations", () -> {
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("theboys power clear @a");
+				server.runCommand("tp @a 0 -60 0 0 0");
+				server.runCommand("summon minecraft:zombie 0 -60 2.6 {NoAI:1b,Invulnerable:1b,Silent:1b,Rotation:[180f,0f]}");
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(new BlockPos(0, -59, 2));
+				String[][] weapons = {{"netherite_sword", "4"}, {"netherite_axe", "2"}, {"air", "4"}};
+				for (String[] w : weapons) {
+					server.runCommand("item replace entity @a weapon.mainhand with minecraft:" + w[0]);
+					ctx.waitTicks(30);
+					sideView(ctx, server, 3.2, -58.8, 1.3, 90, 6);
+					int swings = Integer.parseInt(w[1]);
+					for (int i = 0; i < swings; i++) {
+						ctx.getInput().pressKey(o -> o.keyAttack);
+						ctx.waitTicks(2);
+						ctx.takeScreenshot("fight_" + w[0] + "_" + i);
+						ctx.waitTicks(6);
+					}
+					int combo = ctx.computeOnClient(mc -> {
+						var sw = de.theboys.client.CombatAnim.get(mc.player.getId());
+						return sw == null ? -1 : sw.combo;
+					});
+					LOG.info("fight {}: combo={}", w[0], combo);
+					playerView(ctx, server);
+					if (combo != swings - 1) throw new AssertionError(w[0] + ": combo " + combo + " after " + swings + " swings");
+				}
+
+				// Homelander lies into his flight, seen from the side
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("item replace entity @a weapon.mainhand with minecraft:air");
+				server.runCommand("theboys power set @a homelander");
+				server.runCommand("tp @a 0 -45 -30 0 0");
+				ctx.waitTicks(10);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(4);
+				ctx.getInput().lookAt(0, 0);
+				sideView(ctx, server, 6, -45, -30, 90, 5);
+				ctx.getInput().holdKey(o -> o.keyUp);
+				ctx.getInput().holdKey(o -> o.keySprint);
+				for (int i = 0; i < 16; i++) {
+					server.runCommand("execute as @e[type=minecraft:armor_stand] at @p run tp @s ~6.5 ~0.3 ~ 90 4");
+					ctx.waitTicks(1);
+				}
+				ctx.takeScreenshot("fight_homelander_flight_side");
+				float lean = ctx.computeOnClient(mc -> de.theboys.client.BodyLean.current(mc.player));
+				ctx.getInput().releaseKey(o -> o.keyUp);
+				ctx.getInput().releaseKey(o -> o.keySprint);
+				ctx.getInput().lookAt(0, -70);
+				ctx.getInput().holdKey(o -> o.keyUp);
+				for (int i = 0; i < 12; i++) {
+					server.runCommand("execute as @e[type=minecraft:armor_stand] at @p run tp @s ~6.5 ~-0.5 ~ 90 0");
+					ctx.waitTicks(1);
+				}
+				ctx.takeScreenshot("fight_homelander_flight_up");
+				ctx.getInput().releaseKey(o -> o.keyUp);
+				playerView(ctx, server);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				server.runCommand("theboys power clear @a");
+				server.runCommand("tp @a 0 -60 0 0 0");
+				LOG.info("homelander flight lean={}", lean);
+				if (lean < 45f) throw new AssertionError("Homelander does not lean into his flight: " + lean);
+				ctx.waitTicks(10);
 			});
 
 			step(ctx, "remove", () -> {

@@ -138,6 +138,13 @@ public final class EffectRenderer {
 			}
 		}
 
+		// weapon slash trails
+		for (de.theboys.client.CombatAnim.Slash sl : de.theboys.client.CombatAnim.SLASHES) {
+			Entity p = level.getEntity(sl.playerId());
+			if (p == null) continue;
+			slash(sl, p, time, pt, p == mc.player && firstPerson, glows);
+		}
+
 		// lightning trails of running speedsters
 		for (Map.Entry<Integer, ArrayDeque<Vec3>> en : TRAILS.entrySet()) {
 			Entity e = level.getEntity(en.getKey());
@@ -159,7 +166,14 @@ public final class EffectRenderer {
 					float back = fx.duration - age < 6 ? Math.max(0f, (fx.duration - age) / 6f) : 1f;
 					float reach = Math.min(out, back);
 					Vec3 from = chest(src, pt).add(src.getViewVector(pt).scale(0.25));
-					tendrils.add(Tendril.curve(from, at, reach, time + pt, d.entityId(), 0.22, src == mc.player && firstPerson));
+					Entity victim = fx.duration > 12 ? victimAt(level, src, at) : null;
+					if (victim != null && reach >= 1f) {
+						// Super Cancer: the tendril is coiled around whoever it caught
+						tendrils.add(Tendril.wrap(from, victim, Vec3.ZERO, pt, time + pt, d.entityId() + (int) (d.x() * 13), 0.2,
+								src == mc.player && firstPerson, 0.9, 0.1, 2.4, d.z(), 1.0));
+					} else {
+						tendrils.add(Tendril.curve(from, at, reach, time + pt, d.entityId(), 0.22, src == mc.player && firstPerson));
+					}
 				}
 				case FxPayload.NUKE -> {
 					float r = d.x2();
@@ -284,21 +298,23 @@ public final class EffectRenderer {
 
 	private static void heldTendrils(AbstractClientPlayer butcher, Entity target, float pt, long time, boolean ripping, boolean self, List<Tendril> out) {
 		Vec3 from = chest(butcher, pt).add(butcher.getViewVector(pt).scale(0.25));
-		Vec3 center = target.getPosition(pt).add(0, target.getBbHeight() / 2, 0);
 		double t = time + pt;
-		int count = ripping ? 4 : 2;
-		Vec3 side = butcher.getViewVector(pt).cross(new Vec3(0, 1, 0)).normalize();
-		for (int i = 0; i < count; i++) {
-			double angle = t * 0.25 + i * Math.PI * 2 / count;
-			Vec3 offset;
-			if (ripping) {
-				// tendrils grab the victim at both sides and pull outwards
-				double pull = 0.35 + 0.15 * Math.sin(t * 0.9 + i);
-				offset = side.scale((i % 2 == 0 ? 1 : -1) * (target.getBbWidth() * 0.5 + pull)).add(0, (i < 2 ? 0.35 : -0.35) * target.getBbHeight(), 0);
-			} else {
-				offset = new Vec3(Math.cos(angle) * target.getBbWidth() * 0.55, Math.sin(angle * 0.7) * target.getBbHeight() * 0.3, Math.sin(angle) * target.getBbWidth() * 0.55);
+		int seed = butcher.getId() * 7;
+		if (ripping) {
+			// one tendril coiled around each side of the body, pulling outwards
+			Vec3 side = butcher.getViewVector(pt).cross(new Vec3(0, 1, 0)).normalize();
+			double pull = 0.12 + 0.06 * Math.sin(t * 0.9);
+			for (int i = 0; i < 2; i++) {
+				int sign = i == 0 ? 1 : -1;
+				Vec3 shift = side.scale(sign * (target.getBbWidth() * 0.28 + pull));
+				out.add(Tendril.wrap(from, target, shift, pt, t, seed + i, 0.2, self, i == 0 ? 0.95 : 0.55, i == 0 ? 0.5 : 0.08, 2.2, i * Math.PI, 0.6));
 			}
-			out.add(Tendril.curve(from, center.add(offset), 1f, t, butcher.getId() * 7 + i, 0.2, self));
+			// two more grip the head and the legs
+			out.add(Tendril.wrap(from, target, Vec3.ZERO, pt, t, seed + 2, 0.15, self, 0.98, 0.78, 1.3, 0.5, 1.0));
+		} else {
+			// wrapped up: one coil around the chest and arms, one around the legs
+			out.add(Tendril.wrap(from, target, Vec3.ZERO, pt, t, seed, 0.2, self, 0.92, 0.42, 2.6, 0.0, 1.0));
+			out.add(Tendril.wrap(from, target, Vec3.ZERO, pt, t, seed + 1, 0.17, self, 0.45, 0.04, 2.0, Math.PI, 1.0));
 		}
 		// the "viper's nest": short tendrils writhing out of his chest
 		for (int i = 0; i < 3; i++) {
@@ -352,7 +368,88 @@ public final class EffectRenderer {
 		}
 	}
 
+	/** The arc a weapon cuts through the air: it follows the blade and fades within a few ticks. */
+	private static void slash(de.theboys.client.CombatAnim.Slash sl, Entity p, long time, float pt, boolean self, List<Glow> glows) {
+		float age = (time - sl.start()) + pt;
+		float dur = 6f;
+		if (age < 0.6f || age > dur) return;
+		Vec3 fwd = Vec3.directionFromRotation(p.getViewXRot(pt), p.getViewYRot(pt));
+		Vec3 right = fwd.cross(new Vec3(0, 1, 0));
+		if (right.lengthSqr() < 1.0E-4) right = new Vec3(1, 0, 0);
+		right = right.normalize();
+		if (sl.leftArm()) right = right.scale(-1);
+		Vec3 up = right.cross(fwd).normalize();
+		Vec3 centre = p.getPosition(pt).add(0, p.getBbHeight() * 0.72, 0).add(fwd.scale(self ? 0.15 : 0.3));
+		// roll of the cutting plane and direction of the sweep for each move
+		double roll;
+		double from, to;
+		double radius = sl.kind() == de.theboys.client.CombatAnim.AXE ? 1.75 : 1.5;
+		switch (sl.kind()) {
+			case de.theboys.client.CombatAnim.AXE -> {
+				roll = sl.combo() % 2 == 0 ? 85 : 8;
+				from = 80;
+				to = -70;
+			}
+			case de.theboys.client.CombatAnim.THRUST -> {
+				roll = 0;
+				from = 6;
+				to = -6;
+			}
+			default -> {
+				switch (sl.combo() % 4) {
+					case 0 -> { roll = 38; from = 80; to = -80; }
+					case 1 -> { roll = -25; from = -80; to = 80; }
+					case 2 -> { roll = 88; from = 85; to = -65; }
+					default -> { roll = 0; from = 5; to = -5; }
+				}
+			}
+		}
+		double rr = Math.toRadians(roll);
+		Vec3 sweep = right.scale(Math.cos(rr)).add(up.scale(Math.sin(rr)));
+		double prog = 1 - Math.pow(1 - Math.min(1f, age / 2.6f), 3);
+		double head = from + (to - from) * prog;
+		double tail = head - (to - from) * 0.55;
+		if ((to - from) > 0 ? tail < from : tail > from) tail = from;
+		float fade = age < 3 ? 1f : Math.max(0f, 1 - (age - 3) / (dur - 3));
+		float strength = self ? 0.45f : 0.75f;
+		if (Math.abs(to - from) < 20) {
+			// thrust: a straight streak along the stab
+			Vec3 a = centre.add(fwd.scale(0.4));
+			Vec3 b = centre.add(fwd.scale(0.4 + 1.6 * prog));
+			glows.add(Glow.beam(a, b, 0.05, argb(0.5f * fade * strength, 0xDDEBFF)));
+			glows.add(Glow.beam(a, b, 0.015, argb(0.9f * fade * strength, 0xFFFFFF)));
+			return;
+		}
+		List<Vec3> inner = new ArrayList<>(), outer = new ArrayList<>(), edge = new ArrayList<>();
+		int steps = 18;
+		for (int i = 0; i <= steps; i++) {
+			double ang = Math.toRadians(tail + (head - tail) * i / steps);
+			Vec3 dir = fwd.scale(Math.cos(ang)).add(sweep.scale(Math.sin(ang)));
+			double w = 0.15 + 0.4 * i / (double) steps;
+			inner.add(centre.add(dir.scale(radius - w)));
+			outer.add(centre.add(dir.scale(radius)));
+			edge.add(centre.add(dir.scale(radius - 0.02)));
+		}
+		glows.add(Glow.ribbon(inner, outer, argb(0.55f * fade * strength, 0xCFE3FF)));
+		glows.add(Glow.bolt(edge, 0.018, argb(0.9f * fade * strength, 0xFFFFFF)));
+	}
+
 	// ------------------------------------------------------------------ helpers
+
+	/** The living entity a Super Cancer tendril went for (it is held where the tendril points). */
+	private static Entity victimAt(ClientLevel level, Entity src, Vec3 at) {
+		Entity best = null;
+		double bestD = 4.0;
+		for (Entity e : level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, new AABB(at, at).inflate(2.5),
+				e -> e != src && e.isAlive())) {
+			double d = e.getBoundingBox().getCenter().distanceToSqr(at);
+			if (d < bestD) {
+				bestD = d;
+				best = e;
+			}
+		}
+		return best;
+	}
 
 	private static Vec3 chest(Entity e, float pt) {
 		return e.getPosition(pt).add(0, e.getBbHeight() * 0.72, 0);
@@ -391,11 +488,23 @@ public final class EffectRenderer {
 			return new Glow(3, null, null, width, 0, pts, color);
 		}
 
+		static Glow ribbon(List<Vec3> inner, List<Vec3> outer, int color) {
+			List<Vec3> both = new ArrayList<>(inner);
+			both.addAll(outer);
+			return new Glow(4, null, null, inner.size(), 0, both, color);
+		}
+
 		void draw(VertexConsumer buf, PoseStack.Pose pose, Vec3 cam) {
 			switch (kind) {
 				case 0 -> Geo.beam(buf, pose, a.subtract(cam), b.subtract(cam), r0, color);
 				case 1 -> Geo.sphere(buf, pose, a.subtract(cam), r0, color, r0 > 3 ? 28 : 14);
 				case 2 -> Geo.ring(buf, pose, a.subtract(cam), b, r0, r1, color, r1 > 6 ? 64 : 32);
+				case 4 -> {
+					int n = (int) r0;
+					List<Vec3> rel = new ArrayList<>(pts.size());
+					for (Vec3 p : pts) rel.add(p.subtract(cam));
+					Geo.ribbon(buf, pose, rel.subList(0, n), rel.subList(n, 2 * n), color);
+				}
 				default -> {
 					List<Vec3> rel = new ArrayList<>(pts.size());
 					for (Vec3 p : pts) rel.add(p.subtract(cam));
@@ -427,6 +536,32 @@ public final class EffectRenderer {
 			if (firstPersonSelf) {
 				// push the root a bit down so the tendril does not fill the screen in first person
 				pts.set(0, pts.get(0).add(0, -0.35, 0));
+			}
+			return new Tendril(pts, radius);
+		}
+
+		/**
+		 * A tendril that reaches the target and coils around it: from the top of the coil (height
+		 * fraction top) it winds down to height fraction bottom, turns times around the body, squeezing.
+		 */
+		static Tendril wrap(Vec3 from, Entity target, Vec3 shift, float pt, double time, int seed, double radius, boolean firstPersonSelf,
+				double top, double bottom, double turns, double phase, double widthScale) {
+			Vec3 base = target.getPosition(pt).add(shift);
+			double h = target.getBbHeight();
+			double squeeze = 1.0 - 0.06 * (0.5 + 0.5 * Math.sin(time * 0.6 + seed));
+			double r = (target.getBbWidth() * 0.5 * widthScale + radius * 0.9) * squeeze;
+			// the coil slowly crawls around the victim
+			double spin = phase + time * 0.04;
+			Vec3 entry = base.add(Math.cos(spin) * r, h * top, Math.sin(spin) * r);
+			List<Vec3> pts = new ArrayList<>(curve(from, entry, 1f, time, seed, radius, firstPersonSelf).points);
+			int coil = Math.max(12, (int) (turns * 14));
+			for (int k = 1; k <= coil; k++) {
+				double s = k / (double) coil;
+				double a = spin + s * turns * Math.PI * 2;
+				double y = h * (top + (bottom - top) * s);
+				// tighter towards the tip
+				double rr = r * (1.0 - 0.18 * s);
+				pts.add(base.add(Math.cos(a) * rr, y, Math.sin(a) * rr));
 			}
 			return new Tendril(pts, radius);
 		}

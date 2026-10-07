@@ -105,6 +105,25 @@ public final class Geo {
 		}
 	}
 
+	/** A flat strip between two rails (slash trails); the alpha rises from the tail to the head. */
+	public static void ribbon(VertexConsumer b, PoseStack.Pose pose, List<Vec3> inner, List<Vec3> outer, int argb) {
+		int n = Math.min(inner.size(), outer.size());
+		int alpha = argb >>> 24;
+		for (int i = 0; i + 1 < n; i++) {
+			int a0 = argb & 0xFFFFFF | (alpha * i / (n - 1)) << 24;
+			int a1 = argb & 0xFFFFFF | (alpha * (i + 1) / (n - 1)) << 24;
+			Vec3 p0 = inner.get(i), p1 = outer.get(i), p2 = outer.get(i + 1), p3 = inner.get(i + 1);
+			v(b, pose, p0, a0 & 0x00FFFFFF);
+			v(b, pose, p1, a0);
+			v(b, pose, p2, a1);
+			v(b, pose, p3, a1 & 0x00FFFFFF);
+			v(b, pose, p3, a1 & 0x00FFFFFF);
+			v(b, pose, p2, a1);
+			v(b, pose, p1, a0);
+			v(b, pose, p0, a0 & 0x00FFFFFF);
+		}
+	}
+
 	/** A textured, lit tube through the given points (tentacles). */
 	public static void tube(VertexConsumer b, PoseStack.Pose pose, List<Vec3> pts, double baseRadius, double tipRadius, int light, int sides) {
 		int n = pts.size();

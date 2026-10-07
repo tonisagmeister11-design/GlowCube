@@ -1,9 +1,0 @@
--p net.minecraft.client.renderer.entity.player.AvatarRenderer
-net.minecraft.client.renderer.entity.state.HumanoidRenderState
-net.minecraft.client.renderer.entity.state.ArmedEntityRenderState
-net.minecraft.client.renderer.entity.state.AvatarRenderState
-net.minecraft.tags.ItemTags | SWORD|AXE|MACE|SPEAR|HOE|PICKAXE|SHOVEL
-net.minecraft.world.entity.LivingEntity | swing|Swing|attackAnim|lastHurtByPlayer|getLastHurtByMob|getLastAttacker
--p net.minecraft.client.model.HumanoidModel | setupAttackAnimation|poseRightArm|poseLeftArm|getArm|bob|crouch
--p net.minecraft.client.renderer.entity.LivingEntityRenderer | setupRotations
-net.minecraft.world.damagesource.DamageSource | getEntity|getDirectEntity

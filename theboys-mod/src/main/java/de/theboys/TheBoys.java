@@ -60,6 +60,8 @@ public class TheBoys implements ModInitializer {
 			if (power == Power.BUTCHER && source.is(DamageTypeTags.IS_FALL) && PowerAttachments.active(player).has(ActiveState.CANCER_WALK)) return false;
 			// A-Train does not trip over his own feet while running
 			if (power == Power.A_TRAIN && source.is(DamageTypeTags.IS_FALL) && PowerAttachments.active(player).has(ActiveState.SPEED)) return false;
+			// Super Cancer
+			if (power == Power.BUTCHER) return de.theboys.power.Butcher.allowDamage(player, source, amount);
 			return true;
 		});
 

@@ -43,6 +43,8 @@ public final class PlayerSession {
 	public int strikeDelay = -1;
 	public boolean cancerWalk;
 	public int frenzyCooldown;
+	/** who hurt him recently (entity id -> game time), so Super Cancer goes for every attacker, players too */
+	public final java.util.Map<Integer, Long> attackers = new java.util.HashMap<>();
 	public int frenzyTicks;
 	public final java.util.Map<Integer, Integer> frenzyVictims = new java.util.HashMap<>();
 	public final java.util.Map<Integer, net.minecraft.world.phys.Vec3> frenzySpots = new java.util.HashMap<>();

@@ -75,6 +75,7 @@ public class TheBoysClient implements ClientModInitializer {
 		ATrainMovement.tick(player);
 		SupeMovement.tick(player);
 		de.theboys.client.render.TornBodies.tick(mc.level);
+		CombatAnim.tick(mc.level);
 
 		// speedometer
 		Vec3 pos = player.position();

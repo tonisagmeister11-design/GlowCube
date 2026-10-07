@@ -5,6 +5,7 @@
 	"client": [
 		"AbstractClientPlayerMixin",
 		"AgeableMobRendererAccessor",
+		"AvatarRendererLeanMixin",
 		"AvatarRendererMixin",
 		"EntityRenderDispatcherMixin",
 		"FirstPersonHandsAndItemsRendererMixin",

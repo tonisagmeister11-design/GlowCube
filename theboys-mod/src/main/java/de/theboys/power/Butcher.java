@@ -21,6 +21,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -29,6 +31,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -143,7 +146,9 @@ public final class Butcher {
 		}
 
 		// Super Cancer: close to death, the tendrils burst out and kill every threat
-		if (!player.isCreative() && player.getHealth() <= FRENZY_HEALTH && s.frenzyCooldown == 0 && s.frenzyTicks == 0) {
+		// it comes every time he is low again, as long as someone is still after him
+		if (!player.isCreative() && player.getHealth() <= FRENZY_HEALTH && s.frenzyCooldown == 0 && s.frenzyTicks == 0
+				&& level.getGameTime() % 5 == 0) {
 			startFrenzy(player, level, s);
 		}
 		if (s.frenzyTicks > 0) {
@@ -334,19 +339,46 @@ public final class Butcher {
 
 	// ------------------------------------------------------------------ Super Cancer (self defence)
 
-	private static void startFrenzy(ServerPlayer player, ServerLevel level, PlayerSession s) {
+	/**
+	 * Damage hook: remembers attackers, and when a hit takes him down to the threshold the tendrils burst out
+	 * right away. While they are out, they catch the killing blow.
+	 */
+	public static boolean allowDamage(ServerPlayer player, DamageSource source, float amount) {
+		PlayerSession s = PowerManager.session(player);
+		ServerLevel level = player.level();
+		if (source.getEntity() instanceof LivingEntity attacker && attacker != player) {
+			s.attackers.put(attacker.getId(), level.getGameTime());
+		}
+		if (player.isCreative() || player.isSpectator() || source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) return true;
+		if (player.getHealth() - amount <= FRENZY_HEALTH && s.frenzyTicks == 0 && s.frenzyCooldown == 0) {
+			startFrenzy(player, level, s);
+		}
+		if (s.frenzyTicks > 0 && amount >= player.getHealth()) {
+			player.setHealth(Math.max(player.getHealth(), 2.0f));
+			return false;
+		}
+		return true;
+	}
+
+	private static boolean startFrenzy(ServerPlayer player, ServerLevel level, PlayerSession s) {
+		long now = level.getGameTime();
+		s.attackers.values().removeIf(t -> now - t > 300);
 		List<LivingEntity> threats = new ArrayList<>();
 		for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(20),
 				e -> e != player && e.isAlive() && !e.isSpectator())) {
 			boolean hostile = e instanceof Enemy || e instanceof Mob mob && mob.getTarget() == player
-					|| e == player.getLastHurtByMob();
+					|| e == player.getLastHurtByMob() || s.attackers.containsKey(e.getId());
+			if (e instanceof Player p && (p.isCreative() || p.isSpectator())) hostile = false;
 			if (hostile) threats.add(e);
 		}
+		// nobody to tear apart: stay ready and check again
+		if (threats.isEmpty()) return false;
 		threats.sort((a, b) -> Double.compare(a.distanceToSqr(player), b.distanceToSqr(player)));
 		if (threats.size() > 12) threats = threats.subList(0, 12);
 
 		s.frenzyTicks = FRENZY_TICKS;
-		s.frenzyCooldown = 900;
+		// only a short pause, after that it comes again whenever he is in danger
+		s.frenzyCooldown = 40;
 		s.frenzyVictims.clear();
 		s.frenzySpots.clear();
 		Vec3 from = Supe.chest(player);
@@ -364,6 +396,7 @@ public final class Butcher {
 		Supe.blood(level, from, 1.5f);
 		ModNetworking.sendFx(level, from, new FxPayload(FxPayload.SHAKE, player.getId(), (float) from.x, (float) from.y, (float) from.z, 2f, 0, 0));
 		player.sendSystemMessage(Component.translatable("message.theboys.super_cancer").withStyle(ChatFormatting.DARK_RED, ChatFormatting.BOLD), true);
+		return true;
 	}
 
 	private static void tickFrenzy(ServerPlayer player, ServerLevel level, PlayerSession s) {
