@@ -130,7 +130,7 @@ public final class EffectRenderer {
 		// lightning trails of running speedsters
 		for (Map.Entry<Integer, ArrayDeque<Vec3>> en : TRAILS.entrySet()) {
 			Entity e = level.getEntity(en.getKey());
-			if (e == null) continue;
+			if (e == null || e == mc.player && firstPerson) continue;
 			boolean rewind = PowerAttachments.active(e).has(ActiveState.REWIND);
 			lightningTrail(e, en.getKey(), en.getValue(), pt, time, rewind, glows);
 		}
@@ -148,7 +148,7 @@ public final class EffectRenderer {
 					float back = fx.duration - age < 6 ? Math.max(0f, (fx.duration - age) / 6f) : 1f;
 					float reach = Math.min(out, back);
 					Vec3 from = chest(src, pt).add(src.getViewVector(pt).scale(0.25));
-					tendrils.add(Tendril.curve(from, at, reach, time + pt, d.entityId(), 0.17, src == mc.player && firstPerson));
+					tendrils.add(Tendril.curve(from, at, reach, time + pt, d.entityId(), 0.22, src == mc.player && firstPerson));
 				}
 				case FxPayload.NUKE -> {
 					float r = d.x2();
@@ -271,13 +271,13 @@ public final class EffectRenderer {
 			} else {
 				offset = new Vec3(Math.cos(angle) * target.getBbWidth() * 0.55, Math.sin(angle * 0.7) * target.getBbHeight() * 0.3, Math.sin(angle) * target.getBbWidth() * 0.55);
 			}
-			out.add(Tendril.curve(from, center.add(offset), 1f, t, butcher.getId() * 7 + i, 0.15, self));
+			out.add(Tendril.curve(from, center.add(offset), 1f, t, butcher.getId() * 7 + i, 0.2, self));
 		}
 		// the "viper's nest": short tendrils writhing out of his chest
 		for (int i = 0; i < 3; i++) {
 			double a = t * 0.2 + i * 2.1;
 			Vec3 tip = from.add(Math.cos(a) * 0.7, 0.35 + Math.sin(a * 1.3) * 0.4, Math.sin(a) * 0.7);
-			out.add(Tendril.curve(from, tip, 1f, t, butcher.getId() * 13 + i, 0.08, self));
+			out.add(Tendril.curve(from, tip, 1f, t, butcher.getId() * 13 + i, 0.11, self));
 		}
 	}
 

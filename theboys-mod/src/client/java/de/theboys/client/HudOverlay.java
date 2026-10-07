@@ -146,14 +146,19 @@ public final class HudOverlay {
 		// blood on the screen when someone bursts right in front of you
 		if (ClientState.bloodTicks > 0) {
 			float f = ClientState.bloodTicks / 50f;
-			int a = (int) (150 * f);
-			g.fillGradient(0, 0, w, h / 3, (a << 24) | 0x7A0000, 0x00000000);
-			g.fillGradient(0, h * 2 / 3, w, h, 0x00000000, (a << 24) | 0x7A0000);
-			for (int i = 0; i < 14; i++) {
-				int bx = (i * 131 + 17) % w;
-				int by = (i * 71 + 29) % h;
-				int size = 6 + (i * 13) % 22;
-				g.fill(bx, by, bx + size, by + size * 2 / 3, ((int) (170 * f) << 24) | 0x6B0000);
+			int a = (int) (120 * f);
+			g.fillGradient(0, 0, w, h / 4, (a << 24) | 0x5A0000, 0x00000000);
+			g.fillGradient(0, h * 3 / 4, w, h, 0x00000000, (a << 24) | 0x5A0000);
+			for (int i = 0; i < 9; i++) {
+				int bx = (i * 131 + 17) % (w - 40) + 10;
+				int by = (i * 71 + 29) % (h / 2) + (i % 2 == 0 ? 0 : h / 2 - 20);
+				int r = 3 + (i * 7) % 6;
+				int color = ((int) (190 * f) << 24) | 0x6B0000;
+				// round-ish drop with a running trail
+				g.fill(bx - r, by - r / 2, bx + r, by + r / 2, color);
+				g.fill(bx - r / 2, by - r, bx + r / 2, by + r, color);
+				int run = (int) ((50 - ClientState.bloodTicks) * 0.6f) + r;
+				g.fill(bx - 1, by, bx + 1, by + run, color);
 			}
 		}
 	}

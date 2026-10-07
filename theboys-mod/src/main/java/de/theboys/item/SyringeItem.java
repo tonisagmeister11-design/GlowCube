@@ -60,7 +60,6 @@ public class SyringeItem extends Item {
 	@Override
 	public InteractionResult use(Level level, Player player, InteractionHand hand) {
 		Power current = PowerAttachments.powerOf(player);
-		de.theboys.TheBoys.LOGGER.info("syringe use: kind={} client={} power={}", kind, level.isClientSide(), current);
 		if (kind == Kind.URANIUM ? current == Power.NONE : current != Power.NONE) {
 			if (player instanceof ServerPlayer sp) {
 				sp.sendSystemMessage(Component.translatable(kind == Kind.URANIUM

@@ -100,7 +100,8 @@ public final class Keys {
 		if (injectHold > 0) {
 			injectHold--;
 			boolean injecting = mc.player.isUsingItem() && mc.player.getUseItem().getItem() instanceof SyringeItem;
-			mc.options.keyUse.setDown(injecting && injectHold > 0);
+			// let go just before the end so the item is not used a second time
+			mc.options.keyUse.setDown(injecting && injectHold > 0 && mc.player.getUseItemRemainingTicks() > 2);
 			if (!injecting) injectHold = 0;
 		}
 	}

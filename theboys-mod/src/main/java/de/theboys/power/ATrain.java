@@ -30,7 +30,7 @@ public final class ATrain {
 	/** Movement speed multiplier while running (on top of his base speed). */
 	public static final double RUN_MULTIPLIER = 9.0;
 	/** Multiplier during the Time Jump - roughly 1000 km/h when sprinting. */
-	public static final double TIME_JUMP_MULTIPLIER = 72.0;
+	public static final double TIME_JUMP_MULTIPLIER = 45.0;
 	public static final int TIME_JUMP_TICKS = 110;
 
 	private ATrain() {

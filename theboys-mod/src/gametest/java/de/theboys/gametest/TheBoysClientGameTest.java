@@ -51,9 +51,24 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("tp @a 0 -60 0 0 0");
 			});
 
+			step(ctx, "structure", () -> {
+				// the jigsaw structure definition (as used by world generation) must be placeable
+				server.runCommand("place structure theboys:vought_lab -40 -60 -40");
+				ctx.waitTicks(10);
+				boolean placed = server.computeOnServer(s -> {
+					var level = s.overworld();
+					for (BlockPos p : BlockPos.betweenClosed(-60, -62, -60, -20, -55, -20)) {
+						if (level.getBlockState(p).getBlock().toString().contains("v_fridge")) return true;
+					}
+					return false;
+				});
+				if (!placed) throw new AssertionError("place structure theboys:vought_lab placed no lab");
+			});
+
 			step(ctx, "inject", () -> {
 				server.runCommand("clear @a");
 				server.runCommand("give @a theboys:compound_v");
+				ctx.waitTicks(10);
 				ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
 				ctx.waitTicks(5);
 				ctx.getInput().pressKey(Keys.INJECT);
@@ -204,7 +219,9 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			step(ctx, "remove", () -> {
 				server.runCommand("clear @a");
 				server.runCommand("give @a theboys:uranium_injector");
+				ctx.waitTicks(10);
 				ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
+				ctx.waitTicks(2);
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				String direct = ctx.computeOnClient(mc -> "power(client)=" + PowerAttachments.powerOf(mc.player)
 						+ " cooldown=" + mc.player.getCooldowns().isOnCooldown(mc.player.getMainHandItem())
