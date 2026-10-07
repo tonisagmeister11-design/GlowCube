@@ -1,0 +1,21 @@
+{
+	"schemaVersion": 1,
+	"id": "theboys",
+	"version": "${version}",
+	"name": "The Boys",
+	"description": "Compound V, Vought-Labore und die Kräfte von Homelander, Soldier Boy, A-Train und Billy Butcher.",
+	"authors": ["Toni"],
+	"license": "All-Rights-Reserved",
+	"icon": "assets/theboys/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["de.theboys.TheBoys"],
+		"client": ["de.theboys.client.TheBoysClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

@@ -1,0 +1,74 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base {
+	archivesName = 'theboys'
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"theboys" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+// Prints the public signatures of the Minecraft classes listed in ci/javap.txt.
+// Only used by CI as an API reference while developing.
+tasks.register('dumpApi') {
+	doLast {
+		def list = file('ci/javap.txt')
+		if (!list.exists()) return
+		def jars = (configurations.compileClasspath + configurations.clientCompileClasspath).files.findAll { it.name.endsWith('.jar') }
+		def cp = jars.join(File.pathSeparator)
+		list.readLines().collect { it.trim() }.findAll { it && !it.startsWith('#') }.each { line ->
+			if (line.startsWith('find ')) {
+				def pattern = line.substring(5).trim()
+				println "=== find ${pattern}"
+				jars.findAll { it.name.contains('minecraft') || it.name.contains('blaze') }.each { jar ->
+					new java.util.zip.ZipFile(jar).withCloseable { zip ->
+						zip.entries().findAll { it.name.endsWith('.class') && it.name =~ pattern }.each { println "  ${it.name}" }
+					}
+				}
+				return
+			}
+			def parts = line.split(/\s*\|\s*/, 2)
+			def out = new ByteArrayOutputStream()
+			providers.exec {
+				commandLine 'javap', '-cp', cp, parts[0]
+				ignoreExitValue = true
+			}.standardOutput.asText.get().eachLine { l ->
+				if (parts.length == 1 || l =~ parts[1] || l.contains('class ') || l.contains('interface ')) println l
+			}
+		}
+	}
+}
