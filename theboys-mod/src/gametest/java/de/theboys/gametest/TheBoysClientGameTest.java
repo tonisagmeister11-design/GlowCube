@@ -237,7 +237,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				// things that happen now must be undone by the Time Jump:
 				// a dropped item, a placed block, a mob that walks away
 				server.runCommand("tp @a 0 -60 0 0 0");
-				server.runCommand("summon minecraft:husk 6 -60 6 {NoAI:1b,PersistenceRequired:1b,Tags:[\"rewind\"]}");
+				server.runCommand("summon minecraft:husk 6 -60 6 {NoAI:1b,PersistenceRequired:1b,CustomName:\"Rewind\",Tags:[\"rewind\"]}");
 				ctx.waitTicks(10);
 				server.runCommand("give @a minecraft:diamond 1");
 				ctx.waitTicks(4);
@@ -486,7 +486,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("theboys power clear @a");
 				server.runCommand("tp @a 0 -60 0 0 0");
-				server.runCommand("summon minecraft:zombie 0 -60 2.6 {NoAI:1b,Invulnerable:1b,Silent:1b,Rotation:[180f,0f]}");
+				server.runCommand("summon minecraft:husk 0.5 -60 2.8 {NoAI:1b,Invulnerable:1b,Silent:1b,Rotation:[180f,0f]}");
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(new BlockPos(0, -59, 2));
@@ -494,7 +494,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				for (String[] w : weapons) {
 					server.runCommand("item replace entity @a weapon.mainhand with minecraft:" + w[0]);
 					ctx.waitTicks(30);
-					sideView(ctx, server, 3.2, -58.8, 1.3, 90, 6);
+					sideView(ctx, server, 4.8, -58.7, 1.2, 90, 8);
 					int swings = Integer.parseInt(w[1]);
 					for (int i = 0; i < swings; i++) {
 						ctx.getInput().pressKey(o -> o.keyAttack);
@@ -521,24 +521,23 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(4);
 				ctx.getInput().lookAt(0, 0);
 				sideView(ctx, server, 6, -45, -30, 90, 5);
-				ctx.getInput().holdKey(o -> o.keyUp);
-				ctx.getInput().holdKey(o -> o.keySprint);
+				// with the camera on the armor stand the player takes no key input, so push him directly
 				for (int i = 0; i < 16; i++) {
-					server.runCommand("execute as @e[type=minecraft:armor_stand] at @p run tp @s ~6.5 ~0.3 ~ 90 4");
+					ctx.runOnClient(mc -> mc.player.setDeltaMovement(0, 0, 1.3));
+					server.runCommand("execute as @e[type=minecraft:armor_stand] at @p run tp @s ~6.5 ~0.3 ~1 90 4");
 					ctx.waitTicks(1);
 				}
 				ctx.takeScreenshot("fight_homelander_flight_side");
 				float lean = ctx.computeOnClient(mc -> de.theboys.client.BodyLean.current(mc.player));
-				ctx.getInput().releaseKey(o -> o.keyUp);
-				ctx.getInput().releaseKey(o -> o.keySprint);
 				ctx.getInput().lookAt(0, -70);
-				ctx.getInput().holdKey(o -> o.keyUp);
-				for (int i = 0; i < 12; i++) {
-					server.runCommand("execute as @e[type=minecraft:armor_stand] at @p run tp @s ~6.5 ~-0.5 ~ 90 0");
+				for (int i = 0; i < 14; i++) {
+					ctx.runOnClient(mc -> mc.player.setDeltaMovement(0, 1.0, 0.05));
+					server.runCommand("execute as @e[type=minecraft:armor_stand] at @p run tp @s ~6.5 ~0.3 ~ 90 0");
 					ctx.waitTicks(1);
 				}
 				ctx.takeScreenshot("fight_homelander_flight_up");
-				ctx.getInput().releaseKey(o -> o.keyUp);
+				float leanUp = ctx.computeOnClient(mc -> de.theboys.client.BodyLean.current(mc.player));
+				LOG.info("homelander flight lean up={}", leanUp);
 				playerView(ctx, server);
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
 				server.runCommand("theboys power clear @a");
