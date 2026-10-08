@@ -555,7 +555,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("kill @e[type=!player]");
 
 				// To the Moon
-				server.runCommand("summon minecraft:pig 0.5 -60 2.3 {NoAI:1b}");
+				server.runCommand("summon minecraft:cow 0.5 -60 2.3 {NoAI:1b}");
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(new BlockPos(0, -60, 2));
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
@@ -575,13 +575,13 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				for (int i = 0; i < 14; i++) {
 					ctx.waitTicks(5);
 					double y = server.computeOnServer(s -> {
-						for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.PIG) return e.getY();
+						for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.COW) return e.getY();
 						return -999.0;
 					});
-					LOG.info("to the moon: pig y={}", y);
+					LOG.info("to the moon: cow y={}", y);
 					maxY = Math.max(maxY, y);
 				}
-				LOG.info("to the moon: pig flew up to y={} ({} blocks)", maxY, maxY + 60);
+				LOG.info("to the moon: cow flew up to y={} ({} blocks)", maxY, maxY + 60);
 				if (maxY + 60 < 100) throw new AssertionError("To the Moon only reached " + (maxY + 60) + " blocks");
 				server.runCommand("kill @e[type=!player]");
 
