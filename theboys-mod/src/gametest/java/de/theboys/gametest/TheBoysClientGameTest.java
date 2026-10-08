@@ -554,6 +554,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				LOG.info("poison bite: cow poisoned={}", poisoned);
 				if (!poisoned) problems.add("Poison Bite did not poison the cow");
 				server.runCommand("kill @e[type=!player]");
+				// let the dying cow disappear, or the next punch lands on its body
+				ctx.waitTicks(30);
 
 				// To the Moon
 				server.runCommand("summon minecraft:cow 0.5 -60 2.3 {NoAI:1b,CustomName:\"Moo\"}");
