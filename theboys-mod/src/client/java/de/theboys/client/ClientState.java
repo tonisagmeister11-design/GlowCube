@@ -34,6 +34,8 @@ public final class ClientState {
 
 	/** One-off effects being drawn in the world. */
 	public static final List<Fx> EFFECTS = new ArrayList<>();
+	/** Fixed third-person camera {x, y, z, yaw, pitch} for screenshots, or null. */
+	public static volatile double[] cameraOverride;
 	/** MiniMaus player id -> game time of her last bite (for the lunge animation). */
 	public static final java.util.Map<Integer, Long> BITES = new java.util.HashMap<>();
 

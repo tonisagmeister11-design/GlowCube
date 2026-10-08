@@ -1,1 +1,0 @@
--p net.minecraft.client.Camera | setup|setPosition|setRotation|isDetached|class|update|tick|alignWithEntity|position

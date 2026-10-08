@@ -8,6 +8,7 @@
 		"AvatarRendererLayerMixin",
 		"AvatarRendererLeanMixin",
 		"AvatarRendererMixin",
+		"CameraMixin",
 		"EntityRenderDispatcherMixin",
 		"EntityRendererIdMixin",
 		"FirstPersonHandsAndItemsRendererMixin",

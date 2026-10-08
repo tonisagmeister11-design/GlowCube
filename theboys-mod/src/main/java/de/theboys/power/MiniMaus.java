@@ -95,6 +95,8 @@ public final class MiniMaus {
 	 */
 	public static boolean onAttack(ServerPlayer player, Entity target) {
 		PlayerSession s = PowerManager.session(player);
+		TheBoys.LOGGER.info("MiniMaus attacks {} (bite={}, moon={}, smash={}, moonTarget={})", target.getType().toShortString(),
+				s.biteArmed, s.moonArmed, s.smashTarget, s.moonTarget);
 		if (s.smashTarget >= 0 || s.moonTarget >= 0) return true;
 		if (s.moonArmed && target instanceof LivingEntity) {
 			s.moonArmed = false;

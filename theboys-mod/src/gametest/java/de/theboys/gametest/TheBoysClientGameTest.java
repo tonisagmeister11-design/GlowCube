@@ -732,18 +732,10 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				float lean = ctx.computeOnClient(mc -> de.theboys.client.BodyLean.current(mc.player));
 				ctx.takeScreenshot("fight_homelander_flight_back");
 				// a camera beside his flight path for one frame
-				server.runCommand("execute at @p run summon minecraft:armor_stand ~5.5 ~0.2 ~ {Invisible:1b,NoGravity:1b,Marker:1b,Rotation:[90f,4f]}");
-				ctx.waitTicks(1);
 				for (int i = 0; i < 3; i++) {
-					// the camera stand follows him client side, beside his flight path
-					ctx.runOnClient(mc -> {
-						for (var e : mc.level.entitiesForRendering()) {
-							if (e instanceof net.minecraft.world.entity.decoration.ArmorStand && !e.isRemoved()) {
-								e.snapTo(mc.player.getX() + 5.5, mc.player.getY() + 0.3, mc.player.getZ() + 0.6, 90f, 4f);
-								mc.setCameraEntity(e);
-							}
-						}
-					});
+					// a camera that flies along beside him
+					ctx.runOnClient(mc -> de.theboys.client.ClientState.cameraOverride =
+							new double[] {mc.player.getX() + 5.5, mc.player.getY() + 0.6, mc.player.getZ() + 0.6, 90, 4});
 					ctx.waitTicks(1);
 				}
 				ctx.takeScreenshot("fight_homelander_flight_side");
@@ -796,36 +788,27 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 		}
 	}
 
-	/** Looks at the player from the side through an invisible armor stand. */
+	/** Looks at the player from a fixed camera beside him (the player stays the camera entity, so he is drawn). */
 	private static void sideView(ClientGameTestContext ctx, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server,
 			double x, double y, double z, float yaw, float pitch) {
-		// in first person 26.3 does not draw the local player's body even for another camera
-		ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
-		server.runCommand(String.format(java.util.Locale.ROOT,
-				"summon minecraft:armor_stand %.2f %.2f %.2f {Invisible:1b,NoGravity:1b,Marker:1b,Rotation:[%.1ff,%.1ff]}", x, y, z, yaw, pitch));
-		ctx.waitTicks(3);
+		de.theboys.client.ClientState.cameraOverride = new double[] {x, y, z, yaw, pitch};
 		ctx.runOnClient(mc -> {
-			for (var e : mc.level.entitiesForRendering()) {
-				if (e instanceof net.minecraft.world.entity.decoration.ArmorStand && !e.isRemoved()) {
-					mc.setCameraEntity(e);
-				}
-			}
+			mc.setCameraEntity(mc.player);
+			mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 		});
 		ctx.waitTicks(2);
 	}
 
-	/** Back to the armor stand camera summoned by sideView (without waiting). */
+	/** Kept for older steps: the fixed camera needs no switching any more. */
 	private static void standCamera(ClientGameTestContext ctx) {
-		ctx.runOnClient(mc -> {
-			for (var e : mc.level.entitiesForRendering()) {
-				if (e instanceof net.minecraft.world.entity.decoration.ArmorStand && !e.isRemoved()) mc.setCameraEntity(e);
-			}
-		});
 	}
 
 	private static void playerView(ClientGameTestContext ctx, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server) {
-		ctx.runOnClient(mc -> mc.setCameraEntity(mc.player));
-		ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+		de.theboys.client.ClientState.cameraOverride = null;
+		ctx.runOnClient(mc -> {
+			mc.setCameraEntity(mc.player);
+			mc.options.setCameraType(CameraType.FIRST_PERSON);
+		});
 		server.runCommand("kill @e[type=minecraft:armor_stand]");
 		ctx.waitTicks(3);
 	}
