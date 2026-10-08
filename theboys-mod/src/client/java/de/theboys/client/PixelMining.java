@@ -29,7 +29,7 @@ public final class PixelMining {
 		if (!active()) return false;
 		Minecraft mc = Minecraft.getInstance();
 		long now = mc.level.getGameTime();
-		if (now - lastSent < 2) return true;
+		if (now - lastSent < 1) return true;
 		lastSent = now;
 		Vec3 hit = mc.hitResult instanceof BlockHitResult b && b.getBlockPos().equals(pos) ? b.getLocation() : Vec3.atCenterOf(pos);
 		ClientPlayNetworking.send(new PixelMinePayload(pos, (float) hit.x, (float) hit.y, (float) hit.z, face.get3DDataValue()));

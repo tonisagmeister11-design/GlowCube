@@ -691,6 +691,59 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
 			});
 
+			step(ctx, "minimaus_hideout", () -> {
+				// a tunnel into a stone wall and a hollow room inside: tiny MiniMaus walks in and hides
+				server.runCommand("theboys power clear @a");
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -64 -12 12 -64 30 minecraft:bedrock");
+				server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:grass_block");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				server.runCommand("fill -1 -60 0 1 -58 1 minecraft:stone");
+				server.runCommand("theboys power set @a minimaus");
+				server.runCommand("tp @a 0.5 -60 -0.5 0 0");
+				ctx.waitTicks(20);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(25);
+				server.runOnServer(s -> {
+					var level = s.overworld();
+					BlockPos front = new BlockPos(0, -60, 0), back = new BlockPos(0, -60, 1);
+					// tunnel: 4 pixels wide, 3 high, right through the front block
+					for (int x = 6; x < 10; x++) for (int y = 0; y < 3; y++) for (int d = 0; d < 16; d++) {
+						de.theboys.block.PixelCarving.carve(level, front, new net.minecraft.world.phys.Vec3((x + 0.5) / 16.0, -60 + (y + 0.5) / 16.0, 0.0),
+								net.minecraft.core.Direction.NORTH, true);
+					}
+					// a room inside the back block
+					for (int x = 3; x < 13; x++) for (int y = 0; y < 6; y++) for (int z = 0; z < 12; z++) {
+						de.theboys.block.PixelCarving.carve(level, back, new net.minecraft.world.phys.Vec3((x + 0.5) / 16.0, -60 + (y + 0.5) / 16.0, 1 + (z + 0.5) / 16.0),
+								net.minecraft.core.Direction.NORTH, true);
+					}
+				});
+				ctx.waitTicks(5);
+				sideView(ctx, server, 0.9, -59.6, -0.9, 20, 18);
+				ctx.takeScreenshot("hideout_entrance");
+				playerView(ctx, server);
+				ctx.getInput().lookAt(0, 0);
+				ctx.getInput().holdKey(o -> o.keyUp);
+				ctx.waitTicks(25);
+				ctx.getInput().releaseKey(o -> o.keyUp);
+				ctx.waitTicks(5);
+				ctx.takeScreenshot("hideout_inside_first_person");
+				ctx.getInput().lookAt(180, 0);
+				ctx.waitTicks(3);
+				ctx.takeScreenshot("hideout_inside_looking_out");
+				double[] pos = ctx.computeOnClient(mc -> new double[] {mc.player.getX(), mc.player.getY(), mc.player.getZ()});
+				float hurt = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getHealth());
+				LOG.info("hideout: player at x={} y={} z={} health={}", pos[0], pos[1], pos[2], hurt);
+				sideView(ctx, server, 2.6, -58.9, 0.4, 90, 20);
+				ctx.takeScreenshot("hideout_from_outside");
+				playerView(ctx, server);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(10);
+				server.runCommand("tp @a 0.5 -60 -3 0 0");
+				server.runCommand("theboys power clear @a");
+				if (pos[2] < 1.0) throw new AssertionError("MiniMaus did not get into the hollow block: z=" + pos[2]);
+			});
+
 			step(ctx, "video_multi_smash", () -> {
 				// a short film: MiniMaus smashes a polar bear five times into the ground and throws it away
 				server.runCommand("theboys power clear @a");
