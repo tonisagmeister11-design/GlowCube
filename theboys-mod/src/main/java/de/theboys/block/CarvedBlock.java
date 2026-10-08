@@ -56,6 +56,15 @@ public class CarvedBlock extends BaseEntityBlock {
 	}
 
 	@Override
+	protected float getDestroyProgress(BlockState state, Player player, BlockGetter level, BlockPos pos) {
+		// mined normally (full size): as hard as the block it used to be
+		if (level.getBlockEntity(pos) instanceof CarvedBlockEntity be) {
+			return be.original().getDestroyProgress(player, level, pos);
+		}
+		return super.getDestroyProgress(state, player, level, pos);
+	}
+
+	@Override
 	public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
 		// mined normally: you get the original block back if most of it is still there
 		if (!level.isClientSide() && !player.isCreative() && level.getBlockEntity(pos) instanceof CarvedBlockEntity be

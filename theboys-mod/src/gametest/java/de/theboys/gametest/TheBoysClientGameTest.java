@@ -674,7 +674,19 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				playerView(ctx, server);
 				ctx.getInput().pressKey(Keys.ABILITY[3]);
 				ctx.waitTicks(20);
+				// full size again: blocks are mined normally, not pixel by pixel
 				server.runCommand("kill @e[type=!player]");
+				server.runCommand("tp @a 0.5 -60 0.5 0 30");
+				server.runCommand("setblock 0 -60 2 minecraft:dirt");
+				ctx.waitTicks(5);
+				ctx.getInput().lookAt(new BlockPos(0, -60, 2));
+				ctx.getInput().holdKey(o -> o.keyAttack);
+				ctx.waitTicks(40);
+				ctx.getInput().releaseKey(o -> o.keyAttack);
+				ctx.waitTicks(3);
+				String big = server.computeOnServer(s -> s.overworld().getBlockState(new BlockPos(0, -60, 2)).toString());
+				LOG.info("full size mining: block now={}", big);
+				if (!big.contains("air")) problems.add("full-size MiniMaus did not mine the dirt normally: " + big);
 				server.runCommand("theboys power clear @a");
 				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
 			});
