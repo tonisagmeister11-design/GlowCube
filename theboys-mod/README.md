@@ -119,6 +119,9 @@ Rennen hin und her schwingt.
   Pixel hoch). Nochmal X macht dich wieder groß. Als Winzling **knabbert Linksklick einzelne Pixel aus Blöcken**
   statt den ganzen Block abzubauen. So kannst du Mauselöcher, Tunnel oder Muster in Blöcke fressen, und du
   läufst wirklich durch die Löcher. Ist ein Block ganz weggeknabbert, bekommst du ihn als Item.
+  Du kannst Blöcke auch **aushöhlen und dich darin verstecken**: Knabber einen Tunnel hinein und eine Kammer
+  aus, lauf hinein, und von außen sieht man nur den Block. Drinnen erstickst du nicht, und die Kamera schaut
+  auch ganz nah an der Wand nicht durch die Pixel. Groß baust du ganz normal ganze Blöcke ab.
 
 ## Animationen
 
