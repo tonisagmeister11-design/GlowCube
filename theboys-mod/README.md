@@ -106,7 +106,8 @@ Du wirst zu einer Maus: grauer Pelz, cremefarbener Bauch, rosa Pfoten, Schnurrha
 Heldengürtel mit „M“. Dazu kommen **runde 3D-Ohren**, die zucken, und ein **langer rosa Schwanz**, der beim
 Rennen hin und her schwingt.
 * **Doppelt so schnell** wie ein normaler Spieler, und dabei sehr stark (viel Schaden und Rüstung), egal ob
-  groß oder klein.
+  groß oder klein. Die Geschwindigkeit schrumpft mit dir: Als Winzling läufst du so schnell, wie es zu deiner
+  Größe passt, damit du in Ruhe Pixel für Pixel knabbern kannst.
 * **Giftbiss (R):** Danach ist dein nächster Angriff ein Biss. Leuchtende Kiefer schnappen zu, und das Opfer
   bekommt starkes Gift (Gift IV) und Schwäche, Spieler zusätzlich Übelkeit.
 * **To the Moon (G):** Den nächsten Gegner, den du schlägst, hältst du fest. Dann holst du weit aus und

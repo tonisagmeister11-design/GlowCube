@@ -30,7 +30,7 @@ public final class PowerManager {
 	private static final Identifier FALL = TheBoys.id("power_fall");
 	private static final Identifier HEALTH = TheBoys.id("power_health");
 	private static final Identifier SPEED = TheBoys.id("power_speed");
-	private static final Identifier DOUBLE_SPEED = TheBoys.id("minimaus_speed");
+	public static final Identifier DOUBLE_SPEED = TheBoys.id("minimaus_speed");
 	public static final Identifier RUN = TheBoys.id("a_train_run");
 	public static final Identifier STEP = TheBoys.id("a_train_step");
 

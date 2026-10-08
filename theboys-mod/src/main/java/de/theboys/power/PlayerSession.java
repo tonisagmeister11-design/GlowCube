@@ -63,6 +63,7 @@ public final class PlayerSession {
 	public int smashTarget = -1;
 	public int smashTicks;
 	public long lastPixel;
+	public double speedFactor = 2.0;
 
 	// shared
 	public Vec3 lastPos;

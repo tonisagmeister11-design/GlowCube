@@ -270,6 +270,12 @@ public final class MiniMaus {
 		double from = s.small ? 1.0 : SMALL_SCALE;
 		double scale = target + (from - target) * k * k;
 		PowerManager.modifier(player, Attributes.SCALE, SCALE, scale >= 0.999 ? 0 : scale - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+		// twice a normal player's speed - relative to her size: tiny, she walks pixel by pixel instead of racing
+		double speedFactor = 2.0 * scale;
+		if (Math.abs(speedFactor - s.speedFactor) > 0.001) {
+			s.speedFactor = speedFactor;
+			PowerManager.modifier(player, Attributes.MOVEMENT_SPEED, PowerManager.DOUBLE_SPEED, speedFactor - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+		}
 
 		if (s.biteTicks > 0) s.biteTicks--;
 

@@ -618,7 +618,9 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(20);
 				double scale = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.SCALE));
 				float height = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getBbHeight());
-				LOG.info("minimaus small: scale={} height={}", scale, height);
+				double smallSpeed = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED));
+				LOG.info("minimaus small: scale={} height={} speed={}", scale, height, smallSpeed);
+				if (smallSpeed > 0.02) problems.add("tiny MiniMaus is still too fast: " + smallSpeed);
 				if (scale > 0.07 || height > 0.2f) problems.add("MiniMaus did not shrink: " + scale);
 				sideView(ctx, server, 1.3, -59.85, 0.5, 90, 12);
 				ctx.takeScreenshot("minimaus_tiny");
