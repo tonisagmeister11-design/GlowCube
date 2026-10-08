@@ -534,10 +534,14 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(3);
 				sideView(ctx, server, 3.2, -58.7, 1.4, 90, 10);
 				ctx.takeScreenshot("minimaus_bite_ready");
+				// aiming goes through the camera, so bite with the player's own view, then look from the side
+				ctx.runOnClient(mc -> mc.setCameraEntity(mc.player));
+				ctx.waitTicks(1);
 				ctx.getInput().pressKey(o -> o.keyAttack);
-				ctx.waitTicks(2);
+				standCamera(ctx);
+				ctx.waitTicks(1);
 				ctx.takeScreenshot("minimaus_bite");
-				ctx.waitTicks(4);
+				ctx.waitTicks(3);
 				ctx.takeScreenshot("minimaus_bite_2");
 				playerView(ctx, server);
 				boolean poisoned = server.computeOnServer(s -> {
@@ -555,11 +559,14 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(new BlockPos(0, -60, 2));
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
-				ctx.waitTicks(3);
-				ctx.getInput().pressKey(o -> o.keyAttack);
 				sideView(ctx, server, 4.5, -58.5, 1.2, 90, 0);
+				ctx.runOnClient(mc -> mc.setCameraEntity(mc.player));
+				ctx.waitTicks(1);
+				ctx.getInput().pressKey(o -> o.keyAttack);
+				standCamera(ctx);
+				ctx.waitTicks(2);
 				ctx.takeScreenshot("minimaus_moon_windup");
-				ctx.waitTicks(6);
+				ctx.waitTicks(5);
 				ctx.takeScreenshot("minimaus_moon_hit");
 				ctx.waitTicks(4);
 				ctx.takeScreenshot("minimaus_moon_launch");
@@ -791,6 +798,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 	/** Looks at the player from the side through an invisible armor stand. */
 	private static void sideView(ClientGameTestContext ctx, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server,
 			double x, double y, double z, float yaw, float pitch) {
+		// in first person 26.3 does not draw the local player's body even for another camera
+		ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
 		server.runCommand(String.format(java.util.Locale.ROOT,
 				"summon minecraft:armor_stand %.2f %.2f %.2f {Invisible:1b,NoGravity:1b,Marker:1b,Rotation:[%.1ff,%.1ff]}", x, y, z, yaw, pitch));
 		ctx.waitTicks(3);
@@ -804,8 +813,18 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 		ctx.waitTicks(2);
 	}
 
+	/** Back to the armor stand camera summoned by sideView (without waiting). */
+	private static void standCamera(ClientGameTestContext ctx) {
+		ctx.runOnClient(mc -> {
+			for (var e : mc.level.entitiesForRendering()) {
+				if (e instanceof net.minecraft.world.entity.decoration.ArmorStand && !e.isRemoved()) mc.setCameraEntity(e);
+			}
+		});
+	}
+
 	private static void playerView(ClientGameTestContext ctx, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server) {
 		ctx.runOnClient(mc -> mc.setCameraEntity(mc.player));
+		ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 		server.runCommand("kill @e[type=minecraft:armor_stand]");
 		ctx.waitTicks(3);
 	}

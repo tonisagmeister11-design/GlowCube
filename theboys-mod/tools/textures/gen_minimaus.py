@@ -188,3 +188,27 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+
+def hud_icon():
+    """16x16 mouse head for the ability panel."""
+    im = new(16, 16)
+    for y in range(16):
+        for x in range(16):
+            for (cx, cy, r, c) in ((3.5, 4.0, 3.6, FUR_D), (12.5, 4.0, 3.6, FUR_D)):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                    px(im, x, y, c)
+            for (cx, cy, r) in ((3.5, 4.0, 2.2), (12.5, 4.0, 2.2)):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                    px(im, x, y, PINK)
+            if ((x - 7.5) / 5.6) ** 2 + ((y - 9.5) / 5.2) ** 2 <= 1:
+                px(im, x, y, FUR if h2(x, y, 4) % 5 else FUR_L)
+    for (x, y, c) in ((5, 8, EYE), (5, 9, EYE), (10, 8, EYE), (10, 9, EYE), (5, 7, EYE_HI), (10, 7, EYE_HI),
+                      (7, 11, PINK_D), (8, 11, PINK_D), (7, 13, TOOTH), (8, 13, TOOTH),
+                      (6, 12, CREAM), (9, 12, CREAM), (7, 12, CREAM), (8, 12, CREAM)):
+        px(im, x, y, c)
+    return outline(im, C("#14161c"))
+
+
+if __name__ == "__main__":
+    save(hud_icon(), "gui/power/minimaus.png")
