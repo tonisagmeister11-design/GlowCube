@@ -578,6 +578,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 						for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.PIG) return e.getY();
 						return -999.0;
 					});
+					LOG.info("to the moon: pig y={}", y);
 					maxY = Math.max(maxY, y);
 				}
 				LOG.info("to the moon: pig flew up to y={} ({} blocks)", maxY, maxY + 60);

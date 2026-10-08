@@ -135,6 +135,7 @@ public final class MiniMaus {
 		Vec3 at = target.position();
 		// the blow itself only hurts a bit; the fall from 120 blocks does the rest
 		Supe.hurt(player, target, 4f);
+		TheBoys.LOGGER.info("To the Moon: {} hit at y={}, health={}", target.getType().toShortString(), at.y, target.getHealth());
 		LAUNCHES.removeIf(l -> l.entity() == target);
 		LAUNCHES.add(new Launch(target, at.y + MOON_HEIGHT, new int[] {0}, new Vec3[] {Vec3.ZERO}));
 		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.SHOCKWAVE, player.getId(), (float) at.x, (float) at.y + 0.2f, (float) at.z, 5f, Float.NaN, 0));
@@ -298,6 +299,9 @@ public final class MiniMaus {
 			Entity e = l.entity();
 			l.ticks()[0]++;
 			if (e.isRemoved() || !e.isAlive() || l.ticks()[0] > 90) {
+				if (!Double.isNaN(l.targetY())) {
+					TheBoys.LOGGER.info("To the Moon ended after {} ticks at y={} (removed={}, alive={})", l.ticks()[0], e.getY(), e.isRemoved(), e.isAlive());
+				}
 				it.remove();
 				continue;
 			}
@@ -313,6 +317,7 @@ public final class MiniMaus {
 			} else {
 				double left = l.targetY() - e.getY();
 				if (left <= 1) {
+					TheBoys.LOGGER.info("To the Moon reached y={} after {} ticks", e.getY(), l.ticks()[0]);
 					it.remove();
 					continue;
 				}
