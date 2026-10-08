@@ -696,7 +696,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(20);
 				ctx.getInput().lookAt(new BlockPos(0, -59, 2));
 				de.theboys.client.ClientState.hideHud = true;
-				double cx = 5.2, cy = -57.6, cz = 7.6, tx = 0.5, ty = -59.2, tz = 1.0;
+				double cx = 4.4, cy = -58.3, cz = 3.9, tx = 0.5, ty = -58.6, tz = 1.4;
 				double dx = tx - cx, dy = ty - cy, dz = tz - cz;
 				float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
 				float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
