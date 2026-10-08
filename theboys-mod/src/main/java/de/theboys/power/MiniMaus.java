@@ -41,7 +41,7 @@ public final class MiniMaus {
 	private static final double MOON_HEIGHT = 120;
 
 	/** Entities knocked into the sky by To the Moon. */
-	private record Launch(Entity entity, double targetY, int[] ticks) {
+	private record Launch(Entity entity, double targetY, int[] ticks, Vec3[] velocity) {
 	}
 
 	private static final List<Launch> LAUNCHES = new ArrayList<>();
@@ -135,8 +135,7 @@ public final class MiniMaus {
 		Vec3 at = target.position();
 		Supe.hurt(player, target, 12f);
 		LAUNCHES.removeIf(l -> l.entity() == target);
-		LAUNCHES.add(new Launch(target, at.y + MOON_HEIGHT, new int[] {0}));
-		Supe.push(target, new Vec3(0, 3.5, 0).subtract(target.getDeltaMovement()));
+		LAUNCHES.add(new Launch(target, at.y + MOON_HEIGHT, new int[] {0}, new Vec3[] {Vec3.ZERO}));
 		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.SHOCKWAVE, player.getId(), (float) at.x, (float) at.y + 0.2f, (float) at.z, 5f, Float.NaN, 0));
 		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.SHOCKWAVE, player.getId(), (float) at.x, (float) at.y + 0.5f, (float) at.z, 14f, 0f, -90f));
 		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.SHAKE, player.getId(), (float) at.x, (float) at.y, (float) at.z, 2.0f, 0, 0));
@@ -199,7 +198,7 @@ public final class MiniMaus {
 		if (s.smashTicks >= MiniMausMath.THROW) {
 			Vec3 fwd = MiniMausMath.forward(yaw);
 			victim.setDeltaMovement(Vec3.ZERO);
-			Supe.push(victim, fwd.scale(1.1).add(0, 0.55, 0));
+			fling(victim, fwd.scale(1.1).add(0, 0.55, 0));
 			Supe.hurt(player, victim, 4f);
 			Supe.sound(level, victim.position(), SoundEvents.PLAYER_ATTACK_KNOCKBACK, 1.5f, 0.6f);
 			s.smashTarget = -1;
@@ -290,7 +289,7 @@ public final class MiniMaus {
 		return 0;
 	}
 
-	/** Moves everything that was sent To the Moon (called every server tick). */
+	/** Moves everything that was sent To the Moon or thrown away (called every server tick). */
 	public static void tickLaunches() {
 		Iterator<Launch> it = LAUNCHES.iterator();
 		while (it.hasNext()) {
@@ -301,20 +300,42 @@ public final class MiniMaus {
 				it.remove();
 				continue;
 			}
-			double left = l.targetY() - e.getY();
-			if (left <= 1) {
-				it.remove();
-				continue;
+			Vec3 v;
+			if (Double.isNaN(l.targetY())) {
+				// thrown: flies off in an arc
+				if (l.ticks()[0] > 25 || l.ticks()[0] > 3 && e.onGround()) {
+					it.remove();
+					continue;
+				}
+				v = l.velocity()[0];
+				l.velocity()[0] = new Vec3(v.x * 0.9, v.y - 0.08, v.z * 0.9);
+			} else {
+				double left = l.targetY() - e.getY();
+				if (left <= 1) {
+					it.remove();
+					continue;
+				}
+				// keeps rocketing upwards until it is ~120 blocks above where it was hit
+				v = new Vec3(0, Math.min(3.6, Math.max(0.6, left * 0.5)), 0);
+				if (e.level() instanceof ServerLevel level && l.ticks()[0] % 2 == 0) {
+					level.sendParticles(ParticleTypes.CLOUD, e.getX(), e.getY(), e.getZ(), 3, 0.2, 0.1, 0.2, 0.02);
+				}
 			}
-			// keeps rocketing upwards until it is ~120 blocks above where it was hit
-			double vy = Math.min(3.6, Math.max(0.6, left * 0.5));
-			e.setDeltaMovement(e.getDeltaMovement().x * 0.5, vy, e.getDeltaMovement().z * 0.5);
-			e.needsSync = true;
 			e.resetFallDistance();
-			if (e.level() instanceof ServerLevel level && l.ticks()[0] % 2 == 0) {
-				level.sendParticles(ParticleTypes.CLOUD, e.getX(), e.getY(), e.getZ(), 3, 0.2, 0.1, 0.2, 0.02);
+			if (e instanceof ServerPlayer) {
+				e.setDeltaMovement(v);
+				e.needsSync = true;
+			} else {
+				// moved directly, so it works for every mob (also ones without AI)
+				e.setDeltaMovement(v);
+				e.move(net.minecraft.world.entity.MoverType.SELF, v);
 			}
 		}
+	}
+
+	private static void fling(Entity e, Vec3 velocity) {
+		LAUNCHES.removeIf(l -> l.entity() == e);
+		LAUNCHES.add(new Launch(e, Double.NaN, new int[] {0}, new Vec3[] {velocity}));
 	}
 
 	public static void stop(ServerPlayer player, PlayerSession s) {
