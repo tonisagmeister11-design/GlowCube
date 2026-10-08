@@ -268,6 +268,7 @@ public final class MiniMaus {
 			Entity e = level.getEntity(s.moonTarget);
 			TheBoys.LOGGER.info("To the Moon windup: target={} entity={} ticks={}", s.moonTarget, e, s.moonTicks);
 			if (!(e instanceof LivingEntity victim) || !victim.isAlive()) {
+				TheBoys.LOGGER.info("To the Moon: target lost");
 				s.moonTarget = -1;
 			} else {
 				hold(victim, s.moonSpot, victim.getYRot());
@@ -348,6 +349,7 @@ public final class MiniMaus {
 	}
 
 	public static void stop(ServerPlayer player, PlayerSession s) {
+		if (s.moonTarget >= 0 || s.smashTarget >= 0) TheBoys.LOGGER.info("MiniMaus stop", new Exception("stop called"));
 		s.small = false;
 		s.biteArmed = false;
 		s.moonArmed = false;

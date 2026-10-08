@@ -26,6 +26,7 @@ public final class PixelCarving {
 	}
 
 	public static void mine(ServerPlayer player, PixelMinePayload p) {
+		de.theboys.TheBoys.LOGGER.info("pixel mine request {} power={} small={}", p.pos(), PowerAttachments.powerOf(player), PowerManager.session(player).small);
 		if (PowerAttachments.powerOf(player) != Power.MINIMAUS) return;
 		PlayerSession s = PowerManager.session(player);
 		if (!s.small) return;
