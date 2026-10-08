@@ -1,40 +1,10 @@
--p net.minecraft.world.level.block.entity.BlockEntity | BlockEntity\(|saveAdditional|loadAdditional|getUpdateTag|getUpdatePacket|setChanged|preRemoveSideEffects|class
-net.minecraft.world.level.block.entity.BlockEntityType | BlockEntityType\(|BlockEntitySupplier|class
-net.minecraft.world.level.block.entity.BlockEntityType$BlockEntitySupplier
-net.minecraft.world.level.storage.ValueOutput
-net.minecraft.world.level.storage.ValueInput
-net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket | create
-net.minecraft.world.level.block.EntityBlock
--p net.minecraft.world.level.block.BaseEntityBlock
--p net.minecraft.world.level.block.Block | playerWillDestroy|getShape|getCollisionShape|getRenderShape|codec|propagatesSkylight|getLightBlock|getDrops|useShapeForLightOcclusion|getVisualShape|getInteractionShape|getOcclusionShape
--p net.minecraft.world.level.block.state.BlockBehaviour | protected .*(getShape|getCollisionShape|getRenderShape|codec|propagatesSkylight|getLightBlock|getVisualShape|getOcclusionShape|getInteractionShape|useShapeForLightOcclusion|getShadeBrightness)
-net.minecraft.world.level.block.RenderShape
--p net.minecraft.world.phys.shapes.BitSetDiscreteVoxelShape | BitSetDiscreteVoxelShape\(|fill|class
--p net.minecraft.world.phys.shapes.CubeVoxelShape
--p net.minecraft.world.phys.shapes.ArrayVoxelShape | ArrayVoxelShape\(
-net.minecraft.world.phys.shapes.Shapes | create|box|empty|block|or
-net.minecraft.client.renderer.blockentity.BlockEntityRenderer
-net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState
-net.minecraft.client.renderer.blockentity.BlockEntityRenderers | register
-net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider
-net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider$Context
-net.minecraft.client.renderer.block.BlockModelShaper
-net.minecraft.client.renderer.texture.TextureAtlasSprite | getU|getV|atlasLocation|class
-net.minecraft.client.renderer.texture.TextureAtlas | LOCATION|class
+net.minecraft.client.renderer.block.BlockStateModelSet
+net.minecraft.client.renderer.block.BlockModelSet
 net.minecraft.client.renderer.block.model.BlockStateModel
-net.minecraft.client.resources.model.ModelManager | getBlock|BlockModel|class
--p net.minecraft.client.multiplayer.MultiPlayerGameMode | startDestroyBlock|continueDestroyBlock|class
-net.minecraft.client.renderer.entity.state.EntityRenderState | public|class
-net.fabricmc.fabric.api.client.rendering.v1.FabricRenderState
-net.fabricmc.fabric.api.client.rendering.v1.RenderStateDataKey
--p net.minecraft.client.renderer.entity.EntityRenderer | extractRenderState|createRenderState
-net.minecraft.client.renderer.entity.layers.RenderLayer
-net.minecraft.client.renderer.entity.RenderLayerParent
-net.minecraft.world.entity.ai.attributes.Attributes | SCALE|MOVEMENT_SPEED|ENTITY_INTERACTION|BLOCK_INTERACTION|STEP_HEIGHT|JUMP
-net.fabricmc.fabric.api.event.player.AttackEntityCallback
-net.fabricmc.fabric.api.event.player.AttackBlockCallback
-net.minecraft.world.effect.MobEffects | POISON|WITHER|NAUSEA|SLOWNESS|WEAKNESS
-net.minecraft.world.level.Level | sendBlockUpdated|class
-find LivingEntityFeatureRenderer|RenderLayerRegistration|LivingEntityRenderLayer
-find fabric.*rendering.*v1.*(Entity|Layer|Feature)
-find BlockEntityRendererRegistry|FabricBlockEntityTypeBuilder
+net.minecraft.client.renderer.block.BlockModelResolver
+net.minecraft.client.renderer.block.model.BlockModelPart
+net.minecraft.client.resources.model.geometry.BakedQuad
+-p net.minecraft.client.renderer.entity.LivingEntityRenderer | addLayer|layers
+-p net.minecraft.client.renderer.entity.player.AvatarRenderer | AvatarRenderer\(
+net.minecraft.client.renderer.block.BlockModelShaper
+net.minecraft.client.Minecraft | getModelManager|getBlockRenderer|getDeltaTracker|blockModel
