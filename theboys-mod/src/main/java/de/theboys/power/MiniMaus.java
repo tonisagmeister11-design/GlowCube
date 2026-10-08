@@ -95,8 +95,6 @@ public final class MiniMaus {
 	 */
 	public static boolean onAttack(ServerPlayer player, Entity target) {
 		PlayerSession s = PowerManager.session(player);
-		TheBoys.LOGGER.info("MiniMaus attacks {} (bite={}, moon={}, smash={}, moonTarget={})", target.getType().toShortString(),
-				s.biteArmed, s.moonArmed, s.smashTarget, s.moonTarget);
 		if (s.smashTarget >= 0 || s.moonTarget >= 0) return true;
 		if (s.moonArmed && target instanceof LivingEntity) {
 			s.moonArmed = false;
@@ -137,7 +135,7 @@ public final class MiniMaus {
 		Vec3 at = target.position();
 		// the blow itself only hurts a bit; the fall from 120 blocks does the rest
 		Supe.hurt(player, target, 4f);
-		TheBoys.LOGGER.info("To the Moon: {} hit at y={}, health={}", target.getType().toShortString(), at.y, target.getHealth());
+		TheBoys.LOGGER.debug("To the Moon: {} hit at y={}, health={}", target.getType().toShortString(), at.y, target.getHealth());
 		LAUNCHES.removeIf(l -> l.entity() == target);
 		LAUNCHES.add(new Launch(target, at.y + MOON_HEIGHT, new int[] {0}, new Vec3[] {Vec3.ZERO}));
 		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.SHOCKWAVE, player.getId(), (float) at.x, (float) at.y + 0.2f, (float) at.z, 5f, Float.NaN, 0));
@@ -148,6 +146,17 @@ public final class MiniMaus {
 		Supe.sound(level, at, SoundEvents.MACE_SMASH_GROUND_HEAVY, 2.0f, 0.7f);
 		Supe.sound(level, at, SoundEvents.GENERIC_EXPLODE, 1.2f, 1.4f);
 		s.cool(1, 240);
+	}
+
+	/**
+	 * The punch that starts To the Moon must not land as a normal hit (it would kill small mobs before
+	 * they fly), and nobody hurts the victim she is winding up on.
+	 */
+	public static boolean blocksDamage(Entity victim) {
+		for (ServerPlayer p : victim.level().getServer().getPlayerList().getPlayers()) {
+			if (PowerAttachments.powerOf(p) == Power.MINIMAUS && PowerManager.session(p).moonTarget == victim.getId()) return true;
+		}
+		return false;
 	}
 
 	// ------------------------------------------------------------------ Multi Smash
@@ -211,7 +220,7 @@ public final class MiniMaus {
 
 	private static void slamImpact(ServerPlayer player, LivingEntity victim, Vec3 head, int slam) {
 		ServerLevel level = player.level();
-		Supe.hurt(player, victim, 5f);
+		Supe.hurt(player, victim, 7f);
 		BlockPos ground = BlockPos.containing(head.x, head.y - 0.2, head.z);
 		BlockState state = level.getBlockState(ground);
 		if (state.isAir()) state = level.getBlockState(ground.below());
@@ -266,15 +275,13 @@ public final class MiniMaus {
 		// To the Moon: wind up while the victim is frozen, then the blow
 		if (s.moonTarget >= 0) {
 			Entity e = level.getEntity(s.moonTarget);
-			TheBoys.LOGGER.info("To the Moon windup: target={} entity={} ticks={}", s.moonTarget, e, s.moonTicks);
 			if (!(e instanceof LivingEntity victim) || !victim.isAlive()) {
-				TheBoys.LOGGER.info("To the Moon: target lost");
 				s.moonTarget = -1;
 			} else {
 				hold(victim, s.moonSpot, victim.getYRot());
 				if (--s.moonTicks <= 0) {
-					moonStrike(player, s, victim);
 					s.moonTarget = -1;
+					moonStrike(player, s, victim);
 					s.moonStrikeTicks = 8;
 				}
 			}
@@ -304,7 +311,7 @@ public final class MiniMaus {
 			l.ticks()[0]++;
 			if (e.isRemoved() || !e.isAlive() || l.ticks()[0] > 90) {
 				if (!Double.isNaN(l.targetY())) {
-					TheBoys.LOGGER.info("To the Moon ended after {} ticks at y={} (removed={}, alive={})", l.ticks()[0], e.getY(), e.isRemoved(), e.isAlive());
+					TheBoys.LOGGER.debug("To the Moon ended after {} ticks at y={} (removed={}, alive={})", l.ticks()[0], e.getY(), e.isRemoved(), e.isAlive());
 				}
 				it.remove();
 				continue;
@@ -321,7 +328,7 @@ public final class MiniMaus {
 			} else {
 				double left = l.targetY() - e.getY();
 				if (left <= 1) {
-					TheBoys.LOGGER.info("To the Moon reached y={} after {} ticks", e.getY(), l.ticks()[0]);
+					TheBoys.LOGGER.debug("To the Moon reached y={} after {} ticks", e.getY(), l.ticks()[0]);
 					it.remove();
 					continue;
 				}
@@ -349,7 +356,6 @@ public final class MiniMaus {
 	}
 
 	public static void stop(ServerPlayer player, PlayerSession s) {
-		if (s.moonTarget >= 0 || s.smashTarget >= 0) TheBoys.LOGGER.info("MiniMaus stop", new Exception("stop called"));
 		s.small = false;
 		s.biteArmed = false;
 		s.moonArmed = false;

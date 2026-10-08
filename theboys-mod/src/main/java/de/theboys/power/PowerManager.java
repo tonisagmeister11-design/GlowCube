@@ -138,9 +138,6 @@ public final class PowerManager {
 				continue;
 			}
 			PlayerSession s = session(player);
-			if (power == Power.MINIMAUS && (s.moonTarget >= 0 || s.smashTarget >= 0)) {
-				TheBoys.LOGGER.info("tick {} session={} moon={} smash={}", player.level().getGameTime(), System.identityHashCode(s), s.moonTarget, s.smashTarget);
-			}
 			s.motion = s.lastPos == null ? net.minecraft.world.phys.Vec3.ZERO : player.position().subtract(s.lastPos);
 			s.lastPos = player.position();
 			s.tickCooldowns();

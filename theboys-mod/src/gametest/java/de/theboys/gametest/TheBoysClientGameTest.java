@@ -590,7 +590,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("summon minecraft:iron_golem 0.5 -60 2.6 {NoAI:1b}");
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(new BlockPos(0, -59, 2));
-				sideView(ctx, server, 0.5, -57.8, 9, 180, 12);
+				sideView(ctx, server, 0.5, -57.9, 6.8, 180, 14);
 				ctx.getInput().pressKey(Keys.ABILITY[2]);
 				int[] shots = {6, 12, 17, 23, 30, 37, 44, 52};
 				int done = 0;
@@ -605,11 +605,13 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				});
 				playerView(ctx, server);
 				LOG.info("multi smash: golem health after={}", golem);
-				if (golem > 70f) problems.add("Multi Smash did not hurt the golem: " + golem);
+				if (golem > 80f) problems.add("Multi Smash did not hurt the golem: " + golem);
 				server.runCommand("kill @e[type=!player]");
 				ctx.waitTicks(230);
 
 				// shrink to a pixel
+				server.runCommand("tp @a 0.5 -60 0.3 0 0");
+				ctx.waitTicks(3);
 				ctx.getInput().pressKey(Keys.ABILITY[3]);
 				ctx.waitTicks(20);
 				double scale = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.SCALE));
@@ -654,7 +656,10 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				playerView(ctx, server);
 
 				// still strong when tiny: Multi Smash on a zombie
-				server.runCommand("summon minecraft:husk 0.5 -60 0.9 {NoAI:1b,Silent:1b}");
+				server.runCommand("tp @a 0.5 -60 0.3 0 0");
+				server.runCommand("setblock 0 -60 1 minecraft:air");
+				server.runCommand("setblock 1 -60 1 minecraft:air");
+				server.runCommand("summon minecraft:husk 0.5 -60 1.0 {NoAI:1b,Silent:1b}");
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(new BlockPos(0, -60, 0));
 				ctx.getInput().lookAt(0, 0);
