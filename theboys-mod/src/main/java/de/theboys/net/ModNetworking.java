@@ -16,6 +16,9 @@ public final class ModNetworking {
 		PayloadTypeRegistry.serverboundPlay().register(AbilityKeyPayload.TYPE, AbilityKeyPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(StatusPayload.TYPE, StatusPayload.CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(FxPayload.TYPE, FxPayload.CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(PixelMinePayload.TYPE, PixelMinePayload.CODEC);
+		ServerPlayNetworking.registerGlobalReceiver(PixelMinePayload.TYPE, (payload, context) ->
+				de.theboys.block.PixelCarving.mine(context.player(), payload));
 
 		ServerPlayNetworking.registerGlobalReceiver(AbilityKeyPayload.TYPE, (payload, context) -> {
 			ServerPlayer player = context.player();

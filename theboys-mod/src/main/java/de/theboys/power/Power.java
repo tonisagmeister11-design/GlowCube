@@ -12,7 +12,8 @@ public enum Power implements StringRepresentable {
 	HOMELANDER("homelander", 0xC9A227),
 	SOLDIER_BOY("soldier_boy", 0x6B8E23),
 	A_TRAIN("a_train", 0x3A7BFF),
-	BUTCHER("butcher", 0x8A0303);
+	BUTCHER("butcher", 0x8A0303),
+	MINIMAUS("minimaus", 0xFF6FA5);
 
 	public static final Codec<Power> CODEC = StringRepresentable.fromEnum(Power::values);
 	public static final StreamCodec<ByteBuf, Power> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(i -> values()[i], Power::ordinal);
@@ -21,6 +22,8 @@ public enum Power implements StringRepresentable {
 	public static final Power[] COMPOUND_V_POOL = {A_TRAIN, BUTCHER};
 	/** The rare V-One gives one of these. */
 	public static final Power[] V_ONE_POOL = {SOLDIER_BOY, HOMELANDER};
+	/** Mini V only ever makes MiniMaus. */
+	public static final Power[] MINI_V_POOL = {MINIMAUS};
 
 	private final String id;
 	private final int color;

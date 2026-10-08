@@ -43,6 +43,20 @@
       "entries": [
         {
           "type": "minecraft:item",
+          "name": "theboys:mini_v",
+          "weight": 15
+        },
+        {
+          "type": "minecraft:empty",
+          "weight": 85
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
           "name": "theboys:uranium_injector",
           "weight": 30
         },

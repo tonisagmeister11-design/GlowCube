@@ -21,6 +21,10 @@ public record ActiveState(int flags, int targetId, int charge) {
 	public static final int GRAPPLE = 1 << 9;
 	public static final int FRENZY = 1 << 10;
 	public static final int CANCER_WALK = 1 << 11;
+	public static final int SMALL = 1 << 12;
+	public static final int BITE = 1 << 13;
+	public static final int MOON = 1 << 14;
+	public static final int SMASH = 1 << 15;
 
 	public static final ActiveState IDLE = new ActiveState(0, -1, 0);
 

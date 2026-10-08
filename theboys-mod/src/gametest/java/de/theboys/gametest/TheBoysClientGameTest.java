@@ -490,6 +490,178 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(20);
 			});
 
+			step(ctx, "minimaus", () -> {
+				server.runCommand("theboys power clear @a");
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -64 -12 12 -64 30 minecraft:bedrock");
+				server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:grass_block");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				server.runCommand("tp @a 0 -60 0 0 0");
+				// the new syringe
+				server.runCommand("clear @a");
+				server.runCommand("give @a theboys:mini_v");
+				ctx.waitTicks(10);
+				ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("minimaus_hold_mini_v");
+				ctx.getInput().pressKey(Keys.INJECT);
+				ctx.waitTicks(55);
+				Power got = server.computeOnServer(s -> PowerAttachments.powerOf(s.getPlayerList().getPlayers().get(0)));
+				LOG.info("Mini V gave: {}", got);
+				if (got != Power.MINIMAUS) throw new AssertionError("Mini V gave " + got);
+				double speed = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED));
+				LOG.info("minimaus speed attribute={}", speed);
+				if (speed < 0.19) throw new AssertionError("MiniMaus is not twice as fast: " + speed);
+
+				// the mouse skin with ears and tail
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+				ctx.waitTicks(6);
+				ctx.takeScreenshot("minimaus_skin_front");
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("minimaus_skin_back");
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				sideView(ctx, server, 2.6, -58.6, 0.5, 90, 10);
+				ctx.takeScreenshot("minimaus_skin_side");
+				playerView(ctx, server);
+
+				// Poison Bite
+				server.runCommand("summon minecraft:cow 0.5 -60 2.3 {NoAI:1b,Rotation:[180f,0f]}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(new BlockPos(0, -60, 2));
+				ctx.getInput().pressKey(Keys.ABILITY[0]);
+				ctx.waitTicks(3);
+				sideView(ctx, server, 3.2, -58.7, 1.4, 90, 10);
+				ctx.takeScreenshot("minimaus_bite_ready");
+				ctx.getInput().pressKey(o -> o.keyAttack);
+				ctx.waitTicks(2);
+				ctx.takeScreenshot("minimaus_bite");
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("minimaus_bite_2");
+				playerView(ctx, server);
+				boolean poisoned = server.computeOnServer(s -> {
+					for (var e : s.overworld().getAllEntities()) {
+						if (e.getType() == net.minecraft.world.entity.EntityTypes.COW && e instanceof net.minecraft.world.entity.LivingEntity c) return c.hasEffect(net.minecraft.world.effect.MobEffects.POISON);
+					}
+					return false;
+				});
+				LOG.info("poison bite: cow poisoned={}", poisoned);
+				if (!poisoned) throw new AssertionError("Poison Bite did not poison the cow");
+				server.runCommand("kill @e[type=!player]");
+
+				// To the Moon
+				server.runCommand("summon minecraft:pig 0.5 -60 2.3 {NoAI:1b}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(new BlockPos(0, -60, 2));
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(3);
+				ctx.getInput().pressKey(o -> o.keyAttack);
+				sideView(ctx, server, 4.5, -58.5, 1.2, 90, 0);
+				ctx.takeScreenshot("minimaus_moon_windup");
+				ctx.waitTicks(6);
+				ctx.takeScreenshot("minimaus_moon_hit");
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("minimaus_moon_launch");
+				playerView(ctx, server);
+				double maxY = -60;
+				for (int i = 0; i < 14; i++) {
+					ctx.waitTicks(5);
+					double y = server.computeOnServer(s -> {
+						for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.PIG) return e.getY();
+						return -999.0;
+					});
+					maxY = Math.max(maxY, y);
+				}
+				LOG.info("to the moon: pig flew up to y={} ({} blocks)", maxY, maxY + 60);
+				if (maxY + 60 < 100) throw new AssertionError("To the Moon only reached " + (maxY + 60) + " blocks");
+				server.runCommand("kill @e[type=!player]");
+
+				// Multi Smash, full size, on an iron golem
+				server.runCommand("summon minecraft:iron_golem 0.5 -60 2.6 {NoAI:1b}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(new BlockPos(0, -59, 2));
+				sideView(ctx, server, 0.5, -57.8, 9, 180, 12);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				int[] shots = {6, 12, 17, 23, 30, 37, 44, 52};
+				int done = 0;
+				for (int at : shots) {
+					ctx.waitTicks(at - done);
+					done = at;
+					ctx.takeScreenshot("minimaus_smash_" + at);
+				}
+				float golem = server.computeOnServer(s -> {
+					for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.IRON_GOLEM && e instanceof net.minecraft.world.entity.LivingEntity g) return g.getHealth();
+					return -1f;
+				});
+				playerView(ctx, server);
+				LOG.info("multi smash: golem health after={}", golem);
+				if (golem > 70f) throw new AssertionError("Multi Smash did not hurt the golem: " + golem);
+				server.runCommand("kill @e[type=!player]");
+				ctx.waitTicks(230);
+
+				// shrink to a pixel
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(20);
+				double scale = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.SCALE));
+				float height = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getBbHeight());
+				LOG.info("minimaus small: scale={} height={}", scale, height);
+				if (scale > 0.07 || height > 0.2f) throw new AssertionError("MiniMaus did not shrink: " + scale);
+				sideView(ctx, server, 1.3, -59.85, 0.5, 90, 12);
+				ctx.takeScreenshot("minimaus_tiny");
+				playerView(ctx, server);
+
+				// nibble pixels out of a block by holding the attack key
+				server.runCommand("setblock 0 -60 1 minecraft:oak_planks");
+				server.runCommand("setblock 1 -60 1 minecraft:stone");
+				ctx.waitTicks(5);
+				ctx.getInput().lookAt(0, 0);
+				ctx.waitTicks(2);
+				ctx.takeScreenshot("minimaus_tiny_view");
+				ctx.getInput().holdKey(o -> o.keyAttack);
+				ctx.waitTicks(40);
+				ctx.getInput().releaseKey(o -> o.keyAttack);
+				ctx.waitTicks(5);
+				int left = server.computeOnServer(s -> s.overworld().getBlockEntity(new BlockPos(0, -60, 1)) instanceof de.theboys.block.CarvedBlockEntity be ? be.remaining() : -1);
+				LOG.info("pixel mining: pixels left in the plank block={}", left);
+				if (left < 0 || left >= 4096) throw new AssertionError("no pixels were mined: " + left);
+				ctx.takeScreenshot("minimaus_tiny_mined");
+				// carve a little mouse hole into the stone so the pixels show
+				server.runOnServer(s -> {
+					var level = s.overworld();
+					BlockPos pos = new BlockPos(1, -60, 1);
+					for (int y = 0; y < 9; y++) for (int x = 4; x < 12; x++) {
+						double dx = (x + 0.5 - 8) / 4.0, dy = (y + 0.5) / 9.0;
+						if (dx * dx + dy * dy * 0.9 > 1.0) continue;
+						for (int d = 0; d < 10; d++) {
+							de.theboys.block.PixelCarving.carve(level, pos, new net.minecraft.world.phys.Vec3(1 + (x + 0.5) / 16.0, -60 + (y + 0.5) / 16.0, 1.0),
+									net.minecraft.core.Direction.NORTH, true);
+						}
+					}
+				});
+				ctx.waitTicks(5);
+				sideView(ctx, server, 1.0, -59.5, -0.6, -20, 25);
+				ctx.takeScreenshot("minimaus_mouse_hole");
+				playerView(ctx, server);
+
+				// still strong when tiny: Multi Smash on a zombie
+				server.runCommand("summon minecraft:husk 0.5 -60 0.9 {NoAI:1b,Silent:1b}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(new BlockPos(0, -60, 0));
+				ctx.getInput().lookAt(0, 0);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				sideView(ctx, server, 0.5, -59.3, 4.5, 180, 8);
+				ctx.waitTicks(16);
+				ctx.takeScreenshot("minimaus_tiny_smash_1");
+				ctx.waitTicks(8);
+				ctx.takeScreenshot("minimaus_tiny_smash_2");
+				playerView(ctx, server);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(20);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("theboys power clear @a");
+			});
+
 			step(ctx, "animations", () -> {
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("theboys power clear @a");

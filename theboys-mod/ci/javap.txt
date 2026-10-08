@@ -1,10 +1,3 @@
-net.minecraft.client.renderer.block.BlockStateModelSet
-net.minecraft.client.renderer.block.BlockModelSet
-net.minecraft.client.renderer.block.model.BlockStateModel
-net.minecraft.client.renderer.block.BlockModelResolver
-net.minecraft.client.renderer.block.model.BlockModelPart
-net.minecraft.client.resources.model.geometry.BakedQuad
--p net.minecraft.client.renderer.entity.LivingEntityRenderer | addLayer|layers
--p net.minecraft.client.renderer.entity.player.AvatarRenderer | AvatarRenderer\(
-net.minecraft.client.renderer.block.BlockModelShaper
-net.minecraft.client.Minecraft | getModelManager|getBlockRenderer|getDeltaTracker|blockModel
+net.minecraft.client.resources.model.sprite.Material$Baked
+net.minecraft.client.renderer.block.dispatch.BlockStateModel
+net.minecraft.client.renderer.texture.TextureAtlas | getSprite|class

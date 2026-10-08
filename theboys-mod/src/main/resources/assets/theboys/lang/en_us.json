@@ -71,5 +71,19 @@
   "command.theboys.get": "%s has: %s",
   "message.theboys.super_cancer": "SUPER CANCER! The tendrils take over...",
   "message.theboys.cancer_walk_on": "Cancer Walk - the tendrils carry you",
-  "message.theboys.cancer_walk_off": "Cancer Walk ended"
+  "message.theboys.cancer_walk_off": "Cancer Walk ended",
+  "item.theboys.mini_v": "Mini V",
+  "item.theboys.mini_v.desc": "Pink serum. Turns you into MiniMaus.",
+  "power.theboys.minimaus": "MiniMaus",
+  "ability.theboys.minimaus.0": "Poison Bite",
+  "ability.theboys.minimaus.1": "To the Moon",
+  "ability.theboys.minimaus.2": "Multi Smash",
+  "ability.theboys.minimaus.3": "Shrink / Grow",
+  "message.theboys.bite_ready": "Poison Bite ready - attack!",
+  "message.theboys.bite_off": "Poison Bite cancelled",
+  "message.theboys.moon_ready": "To the Moon ready - hit something!",
+  "message.theboys.moon_off": "To the Moon cancelled",
+  "message.theboys.small_on": "You are tiny! Left click nibbles single pixels out of blocks.",
+  "message.theboys.small_off": "You are big again.",
+  "block.theboys.carved_block": "Nibbled Block"
 }

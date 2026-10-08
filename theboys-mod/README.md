@@ -19,6 +19,7 @@ also bei allen Mitspielern).
   eine Dosis. Meistens ist das **Compound V**, sehr selten **V-One**. Dazu kommen Truhen mit Laborbeute.
 * **Compound V** gibt dir zufällig die Kräfte von **A-Train** oder **Billy Butcher**.
 * **V-One** (viel seltener) gibt dir die Kräfte von **Homelander** oder **Soldier Boy**.
+* **Mini V** (rosa Spritze, etwa jeder zwölfte Kühlschrank und manche Laborkisten) macht dich zu **MiniMaus**.
 * Spritze in die Hand nehmen und **[V]** drücken (oder Rechtsklick halten). Du setzt dir die Spritze
   dann mit einer Animation in den Arm, in der Ego-Perspektive wie in der Third-Person-Ansicht.
 * **Kraft entfernen:** Der **Uran-Injektor** brennt das V wieder aus dem Blut. Das passt zur Serie,
@@ -100,6 +101,25 @@ Die Tentakel, die aus seiner Brust wachsen, heißen in der Serie **Super Cancer*
   Super Cancer wieder bereit und kommt jedes Mal, wenn du wieder in Gefahr bist.
 * Passiv: deutlich stärker und zäher als ein Mensch. Dazu gibt es sein **Brecheisen** als Waffe.
 
+### MiniMaus (Mini V)
+Du wirst zu einer Maus: grauer Pelz, cremefarbener Bauch, rosa Pfoten, Schnurrhaare, Hasenzähne und ein
+Heldengürtel mit „M“. Dazu kommen **runde 3D-Ohren**, die zucken, und ein **langer rosa Schwanz**, der beim
+Rennen hin und her schwingt.
+* **Doppelt so schnell** wie ein normaler Spieler, und dabei sehr stark (viel Schaden und Rüstung), egal ob
+  groß oder klein.
+* **Giftbiss (R):** Danach ist dein nächster Angriff ein Biss. Leuchtende Kiefer schnappen zu, und das Opfer
+  bekommt starkes Gift (Gift IV) und Schwäche, Spieler zusätzlich Übelkeit.
+* **To the Moon (G):** Den nächsten Gegner, den du schlägst, hältst du fest. Dann holst du weit aus und
+  haust ihn mit einem riesigen Uppercut samt Druckwelle **rund 120 Blöcke senkrecht in die Luft**.
+* **Multi Smash (C):** Du packst den Gegner vor dir an den Füßen, reißt ihn hoch und schlägst ihn
+  **fünfmal** abwechselnd links und rechts auf den Boden. Er wird dabei wirklich kopfüber über deinen Kopf
+  geschleudert, und jeder Aufprall gibt eine Druckwelle. Zum Schluss schleuderst du ihn ein Stück weg. Das geht
+  groß und klein, du kannst also als winzige Maus einen Eisengolem herumwirbeln.
+* **Schrumpfen (X):** Du schrumpfst auf **1/16** deiner Größe, so klein wie Minecraft es erlaubt (knapp zwei
+  Pixel hoch). Nochmal X macht dich wieder groß. Als Winzling **knabbert Linksklick einzelne Pixel aus Blöcken**
+  statt den ganzen Block abzubauen. So kannst du Mauselöcher, Tunnel oder Muster in Blöcke fressen, und du
+  läufst wirklich durch die Löcher. Ist ein Block ganz weggeknabbert, bekommst du ihn als Item.
+
 ## Animationen
 
 * **Kampf-Kombos für alle Spieler** (sieht man in F5 und bei anderen Spielern): Jeder Schlag ist ein
@@ -118,14 +138,14 @@ Im Inventar sieht man ein flaches Icon wie bei jedem Item. In der Hand sind Spri
 und Schild echte **3D-Modelle**: Die Spritzen haben Kolben, Glaskörper mit Serum und Nadel, das
 Brecheisen eine gebogene Klaue.
 
-Compound V, V-One, Uran-Injektor, leere Spritze, Soldier Boys Schild (blockt wie ein normales
+Compound V, V-One, Mini V, Uran-Injektor, leere Spritze, Soldier Boys Schild (blockt wie ein normales
 Schild), Butchers Brecheisen, Labor-Fliesen, Laborboden, Vought-Stahlplatte, Sicherheitsglas und
 der Compound-V-Kühlschrank. Alles findest du im Kreativ-Tab „The Boys“.
 
 ## Befehle (für Operatoren)
 
 ```
-/theboys power set <Spieler> <homelander|soldier_boy|a_train|butcher|none>
+/theboys power set <Spieler> <homelander|soldier_boy|a_train|butcher|minimaus|none>
 /theboys power clear <Spieler>
 /theboys power get <Spieler>
 ```

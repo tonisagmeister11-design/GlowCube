@@ -30,6 +30,7 @@ public final class PowerManager {
 	private static final Identifier FALL = TheBoys.id("power_fall");
 	private static final Identifier HEALTH = TheBoys.id("power_health");
 	private static final Identifier SPEED = TheBoys.id("power_speed");
+	private static final Identifier DOUBLE_SPEED = TheBoys.id("minimaus_speed");
 	public static final Identifier RUN = TheBoys.id("a_train_run");
 	public static final Identifier STEP = TheBoys.id("a_train_step");
 
@@ -70,6 +71,7 @@ public final class PowerManager {
 		ATrain.stop(player, s);
 		Butcher.stop(player, s);
 		SoldierBoy.stop(player, s);
+		MiniMaus.stop(player, s);
 		PowerAttachments.setActive(player, ActiveState.IDLE);
 	}
 
@@ -81,6 +83,8 @@ public final class PowerManager {
 			case SOLDIER_BOY -> { damage = 9; armor = 18; toughness = 10; knockback = 0.7; fall = 20; health = 20; }
 			case A_TRAIN -> { damage = 3; armor = 6; fall = 12; speed = 0.05; health = 4; }
 			case BUTCHER -> { damage = 7; armor = 14; toughness = 6; knockback = 0.6; fall = 16; health = 10; }
+			// twice as fast, and as strong when she is a pixel as when she is full size
+			case MINIMAUS -> { damage = 8; armor = 10; toughness = 4; knockback = 0.8; fall = 30; health = 6; }
 			default -> { }
 		}
 		modifier(player, Attributes.ATTACK_DAMAGE, DAMAGE, damage, AttributeModifier.Operation.ADD_VALUE);
@@ -90,6 +94,7 @@ public final class PowerManager {
 		modifier(player, Attributes.SAFE_FALL_DISTANCE, FALL, fall, AttributeModifier.Operation.ADD_VALUE);
 		modifier(player, Attributes.MAX_HEALTH, HEALTH, health, AttributeModifier.Operation.ADD_VALUE);
 		modifier(player, Attributes.MOVEMENT_SPEED, SPEED, speed, AttributeModifier.Operation.ADD_VALUE);
+		modifier(player, Attributes.MOVEMENT_SPEED, DOUBLE_SPEED, p == Power.MINIMAUS ? 1.0 : 0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 		if (player.getHealth() > player.getMaxHealth()) {
 			player.setHealth(player.getMaxHealth());
 		}
@@ -119,6 +124,7 @@ public final class PowerManager {
 			case SOLDIER_BOY -> SoldierBoy.key(player, s, slot, pressed);
 			case A_TRAIN -> ATrain.key(player, s, slot, pressed);
 			case BUTCHER -> Butcher.key(player, s, slot, pressed);
+			case MINIMAUS -> MiniMaus.key(player, s, slot, pressed);
 			default -> {
 				if (pressed) player.sendSystemMessage(Component.translatable("message.theboys.no_power").withStyle(ChatFormatting.GRAY), true);
 			}
@@ -145,6 +151,7 @@ public final class PowerManager {
 				case SOLDIER_BOY -> meter = SoldierBoy.tick(player, s);
 				case A_TRAIN -> meter = ATrain.tick(player, s);
 				case BUTCHER -> meter = Butcher.tick(player, s);
+				case MINIMAUS -> meter = MiniMaus.tick(player, s);
 				default -> { }
 			}
 			if (++s.statusTimer >= 3) {

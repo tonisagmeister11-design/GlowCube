@@ -5,13 +5,17 @@
 	"client": [
 		"AbstractClientPlayerMixin",
 		"AgeableMobRendererAccessor",
+		"AvatarRendererLayerMixin",
 		"AvatarRendererLeanMixin",
 		"AvatarRendererMixin",
 		"EntityRenderDispatcherMixin",
+		"EntityRendererIdMixin",
 		"FirstPersonHandsAndItemsRendererMixin",
 		"LivingEntityRendererInvoker",
+		"LivingEntityRendererSmashMixin",
 		"MinecraftMixin",
 		"ModelPartAccessor",
+		"MultiPlayerGameModeMixin",
 		"PlayerModelMixin"
 	],
 	"injectors": {

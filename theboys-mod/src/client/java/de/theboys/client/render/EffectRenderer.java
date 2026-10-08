@@ -175,6 +175,36 @@ public final class EffectRenderer {
 						tendrils.add(Tendril.curve(from, at, reach, time + pt, d.entityId(), 0.22, src == mc.player && firstPerson));
 					}
 				}
+				case FxPayload.BITE -> {
+					// glowing jaws snapping shut on the victim
+					Entity victim = level.getEntity((int) d.x2());
+					Vec3 c = victim != null ? victim.getPosition(pt).add(0, victim.getBbHeight() * 0.6, 0) : at;
+					double size = victim != null ? Math.max(0.35, victim.getBbWidth() * 0.7) : 0.5;
+					Entity biter = level.getEntity(d.entityId());
+					Vec3 toward = biter != null ? c.subtract(biter.getEyePosition(pt)) : new Vec3(0, 0, 1);
+					Vec3 side = toward.cross(new Vec3(0, 1, 0));
+					side = side.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : side.normalize();
+					Vec3 front = c.subtract(toward.normalize().scale(victim != null ? victim.getBbWidth() * 0.5 + 0.05 : 0.3));
+					float close = Math.min(1f, age / 3f);
+					float fade = Math.max(0f, 1 - Math.max(0f, age - 4f) / 3f);
+					double gap = size * 0.6 * (1 - close);
+					for (int jaw = -1; jaw <= 1; jaw += 2) {
+						Vec3 gum = front.add(0, jaw * (gap + size * 0.18), 0);
+						List<Vec3> line = new ArrayList<>();
+						for (int i = 0; i <= 8; i++) {
+							double u = i / 8.0 - 0.5;
+							line.add(gum.add(side.scale(u * size * 1.4)).add(0, jaw * Math.abs(u) * size * 0.25, 0));
+						}
+						glows.add(Glow.bolt(line, 0.03, argb(0.8f * fade, 0xFFFFFF)));
+						for (int i = 0; i < 5; i++) {
+							double u = (i + 0.5) / 5.0 - 0.5;
+							Vec3 base = gum.add(side.scale(u * size * 1.2)).add(0, jaw * Math.abs(u) * size * 0.25, 0);
+							Vec3 tip = base.add(0, -jaw * size * (i == 0 || i == 4 ? 0.28 : 0.18), 0);
+							glows.add(Glow.beam(base, tip, 0.035, argb(0.9f * fade, 0xF4FFF0)));
+						}
+					}
+					glows.add(Glow.sphere(c, size * 0.5 * (0.6 + close * 0.4), argb(0.35f * fade, 0x5BD12E)));
+				}
 				case FxPayload.NUKE -> {
 					float r = d.x2();
 					float grow = 1 - (float) Math.pow(1 - Math.min(1f, age / 12f), 3);

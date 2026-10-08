@@ -28,6 +28,7 @@ public class VFridgeBlock extends HorizontalDirectionalBlock {
 	public static final BooleanProperty STOCKED = BooleanProperty.create("stocked");
 	/** Chance that a stocked fridge holds V-One instead of Compound V. */
 	public static final float V_ONE_CHANCE = 0.02f;
+	public static final float MINI_V_CHANCE = 0.08f;
 
 	public VFridgeBlock(Properties properties) {
 		super(properties);
@@ -56,8 +57,8 @@ public class VFridgeBlock extends HorizontalDirectionalBlock {
 			}
 			return InteractionResult.SUCCESS_SERVER;
 		}
-		boolean vOne = level.getRandom().nextFloat() < V_ONE_CHANCE;
-		ItemStack dose = new ItemStack(vOne ? ModItems.COMPOUND_V1 : ModItems.COMPOUND_V);
+		float roll = level.getRandom().nextFloat();
+		ItemStack dose = new ItemStack(roll < V_ONE_CHANCE ? ModItems.COMPOUND_V1 : roll < V_ONE_CHANCE + MINI_V_CHANCE ? ModItems.MINI_V : ModItems.COMPOUND_V);
 		Direction front = state.getValue(FACING);
 		popResourceFromFace(level, pos, front, dose);
 		level.setBlock(pos, state.setValue(STOCKED, false), 3);

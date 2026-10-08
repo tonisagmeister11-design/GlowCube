@@ -69,7 +69,7 @@ SYRINGE = tilted(
     box([7.85, 13, 7.85], [8.15, 17.5, 8.15], 8, 0, 10, 8),  # needle
 )
 SYRINGE_DISPLAY = HANDHELD_3D
-for name in ['compound_v', 'compound_v1', 'uranium_injector', 'empty_syringe']:
+for name in ['compound_v', 'compound_v1', 'mini_v', 'uranium_injector', 'empty_syringe']:
     w(os.path.join(A, 'models', 'item', name + '.json'), {'parent': 'minecraft:item/generated', 'textures': {'layer0': 'theboys:item/' + name}})
     tex = 'theboys:item/' + name + '_3d'
     w(os.path.join(A, 'models', 'item', name + '_3d.json'), {
@@ -204,6 +204,10 @@ w(os.path.join(D, 'loot_table', 'chests', 'vought_lab.json'), {
         {'rolls': 1, 'entries': [
             {'type': 'minecraft:item', 'name': 'theboys:compound_v1', 'weight': 4},
             {'type': 'minecraft:empty', 'weight': 96}]},
+        # Mini V - makes MiniMaus
+        {'rolls': 1, 'entries': [
+            {'type': 'minecraft:item', 'name': 'theboys:mini_v', 'weight': 15},
+            {'type': 'minecraft:empty', 'weight': 85}]},
         # radiation injector to get rid of a power again
         {'rolls': 1, 'entries': [
             {'type': 'minecraft:item', 'name': 'theboys:uranium_injector', 'weight': 30},

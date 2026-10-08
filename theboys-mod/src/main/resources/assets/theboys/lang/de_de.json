@@ -71,5 +71,19 @@
   "command.theboys.get": "%s hat: %s",
   "message.theboys.super_cancer": "SUPER CANCER! Die Tentakel übernehmen …",
   "message.theboys.cancer_walk_on": "Cancer Walk – die Tentakel tragen dich",
-  "message.theboys.cancer_walk_off": "Cancer Walk beendet"
+  "message.theboys.cancer_walk_off": "Cancer Walk beendet",
+  "item.theboys.mini_v": "Mini V",
+  "item.theboys.mini_v.desc": "Rosa Serum. Macht dich zu MiniMaus.",
+  "power.theboys.minimaus": "MiniMaus",
+  "ability.theboys.minimaus.0": "Giftbiss",
+  "ability.theboys.minimaus.1": "To the Moon",
+  "ability.theboys.minimaus.2": "Multi Smash",
+  "ability.theboys.minimaus.3": "Schrumpfen / Wachsen",
+  "message.theboys.bite_ready": "Giftbiss bereit – greif an!",
+  "message.theboys.bite_off": "Giftbiss abgebrochen",
+  "message.theboys.moon_ready": "To the Moon bereit – schlag zu!",
+  "message.theboys.moon_off": "To the Moon abgebrochen",
+  "message.theboys.small_on": "Du bist winzig! Linksklick knabbert einzelne Pixel aus Blöcken.",
+  "message.theboys.small_off": "Du bist wieder groß.",
+  "block.theboys.carved_block": "Angeknabberter Block"
 }

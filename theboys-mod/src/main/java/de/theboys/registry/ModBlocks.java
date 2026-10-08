@@ -29,6 +29,15 @@ public final class ModBlocks {
 	public static final Block V_FRIDGE = register("v_fridge", VFridgeBlock::new,
 			BlockBehaviour.Properties.of().mapColor(MapColor.SNOW).strength(3.0f, 6.0f).sound(SoundType.METAL).lightLevel(s -> 4));
 
+	/** A block MiniMaus chipped pixels out of. No item: it only exists in the world. */
+	public static final Block CARVED = Registry.register(BuiltInRegistries.BLOCK, TheBoys.id("carved_block"),
+			new de.theboys.block.CarvedBlock(BlockBehaviour.Properties.of().mapColor(MapColor.STONE).strength(1.5f, 6.0f)
+					.noOcclusion().dynamicShape().sound(SoundType.STONE)
+					.setId(ResourceKey.create(Registries.BLOCK, TheBoys.id("carved_block")))));
+	public static final net.minecraft.world.level.block.entity.BlockEntityType<de.theboys.block.CarvedBlockEntity> CARVED_TYPE =
+			Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE, TheBoys.id("carved_block"),
+					new net.minecraft.world.level.block.entity.BlockEntityType<>(de.theboys.block.CarvedBlockEntity::new, java.util.Set.of(CARVED)));
+
 	private ModBlocks() {
 	}
 

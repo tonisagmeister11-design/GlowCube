@@ -35,7 +35,8 @@ public class SyringeItem extends Item {
 	public enum Kind {
 		COMPOUND_V(0x3FA9FF),
 		V_ONE(0xBFE6FF),
-		URANIUM(0x7CFF4F);
+		URANIUM(0x7CFF4F),
+		MINI_V(0xFF6FA5);
 
 		public final int color;
 
@@ -95,9 +96,9 @@ public class SyringeItem extends Item {
 		Power current = PowerAttachments.powerOf(player);
 		LAST_INJECTION.put(player.getUUID(), level.getGameTime());
 		switch (kind) {
-			case COMPOUND_V, V_ONE -> {
+			case COMPOUND_V, V_ONE, MINI_V -> {
 				if (current != Power.NONE) return stack;
-				Power[] pool = kind == Kind.V_ONE ? Power.V_ONE_POOL : Power.COMPOUND_V_POOL;
+				Power[] pool = kind == Kind.V_ONE ? Power.V_ONE_POOL : kind == Kind.MINI_V ? Power.MINI_V_POOL : Power.COMPOUND_V_POOL;
 				Power power = pool[server.getRandom().nextInt(pool.length)];
 				PowerManager.setPower(player, power);
 				player.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 120, 0));
@@ -141,6 +142,7 @@ public class SyringeItem extends Item {
 			case COMPOUND_V -> "item.theboys.compound_v.desc";
 			case V_ONE -> "item.theboys.compound_v1.desc";
 			case URANIUM -> "item.theboys.uranium_injector.desc";
+			case MINI_V -> "item.theboys.mini_v.desc";
 		};
 		tooltip.accept(Component.translatable(key).withStyle(ChatFormatting.GRAY));
 		tooltip.accept(Component.translatable("item.theboys.syringe.how").withStyle(ChatFormatting.DARK_GRAY));

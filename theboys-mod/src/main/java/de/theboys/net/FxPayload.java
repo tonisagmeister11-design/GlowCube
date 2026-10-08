@@ -34,6 +34,8 @@ public record FxPayload(int kind, int entityId, float x, float y, float z, float
 	public static final int GORE = 5;
 	/** The body of entityId torn in two at x/y/z: x2 = width, y2 = height, z2 = yaw of the tearing axis. */
 	public static final int TORN = 6;
+	/** MiniMaus bites at x/y/z (entityId = MiniMaus, x2 = id of the bitten entity). */
+	public static final int BITE = 7;
 
 	@Override
 	public Type<? extends CustomPacketPayload> type() {

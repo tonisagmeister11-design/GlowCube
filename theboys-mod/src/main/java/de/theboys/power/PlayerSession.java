@@ -50,6 +50,20 @@ public final class PlayerSession {
 	public final java.util.Map<Integer, net.minecraft.world.phys.Vec3> frenzySpots = new java.util.HashMap<>();
 	public Vec3 strikePoint;
 
+	// MiniMaus
+	public boolean small;
+	public int shrinkTicks;
+	public boolean biteArmed;
+	public int biteTicks;
+	public boolean moonArmed;
+	public int moonTarget = -1;
+	public int moonTicks;
+	public int moonStrikeTicks;
+	public Vec3 moonSpot;
+	public int smashTarget = -1;
+	public int smashTicks;
+	public long lastPixel;
+
 	// shared
 	public Vec3 lastPos;
 	public Vec3 motion = Vec3.ZERO;

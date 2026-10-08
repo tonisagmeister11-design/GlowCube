@@ -14,6 +14,9 @@ public interface LivingEntityRendererInvoker {
 	@Invoker("setupRotations")
 	void theboys$setupRotations(LivingEntityRenderState state, PoseStack poseStack, float bodyRot, float scale);
 
+	@Invoker("addLayer")
+	boolean theboys$addLayer(net.minecraft.client.renderer.entity.layers.RenderLayer<?, ?> layer);
+
 	@Invoker("scale")
 	void theboys$scale(LivingEntityRenderState state, PoseStack poseStack);
 }

@@ -24,6 +24,8 @@ public class TheBoysClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		Keys.init();
 		EntityRendererRegistry.register(ModEntities.THROWN_SHIELD, ctx -> new ThrownItemRenderer<>(ctx, 1.6f, true));
+		net.minecraft.client.renderer.blockentity.BlockEntityRenderers.register(de.theboys.registry.ModBlocks.CARVED_TYPE,
+				ctx -> new de.theboys.client.render.CarvedBlockRenderer());
 
 		ClientPlayNetworking.registerGlobalReceiver(StatusPayload.TYPE, (payload, context) -> ClientState.status = payload);
 		ClientPlayNetworking.registerGlobalReceiver(FxPayload.TYPE, (payload, context) -> onFx(context.client(), payload));
@@ -57,6 +59,10 @@ public class TheBoysClient implements ClientModInitializer {
 				}
 			}
 			case FxPayload.TORN -> de.theboys.client.render.TornBodies.spawn(mc.level == null ? null : mc.level.getEntity(fx.entityId()), new Vec3(fx.x(), fx.y(), fx.z()), fx.x2(), fx.y2(), fx.z2());
+			case FxPayload.BITE -> {
+				if (mc.level != null) ClientState.BITES.put(fx.entityId(), mc.level.getGameTime());
+				ClientState.EFFECTS.add(new ClientState.Fx(fx, 7));
+			}
 			case FxPayload.GORE -> {
 				if (mc.player != null && mc.player.getEyePosition().distanceTo(new Vec3(fx.x(), fx.y(), fx.z())) < 4.5) {
 					ClientState.bloodTicks = 50;

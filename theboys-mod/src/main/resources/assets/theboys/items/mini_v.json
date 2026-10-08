@@ -1,0 +1,23 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:display_context",
+    "cases": [
+      {
+        "when": [
+          "gui",
+          "fixed",
+          "on_shelf"
+        ],
+        "model": {
+          "type": "minecraft:model",
+          "model": "theboys:item/mini_v"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "theboys:item/mini_v_3d"
+    }
+  }
+}

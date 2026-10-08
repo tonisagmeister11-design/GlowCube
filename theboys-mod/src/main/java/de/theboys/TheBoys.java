@@ -41,6 +41,15 @@ public class TheBoys implements ModInitializer {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			PowerManager.tick(server);
 			TimeRewind.tick(server);
+			de.theboys.power.MiniMaus.tickLaunches();
+		});
+		// MiniMaus: Poison Bite and To the Moon ride on her normal hits
+		net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, level, hand, target, hit) -> {
+			if (!level.isClientSide() && player instanceof ServerPlayer sp && PowerAttachments.powerOf(sp) == Power.MINIMAUS
+					&& de.theboys.power.MiniMaus.onAttack(sp, target)) {
+				return net.minecraft.world.InteractionResult.FAIL;
+			}
+			return net.minecraft.world.InteractionResult.PASS;
 		});
 		ServerPlayerEvents.JOIN.register(PowerManager::applyPassives);
 		ServerPlayerEvents.LEAVE.register(PowerManager::forget);

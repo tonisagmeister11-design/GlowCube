@@ -119,15 +119,108 @@ public abstract class PlayerModelMixin {
 					model.leftArm.zRot = -0.35f;
 				}
 			}
+			case MINIMAUS -> theboys$miniMaus(model, entity, active, state, t);
 			default -> { }
 		}
 
 		if (power == Power.A_TRAIN) {
 			model.head.xRot -= (float) Math.toRadians(de.theboys.client.BodyLean.current(entity)) * 0.8f;
 		}
-		boolean busy = active.has(ActiveState.HOLD) || active.has(ActiveState.RIP) || active.has(ActiveState.NUKE_CHARGE);
+		boolean busy = active.has(ActiveState.HOLD) || active.has(ActiveState.RIP) || active.has(ActiveState.NUKE_CHARGE)
+				|| active.has(ActiveState.SMASH) || active.has(ActiveState.MOON) && active.targetId() >= 0;
 		if (!busy) {
 			theboys$fight(model, state, entity, t);
+		}
+	}
+
+	/** Twists the torso and moves the shoulders with it. */
+	private static void theboys$twist(HumanoidModel<AvatarRenderState> model, float bodyY) {
+		model.body.yRot = bodyY;
+		model.rightArm.z = Mth.sin(bodyY) * 5f;
+		model.rightArm.x = -Mth.cos(bodyY) * 5f;
+		model.leftArm.z = -Mth.sin(bodyY) * 5f;
+		model.leftArm.x = Mth.cos(bodyY) * 5f;
+	}
+
+	/** MiniMaus: swinging a victim by the feet, winding up for To the Moon, lurking for a bite. */
+	private static void theboys$miniMaus(HumanoidModel<AvatarRenderState> model, Entity entity, ActiveState active, AvatarRenderState state, float t) {
+		float pt = t - (float) Math.floor(t);
+		if (active.has(ActiveState.SMASH)) {
+			Entity victim = entity.level().getEntity(active.targetId());
+			float max = victim != null ? de.theboys.power.MiniMausMath.maxAngle(entity, victim) : 100f;
+			float a = (float) Math.toRadians(de.theboys.power.MiniMausMath.angle(active.charge() + pt, max));
+			// both hands over the head, following the body she swings around
+			model.rightArm.xRot = -3.05f;
+			model.leftArm.xRot = -3.05f;
+			model.rightArm.yRot = 0f;
+			model.leftArm.yRot = 0f;
+			model.rightArm.zRot = -a + 0.1f;
+			model.leftArm.zRot = -a - 0.1f;
+			theboys$twist(model, -a * 0.15f);
+			model.head.xRot = -0.35f;
+			model.rightLeg.xRot = 0f;
+			model.leftLeg.xRot = 0f;
+			model.rightLeg.zRot = 0.28f;
+			model.leftLeg.zRot = -0.28f;
+			return;
+		}
+		if (active.has(ActiveState.MOON)) {
+			int c = active.charge();
+			if (c >= 100) {
+				// the blow: a huge uppercut, follow-through high over the head
+				float k = (c - 100) / 8f;
+				theboys$twist(model, -0.55f * k);
+				model.rightArm.xRot = -2.95f;
+				model.rightArm.yRot = -0.55f * k;
+				model.rightArm.zRot = -0.15f;
+				model.leftArm.xRot = 0.5f * k;
+				model.leftArm.zRot = -0.3f;
+				model.head.xRot -= 0.5f;
+				model.rightLeg.xRot = 0.35f * k;
+				model.leftLeg.xRot = -0.45f * k;
+			} else if (active.targetId() >= 0) {
+				// winding up: fist pulled far back and down, body coiled
+				float k = Mth.clamp((c + pt) / 9f, 0f, 1f);
+				float shake = Mth.sin(t * 3.1f) * 0.03f * k;
+				theboys$twist(model, 0.75f * k);
+				model.rightArm.xRot = 1.1f * k + shake;
+				model.rightArm.yRot = 0.75f * k;
+				model.rightArm.zRot = 0.45f * k;
+				model.leftArm.xRot = -1.3f * k;
+				model.leftArm.yRot = 0.75f * k + 0.3f;
+				model.rightLeg.xRot = 0.5f * k;
+				model.leftLeg.xRot = -0.45f * k;
+			} else {
+				// armed: fist cocked at the hip
+				model.rightArm.xRot = -0.5f;
+				model.rightArm.zRot = 0.25f;
+				model.leftArm.xRot = -1.0f;
+				model.leftArm.yRot = 0.45f;
+			}
+			return;
+		}
+		if (active.has(ActiveState.BITE)) {
+			Long bit = de.theboys.client.ClientState.BITES.get(entity.getId());
+			float since = bit == null ? 99f : entity.level().getGameTime() - bit + pt;
+			if (since < 8f) {
+				// the lunge: head snaps forward, claws grab
+				float k = since < 2f ? since / 2f : Math.max(0f, 1f - (since - 2f) / 6f);
+				model.head.z -= 3.0f * k;
+				model.head.xRot += 0.35f * k;
+				model.body.xRot = 0.35f * k;
+				model.rightArm.xRot = -1.7f * k;
+				model.leftArm.xRot = -1.7f * k;
+				model.rightArm.zRot = -0.3f * k;
+				model.leftArm.zRot = 0.3f * k;
+			} else {
+				// lurking: paws up, claws twitching
+				float twitch = Mth.sin(t * 0.9f) * 0.08f;
+				model.rightArm.xRot = -1.15f + twitch;
+				model.leftArm.xRot = -1.15f - twitch;
+				model.rightArm.zRot = -0.35f;
+				model.leftArm.zRot = 0.35f;
+				model.head.xRot += 0.15f;
+			}
 		}
 	}
 
