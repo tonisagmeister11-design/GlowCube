@@ -1,7 +1,5 @@
 package de.theboys.block;
 
-import com.mojang.serialization.MapCodec;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -18,15 +16,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 /** Holder block for a block MiniMaus chipped pixels out of (see {@link CarvedBlockEntity}). */
 public class CarvedBlock extends BaseEntityBlock {
-	public static final MapCodec<CarvedBlock> CODEC = simpleCodec(CarvedBlock::new);
-
 	public CarvedBlock(Properties properties) {
 		super(properties);
-	}
-
-	@Override
-	protected MapCodec<? extends BaseEntityBlock> codec() {
-		return CODEC;
 	}
 
 	@Override

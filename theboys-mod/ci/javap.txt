@@ -1,3 +1,0 @@
-net.minecraft.client.resources.model.sprite.Material$Baked
-net.minecraft.client.renderer.block.dispatch.BlockStateModel
-net.minecraft.client.renderer.texture.TextureAtlas | getSprite|class
