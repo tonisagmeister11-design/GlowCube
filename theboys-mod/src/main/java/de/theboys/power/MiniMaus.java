@@ -133,7 +133,8 @@ public final class MiniMaus {
 	private static void moonStrike(ServerPlayer player, PlayerSession s, LivingEntity target) {
 		ServerLevel level = player.level();
 		Vec3 at = target.position();
-		Supe.hurt(player, target, 12f);
+		// the blow itself only hurts a bit; the fall from 120 blocks does the rest
+		Supe.hurt(player, target, 4f);
 		LAUNCHES.removeIf(l -> l.entity() == target);
 		LAUNCHES.add(new Launch(target, at.y + MOON_HEIGHT, new int[] {0}, new Vec3[] {Vec3.ZERO}));
 		ModNetworking.sendFx(level, at, new FxPayload(FxPayload.SHOCKWAVE, player.getId(), (float) at.x, (float) at.y + 0.2f, (float) at.z, 5f, Float.NaN, 0));
