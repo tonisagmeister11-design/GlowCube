@@ -33,6 +33,8 @@ public final class ModBlocks {
 	public static final Block CARVED = Registry.register(BuiltInRegistries.BLOCK, TheBoys.id("carved_block"),
 			new de.theboys.block.CarvedBlock(BlockBehaviour.Properties.of().mapColor(MapColor.STONE).strength(1.5f, 6.0f)
 					.noOcclusion().dynamicShape().sound(SoundType.STONE)
+					// you can hide inside: no suffocation, no block texture over the screen
+					.isSuffocating((state, level, pos) -> false).isViewBlocking((state, level, pos, box) -> false)
 					.setId(ResourceKey.create(Registries.BLOCK, TheBoys.id("carved_block")))));
 	public static final net.minecraft.world.level.block.entity.BlockEntityType<de.theboys.block.CarvedBlockEntity> CARVED_TYPE =
 			Registry.register(BuiltInRegistries.BLOCK_ENTITY_TYPE, TheBoys.id("carved_block"),
