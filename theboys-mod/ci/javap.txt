@@ -1,0 +1,3 @@
+-p net.minecraft.client.particle.ParticleEngine | crack|destroy|class
+-c net.minecraft.client.Minecraft | continueAttack
+find ParticleEngine

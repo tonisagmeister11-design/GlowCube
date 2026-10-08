@@ -8,8 +8,6 @@ import de.theboys.power.PowerManager;
 import de.theboys.registry.ModBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.particles.BlockParticleOption;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -76,8 +74,6 @@ public final class PixelCarving {
 		if (!found) return false;
 		BlockState original = be.original();
 		be.remove(x, y, z);
-		Vec3 at = new Vec3(pos.getX() + (x + 0.5) / 16, pos.getY() + (y + 0.5) / 16, pos.getZ() + (z + 0.5) / 16);
-		level.sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, original), at.x, at.y, at.z, 2, 0.02, 0.02, 0.02, 0.02);
 		level.playSound(null, pos, original.getSoundType().getHitSound(), SoundSource.BLOCKS, 0.25f, 1.9f);
 		if (be.isEmpty()) {
 			level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
