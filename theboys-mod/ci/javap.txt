@@ -1,0 +1,2 @@
+-c net.minecraft.client.Camera | void update\(|setupPerspective
+-p net.minecraft.world.level.block.state.BlockBehaviour$Properties | isSuffocating|isViewBlocking|isRedstoneConductor
