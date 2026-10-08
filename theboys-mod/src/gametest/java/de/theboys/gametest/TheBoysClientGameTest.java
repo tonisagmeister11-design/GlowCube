@@ -725,8 +725,9 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.takeScreenshot("hideout_entrance");
 				playerView(ctx, server);
 				ctx.getInput().lookAt(0, 0);
+				// tiny, she walks at a speed that fits her size: about two blocks in four seconds
 				ctx.getInput().holdKey(o -> o.keyUp);
-				ctx.waitTicks(25);
+				ctx.waitTicks(80);
 				ctx.getInput().releaseKey(o -> o.keyUp);
 				ctx.waitTicks(5);
 				ctx.takeScreenshot("hideout_inside_first_person");
