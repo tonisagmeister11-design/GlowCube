@@ -491,6 +491,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			});
 
 			step(ctx, "minimaus", () -> {
+				List<String> problems = new ArrayList<>();
 				server.runCommand("theboys power clear @a");
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("fill -12 -64 -12 12 -64 30 minecraft:bedrock");
@@ -551,7 +552,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					return false;
 				});
 				LOG.info("poison bite: cow poisoned={}", poisoned);
-				if (!poisoned) throw new AssertionError("Poison Bite did not poison the cow");
+				if (!poisoned) problems.add("Poison Bite did not poison the cow");
 				server.runCommand("kill @e[type=!player]");
 
 				// To the Moon
@@ -582,7 +583,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					maxY = Math.max(maxY, y);
 				}
 				LOG.info("to the moon: cow flew up to y={} ({} blocks)", maxY, maxY + 60);
-				if (maxY + 60 < 100) throw new AssertionError("To the Moon only reached " + (maxY + 60) + " blocks");
+				if (maxY + 60 < 100) problems.add("To the Moon only reached " + (maxY + 60) + " blocks");
 				server.runCommand("kill @e[type=!player]");
 
 				// Multi Smash, full size, on an iron golem
@@ -604,7 +605,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				});
 				playerView(ctx, server);
 				LOG.info("multi smash: golem health after={}", golem);
-				if (golem > 70f) throw new AssertionError("Multi Smash did not hurt the golem: " + golem);
+				if (golem > 70f) problems.add("Multi Smash did not hurt the golem: " + golem);
 				server.runCommand("kill @e[type=!player]");
 				ctx.waitTicks(230);
 
@@ -614,7 +615,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				double scale = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.SCALE));
 				float height = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getBbHeight());
 				LOG.info("minimaus small: scale={} height={}", scale, height);
-				if (scale > 0.07 || height > 0.2f) throw new AssertionError("MiniMaus did not shrink: " + scale);
+				if (scale > 0.07 || height > 0.2f) problems.add("MiniMaus did not shrink: " + scale);
 				sideView(ctx, server, 1.3, -59.85, 0.5, 90, 12);
 				ctx.takeScreenshot("minimaus_tiny");
 				playerView(ctx, server);
@@ -632,7 +633,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(5);
 				int left = server.computeOnServer(s -> s.overworld().getBlockEntity(new BlockPos(0, -60, 1)) instanceof de.theboys.block.CarvedBlockEntity be ? be.remaining() : -1);
 				LOG.info("pixel mining: pixels left in the plank block={}", left);
-				if (left < 0 || left >= 4096) throw new AssertionError("no pixels were mined: " + left);
+				if (left < 0 || left >= 4096) problems.add("no pixels were mined: " + left);
 				ctx.takeScreenshot("minimaus_tiny_mined");
 				// carve a little mouse hole into the stone so the pixels show
 				server.runOnServer(s -> {
@@ -668,6 +669,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(20);
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("theboys power clear @a");
+				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
 			});
 
 			step(ctx, "animations", () -> {

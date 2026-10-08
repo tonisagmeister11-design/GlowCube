@@ -266,6 +266,7 @@ public final class MiniMaus {
 		// To the Moon: wind up while the victim is frozen, then the blow
 		if (s.moonTarget >= 0) {
 			Entity e = level.getEntity(s.moonTarget);
+			TheBoys.LOGGER.info("To the Moon windup: target={} entity={} ticks={}", s.moonTarget, e, s.moonTicks);
 			if (!(e instanceof LivingEntity victim) || !victim.isAlive()) {
 				s.moonTarget = -1;
 			} else {
