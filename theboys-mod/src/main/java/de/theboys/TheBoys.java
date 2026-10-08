@@ -60,7 +60,11 @@ public class TheBoys implements ModInitializer {
 
 		ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
 			// MiniMaus is winding up To the Moon on this one
-			if (de.theboys.power.MiniMaus.blocksDamage(entity)) return false;
+			if (de.theboys.power.MiniMaus.blocksDamage(entity)) {
+				LOGGER.info("blocked {} damage on {} ({})", amount, entity, source.getMsgId());
+				return false;
+			}
+			if (entity.hasCustomName()) LOGGER.info("damage {} on {} by {}", amount, entity, source.getMsgId());
 			if (!(entity instanceof ServerPlayer player)) return true;
 			Power power = PowerAttachments.powerOf(player);
 			// Homelander does not burn

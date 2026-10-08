@@ -556,7 +556,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("kill @e[type=!player]");
 
 				// To the Moon
-				server.runCommand("summon minecraft:cow 0.5 -60 2.3 {NoAI:1b}");
+				server.runCommand("summon minecraft:cow 0.5 -60 2.3 {NoAI:1b,CustomName:\"Moo\"}");
 				ctx.waitTicks(10);
 				ctx.getInput().lookAt(new BlockPos(0, -60, 2));
 				ctx.getInput().pressKey(Keys.ABILITY[1]);
