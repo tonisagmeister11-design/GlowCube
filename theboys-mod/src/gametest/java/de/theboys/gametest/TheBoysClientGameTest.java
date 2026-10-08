@@ -679,6 +679,52 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
 			});
 
+			step(ctx, "video_multi_smash", () -> {
+				// a short film: MiniMaus smashes a polar bear five times into the ground and throws it away
+				server.runCommand("theboys power clear @a");
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -14 -64 -14 14 -64 30 minecraft:bedrock");
+				server.runCommand("fill -14 -63 -14 14 -61 30 minecraft:grass_block");
+				server.runCommand("fill -14 -60 -14 14 -40 30 minecraft:air");
+				server.runCommand("clear @a");
+				server.runCommand("time set noon");
+				server.runCommand("theboys power set @a minimaus");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(40);
+				server.runCommand("summon minecraft:polar_bear 0.5 -60 2.7 {NoAI:1b,Silent:1b,Health:100f,Rotation:[180f,0f],"
+						+ "attributes:[{id:\"minecraft:max_health\",base:100d}]}");
+				ctx.waitTicks(20);
+				ctx.getInput().lookAt(new BlockPos(0, -59, 2));
+				de.theboys.client.ClientState.hideHud = true;
+				double cx = 5.2, cy = -57.6, cz = 7.6, tx = 0.5, ty = -59.2, tz = 1.0;
+				double dx = tx - cx, dy = ty - cy, dz = tz - cz;
+				float yaw = (float) Math.toDegrees(Math.atan2(-dx, dz));
+				float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+				sideView(ctx, server, cx, cy, cz, yaw, pitch);
+				ctx.waitTicks(5);
+				int frame = 0;
+				for (int i = 0; i < 10; i++) {
+					ctx.takeScreenshot(String.format("video_%03d", frame++));
+					ctx.waitTicks(1);
+				}
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				for (int i = 0; i < 78; i++) {
+					ctx.waitTicks(1);
+					ctx.takeScreenshot(String.format("video_%03d", frame++));
+				}
+				float bear = server.computeOnServer(s -> {
+					for (var e : s.overworld().getAllEntities()) {
+						if (e.getType() == net.minecraft.world.entity.EntityTypes.POLAR_BEAR && e instanceof net.minecraft.world.entity.LivingEntity l) return l.getHealth();
+					}
+					return -1f;
+				});
+				LOG.info("video: {} frames, polar bear health after the smash={}", frame, bear);
+				de.theboys.client.ClientState.hideHud = false;
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("theboys power clear @a");
+			});
+
 			step(ctx, "animations", () -> {
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("theboys power clear @a");

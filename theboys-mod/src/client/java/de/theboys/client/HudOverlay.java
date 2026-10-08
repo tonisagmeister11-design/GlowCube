@@ -23,7 +23,7 @@ public final class HudOverlay {
 	public static void extract(GuiGraphicsExtractor g, DeltaTracker delta) {
 		Minecraft mc = Minecraft.getInstance();
 		LocalPlayer player = mc.player;
-		if (player == null) {
+		if (player == null || ClientState.hideHud) {
 			return;
 		}
 		int w = g.guiWidth();

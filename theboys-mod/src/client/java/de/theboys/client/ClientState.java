@@ -36,6 +36,8 @@ public final class ClientState {
 	public static final List<Fx> EFFECTS = new ArrayList<>();
 	/** Fixed third-person camera {x, y, z, yaw, pitch} for screenshots, or null. */
 	public static volatile double[] cameraOverride;
+	/** Hides the ability panel (for recording videos). */
+	public static volatile boolean hideHud;
 	/** MiniMaus player id -> game time of her last bite (for the lunge animation). */
 	public static final java.util.Map<Integer, Long> BITES = new java.util.HashMap<>();
 
