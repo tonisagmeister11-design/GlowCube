@@ -1026,7 +1026,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				int struck = server.computeOnServer(s -> count(s, "b", e -> e.getHealth() < e.getMaxHealth()) + count(s, "b", e -> !e.isAlive()));
 				long dead = server.computeOnServer(s -> {
 					long n = 0;
-					for (var e : s.overworld().getAllEntities()) if (e.getTags().contains("b")) n++;
+					for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.HUSK) n++;
 					return n;
 				});
 				LOG.info("stormfront call lightning: struck={} husks left={}", struck, dead);
@@ -1086,7 +1086,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				int bitten = server.computeOnServer(s -> count(s, "a", e -> e.getHealth() < e.getMaxHealth()));
 				long alive = server.computeOnServer(s -> {
 					long n = 0;
-					for (var e : s.overworld().getAllEntities()) if (e.getTags().contains("a")) n++;
+					for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.HUSK) n++;
 					return n;
 				});
 				LOG.info("deep dolphins: hurt={} left={}", bitten, alive);
@@ -1180,7 +1180,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(8);
 				float left = server.computeOnServer(s -> {
 					float h = -1;
-					for (var e : s.overworld().getAllEntities()) if (e.getTags().contains("a") && e instanceof net.minecraft.world.entity.LivingEntity l) h = l.getHealth();
+					for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.HUSK && e instanceof net.minecraft.world.entity.LivingEntity l) h = l.getHealth();
 					return h;
 				});
 				LOG.info("noir katana: husk health 100 -> {}", left);
@@ -1369,12 +1369,12 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 	private static int count(net.minecraft.server.MinecraftServer s, String tag, java.util.function.Predicate<net.minecraft.world.entity.LivingEntity> test) {
 		int n = 0;
 		for (var e : s.overworld().getAllEntities()) {
-			if (e.getTags().contains(tag) && e instanceof net.minecraft.world.entity.LivingEntity l && test.test(l)) n++;
+			if (e.getType() == net.minecraft.world.entity.EntityTypes.HUSK && e instanceof net.minecraft.world.entity.LivingEntity l && test.test(l)) n++;
 		}
 		return n;
 	}
 
-	/** Husks with this tag that were hurt (or killed: dead ones are counted by their missing health too). */
+	/** Husks (each test group is the only husks around) that were hurt (or killed: dead ones are counted by their missing health too). */
 	private static int hurt(net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, String tag) {
 		return server.computeOnServer(s -> count(s, tag, e -> e.getHealth() < e.getMaxHealth() || !e.isAlive()));
 	}
