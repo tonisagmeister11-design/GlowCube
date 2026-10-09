@@ -263,9 +263,7 @@ public final class BlackNoir {
 
 	/** Plays the arm swing for everyone, him included (so the fight animation and slash trail show up). */
 	private static void swing(ServerPlayer player, InteractionHand hand) {
-		player.level().getChunkSource().broadcastAndSend(player, new net.minecraft.network.protocol.game.ClientboundAnimatePacket(player,
-				hand == InteractionHand.MAIN_HAND ? net.minecraft.network.protocol.game.ClientboundAnimatePacket.SWING_MAIN_HAND
-						: net.minecraft.network.protocol.game.ClientboundAnimatePacket.SWING_OFF_HAND));
+		player.swing(hand, net.minecraft.world.item.component.SwingAnimation.DEFAULT, true);
 	}
 
 	static void stop(ServerPlayer player, PlayerSession s) {
