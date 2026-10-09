@@ -149,8 +149,6 @@ public final class BlackNoir {
 		int t = COMBO_TICKS - s.comboTicks--;
 		Entity target = s.comboTarget >= 0 ? level.getEntity(s.comboTarget) : null;
 		if (t != 4 && t != 8 && t != 12) return;
-		TheBoys.LOGGER.info("Noir cut t={} target={} dist={}", t, target == null ? "none" : target.getType().toShortString(),
-				target == null ? -1 : target.distanceTo(player));
 		swing(player, InteractionHand.MAIN_HAND);
 		Supe.sound(level, player.position(), SoundEvents.PLAYER_ATTACK_SWEEP, 1.2f, 1.3f + t * 0.03f);
 		if (target == null || !target.isAlive() || target.distanceTo(player) > 7) return;
@@ -161,8 +159,7 @@ public final class BlackNoir {
 			Supe.setVelocity(player, dir.scale(Math.min(1.6, (to.horizontalDistance() - 1.4) * 0.6)).add(0, 0.08, 0));
 		}
 		boolean last = t == 12;
-		boolean hit = Supe.hurt(player, target, last ? 10f : 7f);
-		TheBoys.LOGGER.info("Noir cut t={} hit={} health={}", t, hit, target instanceof LivingEntity le ? le.getHealth() : -1);
+		Supe.hurtNow(player, target, last ? 10f : 7f);
 		Vec3 at = Supe.chest(target);
 		level.sendParticles(ParticleTypes.SWEEP_ATTACK, at.x, at.y, at.z, 1, 0, 0, 0, 0);
 		if (target instanceof LivingEntity l) {

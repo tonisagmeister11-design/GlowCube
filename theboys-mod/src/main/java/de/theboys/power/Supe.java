@@ -69,6 +69,12 @@ public final class Supe {
 		return target.hurtServer(level, level.damageSources().playerAttack(attacker), amount);
 	}
 
+	/** A blow of a quick combo: also skips the living target's hurt cooldown, so every cut counts in full. */
+	public static boolean hurtNow(ServerPlayer attacker, Entity target, float amount) {
+		if (target instanceof LivingEntity living) living.damageCooldownTime = 0;
+		return hurt(attacker, target, amount);
+	}
+
 	public static void sound(ServerLevel level, Vec3 pos, SoundEvent sound, float volume, float pitch) {
 		level.playSound(null, pos.x, pos.y, pos.z, sound, SoundSource.PLAYERS, volume, pitch);
 	}
