@@ -42,7 +42,7 @@ public class KatanaLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
 		poseStack.pushPose();
 		model.body.translateAndRotate(poseStack);
 		poseStack.translate(0f, 0.38f, 0.19f);
-		poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(-38f));
+		poseStack.mulPose(new org.joml.Matrix4f().rotationZ((float) Math.toRadians(-38)));
 		collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(TEXTURE), (pose, buffer) -> {
 			// scabbard
 			box(buffer, pose, light, 0f, 0.05f, 0f, 0.035f, 0.42f, 0.03f, 0.5f, 0.5f, 1f, 1f);
