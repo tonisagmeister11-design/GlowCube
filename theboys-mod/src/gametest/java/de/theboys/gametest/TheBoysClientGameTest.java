@@ -1362,7 +1362,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 
 	/** Old chat lines (the injection message of an earlier step) would show the wrong hero in the screenshots. */
 	private static void clearChat(ClientGameTestContext ctx) {
-		ctx.runOnClient(mc -> mc.gui.getChat().clearMessages(true));
+		ctx.runOnClient(mc -> mc.options.chatVisibility().set(net.minecraft.world.entity.player.ChatVisiblity.HIDDEN));
 	}
 
 	private static void husk(net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, double x, double z, String tag) {

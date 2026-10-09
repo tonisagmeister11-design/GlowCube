@@ -21,3 +21,4 @@ net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket | <init>|pu
 net.minecraft.client.gui.components.ChatComponent | clear|Messages
 net.minecraft.client.gui.Gui | hat|Chat
 -p net.minecraft.client.gui.Gui | hat
+net.minecraft.world.entity.player.ChatVisiblity
