@@ -228,3 +228,58 @@ Navy `#14213D`, gold `#C9A227`, flag red `#B22234`, white `#F5F5F5`, laser red `
 - **Temp V24** (green vial): 24-minute temporary power, with a stacking Tumour risk.
 - **Irradiated Uranium Core**: removes powers (recommended).
 - **Supe Virus** canister: lethal to powered entities only.
+
+---
+
+## 7. New heroes: Starlight, The Deep, Black Noir, Stormfront
+
+> Method: a research agent collected powers and costume details. Downloading reference images was blocked
+> by the network proxy (HTTP 403), so the colours below are estimates from costume descriptions [M], not
+> colours picked from screenshots.
+
+### Starlight (Annie January) – Compound V
+| Power | In the mod |
+|---|---|
+| Absorbs electricity and light, and stores it [M] | "Stored light" meter. It fills in bright light, from lamps (X drains them; candles, campfires and redstone lamps go out) and instantly from lightning |
+| Light blasts from the hands [M] | R (hold): golden two-hand beam that also burns undead |
+| Blinding flashes [M] | C: flash that blinds, slows and weakens; players' screens go white |
+| Flight / levitation when supercharged (S3+) [M] | G: upright levitation that drains charge |
+| Overload burst [G] | Sneak+R: Supernova |
+| Weakness: needs a power source [M] | Charge runs out; no light means no powers |
+
+Suit (S1): white/cream #F4F2EC, silver star #D8DCE2 with outline #9EA6B0, pale blue trim #8FB4D9, pleated skirt, short white cape, white boots, blonde hair #D9B76F, blue eyes #4F7FB0.
+
+### The Deep (Kevin Moskowitz) – Compound V
+| Power | In the mod |
+|---|---|
+| Talks to sea creatures [M] | R: three dolphins shoot at the target |
+| Gills, breathes under water, very fast swimmer [M] | Conduit Power + Dolphin's Grace in water, faster swimming, more oxygen |
+| Resists deep-sea pressure and cold [M] | Immune to freezing |
+| Echolocation [G] | G: sonar that makes everything within 48 blocks glow |
+| Strong only in the water [M] | +7 damage in water; dries out on land (weakness and slowness) |
+
+Suit: teal scale wetsuit #1F5F63/#2F7F80/#123F44, gold accents #C9A24A, gills on the flanks #8E3B3B/#C46A6A, swept-back brown hair #4A3324.
+
+### Black Noir – Compound V
+| Power | In the mod |
+|---|---|
+| Strength, durability and fast healing [M] | Passive damage/armour and regeneration |
+| Master martial artist with katana and knives [M] | R: katana combo, X: three throwing knives |
+| Stealth [M] | G: shadow cloak (invisible, mobs lose him), C: shadow step behind the target, ambush bonus |
+| Mute [M] | Cannot chat while the suit is on |
+| Weakness: nut allergy [M] | Eating a cookie poisons him |
+
+Suit: all black, helmet #141416 with dark lenses #2C2F36/#4A4F58, matte armour #101012 with panels #1E1F23, katana on the back.
+
+### Stormfront (Klara Risinger, "Liberty") – V-One only
+| Power | In the mod |
+|---|---|
+| Electricity / lightning from the hands [M] | R (hold): lightning stream that chains to 3 more targets |
+| Fast flight [M] | G: flight, faster than Homelander |
+| Super strength and durability [M] | Strong passives |
+| Calls down lightning [G] | C: five real lightning bolts on the target |
+| Electric burst [G] | X: EMP nova that stuns everyone around her |
+| Very slow ageing (born 1919, V-One era) [M] | Why she is only in the V-One pool |
+| Weakness: burnt badly by Ryan's heat vision [M] | Double fire damage, burns twice as long; immune to lightning |
+
+Suit: navy #1A1D2B with red/white trim #B3212B/#E8E4DC, lightning emblem, brass buckle #B8913E, US flag armbands, navy cape with red lining #8E1B22, dark bob #2B1E18, red lipstick #A8262B.

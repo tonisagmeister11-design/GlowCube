@@ -1,7 +1,7 @@
 # The Boys – Fabric-Mod für Minecraft 26.3
 
-Compound V, Vought-Labore und die Kräfte von **Homelander**, **Soldier Boy**, **A-Train** und
-**Billy Butcher** (Stand: Ende Staffel 5).
+Compound V, Vought-Labore und die Kräfte von **Homelander**, **Soldier Boy**, **A-Train**,
+**Billy Butcher**, **Starlight**, **The Deep**, **Black Noir**, **Stormfront** und **MiniMaus** (Stand: Ende Staffel 5).
 
 ## Installation
 
@@ -17,8 +17,10 @@ also bei allen Mitspielern).
 * In der Oberwelt spawnen **Vought-Labore**, ungefähr so häufig wie zerstörte Netherportale.
 * Darin stehen **Compound-V-Kühlschränke**. Ein Rechtsklick auf einen vollen Kühlschrank gibt dir
   eine Dosis. Meistens ist das **Compound V**, sehr selten **V-One**. Dazu kommen Truhen mit Laborbeute.
-* **Compound V** gibt dir zufällig die Kräfte von **A-Train** oder **Billy Butcher**.
-* **V-One** (viel seltener) gibt dir die Kräfte von **Homelander** oder **Soldier Boy**.
+* **Compound V** gibt dir zufällig die Kräfte von **A-Train**, **Billy Butcher**, **Starlight**, **The Deep**
+  oder **Black Noir**.
+* **V-One** (viel seltener) gibt dir die Kräfte von **Homelander**, **Soldier Boy** oder **Stormfront**
+  (Stormfront gibt es nur mit V-One).
 * **Mini V** (rosa Spritze, etwa jeder zwölfte Kühlschrank und manche Laborkisten) macht dich zu **MiniMaus**.
 * Spritze in die Hand nehmen und **[V]** drücken (oder Rechtsklick halten). Du setzt dir die Spritze
   dann mit einer Animation in den Arm, in der Ego-Perspektive wie in der Third-Person-Ansicht.
@@ -100,6 +102,57 @@ Die Tentakel, die aus seiner Brust wachsen, heißen in der Serie **Super Cancer*
   den tödlichen Schlag ab. Danach bekommst du kurz Widerstand und Regeneration. Nach 2 Sekunden ist
   Super Cancer wieder bereit und kommt jedes Mal, wenn du wieder in Gefahr bist.
 * Passiv: deutlich stärker und zäher als ein Mensch. Dazu gibt es sein **Brecheisen** als Waffe.
+
+### Starlight (Compound V)
+Weißer Anzug mit großem Silberstern, hellblauer Gürtel, Faltenrock, weiße Stiefel, kurzer weißer Umhang,
+blonde Haare (schlankes Modell). Sie lebt von Licht und Strom: Die **Licht-Ladung** (Leiste im HUD) füllt sich im
+Hellen von selbst, und ein **Blitz** lädt sie sofort ganz auf, statt ihr zu schaden.
+* **Lichtstrahl (R halten):** Goldener Strahl aus beiden Händen. Er verbrennt, blendet kurz, stößt zurück und
+  setzt Untote in Brand. Kostet Ladung.
+* **Supernova (Schleichen + R):** Ab 65 % Ladung entlädt sie alles auf einmal. Eine Lichtkugel verbrennt und
+  schleudert alles im Umkreis weg.
+* **Schweben / Fliegen (G):** Sie schwebt aufrecht mit ausgebreiteten Armen auf einem Lichtschein. Das kostet
+  Ladung. Ist sie leer, gleitet sie sanft zu Boden.
+* **Blendblitz (C):** Ein Blitz so hell wie die Sonne. Wer sie sieht, ist geblendet, verlangsamt und geschwächt.
+  Spieler sehen kurz nur Weiß. Untote brennen.
+* **Licht absorbieren (X):** Sie saugt das Licht aller Lampen in der Nähe in ihre Hände (goldene Lichtströme).
+  Kerzen, Lagerfeuer und Redstone-Lampen gehen dabei aus. Unter freiem Himmel trinkt sie Sonnenlicht.
+
+### The Deep (Compound V)
+Grün-türkiser Schuppenanzug mit Gold, Kiemen an den Flanken, zurückgegelte braune Haare.
+* Passiv: atmet unter Wasser, sieht dort im Dunkeln (Meereskraft), schwimmt wie ein Delfin und ist im Wasser
+  **deutlich stärker**. Kälte macht ihm nichts. An Land **trocknet er aus** (Leiste „Feuchtigkeit“) und wird
+  schwach und langsam, bis er wieder ins Wasser oder in den Regen kommt.
+* **Delfin-Angriff (R):** Er ruft drei Delfine, die nacheinander auf sein Ziel schießen und es rammen.
+* **Sonar (G):** Echoortung. Alle Lebewesen im Umkreis von 48 Blöcken leuchten durch Wände hindurch.
+* **Flutwelle (C):** Eine brechende Welle rollt vor ihm her, reißt alles mit und löscht Feuer.
+* **Torpedo-Sprint (X):** Er schießt mit ausgestreckten Armen nach vorne (im Wasser viel schneller) und rammt
+  alles um.
+
+### Black Noir (Compound V)
+Komplett schwarze Rüstung, runder Helm mit dunklen Linsen, ein **Katana auf dem Rücken**.
+* Passiv: stark, zäh, heilt schnell. Er **spricht nicht**: Mit Anzug kann er nicht in den Chat schreiben.
+  Und er hat eine **Nussallergie**: Kekse vergiften ihn fast.
+* **Katana-Kombo (R):** Er zieht das Katana, springt zum Gegner und schlägt dreimal zu. Der letzte Hieb lässt
+  ihn bluten (Verdorrung).
+* **Schattentarnung (G):** Unsichtbar und schnell. Monster verlieren ihn aus den Augen. Der erste Schlag aus
+  dem Schatten macht viel mehr Schaden.
+* **Schattensprung (C):** In einer Rauchwolke weg und direkt hinter dem Gegner wieder da. Der nächste Schlag ist
+  ein Hinterhalt. Ohne Ziel springt er ein Stück nach vorne.
+* **Wurfmesser (X):** Drei Messer im Fächer, die sofort treffen und tief schneiden.
+
+### Stormfront (nur V-One)
+Dunkelblauer Anzug mit rot-weißen Streifen, Blitz-Emblem, Messing-Schnalle, US-Armbinden, dunkler Bob mit rotem
+Lippenstift und ein blauer Umhang mit rotem Futter (schlankes Modell).
+* Passiv: sehr stark und zäh, **immun gegen Blitze**. Ihre Schwäche ist **Feuer**: Sie nimmt doppelten
+  Feuerschaden und brennt doppelt so lange.
+* **Blitzstrom (R halten):** Blitze aus beiden Händen. Sie springen vom Ziel auf bis zu drei weitere Gegner
+  über und lähmen sie. Hält zu lange, überhitzt der Strom (Leiste „Spannung“).
+* **Fliegen (G):** Noch schneller als Homelander, mit Funken um den ganzen Körper.
+* **Blitzschlag rufen (C):** Fünf echte Blitze schlagen nacheinander dort ein, wo sie hinzeigt. Sie folgen dem
+  Gegner, den sie anvisiert hat.
+* **EMP-Nova (X):** Eine elektrische Entladung um sie herum. Blitzbögen treffen jeden in der Nähe, lähmen ihn
+  und schleudern ihn weg.
 
 ### MiniMaus (Mini V)
 Du wirst zu einer Maus: grauer Pelz, cremefarbener Bauch, rosa Pfoten, Schnurrhaare, Hasenzähne und ein
