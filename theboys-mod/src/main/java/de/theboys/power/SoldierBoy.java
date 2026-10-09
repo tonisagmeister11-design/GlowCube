@@ -102,7 +102,7 @@ public final class SoldierBoy {
 		level.sendParticles(ParticleTypes.LARGE_SMOKE, end.x, end.y, end.z, 2, 0.3, 0.3, 0.3, 0.02);
 		if (ray.entity() != null) {
 			if (s.beamTicks % 3 == 0) {
-				Supe.hurt(player, ray.entity(), 7.0f);
+				Supe.hurt(player, ray.entity(), 8.5f);
 				ray.entity().igniteForSeconds(6);
 				if (ray.entity() instanceof LivingEntity living && living.isDeadOrDying()) {
 					Supe.blood(level, end, 2.5f);
@@ -134,9 +134,9 @@ public final class SoldierBoy {
 			return;
 		}
 		float frac = Math.min(1f, charge / (float) MAX_CHARGE);
-		float radius = 5 + 11 * frac;
+		float radius = 6 + 12 * frac;
 		Vec3 c = Supe.chest(player);
-		s.cool(1, 900);
+		s.cool(1, 760);
 
 		ModNetworking.sendFx(level, c, new FxPayload(FxPayload.NUKE, player.getId(), (float) c.x, (float) c.y, (float) c.z, radius, 0, 0));
 		ModNetworking.sendFx(level, c, new FxPayload(FxPayload.SHAKE, player.getId(), (float) c.x, (float) c.y, (float) c.z, 3f * frac + 1f, 0, 0));
@@ -147,7 +147,7 @@ public final class SoldierBoy {
 		for (LivingEntity e : Supe.livingAround(level, c, radius, player)) {
 			double d = Math.sqrt(e.distanceToSqr(c));
 			float power = (float) (1 - d / radius);
-			Supe.hurt(player, e, 12 + 30 * power);
+			Supe.hurt(player, e, 15 + 34 * power);
 			e.igniteForSeconds(8);
 			Supe.push(e, e.position().subtract(c).normalize().scale(1.5 + 2.5 * power).add(0, 0.6, 0));
 			if (e instanceof ServerPlayer other && PowerAttachments.powerOf(other) != Power.NONE) {
@@ -196,7 +196,7 @@ public final class SoldierBoy {
 		ServerLevel level = player.level();
 		Vec3 from = player.position();
 		for (LivingEntity e : Supe.livingAround(level, from.add(dir.scale(3)), 3.5, player)) {
-			Supe.hurt(player, e, 10);
+			Supe.hurt(player, e, 12);
 			Supe.push(e, dir.scale(2.2).add(0, 0.5, 0));
 			Supe.sound(level, e.position(), SoundEvents.SHIELD_BLOCK, 1.2f, 0.7f);
 		}

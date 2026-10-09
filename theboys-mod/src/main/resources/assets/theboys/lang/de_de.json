@@ -75,9 +75,9 @@
   "item.theboys.mini_v": "Mini V",
   "item.theboys.mini_v.desc": "Rosa Serum. Macht dich zu MiniMaus.",
   "power.theboys.minimaus": "MiniMaus",
-  "ability.theboys.minimaus.0": "Giftbiss",
-  "ability.theboys.minimaus.1": "To the Moon",
-  "ability.theboys.minimaus.2": "Multi Smash",
+  "ability.theboys.minimaus.0": "Giftbiss (Schleichen: Rattenflut)",
+  "ability.theboys.minimaus.1": "To the Moon (Schleichen: Quietsch-Schrei)",
+  "ability.theboys.minimaus.2": "Multi Smash (Schleichen: Riesenmaus)",
   "ability.theboys.minimaus.3": "Schrumpfen / Wachsen",
   "message.theboys.bite_ready": "Giftbiss bereit – greif an!",
   "message.theboys.bite_off": "Giftbiss abgebrochen",
@@ -85,5 +85,9 @@
   "message.theboys.moon_off": "To the Moon abgebrochen",
   "message.theboys.small_on": "Du bist winzig! Linksklick knabbert einzelne Pixel aus Blöcken.",
   "message.theboys.small_off": "Du bist wieder groß.",
-  "block.theboys.carved_block": "Angeknabberter Block"
+  "block.theboys.carved_block": "Angeknabberter Block",
+  "ability.theboys.minimaus.rats": "Rattenflut",
+  "ability.theboys.minimaus.squeak": "Quietsch-Schrei",
+  "ability.theboys.minimaus.giant": "Riesenmaus",
+  "message.theboys.giant_on": "RIESENMAUS! 15 Sekunden lang zweieinhalb Mal so groß."
 }

@@ -36,6 +36,8 @@ public record FxPayload(int kind, int entityId, float x, float y, float z, float
 	public static final int TORN = 6;
 	/** MiniMaus bites at x/y/z (entityId = MiniMaus, x2 = id of the bitten entity). */
 	public static final int BITE = 7;
+	/** MiniMaus' rat flood from x/y/z towards yaw x2, lasting y2 ticks. */
+	public static final int RATS = 8;
 
 	@Override
 	public Type<? extends CustomPacketPayload> type() {

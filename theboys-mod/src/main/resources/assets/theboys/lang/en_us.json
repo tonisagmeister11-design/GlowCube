@@ -75,9 +75,9 @@
   "item.theboys.mini_v": "Mini V",
   "item.theboys.mini_v.desc": "Pink serum. Turns you into MiniMaus.",
   "power.theboys.minimaus": "MiniMaus",
-  "ability.theboys.minimaus.0": "Poison Bite",
-  "ability.theboys.minimaus.1": "To the Moon",
-  "ability.theboys.minimaus.2": "Multi Smash",
+  "ability.theboys.minimaus.0": "Poison Bite (sneak: Rat Flood)",
+  "ability.theboys.minimaus.1": "To the Moon (sneak: Squeak)",
+  "ability.theboys.minimaus.2": "Multi Smash (sneak: Giant Mouse)",
   "ability.theboys.minimaus.3": "Shrink / Grow",
   "message.theboys.bite_ready": "Poison Bite ready - attack!",
   "message.theboys.bite_off": "Poison Bite cancelled",
@@ -85,5 +85,9 @@
   "message.theboys.moon_off": "To the Moon cancelled",
   "message.theboys.small_on": "You are tiny! Left click nibbles single pixels out of blocks.",
   "message.theboys.small_off": "You are big again.",
-  "block.theboys.carved_block": "Nibbled Block"
+  "block.theboys.carved_block": "Nibbled Block",
+  "ability.theboys.minimaus.rats": "Rat Flood",
+  "ability.theboys.minimaus.squeak": "Squeak",
+  "ability.theboys.minimaus.giant": "Giant Mouse",
+  "message.theboys.giant_on": "GIANT MOUSE! Two and a half times as big for 15 seconds."
 }

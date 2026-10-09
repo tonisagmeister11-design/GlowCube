@@ -111,7 +111,7 @@ public final class Homelander {
 		level.sendParticles(ParticleTypes.SMOKE, end.x, end.y, end.z, 1, 0.05, 0.05, 0.05, 0.01);
 		if (ray.entity() != null) {
 			if (player.tickCount % 3 == 0) {
-				Supe.hurt(player, ray.entity(), 5.0f);
+				Supe.hurt(player, ray.entity(), 6.0f);
 				ray.entity().igniteForSeconds(4);
 				if (ray.entity() instanceof LivingEntity living && living.isDeadOrDying()) {
 					Supe.blood(level, end, 2.5f);
@@ -147,7 +147,7 @@ public final class Homelander {
 		}
 		for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().expandTowards(s.motion.scale(2)).inflate(0.6),
 				e -> e != player && e.isAlive() && !e.isSpectator())) {
-			Supe.hurt(player, e, (float) (18 + s.motion.length() * 10));
+			Supe.hurt(player, e, (float) (22 + s.motion.length() * 12));
 			Supe.push(e, dir.scale(2.5).add(0, 0.4, 0));
 			Supe.blood(level, e.position().add(0, e.getBbHeight() / 2, 0), e.isDeadOrDying() ? 3f : 1f);
 		}
@@ -208,7 +208,7 @@ public final class Homelander {
 			PowerManager.notReady(player, s, 3);
 			return;
 		}
-		s.cool(3, 220);
+		s.cool(3, 180);
 		ServerLevel level = player.level();
 		Vec3 eye = player.getEyePosition();
 		Vec3 look = player.getLookAngle();
@@ -221,7 +221,7 @@ public final class Homelander {
 			double dist = to.length();
 			if (dist < 0.01 || to.normalize().dot(look) < 0.55) continue;
 			double power = 1.0 - dist / 14.0;
-			Supe.hurt(player, e, (float) (6 + 10 * power));
+			Supe.hurt(player, e, (float) (8 + 12 * power));
 			Supe.push(e, look.scale(2.5 * power + 0.8).add(0, 0.6, 0));
 			e.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 60, 2));
 			e.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 100, 0));

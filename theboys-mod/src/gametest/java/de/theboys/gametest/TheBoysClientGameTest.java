@@ -693,6 +693,88 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
 			});
 
+			step(ctx, "minimaus_sneak_moves", () -> {
+				server.runCommand("theboys power clear @a");
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -64 -12 12 -64 30 minecraft:bedrock");
+				server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:grass_block");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				server.runCommand("theboys power set @a minimaus");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(20);
+				ctx.getInput().lookAt(0, 0);
+				List<String> problems = new ArrayList<>();
+				// Rat Flood
+				for (int i = 0; i < 4; i++) {
+					server.runCommand(String.format(java.util.Locale.ROOT, "summon minecraft:husk %.1f -60 %.1f {NoAI:1b,Silent:1b,Tags:[\"rat\"]}", -1.5 + i, 6.5 + i % 2));
+				}
+				ctx.waitTicks(10);
+				sideView(ctx, server, 5.5, -58.0, 2.0, 60, 18);
+				ctx.getInput().holdKey(o -> o.keyShift);
+				ctx.waitTicks(2);
+				ctx.getInput().pressKey(Keys.ABILITY[0]);
+				ctx.waitTicks(2);
+				ctx.getInput().releaseKey(o -> o.keyShift);
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("minimaus_rats_1");
+				ctx.waitTicks(6);
+				ctx.takeScreenshot("minimaus_rats_2");
+				ctx.waitTicks(16);
+				int hurt = server.computeOnServer(s -> {
+					int n = 0;
+					for (var e : s.overworld().getAllEntities()) {
+						if (e.getType() == net.minecraft.world.entity.EntityTypes.HUSK && e instanceof net.minecraft.world.entity.LivingEntity l && l.getHealth() < l.getMaxHealth()) n++;
+					}
+					return n;
+				});
+				LOG.info("rat flood: {} of 4 husks hit", hurt);
+				if (hurt < 3) problems.add("Rat Flood only hit " + hurt + " husks");
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				ctx.waitTicks(25);
+				// Squeak
+				server.runCommand("summon minecraft:husk 2.5 -60 2.5 {NoAI:1b,Silent:1b}");
+				server.runCommand("summon minecraft:husk -1.5 -60 1.5 {NoAI:1b,Silent:1b}");
+				ctx.waitTicks(10);
+				sideView(ctx, server, 0.5, -57.5, 7.5, 180, 20);
+				ctx.getInput().holdKey(o -> o.keyShift);
+				ctx.waitTicks(2);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(2);
+				ctx.getInput().releaseKey(o -> o.keyShift);
+				ctx.waitTicks(2);
+				ctx.takeScreenshot("minimaus_squeak");
+				ctx.waitTicks(10);
+				int nauseous = server.computeOnServer(s -> {
+					int n = 0;
+					for (var e : s.overworld().getAllEntities()) {
+						if (e instanceof net.minecraft.world.entity.LivingEntity l && !(e instanceof net.minecraft.world.entity.player.Player)
+								&& l.hasEffect(net.minecraft.world.effect.MobEffects.NAUSEA)) n++;
+					}
+					return n;
+				});
+				LOG.info("squeak: {} of 2 husks reeling", nauseous);
+				if (nauseous < 2) problems.add("Squeak hit only " + nauseous + " husks");
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				// Giant Mouse
+				ctx.getInput().holdKey(o -> o.keyShift);
+				ctx.waitTicks(2);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				ctx.waitTicks(2);
+				ctx.getInput().releaseKey(o -> o.keyShift);
+				ctx.waitTicks(25);
+				double scale = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.SCALE));
+				LOG.info("giant mouse: scale={}", scale);
+				if (scale < 2.3) problems.add("Giant Mouse did not grow: " + scale);
+				sideView(ctx, server, 0.5, -55.0, 9.5, 180, 12);
+				ctx.takeScreenshot("minimaus_giant");
+				playerView(ctx, server);
+				server.runCommand("theboys power clear @a");
+				ctx.waitTicks(5);
+				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
+			});
+
 			step(ctx, "minimaus_hideout", () -> {
 				// a tunnel into a stone wall and a hollow room inside: tiny MiniMaus walks in and hides
 				server.runCommand("theboys power clear @a");

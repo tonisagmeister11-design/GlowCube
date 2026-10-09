@@ -79,8 +79,8 @@ public final class PowerManager {
 		Power p = PowerAttachments.powerOf(player);
 		double damage = 0, armor = 0, toughness = 0, knockback = 0, fall = 0, health = 0, speed = 0;
 		switch (p) {
-			case HOMELANDER -> { damage = 12; armor = 20; toughness = 12; knockback = 0.9; fall = 4096; health = 20; speed = 0.02; }
-			case SOLDIER_BOY -> { damage = 9; armor = 18; toughness = 10; knockback = 0.7; fall = 20; health = 20; }
+			case HOMELANDER -> { damage = 14; armor = 20; toughness = 14; knockback = 0.95; fall = 4096; health = 28; speed = 0.025; }
+			case SOLDIER_BOY -> { damage = 11; armor = 20; toughness = 12; knockback = 0.8; fall = 24; health = 26; }
 			case A_TRAIN -> { damage = 3; armor = 6; fall = 12; speed = 0.05; health = 4; }
 			case BUTCHER -> { damage = 7; armor = 14; toughness = 6; knockback = 0.6; fall = 16; health = 10; }
 			// twice as fast, and as strong when she is a pixel as when she is full size

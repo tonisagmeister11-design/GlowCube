@@ -102,6 +102,7 @@ public final class EffectRenderer {
 
 		List<Glow> glows = new ArrayList<>();
 		List<Tendril> tendrils = new ArrayList<>();
+		List<double[]> rats = new ArrayList<>();
 
 		for (AbstractClientPlayer p : level.players()) {
 			Power power = PowerAttachments.powerOf(p);
@@ -175,6 +176,7 @@ public final class EffectRenderer {
 						tendrils.add(Tendril.curve(from, at, reach, time + pt, d.entityId(), 0.22, src == mc.player && firstPerson));
 					}
 				}
+				case FxPayload.RATS -> rats(level, d, age, rats);
 				case FxPayload.BITE -> {
 					// glowing jaws snapping shut on the victim
 					Entity victim = level.getEntity((int) d.x2());
@@ -250,6 +252,12 @@ public final class EffectRenderer {
 					TornBodies.drawSkin(half, buffer, pose, cam, pt, level);
 				});
 			}
+		}
+		if (!rats.isEmpty()) {
+			int ratLight = LightCoordsUtil.getLightCoords(level, BlockPos.containing(rats.get(0)[0], rats.get(0)[1] + 0.3, rats.get(0)[2]));
+			context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.entityCutout(MOUSE_PARTS), (pose, buffer) -> {
+				for (double[] r : rats) drawRat(buffer, pose, cam, r, ratLight);
+			});
 		}
 		if (!tendrils.isEmpty()) {
 			List<Integer> lights = new ArrayList<>();
@@ -462,6 +470,86 @@ public final class EffectRenderer {
 		}
 		glows.add(Glow.ribbon(inner, outer, argb(0.55f * fade * strength, 0xCFE3FF)));
 		glows.add(Glow.bolt(edge, 0.018, argb(0.9f * fade * strength, 0xFFFFFF)));
+	}
+
+	// ------------------------------------------------------------------ MiniMaus' rat flood
+
+	private static final Identifier MOUSE_PARTS = TheBoys.id("textures/entity/minimaus_parts.png");
+
+	/** Places the rats of a rat flood: {x, y, z, yaw(rad), size, run phase}. */
+	private static void rats(ClientLevel level, FxPayload d, float age, List<double[]> out) {
+		Vec3 origin = new Vec3(d.x(), d.y(), d.z());
+		double yaw = Math.toRadians(d.x2());
+		Vec3 fwd = new Vec3(-Math.sin(yaw), 0, Math.cos(yaw));
+		Vec3 right = new Vec3(-fwd.z, 0, fwd.x);
+		float life = d.y2();
+		for (int i = 0; i < 26; i++) {
+			Random rnd = new Random(d.entityId() * 31L + i * 7919L);
+			double lane = rnd.nextDouble() * 2 - 1;
+			double speed = 0.62 + rnd.nextDouble() * 0.2;
+			double delay = rnd.nextDouble() * 4;
+			double t = age - delay;
+			if (t < 0) continue;
+			double along = 0.4 + t * speed;
+			if (t > life + 6) continue;
+			double side = lane * (1.0 + along * 0.42) + Math.sin(t * 1.3 + i) * 0.12;
+			Vec3 p = origin.add(fwd.scale(along)).add(right.scale(side));
+			double y = de.theboys.client.SupeMovement.groundBelow(level, new Vec3(p.x, p.y + 1.0, p.z));
+			double size = 0.8 + rnd.nextDouble() * 0.5;
+			// scurrying: they shrink away at the end
+			if (t > life) size *= Math.max(0, 1 - (t - life) / 6);
+			double ryaw = yaw + Math.sin(t * 0.9 + i) * 0.25;
+			out.add(new double[] {p.x, y, p.z, ryaw, size, t * 2.4 + i});
+		}
+	}
+
+	/** A small rat: body, head and a long pink tail, from the MiniMaus parts texture. */
+	private static void drawRat(VertexConsumer b, PoseStack.Pose pose, Vec3 cam, double[] r, int light) {
+		double size = r[4];
+		if (size <= 0.01) return;
+		Vec3 base = new Vec3(r[0], r[1], r[2]).subtract(cam);
+		double yaw = r[3];
+		Vec3 fwd = new Vec3(-Math.sin(yaw), 0, Math.cos(yaw));
+		Vec3 right = new Vec3(-fwd.z, 0, fwd.x);
+		double hop = Math.abs(Math.sin(r[5])) * 0.04 * size;
+		Vec3 up = new Vec3(0, 1, 0);
+		// fur: right half of the upper texture; tail: lower half
+		ratBox(b, pose, base.add(0, 0.09 * size + hop, 0), fwd, right, up, 0.17 * size, 0.08 * size, 0.08 * size, 0.55f, 0.05f, 0.95f, 0.45f, light);
+		ratBox(b, pose, base.add(fwd.scale(0.2 * size)).add(0, 0.1 * size + hop, 0), fwd, right, up, 0.06 * size, 0.05 * size, 0.055 * size, 0.55f, 0.05f, 0.95f, 0.45f, light);
+		// ears
+		ratBox(b, pose, base.add(fwd.scale(0.2 * size)).add(right.scale(0.045 * size)).add(0, 0.17 * size + hop, 0), fwd, right, up, 0.012 * size, 0.03 * size, 0.03 * size, 0.1f, 0.1f, 0.4f, 0.4f, light);
+		ratBox(b, pose, base.add(fwd.scale(0.2 * size)).add(right.scale(-0.045 * size)).add(0, 0.17 * size + hop, 0), fwd, right, up, 0.012 * size, 0.03 * size, 0.03 * size, 0.1f, 0.1f, 0.4f, 0.4f, light);
+		// tail: three thin segments swinging behind
+		Vec3 p = base.add(fwd.scale(-0.17 * size)).add(0, 0.07 * size, 0);
+		double wag = Math.sin(r[5] * 0.7) * 0.5;
+		for (int k = 0; k < 3; k++) {
+			Vec3 dir = fwd.scale(-Math.cos(wag * (k + 1) * 0.5)).add(right.scale(Math.sin(wag * (k + 1) * 0.5))).normalize();
+			Vec3 c = p.add(dir.scale(0.06 * size));
+			Vec3 r2 = new Vec3(-dir.z, 0, dir.x);
+			ratBox(b, pose, c, dir.scale(-1), r2, up, 0.06 * size, 0.012 * size, 0.012 * size, 0.1f, 0.55f, 0.9f, 0.95f, light);
+			p = c.add(dir.scale(0.06 * size));
+		}
+	}
+
+	private static void ratBox(VertexConsumer b, PoseStack.Pose pose, Vec3 c, Vec3 f, Vec3 r, Vec3 u, double hl, double hw, double hh,
+			float u0, float v0, float u1, float v1, int light) {
+		Vec3[] dirs = {f, f.scale(-1), r, r.scale(-1), u, u.scale(-1)};
+		for (Vec3 n : dirs) {
+			Vec3 a, bb;
+			double ha, hb;
+			if (n == dirs[0] || n == dirs[1]) { a = r; bb = u; ha = hw; hb = hh; }
+			else if (n == dirs[2] || n == dirs[3]) { a = f; bb = u; ha = hl; hb = hh; }
+			else { a = f; bb = r; ha = hl; hb = hw; }
+			double hn = n == dirs[0] || n == dirs[1] ? hl : n == dirs[2] || n == dirs[3] ? hw : hh;
+			Vec3 fc = c.add(n.scale(hn));
+			Vec3[] q = {fc.add(a.scale(-ha)).add(bb.scale(-hb)), fc.add(a.scale(ha)).add(bb.scale(-hb)),
+					fc.add(a.scale(ha)).add(bb.scale(hb)), fc.add(a.scale(-ha)).add(bb.scale(hb))};
+			float[][] uv = {{u0, v1}, {u1, v1}, {u1, v0}, {u0, v0}};
+			for (int i = 0; i < 4; i++) {
+				b.addVertex(pose, (float) q[i].x, (float) q[i].y, (float) q[i].z).setColor(0xFFFFFFFF).setUv(uv[i][0], uv[i][1])
+						.setOverlay(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, (float) n.x, (float) n.y, (float) n.z);
+			}
+		}
 	}
 
 	// ------------------------------------------------------------------ helpers

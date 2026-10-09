@@ -59,6 +59,7 @@ public class TheBoysClient implements ClientModInitializer {
 				}
 			}
 			case FxPayload.TORN -> de.theboys.client.render.TornBodies.spawn(mc.level == null ? null : mc.level.getEntity(fx.entityId()), new Vec3(fx.x(), fx.y(), fx.z()), fx.x2(), fx.y2(), fx.z2());
+			case FxPayload.RATS -> ClientState.EFFECTS.add(new ClientState.Fx(fx, (int) fx.y2() + 8));
 			case FxPayload.BITE -> {
 				if (mc.level != null) ClientState.BITES.put(fx.entityId(), mc.level.getGameTime());
 				ClientState.EFFECTS.add(new ClientState.Fx(fx, 7));

@@ -36,7 +36,10 @@ public final class MiniMaus {
 	public static final Identifier SCALE = TheBoys.id("minimaus_scale");
 	/** The smallest size Minecraft allows: 1/16, a player about two pixels tall. */
 	public static final double SMALL_SCALE = 0.0625;
-	private static final int SHRINK_TICKS = 12;
+	public static final double GIANT_SCALE = 2.5;
+	public static final Identifier GIANT_DAMAGE = TheBoys.id("minimaus_giant_damage");
+	public static final Identifier GIANT_REACH = TheBoys.id("minimaus_giant_reach");
+	private static final int RAT_TICKS = 22;
 	private static final int MOON_WINDUP = 9;
 	private static final double MOON_HEIGHT = 120;
 
@@ -53,6 +56,15 @@ public final class MiniMaus {
 
 	static void key(ServerPlayer player, PlayerSession s, int slot, boolean pressed) {
 		if (!pressed) return;
+		// sneaking: the second set of moves
+		if (player.isShiftKeyDown() && slot < 3) {
+			switch (slot) {
+				case 0 -> ratFlood(player, s);
+				case 1 -> squeak(player, s);
+				default -> giant(player, s);
+			}
+			return;
+		}
 		switch (slot) {
 			case 0 -> {
 				if (!s.ready(0)) {
@@ -76,7 +88,7 @@ public final class MiniMaus {
 			case 2 -> startSmash(player, s);
 			case 3 -> {
 				s.small = !s.small;
-				s.shrinkTicks = SHRINK_TICKS;
+				s.giantTicks = 0;
 				Supe.sound(player.level(), player.position(), s.small ? SoundEvents.ILLUSIONER_MIRROR_MOVE : SoundEvents.ILLUSIONER_CAST_SPELL, 1.0f, s.small ? 2.0f : 1.4f);
 				player.level().sendParticles(new DustParticleOptions(0xFF6FA5, 0.8f), player.getX(), player.getY() + player.getBbHeight() / 2,
 						player.getZ(), 30, 0.4, 0.5, 0.4, 0.05);
@@ -158,6 +170,95 @@ public final class MiniMaus {
 			if (PowerAttachments.powerOf(p) == Power.MINIMAUS && PowerManager.session(p).moonTarget == victim.getId()) return true;
 		}
 		return false;
+	}
+
+	// ------------------------------------------------------------------ sneak moves
+
+	private static boolean cooling(ServerPlayer player, int ticks, String key) {
+		if (ticks <= 0) return false;
+		player.sendSystemMessage(Component.translatable("message.theboys.cooldown", Component.translatable(key),
+				String.format("%.1f", ticks / 20f)).withStyle(ChatFormatting.RED), true);
+		return true;
+	}
+
+	/** Rat Flood: a wave of rats pours out in front of her and runs everything over. */
+	private static void ratFlood(ServerPlayer player, PlayerSession s) {
+		if (cooling(player, s.ratCool, "ability.theboys.minimaus.rats")) return;
+		s.ratCool = 400;
+		s.ratTicks = RAT_TICKS;
+		s.ratYaw = player.getYRot();
+		s.ratOrigin = player.position();
+		s.ratHit.clear();
+		ServerLevel level = player.level();
+		ModNetworking.sendFx(level, s.ratOrigin, new FxPayload(FxPayload.RATS, player.getId(), (float) s.ratOrigin.x, (float) s.ratOrigin.y,
+				(float) s.ratOrigin.z, s.ratYaw, RAT_TICKS, 0));
+		for (int i = 0; i < 3; i++) {
+			Supe.sound(level, s.ratOrigin, SoundEvents.SILVERFISH_AMBIENT, 1.5f, 0.8f + i * 0.3f);
+		}
+		Supe.sound(level, s.ratOrigin, SoundEvents.FOX_SCREECH, 1.0f, 1.8f);
+	}
+
+	private static void tickRats(ServerPlayer player, PlayerSession s, ServerLevel level) {
+		int t = RAT_TICKS - s.ratTicks--;
+		double front = t * 0.7;
+		Vec3 fwd = MiniMausMath.forward(s.ratYaw);
+		for (LivingEntity e : Supe.livingAround(level, s.ratOrigin, front + 1, player)) {
+			if (s.ratHit.contains(e.getId())) continue;
+			Vec3 to = e.position().subtract(s.ratOrigin);
+			double along = to.x * fwd.x + to.z * fwd.z;
+			double side = Math.abs(to.x * fwd.z - to.z * fwd.x);
+			// a cone that widens as the rats spread out
+			if (along < 0 || along > front || side > 1.2 + along * 0.45 || Math.abs(to.y) > 3) continue;
+			s.ratHit.add(e.getId());
+			Supe.hurt(player, e, 7f);
+			e.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 80, 2), player);
+			e.addEffect(new MobEffectInstance(MobEffects.POISON, 60, 1), player);
+			Supe.push(e, fwd.scale(0.7).add(0, 0.35, 0));
+			Supe.sound(level, e.position(), SoundEvents.SILVERFISH_HURT, 1.0f, 1.3f);
+		}
+		if (t % 4 == 0) {
+			Supe.sound(level, s.ratOrigin.add(fwd.scale(front)), SoundEvents.SILVERFISH_STEP, 1.2f, 1.4f);
+		}
+	}
+
+	/** Squeak: an ear-splitting mouse scream that throws everything around her back and makes it reel. */
+	private static void squeak(ServerPlayer player, PlayerSession s) {
+		if (cooling(player, s.squeakCool, "ability.theboys.minimaus.squeak")) return;
+		s.squeakCool = 300;
+		ServerLevel level = player.level();
+		Vec3 c = player.position().add(0, player.getBbHeight() * 0.6, 0);
+		double radius = 9;
+		for (LivingEntity e : Supe.livingAround(level, c, radius, player)) {
+			double d = Math.max(1, e.distanceTo(player));
+			float k = (float) (1 - d / (radius + 1));
+			Supe.hurt(player, e, 4f + 6f * k);
+			e.addEffect(new MobEffectInstance(MobEffects.NAUSEA, 160, 0), player);
+			e.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 100, 1), player);
+			e.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 140, 0), player);
+			Supe.push(e, e.position().subtract(player.position()).normalize().scale(0.6 + 1.4 * k).add(0, 0.4 + 0.3 * k, 0));
+		}
+		for (int i = 0; i < 3; i++) {
+			ModNetworking.sendFx(level, c, new FxPayload(FxPayload.SHOCKWAVE, player.getId(), (float) c.x, (float) c.y - 0.3f * i, (float) c.z,
+					(float) radius - i * 2, Float.NaN, 0));
+		}
+		ModNetworking.sendFx(level, c, new FxPayload(FxPayload.SHAKE, player.getId(), (float) c.x, (float) c.y, (float) c.z, 1.5f, 0, 0));
+		Supe.sound(level, c, SoundEvents.FOX_SCREECH, 2.5f, 2.0f);
+		Supe.sound(level, c, SoundEvents.BAT_TAKEOFF, 2.0f, 1.6f);
+		Supe.sound(level, c, SoundEvents.WARDEN_SONIC_BOOM, 0.6f, 2.0f);
+	}
+
+	/** Giant Mouse: for 15 seconds she is two and a half times as big - and hits accordingly. */
+	private static void giant(ServerPlayer player, PlayerSession s) {
+		if (s.giantTicks > 0) return;
+		if (cooling(player, s.giantCool, "ability.theboys.minimaus.giant")) return;
+		s.small = false;
+		s.giantTicks = 300;
+		s.giantCool = 300 + 600;
+		ServerLevel level = player.level();
+		Supe.sound(level, player.position(), SoundEvents.RAVAGER_ROAR, 1.2f, 1.6f);
+		Supe.sound(level, player.position(), SoundEvents.ILLUSIONER_MIRROR_MOVE, 1.0f, 0.6f);
+		level.sendParticles(new DustParticleOptions(0xFF6FA5, 2.0f), player.getX(), player.getY() + 1, player.getZ(), 60, 1.0, 1.4, 1.0, 0.1);
+		player.sendSystemMessage(Component.translatable("message.theboys.giant_on").withStyle(ChatFormatting.LIGHT_PURPLE), true);
 	}
 
 	// ------------------------------------------------------------------ Multi Smash
@@ -263,21 +364,30 @@ public final class MiniMaus {
 		ServerLevel level = player.level();
 		ActiveState state = PowerAttachments.active(player);
 
-		// shrinking / growing, smoothly
-		double target = s.small ? SMALL_SCALE : 1.0;
-		if (s.shrinkTicks > 0) s.shrinkTicks--;
-		double k = s.shrinkTicks / (double) SHRINK_TICKS;
-		double from = s.small ? 1.0 : SMALL_SCALE;
-		double scale = target + (from - target) * k * k;
-		PowerManager.modifier(player, Attributes.SCALE, SCALE, scale >= 0.999 ? 0 : scale - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+		// shrinking / growing (and the giant mouse), smoothly
+		if (s.giantTicks > 0 && --s.giantTicks == 0) {
+			Supe.sound(level, player.position(), SoundEvents.ILLUSIONER_CAST_SPELL, 1.0f, 1.2f);
+		}
+		double target = s.small ? SMALL_SCALE : s.giantTicks > 0 ? GIANT_SCALE : 1.0;
+		double scale = Math.abs(target - s.scale) < 0.002 ? target : s.scale + (target - s.scale) * 0.22;
+		if (scale != s.scale) {
+			s.scale = scale;
+			PowerManager.modifier(player, Attributes.SCALE, SCALE, Math.abs(scale - 1.0) < 0.001 ? 0 : scale - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+			PowerManager.modifier(player, Attributes.ATTACK_DAMAGE, GIANT_DAMAGE, scale > 1.01 ? 8.0 * (scale - 1) / (GIANT_SCALE - 1) : 0, AttributeModifier.Operation.ADD_VALUE);
+			PowerManager.modifier(player, Attributes.ENTITY_INTERACTION_RANGE, GIANT_REACH, scale > 1.01 ? 2.0 * (scale - 1) / (GIANT_SCALE - 1) : 0, AttributeModifier.Operation.ADD_VALUE);
+		}
 		// twice a normal player's speed - relative to her size: tiny, she walks pixel by pixel instead of racing
-		double speedFactor = 2.0 * scale;
+		double speedFactor = 2.0 * Math.min(1.0, scale);
 		if (Math.abs(speedFactor - s.speedFactor) > 0.001) {
 			s.speedFactor = speedFactor;
 			PowerManager.modifier(player, Attributes.MOVEMENT_SPEED, PowerManager.DOUBLE_SPEED, speedFactor - 1.0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 		}
 
 		if (s.biteTicks > 0) s.biteTicks--;
+		if (s.ratTicks > 0) tickRats(player, s, level);
+		if (s.ratCool > 0) s.ratCool--;
+		if (s.squeakCool > 0) s.squeakCool--;
+		if (s.giantCool > 0) s.giantCool--;
 
 		// To the Moon: wind up while the victim is frozen, then the blow
 		if (s.moonTarget >= 0) {
@@ -369,5 +479,10 @@ public final class MiniMaus {
 		s.moonTarget = -1;
 		s.smashTarget = -1;
 		PowerManager.modifier(player, Attributes.SCALE, SCALE, 0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+		PowerManager.modifier(player, Attributes.ATTACK_DAMAGE, GIANT_DAMAGE, 0, AttributeModifier.Operation.ADD_VALUE);
+		PowerManager.modifier(player, Attributes.ENTITY_INTERACTION_RANGE, GIANT_REACH, 0, AttributeModifier.Operation.ADD_VALUE);
+		s.scale = 1.0;
+		s.giantTicks = 0;
+		s.ratTicks = 0;
 	}
 }

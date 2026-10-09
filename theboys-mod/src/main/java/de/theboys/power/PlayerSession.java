@@ -52,7 +52,6 @@ public final class PlayerSession {
 
 	// MiniMaus
 	public boolean small;
-	public int shrinkTicks;
 	public boolean biteArmed;
 	public int biteTicks;
 	public boolean moonArmed;
@@ -64,6 +63,15 @@ public final class PlayerSession {
 	public int smashTicks;
 	public long lastPixel;
 	public double speedFactor = 2.0;
+	public double scale = 1.0;
+	public int giantTicks;
+	public int giantCool;
+	public int ratTicks;
+	public int ratCool;
+	public float ratYaw;
+	public Vec3 ratOrigin = Vec3.ZERO;
+	public final java.util.Set<Integer> ratHit = new java.util.HashSet<>();
+	public int squeakCool;
 
 	// shared
 	public Vec3 lastPos;
