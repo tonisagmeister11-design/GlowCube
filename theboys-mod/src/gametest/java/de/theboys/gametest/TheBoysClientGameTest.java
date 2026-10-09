@@ -875,6 +875,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				});
 				LOG.info("video: {} frames, polar bear health after the smash={}", frame, bear);
 				de.theboys.client.ClientState.hideHud = false;
+				ctx.runOnClient(mc -> mc.options.hideGui = false);
 				playerView(ctx, server);
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("theboys power clear @a");
@@ -1422,20 +1423,22 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			step(ctx, "suits_closeup", () -> {
 				arena(ctx, server);
 				de.theboys.client.ClientState.hideHud = true;
+				ctx.runOnClient(mc -> mc.options.hideGui = true);
 				for (Power p : new Power[] {Power.HOMELANDER, Power.SOLDIER_BOY, Power.A_TRAIN, Power.BUTCHER, Power.STARLIGHT,
 						Power.STORMFRONT, Power.THE_DEEP, Power.BLACK_NOIR, Power.BLACK_ADAM, Power.MINIMAUS}) {
 					server.runCommand("theboys power set @a " + p.id());
 					server.runCommand("tp @a 0.5 -60 0.5 0 0");
 					ctx.waitTicks(6);
 					ctx.getInput().lookAt(0, 0);
-					sideView(ctx, server, 2.0, -58.5, 2.4, 141, 14);
+					sideView(ctx, server, 1.6, -58.6, 2.0, 144, 16);
 					ctx.waitTicks(2);
 					ctx.takeScreenshot("closeup_" + p.id() + "_front");
-					sideView(ctx, server, -1.4, -58.5, -1.4, -36, 14);
+					sideView(ctx, server, -0.6, -58.6, -1.1, -34, 16);
 					ctx.waitTicks(2);
 					ctx.takeScreenshot("closeup_" + p.id() + "_back");
 				}
 				de.theboys.client.ClientState.hideHud = false;
+				ctx.runOnClient(mc -> mc.options.hideGui = false);
 				playerView(ctx, server);
 				server.runCommand("theboys power clear @a");
 			});

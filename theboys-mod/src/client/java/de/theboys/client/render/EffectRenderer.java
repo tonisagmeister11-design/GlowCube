@@ -621,13 +621,24 @@ public final class EffectRenderer {
 		return new Vec3[] {shoulder.add(right.scale(0.34 * k)).add(dir.scale(0.68 * k)), shoulder.add(right.scale(-0.34 * k)).add(dir.scale(0.68 * k))};
 	}
 
+	/** The hands hanging at the sides (arms down). */
+	private static Vec3[] handsDown(Entity p, float pt) {
+		float bodyYaw = p instanceof net.minecraft.world.entity.LivingEntity l ? net.minecraft.util.Mth.rotLerp(pt, l.yBodyRotO, l.yBodyRot) : p.getYRot();
+		double yaw = Math.toRadians(bodyYaw);
+		Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+		double k = p.getBbHeight() / 1.8;
+		Vec3 base = p.getPosition(pt).add(0, 0.74 * k, 0);
+		return new Vec3[] {base.add(right.scale(0.36 * k)), base.add(right.scale(-0.36 * k))};
+	}
+
 	private static void starlight(ClientLevel level, AbstractClientPlayer p, ActiveState state, float pt, long time, boolean self, List<Glow> glows) {
 		float charge = state.charge() / (float) de.theboys.power.Starlight.MAX_CHARGE;
 		double t = time + pt;
 		Vec3[] hands = hands(p, pt, self);
 		if (!self && !p.isInvisible()) {
 			// her hands glow with what she has stored; fully charged her whole body shines
-			for (Vec3 h : hands) {
+			// when she is not firing, the glow sits on her hanging hands
+			for (Vec3 h : state.has(ActiveState.HAND_BEAM) ? hands : handsDown(p, pt)) {
 				glows.add(Glow.sphere(h, 0.07 + 0.08 * charge, argb(0.25f + 0.5f * charge, 0xFFE9A8)));
 			}
 			if (state.has(ActiveState.CHARGED)) {
