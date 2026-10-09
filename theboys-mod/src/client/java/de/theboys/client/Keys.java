@@ -39,6 +39,8 @@ public final class Keys {
 		if (!power.flier() || player.isCreative() || player.isSpectator()) {
 			return;
 		}
+		// Black Adam: Sneak+G is SHAZAM, not the flight key
+		if (power == de.theboys.power.Power.BLACK_ADAM && player.isShiftKeyDown()) return;
 		var abilities = player.getAbilities();
 		if (!abilities.mayfly) {
 			// Starlight can only lift off with enough light stored

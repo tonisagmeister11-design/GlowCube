@@ -1311,7 +1311,8 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					for (var e : s.overworld().getAllEntities()) {
 						if (e instanceof net.minecraft.world.entity.item.ItemEntity it && it.getItem().is(net.minecraft.world.item.Items.BONE)) n++;
 					}
-					return n;
+					// he usually picks them up right away
+					return n + s.getPlayerList().getPlayers().get(0).getInventory().countItem(net.minecraft.world.item.Items.BONE);
 				});
 				LOG.info("adam bones crumbled: bone items={}", bones);
 				if (bones < 1) problems.add("skeleton did not crumble");
