@@ -198,7 +198,9 @@ public class SuitPartsLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		legs(at, -2.3f, 11.2f, -2.7f, 2.3f, 12.1f, 2.3f, 0xF2F6FB);
 		box(at, BODY, -1.4f, 7.9f, -2.4f, 1.4f, 10.2f, -2.05f, 0xF2F6FB);
 
-		box(bu, HEAD, -4.3f, -3.2f, -4.6f, 4.3f, 0.3f, -4.0f, 0x1C1613);
+		box(bu, HEAD, -4.3f, -1.1f, -4.55f, 4.3f, 0.4f, -4.0f, 0x1C1613);
+		box(bu, HEAD, -4.3f, -3.0f, -4.4f, -1.8f, -1.1f, -4.0f, 0x1C1613);
+		box(bu, HEAD, 1.8f, -3.0f, -4.4f, 4.3f, -1.1f, -4.0f, 0x1C1613);
 		box(bu, HEAD, -4.4f, -3.6f, -4.3f, -4.0f, 0.2f, 0.0f, 0x1C1613);
 		box(bu, HEAD, 4.0f, -3.6f, -4.3f, 4.4f, 0.2f, 0.0f, 0x1C1613);
 		legs(bu, -2.35f, 10.0f, -2.45f, 2.35f, 12.05f, 2.35f, 0x101113);
