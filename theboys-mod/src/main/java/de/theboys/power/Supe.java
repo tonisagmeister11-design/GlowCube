@@ -108,8 +108,16 @@ public final class Supe {
 
 	/** Pushes an entity and makes sure the client of a pushed player hears about it. */
 	public static void push(Entity e, Vec3 velocity) {
-		e.setDeltaMovement(e.getDeltaMovement().add(velocity));
+		setVelocity(e, e.getDeltaMovement().add(velocity));
+	}
+
+	/** Sets the velocity; a player moves himself on his client, so he is sent the new motion directly. */
+	public static void setVelocity(Entity e, Vec3 velocity) {
+		e.setDeltaMovement(velocity);
 		e.needsSync = true;
+		if (e instanceof ServerPlayer p) {
+			p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket(p));
+		}
 	}
 
 	/** Blocks a beam/tendril may break: not air, not unbreakable, not harder than obsidian. */

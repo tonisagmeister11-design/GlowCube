@@ -14,3 +14,4 @@ net.minecraft.world.item.component.SwingAnimation
 net.minecraft.network.protocol.game.ClientboundAnimatePacket
 net.minecraft.server.level.ServerChunkCache | broadcast
 net.minecraft.world.entity.EntityType | builtInRegistryHolder| is\(
+net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket | <init>|public

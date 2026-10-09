@@ -140,8 +140,7 @@ public final class BlackNoir {
 			double dist = to.horizontalDistance();
 			if (dist > 1.8) {
 				Vec3 dir = new Vec3(to.x, 0, to.z).normalize();
-				player.setDeltaMovement(dir.scale(Math.min(2.4, (dist - 1.4) * 0.55)).add(0, 0.12, 0));
-				player.needsSync = true;
+				Supe.setVelocity(player, dir.scale(Math.min(2.4, (dist - 1.4) * 0.55)).add(0, 0.12, 0));
 			}
 		}
 	}

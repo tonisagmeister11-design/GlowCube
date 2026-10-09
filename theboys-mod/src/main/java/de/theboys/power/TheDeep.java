@@ -294,8 +294,7 @@ public final class TheDeep {
 		boolean water = player.isInWater();
 		Vec3 v = s.deepDash.scale(water ? 1.9 : 1.1);
 		if (!water && v.y < 0.1) v = new Vec3(v.x, Math.max(v.y, 0.05), v.z);
-		player.setDeltaMovement(v);
-		player.needsSync = true;
+		Supe.setVelocity(player, v);
 		player.resetFallDistance();
 		level.sendParticles(water ? ParticleTypes.BUBBLE : ParticleTypes.SPLASH, player.getX(), player.getY() + 0.6, player.getZ(), 10, 0.3, 0.3, 0.3, 0.05);
 		for (LivingEntity e : level.getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().expandTowards(v).inflate(0.8),
