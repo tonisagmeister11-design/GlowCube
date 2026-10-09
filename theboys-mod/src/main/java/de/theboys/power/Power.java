@@ -13,15 +13,19 @@ public enum Power implements StringRepresentable {
 	SOLDIER_BOY("soldier_boy", 0x6B8E23),
 	A_TRAIN("a_train", 0x3A7BFF),
 	BUTCHER("butcher", 0x8A0303),
-	MINIMAUS("minimaus", 0xFF6FA5);
+	MINIMAUS("minimaus", 0xFF6FA5),
+	STARLIGHT("starlight", 0xFFE9A8),
+	THE_DEEP("the_deep", 0x2F9C9A),
+	BLACK_NOIR("black_noir", 0x55575E),
+	STORMFRONT("stormfront", 0x6FA8FF);
 
 	public static final Codec<Power> CODEC = StringRepresentable.fromEnum(Power::values);
 	public static final StreamCodec<ByteBuf, Power> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(i -> values()[i], Power::ordinal);
 
 	/** Compound V gives one of these. */
-	public static final Power[] COMPOUND_V_POOL = {A_TRAIN, BUTCHER};
+	public static final Power[] COMPOUND_V_POOL = {A_TRAIN, BUTCHER, STARLIGHT, THE_DEEP, BLACK_NOIR};
 	/** The rare V-One gives one of these. */
-	public static final Power[] V_ONE_POOL = {SOLDIER_BOY, HOMELANDER};
+	public static final Power[] V_ONE_POOL = {SOLDIER_BOY, HOMELANDER, STORMFRONT};
 	/** Mini V only ever makes MiniMaus. */
 	public static final Power[] MINI_V_POOL = {MINIMAUS};
 
@@ -31,6 +35,11 @@ public enum Power implements StringRepresentable {
 	Power(String id, int color) {
 		this.id = id;
 		this.color = color;
+	}
+
+	/** Supes that fly with Homelander-style flight. */
+	public boolean flier() {
+		return this == HOMELANDER || this == STORMFRONT || this == STARLIGHT;
 	}
 
 	public String id() {

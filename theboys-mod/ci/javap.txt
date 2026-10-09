@@ -1,0 +1,12 @@
+net.minecraft.world.level.Level | isBright|isDark|isDay|isNight|isRainingAt|isThundering|getMaxLocalRawBrightness|canSeeSky|noCollision
+net.minecraft.server.network.ServerGamePacketListenerImpl | teleport
+net.minecraft.world.entity.LightningBolt | setCause|setVisualOnly
+net.minecraft.world.entity.Entity | teleportTo|clearFire|setTicksFrozen|isInWater|setYHeadRot|igniteForSeconds|setPos\(|directionFromRotation
+net.minecraft.world.entity.LivingEntity | swing\(|hasLineOfSight|getUseItemRemainingTicks|yBodyRotO
+net.minecraft.world.entity.ai.attributes.Attributes | BURNING|WATER|OXYGEN|SUBMERGED
+net.minecraft.world.effect.MobEffects | public static
+net.minecraft.tags.DamageTypeTags | IS_
+net.minecraft.tags.EntityTypeTags | UNDEAD
+net.minecraft.core.particles.ParticleTypes | FLASH|ELECTRIC|SPLASH|BUBBLE|SQUID|SMOKE|SWEEP|FALLING_WATER|END_ROD
+net.fabricmc.fabric.api.message.v1.ServerMessageEvents
+net.minecraft.world.entity.Mob | setNoAi|setTarget

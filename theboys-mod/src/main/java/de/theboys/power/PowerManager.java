@@ -30,6 +30,7 @@ public final class PowerManager {
 	private static final Identifier FALL = TheBoys.id("power_fall");
 	private static final Identifier HEALTH = TheBoys.id("power_health");
 	private static final Identifier SPEED = TheBoys.id("power_speed");
+	private static final Identifier SWIM = TheBoys.id("power_water");
 	public static final Identifier DOUBLE_SPEED = TheBoys.id("minimaus_speed");
 	public static final Identifier RUN = TheBoys.id("a_train_run");
 	public static final Identifier STEP = TheBoys.id("a_train_step");
@@ -72,6 +73,10 @@ public final class PowerManager {
 		Butcher.stop(player, s);
 		SoldierBoy.stop(player, s);
 		MiniMaus.stop(player, s);
+		Starlight.stop(player, s);
+		Stormfront.stop(player, s);
+		TheDeep.stop(player, s);
+		BlackNoir.stop(player, s);
 		PowerAttachments.setActive(player, ActiveState.IDLE);
 	}
 
@@ -85,6 +90,10 @@ public final class PowerManager {
 			case BUTCHER -> { damage = 7; armor = 14; toughness = 6; knockback = 0.6; fall = 16; health = 10; }
 			// twice as fast, and as strong when she is a pixel as when she is full size
 			case MINIMAUS -> { damage = 8; armor = 10; toughness = 4; knockback = 0.8; fall = 30; health = 6; }
+			case STARLIGHT -> { damage = 5; armor = 8; toughness = 2; knockback = 0.3; fall = 12; health = 6; }
+			case STORMFRONT -> { damage = 10; armor = 16; toughness = 8; knockback = 0.6; fall = 4096; health = 20; speed = 0.015; }
+			case THE_DEEP -> { damage = 2; armor = 6; toughness = 2; knockback = 0.3; fall = 14; health = 6; }
+			case BLACK_NOIR -> { damage = 9; armor = 14; toughness = 6; knockback = 0.5; fall = 20; health = 10; speed = 0.02; }
 			default -> { }
 		}
 		modifier(player, Attributes.ATTACK_DAMAGE, DAMAGE, damage, AttributeModifier.Operation.ADD_VALUE);
@@ -94,6 +103,12 @@ public final class PowerManager {
 		modifier(player, Attributes.SAFE_FALL_DISTANCE, FALL, fall, AttributeModifier.Operation.ADD_VALUE);
 		modifier(player, Attributes.MAX_HEALTH, HEALTH, health, AttributeModifier.Operation.ADD_VALUE);
 		modifier(player, Attributes.MOVEMENT_SPEED, SPEED, speed, AttributeModifier.Operation.ADD_VALUE);
+		// The Deep swims like a torpedo and digs under water like on land
+		modifier(player, Attributes.WATER_MOVEMENT_EFFICIENCY, SWIM, p == Power.THE_DEEP ? 1.0 : 0, AttributeModifier.Operation.ADD_VALUE);
+		modifier(player, Attributes.SUBMERGED_MINING_SPEED, SWIM, p == Power.THE_DEEP ? 4.0 : 0, AttributeModifier.Operation.ADD_VALUE);
+		modifier(player, Attributes.OXYGEN_BONUS, SWIM, p == Power.THE_DEEP ? 100.0 : 0, AttributeModifier.Operation.ADD_VALUE);
+		// fire is Stormfront's weakness: she burns twice as long
+		modifier(player, Attributes.BURNING_TIME, SWIM, p == Power.STORMFRONT ? 1.0 : 0, AttributeModifier.Operation.ADD_VALUE);
 		modifier(player, Attributes.MOVEMENT_SPEED, DOUBLE_SPEED, p == Power.MINIMAUS ? 1.0 : 0, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 		if (player.getHealth() > player.getMaxHealth()) {
 			player.setHealth(player.getMaxHealth());
@@ -125,6 +140,10 @@ public final class PowerManager {
 			case A_TRAIN -> ATrain.key(player, s, slot, pressed);
 			case BUTCHER -> Butcher.key(player, s, slot, pressed);
 			case MINIMAUS -> MiniMaus.key(player, s, slot, pressed);
+			case STARLIGHT -> Starlight.key(player, s, slot, pressed);
+			case STORMFRONT -> Stormfront.key(player, s, slot, pressed);
+			case THE_DEEP -> TheDeep.key(player, s, slot, pressed);
+			case BLACK_NOIR -> BlackNoir.key(player, s, slot, pressed);
 			default -> {
 				if (pressed) player.sendSystemMessage(Component.translatable("message.theboys.no_power").withStyle(ChatFormatting.GRAY), true);
 			}
@@ -152,6 +171,10 @@ public final class PowerManager {
 				case A_TRAIN -> meter = ATrain.tick(player, s);
 				case BUTCHER -> meter = Butcher.tick(player, s);
 				case MINIMAUS -> meter = MiniMaus.tick(player, s);
+				case STARLIGHT -> meter = Starlight.tick(player, s);
+				case STORMFRONT -> meter = Stormfront.tick(player, s);
+				case THE_DEEP -> meter = TheDeep.tick(player, s);
+				case BLACK_NOIR -> meter = BlackNoir.tick(player, s);
 				default -> { }
 			}
 			if (++s.statusTimer >= 3) {

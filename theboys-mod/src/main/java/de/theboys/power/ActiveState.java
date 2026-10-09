@@ -25,6 +25,18 @@ public record ActiveState(int flags, int targetId, int charge) {
 	public static final int BITE = 1 << 13;
 	public static final int MOON = 1 << 14;
 	public static final int SMASH = 1 << 15;
+	/** Starlight's light blast / Stormfront's lightning stream. */
+	public static final int HAND_BEAM = 1 << 16;
+	/** Starlight is charged up and glowing. */
+	public static final int CHARGED = 1 << 17;
+	/** Black Noir is hidden in the shadows. */
+	public static final int SHADOW = 1 << 18;
+	/** The Deep's sonar is pinging. */
+	public static final int SONAR = 1 << 19;
+	/** Black Noir has his katana drawn. */
+	public static final int KATANA = 1 << 20;
+	/** The Deep shoots forward like a torpedo. */
+	public static final int DASH = 1 << 21;
 
 	public static final ActiveState IDLE = new ActiveState(0, -1, 0);
 

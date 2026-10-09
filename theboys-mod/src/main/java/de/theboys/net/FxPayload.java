@@ -38,6 +38,20 @@ public record FxPayload(int kind, int entityId, float x, float y, float z, float
 	public static final int BITE = 7;
 	/** MiniMaus' rat flood from x/y/z towards yaw x2, lasting y2 ticks. */
 	public static final int RATS = 8;
+	/** Stormfront's lightning: a jagged bolt from x/y/z to x2/y2/z2. */
+	public static final int BOLT = 9;
+	/** Starlight drinking light: a golden stream from the light source x/y/z to her (entityId). */
+	public static final int LIGHT_STREAM = 10;
+	/** Starlight's blinding flash at x/y/z, radius x2. */
+	public static final int FLASH = 11;
+	/** A blast sphere at x/y/z, radius x2, colour y2 (rgb as a float), z2 = 1 adds lightning arcs. */
+	public static final int NOVA = 12;
+	/** The Deep's sonar ping from x/y/z, radius x2. */
+	public static final int SONAR = 13;
+	/** The Deep's tidal wave from x/y/z towards yaw x2, length y2. */
+	public static final int WAVE = 14;
+	/** Black Noir's throwing knife from x/y/z to x2/y2/z2. */
+	public static final int KNIFE = 15;
 
 	@Override
 	public Type<? extends CustomPacketPayload> type() {

@@ -31,11 +31,14 @@ public abstract class AvatarRendererMixin<AvatarlikeEntity extends Avatar & Clie
 		Identifier id = TheBoys.id("suit/" + power.id());
 		ClientAsset.ResourceTexture body = new ClientAsset.ResourceTexture(id, TheBoys.id("textures/entity/suit/" + power.id() + ".png"));
 		ClientAsset.Texture cape = state.skin.cape();
-		if (power == Power.HOMELANDER) {
-			cape = new ClientAsset.ResourceTexture(TheBoys.id("homelander_cape"), TheBoys.id("textures/entity/homelander_cape.png"));
+		if (power == Power.HOMELANDER || power == Power.STORMFRONT || power == Power.STARLIGHT) {
+			String name = power.id() + "_cape";
+			cape = new ClientAsset.ResourceTexture(TheBoys.id(name), TheBoys.id("textures/entity/" + name + ".png"));
 			state.showCape = true;
 		}
-		state.skin = new PlayerSkin(body, cape, state.skin.elytra(), PlayerModelType.WIDE, true);
+		// the women of the Seven get the slim model
+		PlayerModelType model = power == Power.STARLIGHT || power == Power.STORMFRONT ? PlayerModelType.SLIM : PlayerModelType.WIDE;
+		state.skin = new PlayerSkin(body, cape, state.skin.elytra(), model, true);
 		state.showHat = true;
 		state.showJacket = true;
 		state.showLeftSleeve = true;

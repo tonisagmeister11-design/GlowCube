@@ -32,14 +32,17 @@ public final class Keys {
 	private Keys() {
 	}
 
-	/** Homelander's flight key: take off right away (the server only grants the ability). */
+	/** Flight key of Homelander, Stormfront and Starlight: take off right away (the server only grants the ability). */
 	private static void homelanderFlight(Minecraft mc) {
 		var player = mc.player;
-		if (de.theboys.power.PowerAttachments.powerOf(player) != de.theboys.power.Power.HOMELANDER || player.isCreative() || player.isSpectator()) {
+		var power = de.theboys.power.PowerAttachments.powerOf(player);
+		if (!power.flier() || player.isCreative() || player.isSpectator()) {
 			return;
 		}
 		var abilities = player.getAbilities();
 		if (!abilities.mayfly) {
+			// Starlight can only lift off with enough light stored
+			if (power == de.theboys.power.Power.STARLIGHT && ClientState.status.meter() < de.theboys.power.Starlight.FLY_MIN) return;
 			// flight is being switched on: the key packet was sent first, so the server allows it
 			abilities.mayfly = true;
 			abilities.flying = true;

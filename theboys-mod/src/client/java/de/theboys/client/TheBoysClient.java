@@ -64,6 +64,28 @@ public class TheBoysClient implements ClientModInitializer {
 				if (mc.level != null) ClientState.BITES.put(fx.entityId(), mc.level.getGameTime());
 				ClientState.EFFECTS.add(new ClientState.Fx(fx, 7));
 			}
+			case FxPayload.BOLT -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 5));
+			case FxPayload.LIGHT_STREAM -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 16));
+			case FxPayload.NOVA -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 22));
+			case FxPayload.SONAR -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 34));
+			case FxPayload.WAVE -> ClientState.EFFECTS.add(new ClientState.Fx(fx, (int) fx.y2() + 8));
+			case FxPayload.KNIFE -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 8));
+			case FxPayload.FLASH -> {
+				ClientState.EFFECTS.add(new ClientState.Fx(fx, 12));
+				// everyone looking into it is blinded for a moment; Starlight herself only sees a glow
+				if (mc.player != null) {
+					Vec3 at = new Vec3(fx.x(), fx.y(), fx.z());
+					double dist = mc.player.getEyePosition().distanceTo(at);
+					if (dist < fx.x2() * 1.4) {
+						boolean own = mc.player.getId() == fx.entityId();
+						Vec3 to = at.subtract(mc.player.getEyePosition()).normalize();
+						double facing = dist < 2 ? 1 : Math.max(0.25, mc.player.getViewVector(1f).dot(to));
+						float strength = (float) ((1 - dist / (fx.x2() * 1.4)) * facing) * (own ? 0.3f : 1f);
+						ClientState.flashStrength = Math.max(ClientState.flashStrength, Math.min(1f, strength * 1.6f));
+						ClientState.flashTicks = 30;
+					}
+				}
+			}
 			case FxPayload.GORE -> {
 				if (mc.player != null && mc.player.getEyePosition().distanceTo(new Vec3(fx.x(), fx.y(), fx.z())) < 4.5) {
 					ClientState.bloodTicks = 50;
@@ -95,6 +117,7 @@ public class TheBoysClient implements ClientModInitializer {
 
 		if (ClientState.rewindTicks > 0) ClientState.rewindTicks--;
 		if (ClientState.bloodTicks > 0) ClientState.bloodTicks--;
+		if (ClientState.flashTicks > 0 && --ClientState.flashTicks == 0) ClientState.flashStrength = 0;
 		if (ClientState.injectFlash > 0) ClientState.injectFlash--;
 		boolean injecting = player.isUsingItem() && player.getUseItem().getItem() instanceof de.theboys.item.SyringeItem;
 		if (ClientState.wasInjecting && !injecting && ClientState.lastInjectRemaining <= 2) {

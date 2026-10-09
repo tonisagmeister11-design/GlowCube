@@ -89,7 +89,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				Power got = server.computeOnServer(s -> PowerAttachments.powerOf(s.getPlayerList().getPlayers().get(0)));
 				LOG.info("Compound V gave: {}", got);
-				if (got != Power.A_TRAIN && got != Power.BUTCHER) throw new AssertionError("Compound V gave " + got);
+				if (!java.util.Arrays.asList(Power.COMPOUND_V_POOL).contains(got)) throw new AssertionError("Compound V gave " + got);
 			});
 
 			step(ctx, "items_3d", () -> {
@@ -121,12 +121,16 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("clear @a");
 			});
 
-			for (Power p : new Power[] {Power.HOMELANDER, Power.SOLDIER_BOY, Power.A_TRAIN, Power.BUTCHER}) {
+			for (Power p : new Power[] {Power.HOMELANDER, Power.SOLDIER_BOY, Power.A_TRAIN, Power.BUTCHER,
+					Power.STARLIGHT, Power.STORMFRONT, Power.THE_DEEP, Power.BLACK_NOIR}) {
 				step(ctx, "suit_" + p.id(), () -> {
 					server.runCommand("theboys power set @a " + p.id());
 					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
 					ctx.waitTicks(8);
 					ctx.takeScreenshot("suit_" + p.id());
+					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+					ctx.waitTicks(3);
+					ctx.takeScreenshot("suit_" + p.id() + "_back");
 					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
 				});
 			}
@@ -875,6 +879,354 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("theboys power clear @a");
 			});
 
+			step(ctx, "starlight", () -> {
+				arena(ctx, server);
+				server.runCommand("theboys power set @a starlight");
+				ctx.waitTicks(5);
+				List<String> problems = new ArrayList<>();
+				// light blast at two husks (undead: they burn in her light)
+				husk(server, 0.5, 7.5, "a");
+				husk(server, 2.0, 9.5, "a");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 0);
+				charge(server, 1000);
+				sideView(ctx, server, 6.0, -58.0, 3.0, 70, 12);
+				ctx.getInput().holdKey(Keys.ABILITY[0]);
+				ctx.waitTicks(10);
+				ctx.takeScreenshot("starlight_beam");
+				ctx.getInput().releaseKey(Keys.ABILITY[0]);
+				playerView(ctx, server);
+				ctx.getInput().holdKey(Keys.ABILITY[0]);
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("starlight_beam_first_person");
+				ctx.getInput().releaseKey(Keys.ABILITY[0]);
+				int hit = hurt(server, "a");
+				LOG.info("starlight beam: {} husks hurt", hit);
+				if (hit < 1) problems.add("light blast hit nothing");
+				// blinding flash
+				server.runCommand("kill @e[type=!player]");
+				husk(server, 3.5, 5.5, "b");
+				husk(server, -2.5, 6.5, "b");
+				ctx.waitTicks(10);
+				sideView(ctx, server, 8.0, -57.0, -4.0, 50, 15);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				ctx.waitTicks(2);
+				ctx.takeScreenshot("starlight_flash");
+				ctx.waitTicks(4);
+				int blind = server.computeOnServer(s -> count(s, "b", e -> e.hasEffect(net.minecraft.world.effect.MobEffects.BLINDNESS)));
+				LOG.info("starlight flash: {} of 2 husks blinded", blind);
+				if (blind < 2) problems.add("flash blinded " + blind);
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				// absorb: a ring of lamps and a campfire around her
+				server.runCommand("setblock 4 -60 0 minecraft:glowstone");
+				server.runCommand("setblock -3 -60 3 minecraft:sea_lantern");
+				server.runCommand("setblock 0 -60 -4 minecraft:campfire");
+				server.runCommand("setblock 3 -60 5 minecraft:lantern");
+				server.runCommand("setblock -4 -60 -2 minecraft:jack_o_lantern");
+				server.runCommand("time set midnight");
+				charge(server, 100);
+				ctx.waitTicks(5);
+				sideView(ctx, server, 7.0, -56.5, -6.0, 45, 20);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(5);
+				ctx.takeScreenshot("starlight_absorb");
+				int after = server.computeOnServer(s -> de.theboys.power.PowerManager.session(s.getPlayerList().getPlayers().get(0)).charge);
+				boolean fireOut = server.computeOnServer(s -> !s.overworld().getBlockState(new BlockPos(0, -60, -4)).getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT));
+				LOG.info("starlight absorb: charge 100 -> {}, campfire out={}", after, fireOut);
+				if (after < 300) problems.add("absorb only reached " + after);
+				if (!fireOut) problems.add("campfire still burning");
+				server.runCommand("time set noon");
+				playerView(ctx, server);
+				// lightning is food for her
+				charge(server, 0);
+				float hp = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getHealth());
+				server.runCommand("summon minecraft:lightning_bolt 2.5 -60 1.5");
+				ctx.waitTicks(4);
+				int fed = server.computeOnServer(s -> de.theboys.power.PowerManager.session(s.getPlayerList().getPlayers().get(0)).charge);
+				float hp2 = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getHealth());
+				LOG.info("starlight lightning: charge 0 -> {}, health {} -> {}", fed, hp, hp2);
+				if (fed < 900 || hp2 < hp - 0.01f) problems.add("lightning did not charge her (charge " + fed + ", health " + hp + " -> " + hp2 + ")");
+				server.runCommand("fill -12 -60 -12 12 -55 30 minecraft:air");
+				// flight (levitation)
+				charge(server, 1000);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(12);
+				boolean flying = ctx.computeOnClient(mc -> mc.player.getAbilities().flying);
+				LOG.info("starlight flight: {}", flying);
+				if (!flying) problems.add("Starlight cannot fly");
+				sideView(ctx, server, 5.0, -57.0, 4.0, 60, 0);
+				ctx.takeScreenshot("starlight_flight");
+				playerView(ctx, server);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(20);
+				// supernova
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				for (int i = 0; i < 4; i++) husk(server, 0.5 + Math.cos(i * 1.57) * 4, 0.5 + Math.sin(i * 1.57) * 4, "c");
+				charge(server, 1000);
+				ctx.waitTicks(10);
+				sideView(ctx, server, 9.0, -55.5, -6.0, 50, 22);
+				ctx.getInput().holdKey(o -> o.keyShift);
+				ctx.waitTicks(2);
+				ctx.getInput().pressKey(Keys.ABILITY[0]);
+				ctx.waitTicks(3);
+				ctx.getInput().releaseKey(o -> o.keyShift);
+				ctx.takeScreenshot("starlight_supernova");
+				ctx.waitTicks(10);
+				int nova = hurt(server, "c");
+				LOG.info("starlight supernova: {} of 4 husks hit", nova);
+				if (nova < 3) problems.add("supernova hit " + nova);
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
+			});
+
+			step(ctx, "stormfront", () -> {
+				arena(ctx, server);
+				server.runCommand("theboys power set @a stormfront");
+				ctx.waitTicks(5);
+				List<String> problems = new ArrayList<>();
+				// lightning stream that jumps from husk to husk
+				server.runCommand("summon minecraft:husk 0.5 -60 8.5 {NoAI:1b,Silent:1b,Tags:[\"a\"],attributes:[{id:\"minecraft:max_health\",base:200}],Health:200f}");
+				server.runCommand("summon minecraft:husk 2.5 -60 10.5 {NoAI:1b,Silent:1b,Tags:[\"a\"]}");
+				server.runCommand("summon minecraft:husk -2.0 -60 9.5 {NoAI:1b,Silent:1b,Tags:[\"a\"]}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 3);
+				sideView(ctx, server, 6.5, -57.5, 3.0, 65, 12);
+				ctx.getInput().holdKey(Keys.ABILITY[0]);
+				ctx.waitTicks(7);
+				ctx.takeScreenshot("stormfront_stream");
+				ctx.getInput().releaseKey(Keys.ABILITY[0]);
+				int chain = hurt(server, "a");
+				LOG.info("stormfront stream: {} of 3 husks hit", chain);
+				if (chain < 2) problems.add("lightning did not chain (" + chain + ")");
+				playerView(ctx, server);
+				ctx.getInput().holdKey(Keys.ABILITY[0]);
+				ctx.waitTicks(3);
+				ctx.takeScreenshot("stormfront_stream_first_person");
+				ctx.getInput().releaseKey(Keys.ABILITY[0]);
+				server.runCommand("kill @e[type=!player]");
+				// lightning immunity
+				float hp = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getHealth());
+				server.runCommand("summon minecraft:lightning_bolt 2.5 -60 1.5");
+				ctx.waitTicks(4);
+				float hp2 = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getHealth());
+				LOG.info("stormfront struck by lightning: health {} -> {}", hp, hp2);
+				if (hp2 < hp - 0.01f) problems.add("lightning hurt Stormfront (" + hp + " -> " + hp2 + ")");
+				server.runCommand("fill -12 -60 -12 12 -55 30 minecraft:air");
+				// call lightning onto a husk
+				husk(server, 0.5, 12.5, "b");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 5);
+				sideView(ctx, server, 8.0, -56.0, 6.0, 70, 15);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				ctx.waitTicks(9);
+				ctx.takeScreenshot("stormfront_lightning");
+				ctx.waitTicks(20);
+				int struck = server.computeOnServer(s -> count(s, "b", e -> e.getHealth() < e.getMaxHealth()) + count(s, "b", e -> !e.isAlive()));
+				long dead = server.computeOnServer(s -> {
+					long n = 0;
+					for (var e : s.overworld().getAllEntities()) if (e.getTags().contains("b")) n++;
+					return n;
+				});
+				LOG.info("stormfront call lightning: struck={} husks left={}", struck, dead);
+				if (struck < 1 && dead > 0) problems.add("called lightning missed");
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -60 -12 12 -55 30 minecraft:air");
+				// EMP nova
+				for (int i = 0; i < 4; i++) husk(server, 0.5 + Math.cos(i * 1.57 + 0.4) * 5, 0.5 + Math.sin(i * 1.57 + 0.4) * 5, "c");
+				ctx.waitTicks(10);
+				sideView(ctx, server, 9.0, -55.5, -7.0, 50, 22);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(3);
+				ctx.takeScreenshot("stormfront_nova");
+				ctx.waitTicks(3);
+				int stunned = server.computeOnServer(s -> count(s, "c", e -> e.hasEffect(net.minecraft.world.effect.MobEffects.SLOWNESS)));
+				LOG.info("stormfront nova: {} of 4 husks stunned", stunned);
+				if (stunned < 3) problems.add("nova stunned " + stunned);
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				// flight
+				ctx.getInput().lookAt(0, 0);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(4);
+				ctx.getInput().holdKey(o -> o.keyUp);
+				ctx.getInput().holdKey(o -> o.keySprint);
+				ctx.waitTicks(16);
+				boolean flying = ctx.computeOnClient(mc -> mc.player.getAbilities().flying);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("stormfront_flight");
+				ctx.getInput().releaseKey(o -> o.keyUp);
+				ctx.getInput().releaseKey(o -> o.keySprint);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				LOG.info("stormfront flight: {}", flying);
+				if (!flying) problems.add("Stormfront cannot fly");
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(20);
+				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
+			});
+
+			step(ctx, "the_deep", () -> {
+				arena(ctx, server);
+				server.runCommand("theboys power set @a the_deep");
+				ctx.waitTicks(5);
+				List<String> problems = new ArrayList<>();
+				// dolphins
+				husk(server, 0.5, 11.5, "a");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 2);
+				sideView(ctx, server, 7.0, -57.0, 4.0, 65, 12);
+				ctx.getInput().pressKey(Keys.ABILITY[0]);
+				ctx.waitTicks(12);
+				ctx.takeScreenshot("deep_dolphins");
+				ctx.waitTicks(30);
+				int bitten = server.computeOnServer(s -> count(s, "a", e -> e.getHealth() < e.getMaxHealth()));
+				long alive = server.computeOnServer(s -> {
+					long n = 0;
+					for (var e : s.overworld().getAllEntities()) if (e.getTags().contains("a")) n++;
+					return n;
+				});
+				LOG.info("deep dolphins: hurt={} left={}", bitten, alive);
+				if (bitten < 1 && alive > 0) problems.add("dolphins did not hit");
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				// sonar through a wall
+				server.runCommand("fill -3 -60 6 3 -57 6 minecraft:stone");
+				husk(server, 0.5, 12.5, "b");
+				husk(server, -6.5, -9.5, "b");
+				ctx.waitTicks(10);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(6);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.waitTicks(2);
+				ctx.takeScreenshot("deep_sonar");
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				int glowing = server.computeOnServer(s -> count(s, "b", e -> e.hasEffect(net.minecraft.world.effect.MobEffects.GLOWING)));
+				LOG.info("deep sonar: {} of 2 found", glowing);
+				if (glowing < 2) problems.add("sonar found " + glowing);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -60 -12 12 -55 30 minecraft:air");
+				// tidal wave
+				for (int i = 0; i < 3; i++) husk(server, -2.0 + i * 2, 5.5 + i, "c");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 0);
+				sideView(ctx, server, 9.0, -57.0, 2.0, 60, 12);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				ctx.waitTicks(6);
+				ctx.takeScreenshot("deep_wave");
+				ctx.waitTicks(14);
+				int washed = hurt(server, "c");
+				LOG.info("deep wave: {} of 3 husks hit", washed);
+				if (washed < 2) problems.add("wave hit " + washed);
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				// torpedo dash
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(5);
+				double z0 = ctx.computeOnClient(mc -> mc.player.getZ());
+				ctx.getInput().lookAt(0, 0);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(5);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.waitTicks(1);
+				ctx.takeScreenshot("deep_dash");
+				ctx.waitTicks(10);
+				double z1 = ctx.computeOnClient(mc -> mc.player.getZ());
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				LOG.info("deep dash: z {} -> {}", z0, z1);
+				if (z1 - z0 < 6) problems.add("dash only moved " + (z1 - z0));
+				// in the water: gills and strength
+				server.runCommand("fill -4 -63 -4 4 -58 4 minecraft:water");
+				server.runCommand("tp @a 0.5 -61 0.5 0 0");
+				ctx.waitTicks(10);
+				String water = server.computeOnServer(s -> {
+					var pl = s.getPlayerList().getPlayers().get(0);
+					return pl.hasEffect(net.minecraft.world.effect.MobEffects.CONDUIT_POWER) + " dmg=" + pl.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+				});
+				LOG.info("deep in water: conduit={}", water);
+				if (!water.startsWith("true")) problems.add("no gills in water: " + water);
+				ctx.takeScreenshot("deep_underwater");
+				server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:grass_block");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				// drying out on land
+				server.runCommand("weather clear");
+				server.computeOnServer(s -> de.theboys.power.PowerManager.session(s.getPlayerList().getPlayers().get(0)).moisture = 2);
+				ctx.waitTicks(8);
+				boolean weak = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).hasEffect(net.minecraft.world.effect.MobEffects.WEAKNESS));
+				LOG.info("deep dried out: weak={}", weak);
+				if (!weak) problems.add("The Deep does not dry out");
+				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
+			});
+
+			step(ctx, "black_noir", () -> {
+				arena(ctx, server);
+				server.runCommand("theboys power set @a black_noir");
+				ctx.waitTicks(5);
+				List<String> problems = new ArrayList<>();
+				// katana combo: dashes in and cuts three times
+				server.runCommand("summon minecraft:husk 0.5 -60 6.5 {NoAI:1b,Silent:1b,Tags:[\"a\"],attributes:[{id:\"minecraft:max_health\",base:100}],Health:100f}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 8);
+				sideView(ctx, server, 6.0, -58.0, 4.0, 80, 8);
+				ctx.getInput().pressKey(Keys.ABILITY[0]);
+				ctx.waitTicks(6);
+				ctx.takeScreenshot("noir_katana_1");
+				ctx.waitTicks(4);
+				ctx.takeScreenshot("noir_katana_2");
+				ctx.waitTicks(8);
+				float left = server.computeOnServer(s -> {
+					float h = -1;
+					for (var e : s.overworld().getAllEntities()) if (e.getTags().contains("a") && e instanceof net.minecraft.world.entity.LivingEntity l) h = l.getHealth();
+					return h;
+				});
+				LOG.info("noir katana: husk health 100 -> {}", left);
+				if (left > 80) problems.add("katana combo did " + (100 - left) + " damage");
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				// throwing knives
+				husk(server, -1.5, 10.5, "b");
+				husk(server, 0.5, 10.5, "b");
+				husk(server, 2.5, 10.5, "b");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 4);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(1);
+				ctx.takeScreenshot("noir_knives");
+				ctx.waitTicks(5);
+				int knifed = hurt(server, "b");
+				LOG.info("noir knives: {} of 3 husks hit", knifed);
+				if (knifed < 2) problems.add("knives hit " + knifed);
+				server.runCommand("kill @e[type=!player]");
+				// shadow step behind a husk that looks at him
+				server.runCommand("summon minecraft:husk 0.5 -60 12.5 {NoAI:1b,Silent:1b,Rotation:[180f,0f],Tags:[\"c\"]}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 3);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				ctx.waitTicks(6);
+				double z = ctx.computeOnClient(mc -> mc.player.getZ());
+				LOG.info("noir shadow step: z={}", z);
+				if (z < 13) problems.add("shadow step did not land behind the husk (z=" + z + ")");
+				sideView(ctx, server, 6.0, -58.0, 10.0, 80, 10);
+				ctx.takeScreenshot("noir_shadow_step");
+				playerView(ctx, server);
+				// shadow cloak
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(4);
+				boolean hidden = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY));
+				LOG.info("noir shadow: invisible={}", hidden);
+				if (!hidden) problems.add("shadow cloak does not hide him");
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("theboys power clear @a");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(5);
+				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
+			});
+
 			step(ctx, "animations", () -> {
 				server.runCommand("kill @e[type=!player]");
 				server.runCommand("theboys power clear @a");
@@ -991,6 +1343,40 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 		if (!failures.isEmpty()) {
 			throw new AssertionError("The Boys game test failures: " + failures);
 		}
+	}
+
+	/** A flat grass field to test on, the player in the middle looking south. */
+	private static void arena(ClientGameTestContext ctx, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server) {
+		server.runCommand("theboys power clear @a");
+		server.runCommand("kill @e[type=!player]");
+		server.runCommand("fill -12 -64 -12 12 -64 30 minecraft:bedrock");
+		server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:grass_block");
+		server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+		server.runCommand("time set noon");
+		server.runCommand("weather clear");
+		server.runCommand("tp @a 0.5 -60 0.5 0 0");
+		ctx.waitTicks(15);
+	}
+
+	private static void husk(net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, double x, double z, String tag) {
+		server.runCommand(String.format(java.util.Locale.ROOT, "summon minecraft:husk %.2f -60 %.2f {NoAI:1b,Silent:1b,Tags:[\"%s\"]}", x, z, tag));
+	}
+
+	private static void charge(net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, int charge) {
+		server.computeOnServer(s -> de.theboys.power.PowerManager.session(s.getPlayerList().getPlayers().get(0)).charge = charge);
+	}
+
+	private static int count(net.minecraft.server.MinecraftServer s, String tag, java.util.function.Predicate<net.minecraft.world.entity.LivingEntity> test) {
+		int n = 0;
+		for (var e : s.overworld().getAllEntities()) {
+			if (e.getTags().contains(tag) && e instanceof net.minecraft.world.entity.LivingEntity l && test.test(l)) n++;
+		}
+		return n;
+	}
+
+	/** Husks with this tag that were hurt (or killed: dead ones are counted by their missing health too). */
+	private static int hurt(net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, String tag) {
+		return server.computeOnServer(s -> count(s, tag, e -> e.getHealth() < e.getMaxHealth() || !e.isAlive()));
 	}
 
 	/** Looks at the player from a fixed camera beside him (the player stays the camera entity, so he is drawn). */

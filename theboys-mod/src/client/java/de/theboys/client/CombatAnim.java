@@ -70,12 +70,14 @@ public final class CombatAnim {
 			s.lastProgress = progress;
 			if (!swinging && now - s.start > 12) s.active = false;
 			if (!started) continue;
-			if (isMining(p)) {
+			boolean katana = de.theboys.power.PowerAttachments.powerOf(p) == de.theboys.power.Power.BLACK_NOIR
+					&& de.theboys.power.PowerAttachments.active(p).has(de.theboys.power.ActiveState.KATANA);
+			if (!katana && isMining(p)) {
 				s.active = false;
 				continue;
 			}
 			ItemStack held = p.getMainHandItem();
-			int kind = kindOf(held);
+			int kind = katana ? SWORD : kindOf(held);
 			s.combo = now - s.start <= COMBO_WINDOW && s.active ? s.combo + 1 : 0;
 			s.kind = kind;
 			s.start = now;

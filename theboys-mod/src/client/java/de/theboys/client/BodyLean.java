@@ -48,7 +48,15 @@ public final class BodyLean {
 		Power power = PowerAttachments.powerOf(e);
 		ActiveState active = PowerAttachments.active(e);
 		Vec3 vel = e.position().subtract(e.xo, e.yo, e.zo);
-		if (power == Power.HOMELANDER && active.has(ActiveState.FLYING)) {
+		boolean superman = (power == Power.HOMELANDER || power == Power.STORMFRONT) && active.has(ActiveState.FLYING)
+				|| power == Power.THE_DEEP && active.has(ActiveState.DASH);
+		if (power == Power.STARLIGHT && active.has(ActiveState.FLYING)) {
+			// she floats upright and only tips a little into the direction she glides
+			double yaw = Math.toRadians(e.getYRot());
+			double forward = -Math.sin(yaw) * vel.x + Math.cos(yaw) * vel.z;
+			return Mth.clamp((float) (forward * 60), -12f, 32f);
+		}
+		if (superman) {
 			double yaw = Math.toRadians(e.getYRot());
 			double forward = -Math.sin(yaw) * vel.x + Math.cos(yaw) * vel.z;
 			double speed = vel.length();

@@ -45,6 +45,9 @@ public class TheBoys implements ModInitializer {
 		});
 		// MiniMaus: Poison Bite and To the Moon ride on her normal hits
 		net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, level, hand, target, hit) -> {
+			if (!level.isClientSide() && player instanceof ServerPlayer sp && PowerAttachments.powerOf(sp) == Power.BLACK_NOIR) {
+				de.theboys.power.BlackNoir.onAttack(sp, target);
+			}
 			if (!level.isClientSide() && player instanceof ServerPlayer sp && PowerAttachments.powerOf(sp) == Power.MINIMAUS
 					&& de.theboys.power.MiniMaus.onAttack(sp, target)) {
 				return net.minecraft.world.InteractionResult.FAIL;
@@ -71,8 +74,32 @@ public class TheBoys implements ModInitializer {
 			if (power == Power.BUTCHER && source.is(DamageTypeTags.IS_FALL) && PowerAttachments.active(player).has(ActiveState.CANCER_WALK)) return false;
 			// A-Train does not trip over his own feet while running
 			if (power == Power.A_TRAIN && source.is(DamageTypeTags.IS_FALL) && PowerAttachments.active(player).has(ActiveState.SPEED)) return false;
+			// Starlight drinks lightning, Stormfront is made of it
+			if (source.is(DamageTypeTags.IS_LIGHTNING) && (power == Power.STARLIGHT || power == Power.STORMFRONT)) {
+				// the bolt set them alight just before it hit
+				player.clearFire();
+				if (power == Power.STARLIGHT) de.theboys.power.Starlight.absorbLightning(player);
+				return false;
+			}
+			// ... but fire burns her twice as badly
+			if (power == Power.STORMFRONT && source.is(DamageTypeTags.IS_FIRE)) return de.theboys.power.Stormfront.fireHit(player, source, amount);
+			// fliers do not crash
+			if ((power == Power.STARLIGHT || power == Power.STORMFRONT) && source.is(DamageTypeTags.IS_FALL) && PowerManager.session(player).flying) return false;
+			// The Deep comes from the deep sea: cold does not bother him
+			if (power == Power.THE_DEEP && source.is(DamageTypeTags.IS_FREEZING)) return false;
 			// Super Cancer
 			if (power == Power.BUTCHER) return de.theboys.power.Butcher.allowDamage(player, source, amount);
+			return true;
+		});
+
+		// Black Noir never says a word while he wears the suit
+		net.fabricmc.fabric.api.message.v1.ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
+			de.theboys.power.PowerData d = PowerAttachments.power(sender);
+			if (d.power() == Power.BLACK_NOIR && d.suit()) {
+				sender.sendSystemMessage(net.minecraft.network.chat.Component.translatable("message.theboys.noir_silent")
+						.withStyle(net.minecraft.ChatFormatting.DARK_GRAY), true);
+				return false;
+			}
 			return true;
 		});
 

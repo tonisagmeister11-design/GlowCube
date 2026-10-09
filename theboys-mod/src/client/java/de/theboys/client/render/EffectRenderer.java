@@ -131,6 +131,8 @@ public final class EffectRenderer {
 			} else {
 				FEET.remove(p.getId());
 			}
+			if (power == Power.STARLIGHT) starlight(level, p, state, pt, time, self, glows);
+			if (power == Power.STORMFRONT) stormfront(level, p, state, pt, time, self, glows);
 			if (power == Power.BUTCHER && (state.has(ActiveState.HOLD) || state.has(ActiveState.RIP))) {
 				Entity target = level.getEntity(state.targetId());
 				if (target != null) {
@@ -177,6 +179,97 @@ public final class EffectRenderer {
 					}
 				}
 				case FxPayload.RATS -> rats(level, d, age, rats);
+				case FxPayload.BOLT -> {
+					float fade = Math.max(0f, 1 - age / fx.duration);
+					Vec3 to = new Vec3(d.x2(), d.y2(), d.z2());
+					Random rnd = new Random(fx.hashCode() * 31L + fx.age);
+					List<Vec3> pts = jagged(at, to, rnd, 0.35);
+					glows.add(Glow.bolt(pts, 0.07, argb(0.4f * fade, 0x6FA8FF)));
+					glows.add(Glow.bolt(pts, 0.022, argb(0.95f * fade, 0xF2F8FF)));
+					if (rnd.nextBoolean()) {
+						// a forked side branch
+						Vec3 mid = pts.get(pts.size() / 2);
+						Vec3 tip = mid.add((rnd.nextDouble() - 0.5) * 2, (rnd.nextDouble() - 0.5) * 1.5, (rnd.nextDouble() - 0.5) * 2);
+						glows.add(Glow.bolt(jagged(mid, tip, rnd, 0.2), 0.012, argb(0.8f * fade, 0xDDEBFF)));
+					}
+				}
+				case FxPayload.LIGHT_STREAM -> {
+					Entity owner = level.getEntity(d.entityId());
+					if (owner == null) break;
+					Vec3 to = hands(owner, pt, owner == mc.player && firstPerson)[0].add(hands(owner, pt, owner == mc.player && firstPerson)[1]).scale(0.5);
+					float fade = age < 3 ? age / 3f : Math.max(0f, 1 - (age - 8) / (fx.duration - 8f));
+					Vec3 dir = to.subtract(at);
+					Vec3[] uv = Geo.basis(dir.lengthSqr() < 1.0E-4 ? new Vec3(0, 1, 0) : dir);
+					List<Vec3> pts = new ArrayList<>();
+					for (int i = 0; i <= 16; i++) {
+						double u = i / 16.0;
+						double w = Math.sin(u * Math.PI) * 0.35;
+						pts.add(at.add(dir.scale(u)).add(uv[0].scale(Math.sin(u * 9 + age * 0.8) * w)).add(uv[1].scale(Math.cos(u * 7 + age * 0.6) * w)));
+					}
+					glows.add(Glow.bolt(pts, 0.09, argb(0.25f * fade, 0xFFD36B)));
+					glows.add(Glow.bolt(pts, 0.03, argb(0.8f * fade, 0xFFF6D8)));
+					for (int k = 0; k < 4; k++) {
+						double u = (age * 0.09 + k / 4.0) % 1.0;
+						glows.add(Glow.sphere(pts.get((int) (u * 16)), 0.11, argb(0.8f * fade, 0xFFF2C4)));
+					}
+					glows.add(Glow.sphere(at, 0.3, argb(0.5f * fade, 0xFFE9A8)));
+				}
+				case FxPayload.FLASH -> {
+					float grow = Math.min(1f, age / 2.5f);
+					float fade = Math.max(0f, 1 - age / fx.duration);
+					glows.add(Glow.sphere(at, d.x2() * 0.55 * grow, argb(0.3f * fade, 0xFFF4D6)));
+					glows.add(Glow.sphere(at, d.x2() * 0.2 * grow, argb(0.6f * fade, 0xFFFFFF)));
+					glows.add(Glow.sphere(at, 0.9, argb(0.95f * fade, 0xFFFFFF)));
+					for (int k = 0; k < 10; k++) {
+						// rays of light shooting out
+						double a = k * Math.PI * 2 / 10 + d.x();
+						double e = Math.sin(k * 2.3) * 0.6;
+						Vec3 dir = new Vec3(Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e));
+						glows.add(Glow.beam(at, at.add(dir.scale(d.x2() * 0.8 * grow)), 0.06, argb(0.5f * fade, 0xFFF0B0)));
+					}
+				}
+				case FxPayload.NOVA -> {
+					int rgb = (int) d.y2();
+					float t = Math.min(1f, age / 8f);
+					float grow = 1 - (1 - t) * (1 - t);
+					float fade = age < 8 ? 1f : Math.max(0f, 1 - (age - 8) / (fx.duration - 8f));
+					double r = d.x2() * grow;
+					glows.add(Glow.sphere(at, r, argb(0.22f * fade, rgb)));
+					glows.add(Glow.sphere(at, r * 0.5, argb(0.45f * fade, 0xFFFFFF)));
+					glows.add(Glow.ring(at.subtract(0, 0.8, 0), new Vec3(0, 1, 0), r, r + 0.6, argb(0.7f * fade, rgb)));
+					if (d.z2() > 0) {
+						Random rnd = new Random(fx.hashCode() * 17L + fx.age);
+						for (int k = 0; k < 10; k++) {
+							Vec3 dir = new Vec3(rnd.nextGaussian(), rnd.nextGaussian() * 0.5, rnd.nextGaussian()).normalize();
+							List<Vec3> pts = jagged(at, at.add(dir.scale(r)), rnd, 0.45);
+							glows.add(Glow.bolt(pts, 0.05, argb(0.5f * fade, rgb)));
+							glows.add(Glow.bolt(pts, 0.016, argb(0.95f * fade, 0xFFFFFF)));
+						}
+					}
+				}
+				case FxPayload.SONAR -> {
+					for (int k = 0; k < 3; k++) {
+						float a = age - k * 5;
+						if (a <= 0 || a > 22) continue;
+						float u = a / 22f;
+						double r = d.x2() * u;
+						float fade = 1 - u;
+						glows.add(Glow.ring(at.subtract(0, 0.6, 0), new Vec3(0, 1, 0), r, r + 0.35 + u, argb(0.55f * fade, 0x5FE0D0)));
+						glows.add(Glow.ring(at, new Vec3(0, 0.35, 1).normalize(), r * 0.6, r * 0.6 + 0.2, argb(0.25f * fade, 0x9FF3E8)));
+						glows.add(Glow.ring(at, new Vec3(1, 0.35, 0).normalize(), r * 0.6, r * 0.6 + 0.2, argb(0.25f * fade, 0x9FF3E8)));
+					}
+				}
+				case FxPayload.WAVE -> wave(d, age, fx.duration, glows);
+				case FxPayload.KNIFE -> {
+					Vec3 to = new Vec3(d.x2(), d.y2(), d.z2());
+					double len = to.distanceTo(at);
+					double head = Math.min(1.0, age * 18 / Math.max(1, len));
+					double tail = Math.max(0.0, head - 4 / Math.max(1, len));
+					float fade = head >= 1 ? Math.max(0f, 1 - (age - (float) (len / 18)) / 3f) : 1f;
+					Vec3 a = at.add(to.subtract(at).scale(tail)), b = at.add(to.subtract(at).scale(head));
+					glows.add(Glow.beam(a, b, 0.03, argb(0.35f * fade, 0xB8C2CF)));
+					glows.add(Glow.beam(b.subtract(to.subtract(at).normalize().scale(0.3)), b, 0.02, argb(0.95f * fade, 0xFFFFFF)));
+				}
 				case FxPayload.BITE -> {
 					// glowing jaws snapping shut on the victim
 					Entity victim = level.getEntity((int) d.x2());
@@ -472,6 +565,141 @@ public final class EffectRenderer {
 		glows.add(Glow.bolt(edge, 0.018, argb(0.9f * fade * strength, 0xFFFFFF)));
 	}
 
+	// ------------------------------------------------------------------ Starlight & Stormfront
+
+	/** Where a supe's two hands are (in first person: low in front of the camera). */
+	private static Vec3[] hands(Entity p, float pt, boolean self) {
+		Vec3 dir = p.getViewVector(pt);
+		if (self) {
+			Vec3 eye = p.getEyePosition(pt);
+			Vec3 right = dir.cross(new Vec3(0, 1, 0));
+			right = right.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : right.normalize();
+			Vec3 c = eye.add(dir.scale(0.85)).add(0, -0.3, 0);
+			return new Vec3[] {c.add(right.scale(0.3)), c.add(right.scale(-0.3))};
+		}
+		float bodyYaw = p instanceof net.minecraft.world.entity.LivingEntity l ? net.minecraft.util.Mth.rotLerp(pt, l.yBodyRotO, l.yBodyRot) : p.getYRot();
+		double yaw = Math.toRadians(bodyYaw);
+		Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+		double k = p.getBbHeight() / 1.8;
+		Vec3 shoulder = p.getPosition(pt).add(0, 1.38 * k, 0);
+		return new Vec3[] {shoulder.add(right.scale(0.34 * k)).add(dir.scale(0.68 * k)), shoulder.add(right.scale(-0.34 * k)).add(dir.scale(0.68 * k))};
+	}
+
+	private static void starlight(ClientLevel level, AbstractClientPlayer p, ActiveState state, float pt, long time, boolean self, List<Glow> glows) {
+		float charge = state.charge() / (float) de.theboys.power.Starlight.MAX_CHARGE;
+		double t = time + pt;
+		Vec3[] hands = hands(p, pt, self);
+		if (!self && !p.isInvisible()) {
+			// her hands glow with what she has stored; fully charged her whole body shines
+			for (Vec3 h : hands) {
+				glows.add(Glow.sphere(h, 0.07 + 0.08 * charge, argb(0.25f + 0.5f * charge, 0xFFE9A8)));
+			}
+			if (state.has(ActiveState.CHARGED)) {
+				double pulse = 1 + 0.06 * Math.sin(t * 0.25);
+				glows.add(Glow.sphere(chest(p, pt).add(0, -0.2, 0), 1.05 * pulse * p.getBbHeight() / 1.8, argb(0.07f + 0.08f * charge, 0xFFE9A8)));
+			}
+			if (state.has(ActiveState.FLYING)) {
+				// a soft glow under her feet carries her
+				Vec3 feet = p.getPosition(pt);
+				glows.add(Glow.ring(feet, new Vec3(0, 1, 0), 0.25, 0.7 + 0.1 * Math.sin(t * 0.3), argb(0.35f, 0xFFE9A8)));
+				glows.add(Glow.sphere(feet.add(0, 0.1, 0), 0.25, argb(0.4f, 0xFFF6D8)));
+			}
+		}
+		if (state.has(ActiveState.HAND_BEAM)) {
+			Vec3 dir = p.getViewVector(pt);
+			Vec3 end = hit(level, p, p.getEyePosition(pt), dir, 40);
+			double flicker = 1 + 0.12 * Math.sin(t * 2.1);
+			double scale = self ? 0.6 : 1.0;
+			for (Vec3 h : hands) {
+				glows.add(Glow.beam(h, end, 0.14 * flicker * scale, argb(0.3f, 0xFFC94A)));
+				glows.add(Glow.beam(h, end, 0.065 * scale, argb(0.65f, 0xFFE9A8)));
+				glows.add(Glow.beam(h, end, 0.022 * scale, argb(0.95f, 0xFFFFFF)));
+				glows.add(Glow.sphere(h, 0.2 * flicker * scale, argb(0.6f, 0xFFF2C4)));
+			}
+			glows.add(Glow.sphere(end, 0.45 * flicker, argb(0.55f, 0xFFE9A8)));
+			glows.add(Glow.sphere(end, 0.18, argb(0.95f, 0xFFFFFF)));
+		}
+	}
+
+	private static void stormfront(ClientLevel level, AbstractClientPlayer p, ActiveState state, float pt, long time, boolean self, List<Glow> glows) {
+		Random rnd = new Random(p.getId() * 131L + time * 7L);
+		if (state.has(ActiveState.HAND_BEAM)) {
+			Vec3[] hands = hands(p, pt, self);
+			Entity target = state.targetId() >= 0 ? level.getEntity(state.targetId()) : null;
+			Vec3 end = target != null ? chest(target, pt) : hit(level, p, p.getEyePosition(pt), p.getViewVector(pt), 32);
+			for (Vec3 h : hands) {
+				for (int k = 0; k < 2; k++) {
+					List<Vec3> pts = jagged(h, end, rnd, 0.3);
+					glows.add(Glow.bolt(pts, self ? 0.035 : 0.06, argb(0.4f, 0x6FA8FF)));
+					glows.add(Glow.bolt(pts, self ? 0.012 : 0.02, argb(0.95f, 0xF2F8FF)));
+				}
+				glows.add(Glow.sphere(h, self ? 0.08 : 0.14, argb(0.7f, 0xBFDFFF)));
+			}
+			glows.add(Glow.sphere(end, 0.35, argb(0.5f, 0x8FC8FF)));
+		}
+		if (state.has(ActiveState.FLYING) && !self && !p.isInvisible()) {
+			// crackling electricity all over her while she flies
+			Vec3 c = chest(p, pt).add(0, -0.3, 0);
+			for (int k = 0; k < 3; k++) {
+				Vec3 a = c.add(rnd.nextGaussian() * 0.35, rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.35);
+				Vec3 b = a.add(rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.5);
+				glows.add(Glow.bolt(jagged(a, b, rnd, 0.12), 0.012, argb(0.9f, 0xCFE6FF)));
+			}
+		}
+	}
+
+	/** A zig-zag line from a to b, offset most in the middle. */
+	private static List<Vec3> jagged(Vec3 a, Vec3 b, Random rnd, double amp) {
+		Vec3 d = b.subtract(a);
+		int n = Math.max(4, Math.min(40, (int) (d.length() * 2.2)));
+		Vec3[] uv = Geo.basis(d.lengthSqr() < 1.0E-4 ? new Vec3(0, 1, 0) : d);
+		List<Vec3> pts = new ArrayList<>();
+		for (int i = 0; i <= n; i++) {
+			double u = i / (double) n;
+			Vec3 p = a.add(d.scale(u));
+			if (i > 0 && i < n) {
+				double w = amp * (0.4 + Math.sin(u * Math.PI));
+				p = p.add(uv[0].scale((rnd.nextDouble() - 0.5) * 2 * w)).add(uv[1].scale((rnd.nextDouble() - 0.5) * 2 * w));
+			}
+			pts.add(p);
+		}
+		return pts;
+	}
+
+	// ------------------------------------------------------------------ The Deep's tidal wave
+
+	private static void wave(FxPayload d, float age, int duration, List<Glow> glows) {
+		int life = (int) d.y2();
+		double yaw = Math.toRadians(d.x2());
+		Vec3 fwd = new Vec3(-Math.sin(yaw), 0, Math.cos(yaw));
+		Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+		Vec3 origin = new Vec3(d.x(), d.y(), d.z());
+		float t = Math.min(age, life);
+		double front = 1 + t;
+		double half = 2.5 + t * 0.15;
+		// rises quickly, breaks at the end
+		double height = 2.8 * Math.min(1.0, age / 4.0) * (age > life ? Math.max(0, 1 - (age - life) / (duration - life)) : 1);
+		float fade = age > life ? Math.max(0f, 1 - (age - life) / (float) (duration - life)) : 1f;
+		int n = 14;
+		List<Vec3> base = new ArrayList<>(), mid = new ArrayList<>(), top = new ArrayList<>(), lip = new ArrayList<>();
+		for (int i = 0; i <= n; i++) {
+			double s = (i / (double) n - 0.5) * 2;
+			// the middle runs ahead, the sides trail behind like a real breaker
+			double bend = (1 - s * s) * 1.2;
+			double h = height * (1 - 0.35 * s * s) * (1 + 0.08 * Math.sin(age * 0.9 + i));
+			Vec3 foot = origin.add(fwd.scale(front + bend - 1.4)).add(right.scale(s * half));
+			Vec3 crest = origin.add(fwd.scale(front + bend)).add(right.scale(s * half));
+			base.add(foot);
+			mid.add(crest.add(fwd.scale(-0.4)).add(0, h * 0.6, 0));
+			top.add(crest.add(0, h, 0));
+			lip.add(crest.add(fwd.scale(0.7)).add(0, h * 0.82, 0));
+		}
+		glows.add(Glow.strip(base, mid, argb(0.32f * fade, 0x1E6FB8)));
+		glows.add(Glow.strip(mid, top, argb(0.38f * fade, 0x3FA0D8)));
+		glows.add(Glow.strip(top, lip, argb(0.55f * fade, 0xBFEFFF)));
+		glows.add(Glow.bolt(top, 0.07, argb(0.7f * fade, 0xF4FCFF)));
+	}
+
 	// ------------------------------------------------------------------ MiniMaus' rat flood
 
 	private static final Identifier MOUSE_PARTS = TheBoys.id("textures/entity/minimaus_parts.png");
@@ -606,6 +834,13 @@ public final class EffectRenderer {
 			return new Glow(3, null, null, width, 0, pts, color);
 		}
 
+		/** A band of quads between two rails, the same colour everywhere. */
+		static Glow strip(List<Vec3> inner, List<Vec3> outer, int color) {
+			List<Vec3> both = new ArrayList<>(inner);
+			both.addAll(outer);
+			return new Glow(5, null, null, inner.size(), 0, both, color);
+		}
+
 		static Glow ribbon(List<Vec3> inner, List<Vec3> outer, int color) {
 			List<Vec3> both = new ArrayList<>(inner);
 			both.addAll(outer);
@@ -617,6 +852,12 @@ public final class EffectRenderer {
 				case 0 -> Geo.beam(buf, pose, a.subtract(cam), b.subtract(cam), r0, color);
 				case 1 -> Geo.sphere(buf, pose, a.subtract(cam), r0, color, r0 > 3 ? 28 : 14);
 				case 2 -> Geo.ring(buf, pose, a.subtract(cam), b, r0, r1, color, r1 > 6 ? 64 : 32);
+				case 5 -> {
+					int n = (int) r0;
+					for (int i = 0; i + 1 < n; i++) {
+						Geo.quad(buf, pose, pts.get(i).subtract(cam), pts.get(i + 1).subtract(cam), pts.get(n + i + 1).subtract(cam), pts.get(n + i).subtract(cam), color);
+					}
+				}
 				case 4 -> {
 					int n = (int) r0;
 					List<Vec3> rel = new ArrayList<>(pts.size());

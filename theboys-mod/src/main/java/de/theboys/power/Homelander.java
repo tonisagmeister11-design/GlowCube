@@ -176,7 +176,7 @@ public final class Homelander {
 		}
 	}
 
-	private static void toggleFlight(ServerPlayer player, PlayerSession s) {
+	static void toggleFlight(ServerPlayer player, PlayerSession s) {
 		s.flying = !s.flying;
 		var abilities = player.getAbilities();
 		if (s.flying) {
@@ -193,7 +193,7 @@ public final class Homelander {
 		player.onUpdateAbilities();
 	}
 
-	private static void endFlight(ServerPlayer player) {
+	static void endFlight(ServerPlayer player) {
 		var abilities = player.getAbilities();
 		abilities.setFlyingSpeed(0.05f);
 		if (!player.isCreative() && !player.isSpectator()) {

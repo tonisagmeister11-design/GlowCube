@@ -21,6 +21,10 @@ public final class ClientState {
 
 	public static int bloodTicks;
 
+	/** Starlight's flash burnt into the eyes: ticks left and how bright it was. */
+	public static int flashTicks;
+	public static float flashStrength;
+
 	/** Short flash in the serum's colour after an injection. */
 	public static int injectFlash;
 	public static int injectColor;
@@ -60,6 +64,8 @@ public final class ClientState {
 		rewindTicks = 0;
 		shakeTicks = 0;
 		bloodTicks = 0;
+		flashTicks = 0;
+		flashStrength = 0;
 		EFFECTS.clear();
 		lastPos = null;
 		speedKmh = 0;

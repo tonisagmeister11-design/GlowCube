@@ -78,27 +78,76 @@ public abstract class PlayerModelMixin {
 				}
 			}
 			case HOMELANDER -> {
-				if (active.has(ActiveState.FLYING)) {
-					float lean = de.theboys.client.BodyLean.current(entity);
-					float level = Mth.clamp(lean / 80f, 0f, 1f);
-					float drift = Mth.sin(t * 0.12f);
-					// fist forward like Superman, the other arm pressed to his side; hovering: arms loose, fists closed
-					model.rightArm.xRot = Mth.lerp(level, -0.35f, -2.95f) + drift * 0.04f;
-					model.rightArm.yRot = Mth.lerp(level, 0f, 0.05f);
-					model.rightArm.zRot = Mth.lerp(level, 0.28f, 0.05f);
-					model.leftArm.xRot = Mth.lerp(level, -0.2f, 0.12f) - drift * 0.03f;
-					model.leftArm.yRot = 0f;
-					model.leftArm.zRot = Mth.lerp(level, -0.28f, -0.08f);
-					// legs straight together, trailing behind, feet fluttering slightly
-					float flutter = Mth.sin(t * 0.25f) * 0.06f * (1 - level * 0.5f);
-					model.rightLeg.xRot = 0.08f + flutter;
-					model.leftLeg.xRot = 0.16f - flutter;
+				if (active.has(ActiveState.FLYING)) theboys$superman(model, entity, t);
+			}
+			case STORMFRONT -> {
+				if (active.has(ActiveState.HAND_BEAM)) {
+					// both hands thrown forward, fingers spread, lightning pouring out
+					float jitter = Mth.sin(t * 4.1f) * 0.04f;
+					model.rightArm.xRot = model.head.xRot - 1.5f + jitter;
+					model.leftArm.xRot = model.head.xRot - 1.5f - jitter;
+					model.rightArm.yRot = model.head.yRot - 0.2f;
+					model.leftArm.yRot = model.head.yRot + 0.2f;
+					model.rightArm.zRot = 0f;
+					model.leftArm.zRot = 0f;
+				} else if (active.has(ActiveState.FLYING)) {
+					theboys$superman(model, entity, t);
+				}
+			}
+			case STARLIGHT -> {
+				if (active.has(ActiveState.HAND_BEAM)) {
+					// palms forward, hands close together: one beam of light
+					model.rightArm.xRot = model.head.xRot - 1.52f;
+					model.leftArm.xRot = model.head.xRot - 1.52f;
+					model.rightArm.yRot = model.head.yRot + 0.18f;
+					model.leftArm.yRot = model.head.yRot - 0.18f;
+					model.rightArm.zRot = 0f;
+					model.leftArm.zRot = 0f;
+				} else if (active.has(ActiveState.FLYING)) {
+					// levitating: arms floating out to the sides, legs hanging together
+					float drift = Mth.sin(t * 0.1f);
+					model.rightArm.xRot = -0.1f + drift * 0.05f;
+					model.leftArm.xRot = -0.1f - drift * 0.05f;
+					model.rightArm.zRot = 0.55f + drift * 0.06f;
+					model.leftArm.zRot = -0.55f - drift * 0.06f;
+					model.rightLeg.xRot = 0.08f;
+					model.leftLeg.xRot = 0.28f + drift * 0.04f;
+					model.rightLeg.zRot = 0.03f;
+					model.leftLeg.zRot = -0.03f;
 					model.rightLeg.yRot = 0f;
 					model.leftLeg.yRot = 0f;
-					model.rightLeg.zRot = 0.02f;
-					model.leftLeg.zRot = -0.02f;
-					// keep looking where he flies, not at the ground
-					model.head.xRot -= (float) Math.toRadians(lean) * 0.85f;
+					model.head.xRot -= (float) Math.toRadians(de.theboys.client.BodyLean.current(entity)) * 0.7f;
+				}
+			}
+			case THE_DEEP -> {
+				if (active.has(ActiveState.DASH)) {
+					// a torpedo: arms stretched over the head, legs kicking
+					float kick = Mth.sin(t * 1.6f) * 0.35f;
+					model.rightArm.xRot = -3.05f;
+					model.leftArm.xRot = -3.05f;
+					model.rightArm.zRot = 0.12f;
+					model.leftArm.zRot = -0.12f;
+					model.rightArm.yRot = 0f;
+					model.leftArm.yRot = 0f;
+					model.rightLeg.xRot = kick;
+					model.leftLeg.xRot = -kick;
+					model.head.xRot -= (float) Math.toRadians(de.theboys.client.BodyLean.current(entity)) * 0.85f;
+				} else if (active.has(ActiveState.SONAR)) {
+					// listening: two fingers at the temple, head tilted
+					model.rightArm.xRot = -2.35f;
+					model.rightArm.yRot = -0.55f;
+					model.rightArm.zRot = 0.2f;
+					model.head.zRot = -0.18f;
+					model.head.xRot -= 0.15f;
+				}
+			}
+			case BLACK_NOIR -> {
+				if (active.has(ActiveState.SHADOW) && !living.isSwinging()) {
+					// stalking: low, arms ready
+					model.rightArm.xRot = -0.6f;
+					model.leftArm.xRot = -0.9f;
+					model.rightArm.zRot = 0.25f;
+					model.leftArm.zRot = -0.25f;
 				}
 			}
 			case BUTCHER -> {
@@ -126,11 +175,35 @@ public abstract class PlayerModelMixin {
 		if (power == Power.A_TRAIN) {
 			model.head.xRot -= (float) Math.toRadians(de.theboys.client.BodyLean.current(entity)) * 0.8f;
 		}
-		boolean busy = active.has(ActiveState.HOLD) || active.has(ActiveState.RIP) || active.has(ActiveState.NUKE_CHARGE)
+		boolean busy = active.has(ActiveState.HAND_BEAM) || active.has(ActiveState.DASH) || active.has(ActiveState.HOLD) || active.has(ActiveState.RIP) || active.has(ActiveState.NUKE_CHARGE)
 				|| active.has(ActiveState.SMASH) || active.has(ActiveState.MOON) && active.targetId() >= 0;
 		if (!busy) {
 			theboys$fight(model, state, entity, t);
 		}
+	}
+
+	/** Flying like Superman: fist forward, body stretched out (Homelander and Stormfront). */
+	private static void theboys$superman(HumanoidModel<AvatarRenderState> model, Entity entity, float t) {
+		float lean = de.theboys.client.BodyLean.current(entity);
+		float level = Mth.clamp(lean / 80f, 0f, 1f);
+		float drift = Mth.sin(t * 0.12f);
+		// fist forward like Superman, the other arm pressed to the side; hovering: arms loose, fists closed
+		model.rightArm.xRot = Mth.lerp(level, -0.35f, -2.95f) + drift * 0.04f;
+		model.rightArm.yRot = Mth.lerp(level, 0f, 0.05f);
+		model.rightArm.zRot = Mth.lerp(level, 0.28f, 0.05f);
+		model.leftArm.xRot = Mth.lerp(level, -0.2f, 0.12f) - drift * 0.03f;
+		model.leftArm.yRot = 0f;
+		model.leftArm.zRot = Mth.lerp(level, -0.28f, -0.08f);
+		// legs straight together, trailing behind, feet fluttering slightly
+		float flutter = Mth.sin(t * 0.25f) * 0.06f * (1 - level * 0.5f);
+		model.rightLeg.xRot = 0.08f + flutter;
+		model.leftLeg.xRot = 0.16f - flutter;
+		model.rightLeg.yRot = 0f;
+		model.leftLeg.yRot = 0f;
+		model.rightLeg.zRot = 0.02f;
+		model.leftLeg.zRot = -0.02f;
+		// keep looking where it goes, not at the ground
+		model.head.xRot -= (float) Math.toRadians(lean) * 0.85f;
 	}
 
 	/** Twists the torso and moves the shoulders with it. */

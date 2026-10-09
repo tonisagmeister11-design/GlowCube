@@ -72,11 +72,19 @@ public final class HudOverlay {
 			case HOMELANDER -> "hud.theboys.heat";
 			case SOLDIER_BOY -> "hud.theboys.charge";
 			case BUTCHER -> "hud.theboys.rip";
+			case STARLIGHT -> "hud.theboys.light";
+			case STORMFRONT -> "hud.theboys.voltage";
+			case THE_DEEP -> "hud.theboys.moisture";
 			default -> null;
 		};
 		if (meterKey != null) {
 			float m = Mth.clamp(status.meter() / 1000f, 0, 1);
-			int color = lerpColor(0xFFFFB300, 0xFFFF3D00, m);
+			int color = switch (power) {
+				case STARLIGHT -> lerpColor(0xFFFFF3C4, 0xFFFFC94A, m);
+				case THE_DEEP -> m < 0.15f ? 0xFFE57373 : lerpColor(0xFF4DD0E1, 0xFF1E88E5, m);
+				case STORMFRONT -> lerpColor(0xFF8FC8FF, 0xFFFFFFFF, m);
+				default -> lerpColor(0xFFFFB300, 0xFFFF3D00, m);
+			};
 			g.text(font, Component.translatable(meterKey), x, y + 2, 0xFFBDBDBD, true);
 			g.fill(x, y + 12, x + panelW - 6, y + 17, 0xFF222222);
 			g.fill(x, y + 12, x + (int) ((panelW - 6) * m), y + 17, color);
@@ -138,6 +146,11 @@ public final class HudOverlay {
 				}
 				g.text(mc.font, Component.translatable("hud.theboys.rewind"), 18, 40, (((int) (220 * fade)) << 24) | 0xB3E5FC, true);
 			}
+		}
+		// blinded by Starlight
+		if (ClientState.flashTicks > 0) {
+			float f = ClientState.flashStrength * Math.min(1f, ClientState.flashTicks / 18f);
+			g.fill(0, 0, w, h, ((int) (245 * f) << 24) | 0xFFFDF2);
 		}
 		// the serum hits: a pulse of colour from the edges of the screen
 		if (ClientState.injectFlash > 0) {

@@ -73,6 +73,38 @@ public final class PlayerSession {
 	public final java.util.Set<Integer> ratHit = new java.util.HashSet<>();
 	public int squeakCool;
 
+	// Starlight
+	public int charge = 400;
+	public int novaCool;
+
+	// Stormfront
+	public int strikeBolts;
+	public int strikeDelay;
+	public int strikeTarget = -1;
+	public Vec3 strikeAt;
+
+	// Black Noir
+	public int comboTicks;
+	public int comboTarget = -1;
+	public int shadowTicks;
+	public int ambushTicks;
+
+	// The Deep
+	public final java.util.Map<Integer, Integer> dolphins = new java.util.HashMap<>();
+	public int deepTarget = -1;
+	public int dolphinsToSpawn;
+	public int dolphinDelay;
+	public int moisture = 1000;
+	public int waveTicks;
+	public float waveYaw;
+	public Vec3 waveOrigin = Vec3.ZERO;
+	public boolean waveStrong;
+	public final java.util.Set<Integer> waveHit = new java.util.HashSet<>();
+	public int sonarTicks;
+	public int deepDashTicks;
+	public Vec3 deepDash = Vec3.ZERO;
+	public final java.util.Set<Integer> dashHit = new java.util.HashSet<>();
+
 	// shared
 	public Vec3 lastPos;
 	public Vec3 motion = Vec3.ZERO;
