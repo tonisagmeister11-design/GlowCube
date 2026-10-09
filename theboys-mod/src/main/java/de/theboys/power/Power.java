@@ -17,7 +17,8 @@ public enum Power implements StringRepresentable {
 	STARLIGHT("starlight", 0xFFE9A8),
 	THE_DEEP("the_deep", 0x2F9C9A),
 	BLACK_NOIR("black_noir", 0x55575E),
-	STORMFRONT("stormfront", 0x6FA8FF);
+	STORMFRONT("stormfront", 0x6FA8FF),
+	BLACK_ADAM("black_adam", 0xF2C230);
 
 	public static final Codec<Power> CODEC = StringRepresentable.fromEnum(Power::values);
 	public static final StreamCodec<ByteBuf, Power> STREAM_CODEC = ByteBufCodecs.VAR_INT.map(i -> values()[i], Power::ordinal);
@@ -28,6 +29,8 @@ public enum Power implements StringRepresentable {
 	public static final Power[] V_ONE_POOL = {SOLDIER_BOY, HOMELANDER, STORMFRONT};
 	/** Mini V only ever makes MiniMaus. */
 	public static final Power[] MINI_V_POOL = {MINIMAUS};
+	/** The Shazam serum (the rarest of all) only ever makes Black Adam. */
+	public static final Power[] SHAZAM_POOL = {BLACK_ADAM};
 
 	private final String id;
 	private final int color;
@@ -39,7 +42,7 @@ public enum Power implements StringRepresentable {
 
 	/** Supes that fly with Homelander-style flight. */
 	public boolean flier() {
-		return this == HOMELANDER || this == STORMFRONT || this == STARLIGHT;
+		return this == HOMELANDER || this == STORMFRONT || this == STARLIGHT || this == BLACK_ADAM;
 	}
 
 	public String id() {

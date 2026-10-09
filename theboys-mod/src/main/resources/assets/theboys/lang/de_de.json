@@ -120,5 +120,16 @@
   "message.theboys.deep_wet": "Ahh, Wasser. Du bist wieder bei Kräften.",
   "message.theboys.deep_sonar": "Sonar: %s Lebewesen geortet",
   "message.theboys.noir_allergy": "NUSSALLERGIE! Black Noir bekommt keine Luft …",
-  "message.theboys.noir_silent": "Black Noir spricht nicht. (Zieh den Anzug aus [J], um zu schreiben.)"
+  "message.theboys.noir_silent": "Black Noir spricht nicht. (Zieh den Anzug aus [J], um zu schreiben.)",
+  "item.theboys.shazam_serum": "Shazam-Serum",
+  "item.theboys.shazam_serum.desc": "Uralte Magie aus Kahndaq. Unglaublich selten. Macht dich zu Black Adam – dem Gott unter den Supes.",
+  "power.theboys.black_adam": "Black Adam",
+  "ability.theboys.black_adam.0": "Götterblitz (halten; Schleichen: blaue Augenstrahlen)",
+  "ability.theboys.black_adam.1": "Fliegen durch alles (Schleichen: SHAZAM!)",
+  "ability.theboys.black_adam.2": "Telekinese: Blöcke heben / schleudern",
+  "ability.theboys.black_adam.3": "Packen / bis auf die Knochen grillen (Schleichen: Blitzsturm)",
+  "ability.theboys.black_adam.shazam": "SHAZAM!",
+  "ability.theboys.black_adam.storm": "Blitzsturm",
+  "hud.theboys.zap": "Stromstoß",
+  "message.theboys.adam_grabbed": "Black Adam hält dich an der Kehle …"
 }

@@ -94,6 +94,32 @@ public abstract class PlayerModelMixin {
 					theboys$superman(model, entity, t);
 				}
 			}
+			case BLACK_ADAM -> {
+				if (active.has(ActiveState.HOLD)) {
+					// the victim hangs from his raised fist; zapping, the other hand joins in
+					model.rightArm.xRot = -2.25f;
+					model.rightArm.yRot = 0.05f;
+					model.rightArm.zRot = 0.1f;
+					if (active.has(ActiveState.ZAP)) {
+						float shake = Mth.sin(t * 3.7f) * 0.05f;
+						model.leftArm.xRot = -1.7f + shake;
+						model.leftArm.yRot = 0.35f;
+						model.head.xRot -= 0.25f;
+					} else {
+						model.leftArm.xRot = -0.2f;
+					}
+				} else if (active.has(ActiveState.HAND_BEAM)) {
+					float jitter = Mth.sin(t * 4.1f) * 0.04f;
+					model.rightArm.xRot = model.head.xRot - 1.55f + jitter;
+					model.leftArm.xRot = model.head.xRot - 1.55f - jitter;
+					model.rightArm.yRot = model.head.yRot - 0.12f;
+					model.leftArm.yRot = model.head.yRot + 0.12f;
+					model.rightArm.zRot = 0f;
+					model.leftArm.zRot = 0f;
+				} else if (active.has(ActiveState.FLYING)) {
+					theboys$superman(model, entity, t);
+				}
+			}
 			case STARLIGHT -> {
 				if (active.has(ActiveState.HAND_BEAM)) {
 					// palms forward, hands close together: one beam of light

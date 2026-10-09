@@ -29,6 +29,8 @@ public class VFridgeBlock extends HorizontalDirectionalBlock {
 	/** Chance that a stocked fridge holds V-One instead of Compound V. */
 	public static final float V_ONE_CHANCE = 0.02f;
 	public static final float MINI_V_CHANCE = 0.08f;
+	/** Black Adam's Shazam serum: about one fridge in 300. */
+	public static final float SHAZAM_CHANCE = 0.0033f;
 
 	public VFridgeBlock(Properties properties) {
 		super(properties);
@@ -58,7 +60,8 @@ public class VFridgeBlock extends HorizontalDirectionalBlock {
 			return InteractionResult.SUCCESS_SERVER;
 		}
 		float roll = level.getRandom().nextFloat();
-		ItemStack dose = new ItemStack(roll < V_ONE_CHANCE ? ModItems.COMPOUND_V1 : roll < V_ONE_CHANCE + MINI_V_CHANCE ? ModItems.MINI_V : ModItems.COMPOUND_V);
+		ItemStack dose = new ItemStack(roll < SHAZAM_CHANCE ? ModItems.SHAZAM_SERUM : roll < V_ONE_CHANCE ? ModItems.COMPOUND_V1
+				: roll < V_ONE_CHANCE + MINI_V_CHANCE ? ModItems.MINI_V : ModItems.COMPOUND_V);
 		Direction front = state.getValue(FACING);
 		popResourceFromFace(level, pos, front, dose);
 		level.setBlock(pos, state.setValue(STOCKED, false), 3);

@@ -122,7 +122,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 			});
 
 			for (Power p : new Power[] {Power.HOMELANDER, Power.SOLDIER_BOY, Power.A_TRAIN, Power.BUTCHER,
-					Power.STARLIGHT, Power.STORMFRONT, Power.THE_DEEP, Power.BLACK_NOIR}) {
+					Power.STARLIGHT, Power.STORMFRONT, Power.THE_DEEP, Power.BLACK_NOIR, Power.BLACK_ADAM}) {
 				step(ctx, "suit_" + p.id(), () -> {
 					server.runCommand("theboys power set @a " + p.id());
 					clearChat(ctx);
@@ -1225,6 +1225,196 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				server.runCommand("theboys power clear @a");
 				server.runCommand("tp @a 0.5 -60 0.5 0 0");
 				ctx.waitTicks(5);
+				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
+			});
+
+			step(ctx, "black_adam", () -> {
+				arena(ctx, server);
+				List<String> problems = new ArrayList<>();
+				// the Shazam serum makes Black Adam
+				server.runCommand("clear @a");
+				server.runCommand("give @a theboys:shazam_serum");
+				ctx.waitTicks(10);
+				ctx.runOnClient(mc -> mc.player.getInventory().setSelectedSlot(0));
+				ctx.getInput().pressKey(Keys.INJECT);
+				ctx.waitTicks(50);
+				Power got = server.computeOnServer(s -> PowerAttachments.powerOf(s.getPlayerList().getPlayers().get(0)));
+				LOG.info("shazam serum gave: {}", got);
+				if (got != Power.BLACK_ADAM) problems.add("Shazam serum gave " + got);
+				server.runCommand("theboys power set @a black_adam");
+				server.runCommand("clear @a");
+				clearChat(ctx);
+				ctx.waitTicks(5);
+				// god lightning
+				server.runCommand("summon minecraft:husk 0.5 -60 9.5 {NoAI:1b,Silent:1b,attributes:[{id:\"minecraft:max_health\",base:300}],Health:300f}");
+				husk(server, 3.5, 11.5, "a");
+				husk(server, -3.0, 10.5, "a");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 3);
+				sideView(ctx, server, 7.0, -57.5, 3.0, 65, 12);
+				ctx.getInput().holdKey(Keys.ABILITY[0]);
+				ctx.waitTicks(8);
+				ctx.takeScreenshot("adam_lightning");
+				ctx.getInput().releaseKey(Keys.ABILITY[0]);
+				int chain = hurt(server, "a");
+				LOG.info("adam lightning: {} of 3 husks hit", chain);
+				if (chain < 2) problems.add("god lightning hit " + chain);
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				// blue eyes
+				husk(server, 0.5, 8.5, "b");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 4);
+				sideView(ctx, server, 6.0, -57.5, 2.0, 70, 10);
+				ctx.getInput().holdKey(o -> o.keyShift);
+				ctx.waitTicks(2);
+				ctx.getInput().holdKey(Keys.ABILITY[0]);
+				ctx.waitTicks(10);
+				ctx.takeScreenshot("adam_eyes");
+				ctx.getInput().releaseKey(Keys.ABILITY[0]);
+				ctx.getInput().releaseKey(o -> o.keyShift);
+				int lasered = hurt(server, "b");
+				LOG.info("adam eyes: {} husk hit", lasered);
+				if (lasered < 1) problems.add("eye beams missed");
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				// grab a zombie and burn it to the bones
+				server.runCommand("summon minecraft:zombie 0.5 -60 2.5 {NoAI:1b,Silent:1b}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 15);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(6);
+				int held = server.computeOnServer(s -> de.theboys.power.PowerManager.session(s.getPlayerList().getPlayers().get(0)).heldId);
+				LOG.info("adam grab: held={}", held);
+				if (held < 0) problems.add("grab caught nothing");
+				sideView(ctx, server, 4.5, -58.0, 4.0, 130, 8);
+				ctx.takeScreenshot("adam_hold");
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(22);
+				ctx.takeScreenshot("adam_zap");
+				ctx.waitTicks(26);
+				ctx.takeScreenshot("adam_bones");
+				String after = server.computeOnServer(s -> {
+					int zombies = 0, skeletons = 0;
+					for (var e : s.overworld().getAllEntities()) {
+						if (e.getType() == net.minecraft.world.entity.EntityTypes.ZOMBIE && e.isAlive()) zombies++;
+						if (e.getType() == net.minecraft.world.entity.EntityTypes.SKELETON) skeletons++;
+					}
+					return zombies + "," + skeletons;
+				});
+				LOG.info("adam bones: zombies,skeletons = {}", after);
+				if (!after.equals("0,1")) problems.add("not burnt to the bones: " + after);
+				ctx.waitTicks(70);
+				long bones = server.computeOnServer(s -> {
+					long n = 0;
+					for (var e : s.overworld().getAllEntities()) {
+						if (e instanceof net.minecraft.world.entity.item.ItemEntity it && it.getItem().is(net.minecraft.world.item.Items.BONE)) n++;
+					}
+					return n;
+				});
+				LOG.info("adam bones crumbled: bone items={}", bones);
+				if (bones < 1) problems.add("skeleton did not crumble");
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				// telekinesis
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(5);
+				ctx.getInput().lookAt(0, 40);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				ctx.waitTicks(16);
+				int lifted = server.computeOnServer(s -> {
+					int n = 0;
+					for (var e : s.overworld().getAllEntities()) if (e.getType() == net.minecraft.world.entity.EntityTypes.FALLING_BLOCK) n++;
+					return n;
+				});
+				LOG.info("adam telekinesis: {} blocks lifted", lifted);
+				if (lifted < 6) problems.add("telekinesis lifted " + lifted);
+				sideView(ctx, server, 8.0, -56.0, -6.0, 50, 18);
+				ctx.takeScreenshot("adam_telekinesis");
+				playerView(ctx, server);
+				husk(server, 0.5, 14.5, "c");
+				ctx.waitTicks(4);
+				ctx.getInput().lookAt(0, 5);
+				ctx.getInput().pressKey(Keys.ABILITY[2]);
+				ctx.waitTicks(3);
+				sideView(ctx, server, 8.0, -56.0, 4.0, 70, 12);
+				ctx.takeScreenshot("adam_hurl");
+				ctx.waitTicks(40);
+				int smashed = hurt(server, "c");
+				LOG.info("adam hurl: husk hit={}", smashed);
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -63 -12 12 -61 30 minecraft:grass_block");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				// flying straight through a wall
+				server.runCommand("fill -3 -61 6 3 -55 8 minecraft:stone");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(5);
+				ctx.getInput().lookAt(0, 0);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(8);
+				ctx.getInput().holdKey(o -> o.keyUp);
+				for (int i = 0; i < 30; i++) {
+					ctx.waitTicks(1);
+					double zz = ctx.computeOnClient(mc -> mc.player.getZ());
+					if (zz > 6.4 && zz < 8) break;
+				}
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+				ctx.waitTicks(1);
+				ctx.takeScreenshot("adam_phase");
+				ctx.waitTicks(8);
+				ctx.getInput().releaseKey(o -> o.keyUp);
+				ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+				double z = ctx.computeOnClient(mc -> mc.player.getZ());
+				int wall = server.computeOnServer(s -> {
+					int n = 0;
+					for (BlockPos q : BlockPos.betweenClosed(-3, -61, 6, 3, -55, 8)) if (!s.overworld().getBlockState(q).isAir()) n++;
+					return n;
+				});
+				LOG.info("adam phase: z={} wall blocks left={} of 147", z, wall);
+				if (z < 9 || wall < 147) problems.add("did not fly through the wall (z=" + z + ", wall=" + wall + ")");
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(10);
+				// SHAZAM!
+				for (int i = 0; i < 4; i++) husk(server, 0.5 + Math.cos(i * 1.57) * 5, 0.5 + Math.sin(i * 1.57) * 5, "d");
+				ctx.waitTicks(10);
+				sideView(ctx, server, 10.0, -55.0, -8.0, 50, 22);
+				ctx.getInput().holdKey(o -> o.keyShift);
+				ctx.waitTicks(2);
+				ctx.getInput().pressKey(Keys.ABILITY[1]);
+				ctx.waitTicks(3);
+				ctx.getInput().releaseKey(o -> o.keyShift);
+				ctx.takeScreenshot("adam_shazam");
+				ctx.waitTicks(6);
+				int blasted = hurt(server, "d");
+				LOG.info("adam shazam: {} of 4 husks hit", blasted);
+				if (blasted < 3) problems.add("shazam hit " + blasted);
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				// lightning storm onto everything far around
+				for (int i = 0; i < 4; i++) husk(server, 0.5 + Math.cos(i * 1.57 + 0.5) * 18, 0.5 + Math.sin(i * 1.57 + 0.5) * 18, "e");
+				ctx.waitTicks(10);
+				ctx.getInput().holdKey(o -> o.keyShift);
+				ctx.waitTicks(2);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(3);
+				ctx.getInput().releaseKey(o -> o.keyShift);
+				sideView(ctx, server, 0.5, -50.0, -14.0, 0, 30);
+				ctx.takeScreenshot("adam_storm");
+				ctx.waitTicks(6);
+				int stormed = hurt(server, "e");
+				LOG.info("adam storm: {} of 4 husks hit", stormed);
+				if (stormed < 3) problems.add("storm hit " + stormed);
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				server.runCommand("theboys power clear @a");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				ctx.waitTicks(10);
 				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
 			});
 

@@ -30,6 +30,8 @@ public final class ModItems {
 			new Item.Properties().stacksTo(16).rarity(Rarity.RARE));
 	public static final Item MINI_V = register("mini_v", p -> new SyringeItem(SyringeItem.Kind.MINI_V, p),
 			new Item.Properties().stacksTo(8).rarity(Rarity.RARE));
+	public static final Item SHAZAM_SERUM = register("shazam_serum", p -> new SyringeItem(SyringeItem.Kind.SHAZAM, p),
+			new Item.Properties().stacksTo(1).rarity(Rarity.EPIC).fireResistant().component(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true));
 	public static final Item EMPTY_SYRINGE = register("empty_syringe", Item::new, new Item.Properties());
 	public static final Item SOLDIER_BOY_SHIELD = register("soldier_boy_shield", ShieldItem::new,
 			new Item.Properties().durability(2500).rarity(Rarity.EPIC).fireResistant()
@@ -58,6 +60,7 @@ public final class ModItems {
 					entries.accept(COMPOUND_V);
 					entries.accept(COMPOUND_V1);
 					entries.accept(MINI_V);
+					entries.accept(SHAZAM_SERUM);
 					entries.accept(URANIUM_INJECTOR);
 					entries.accept(EMPTY_SYRINGE);
 					entries.accept(SOLDIER_BOY_SHIELD);

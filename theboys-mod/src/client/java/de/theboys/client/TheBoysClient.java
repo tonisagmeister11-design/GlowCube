@@ -65,6 +65,7 @@ public class TheBoysClient implements ClientModInitializer {
 				ClientState.EFFECTS.add(new ClientState.Fx(fx, 7));
 			}
 			case FxPayload.BOLT -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 5));
+			case FxPayload.GOD_BOLT -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 7));
 			case FxPayload.LIGHT_STREAM -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 16));
 			case FxPayload.NOVA -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 22));
 			case FxPayload.SONAR -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 34));

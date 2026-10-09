@@ -22,3 +22,5 @@ net.minecraft.client.gui.components.ChatComponent | clear|Messages
 net.minecraft.client.gui.Gui | hat|Chat
 -p net.minecraft.client.gui.Gui | hat
 net.minecraft.world.entity.player.ChatVisiblity
+net.minecraft.world.entity.item.FallingBlockEntity | fall|time|public
+-c net.minecraft.world.entity.player.Player | public void tick

@@ -5,6 +5,7 @@
 	"mixins": [
 		"EntityAccessor",
 		"LevelMixin",
+		"PlayerPhaseMixin",
 		"ServerGamePacketListenerImplMixin"
 	],
 	"injectors": {

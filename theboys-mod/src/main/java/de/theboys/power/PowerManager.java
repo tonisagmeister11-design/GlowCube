@@ -77,6 +77,7 @@ public final class PowerManager {
 		Stormfront.stop(player, s);
 		TheDeep.stop(player, s);
 		BlackNoir.stop(player, s);
+		BlackAdam.stop(player, s);
 		PowerAttachments.setActive(player, ActiveState.IDLE);
 	}
 
@@ -93,6 +94,8 @@ public final class PowerManager {
 			case STARLIGHT -> { damage = 5; armor = 8; toughness = 2; knockback = 0.3; fall = 12; health = 6; }
 			case STORMFRONT -> { damage = 10; armor = 16; toughness = 8; knockback = 0.6; fall = 4096; health = 20; speed = 0.015; }
 			case THE_DEEP -> { damage = 2; armor = 6; toughness = 2; knockback = 0.3; fall = 14; health = 6; }
+			// the god of the game
+			case BLACK_ADAM -> { damage = 22; armor = 30; toughness = 20; knockback = 1.0; fall = 4096; health = 80; speed = 0.04; }
 			case BLACK_NOIR -> { damage = 9; armor = 14; toughness = 6; knockback = 0.5; fall = 20; health = 10; speed = 0.02; }
 			default -> { }
 		}
@@ -144,6 +147,7 @@ public final class PowerManager {
 			case STORMFRONT -> Stormfront.key(player, s, slot, pressed);
 			case THE_DEEP -> TheDeep.key(player, s, slot, pressed);
 			case BLACK_NOIR -> BlackNoir.key(player, s, slot, pressed);
+			case BLACK_ADAM -> BlackAdam.key(player, s, slot, pressed);
 			default -> {
 				if (pressed) player.sendSystemMessage(Component.translatable("message.theboys.no_power").withStyle(ChatFormatting.GRAY), true);
 			}
@@ -175,6 +179,7 @@ public final class PowerManager {
 				case STORMFRONT -> meter = Stormfront.tick(player, s);
 				case THE_DEEP -> meter = TheDeep.tick(player, s);
 				case BLACK_NOIR -> meter = BlackNoir.tick(player, s);
+				case BLACK_ADAM -> meter = BlackAdam.tick(player, s);
 				default -> { }
 			}
 			if (++s.statusTimer >= 3) {

@@ -52,6 +52,8 @@ public record FxPayload(int kind, int entityId, float x, float y, float z, float
 	public static final int WAVE = 14;
 	/** Black Noir's throwing knife from x/y/z to x2/y2/z2. */
 	public static final int KNIFE = 15;
+	/** Black Adam's golden lightning from x/y/z to x2/y2/z2. */
+	public static final int GOD_BOLT = 16;
 
 	@Override
 	public Type<? extends CustomPacketPayload> type() {

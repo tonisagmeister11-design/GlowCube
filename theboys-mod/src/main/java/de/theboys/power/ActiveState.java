@@ -37,6 +37,10 @@ public record ActiveState(int flags, int targetId, int charge) {
 	public static final int KATANA = 1 << 20;
 	/** The Deep shoots forward like a torpedo. */
 	public static final int DASH = 1 << 21;
+	/** Black Adam pours lightning into the one he holds. */
+	public static final int ZAP = 1 << 22;
+	/** Black Adam flies through blocks. */
+	public static final int PHASE = 1 << 23;
 
 	public static final ActiveState IDLE = new ActiveState(0, -1, 0);
 

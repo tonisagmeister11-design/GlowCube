@@ -20,7 +20,8 @@ public abstract class ServerGamePacketListenerImplMixin {
 
 	@Inject(method = "shouldCheckPlayerMovement", at = @At("HEAD"), cancellable = true)
 	private void theboys$allowSuperSpeed(boolean fallFlying, CallbackInfoReturnable<Boolean> cir) {
-		if (PowerAttachments.powerOf(player) == Power.A_TRAIN && PowerAttachments.active(player).has(ActiveState.SPEED)) {
+		if (PowerAttachments.powerOf(player) == Power.A_TRAIN && PowerAttachments.active(player).has(ActiveState.SPEED)
+				|| PowerAttachments.powerOf(player) == Power.BLACK_ADAM && PowerAttachments.active(player).has(ActiveState.FLYING)) {
 			cir.setReturnValue(false);
 		}
 	}

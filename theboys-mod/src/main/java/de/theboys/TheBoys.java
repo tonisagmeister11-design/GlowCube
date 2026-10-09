@@ -64,6 +64,8 @@ public class TheBoys implements ModInitializer {
 		ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
 			// MiniMaus is winding up To the Moon on this one
 			if (de.theboys.power.MiniMaus.blocksDamage(entity)) return false;
+			// the skeleton left in Black Adam's fist only crumbles when he lets go
+			if (de.theboys.power.BlackAdam.isBones(entity)) return false;
 			if (!(entity instanceof ServerPlayer player)) return true;
 			Power power = PowerAttachments.powerOf(player);
 			// Homelander does not burn
@@ -74,6 +76,12 @@ public class TheBoys implements ModInitializer {
 			if (power == Power.BUTCHER && source.is(DamageTypeTags.IS_FALL) && PowerAttachments.active(player).has(ActiveState.CANCER_WALK)) return false;
 			// A-Train does not trip over his own feet while running
 			if (power == Power.A_TRAIN && source.is(DamageTypeTags.IS_FALL) && PowerAttachments.active(player).has(ActiveState.SPEED)) return false;
+			// Black Adam: almost nothing hurts a god, only magic
+			if (power == Power.BLACK_ADAM && de.theboys.power.BlackAdam.immuneTo(source)) {
+				if (source.is(DamageTypeTags.IS_LIGHTNING)) player.heal(amount);
+				player.clearFire();
+				return false;
+			}
 			// Starlight drinks lightning, Stormfront is made of it
 			if (source.is(DamageTypeTags.IS_LIGHTNING) && (power == Power.STARLIGHT || power == Power.STORMFRONT)) {
 				// the bolt set them alight just before it hit

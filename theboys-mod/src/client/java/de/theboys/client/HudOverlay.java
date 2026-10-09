@@ -75,6 +75,7 @@ public final class HudOverlay {
 			case STARLIGHT -> "hud.theboys.light";
 			case STORMFRONT -> "hud.theboys.voltage";
 			case THE_DEEP -> "hud.theboys.moisture";
+			case BLACK_ADAM -> "hud.theboys.zap";
 			default -> null;
 		};
 		if (meterKey != null) {
@@ -83,6 +84,7 @@ public final class HudOverlay {
 				case STARLIGHT -> lerpColor(0xFFFFF3C4, 0xFFFFC94A, m);
 				case THE_DEEP -> m < 0.15f ? 0xFFE57373 : lerpColor(0xFF4DD0E1, 0xFF1E88E5, m);
 				case STORMFRONT -> lerpColor(0xFF8FC8FF, 0xFFFFFFFF, m);
+				case BLACK_ADAM -> lerpColor(0xFFF2C230, 0xFFFFFBE6, m);
 				default -> lerpColor(0xFFFFB300, 0xFFFF3D00, m);
 			};
 			g.text(font, Component.translatable(meterKey), x, y + 2, 0xFFBDBDBD, true);

@@ -111,7 +111,7 @@ public final class EffectRenderer {
 			boolean self = p == mc.player && firstPerson;
 
 			if (state.has(ActiveState.LASER)) {
-				heatVision(level, p, pt, self, time, glows);
+				heatVision(level, p, pt, self, time, glows, power == Power.BLACK_ADAM);
 			}
 			if (state.has(ActiveState.CHEST_BEAM)) {
 				chestBeam(level, p, pt, time, self, glows);
@@ -133,6 +133,7 @@ public final class EffectRenderer {
 			}
 			if (power == Power.STARLIGHT) starlight(level, p, state, pt, time, self, glows);
 			if (power == Power.STORMFRONT) stormfront(level, p, state, pt, time, self, glows);
+			if (power == Power.BLACK_ADAM) blackAdam(level, p, state, pt, time, self, glows);
 			if (power == Power.BUTCHER && (state.has(ActiveState.HOLD) || state.has(ActiveState.RIP))) {
 				Entity target = level.getEntity(state.targetId());
 				if (target != null) {
@@ -191,6 +192,16 @@ public final class EffectRenderer {
 						Vec3 mid = pts.get(pts.size() / 2);
 						Vec3 tip = mid.add((rnd.nextDouble() - 0.5) * 2, (rnd.nextDouble() - 0.5) * 1.5, (rnd.nextDouble() - 0.5) * 2);
 						glows.add(Glow.bolt(jagged(mid, tip, rnd, 0.2), 0.012, argb(0.8f * fade, 0xDDEBFF)));
+					}
+				}
+				case FxPayload.GOD_BOLT -> {
+					float fade = Math.max(0f, 1 - age / fx.duration);
+					Vec3 to = new Vec3(d.x2(), d.y2(), d.z2());
+					Random rnd = new Random(fx.hashCode() * 37L + fx.age);
+					for (int k = 0; k < 2; k++) {
+						List<Vec3> pts = jagged(at, to, rnd, 0.5);
+						glows.add(Glow.bolt(pts, 0.16, argb(0.35f * fade, 0xF2C230)));
+						glows.add(Glow.bolt(pts, 0.04, argb(0.95f * fade, 0xFFFBE6)));
 					}
 				}
 				case FxPayload.LIGHT_STREAM -> {
@@ -365,7 +376,9 @@ public final class EffectRenderer {
 
 	// ------------------------------------------------------------------ powers
 
-	private static void heatVision(ClientLevel level, AbstractClientPlayer p, float pt, boolean self, long time, List<Glow> glows) {
+	private static void heatVision(ClientLevel level, AbstractClientPlayer p, float pt, boolean self, long time, List<Glow> glows, boolean blue) {
+		// Homelander burns red, Black Adam's eyes shine blue
+		int outer = blue ? 0x1A6BFF : 0xFF1A1A, mid = blue ? 0x3FA0FF : 0xFF3020, core = blue ? 0xE0F4FF : 0xFFE0D0;
 		Vec3 eye = p.getEyePosition(pt);
 		Vec3 dir = p.getViewVector(pt);
 		Vec3 end = hit(level, p, eye, dir, 64);
@@ -376,13 +389,13 @@ public final class EffectRenderer {
 		for (int side = -1; side <= 1; side += 2) {
 			Vec3 start = eye.add(right.scale((self ? 0.16 : 0.095) * side)).add(dir.scale(self ? 1.1 : 0.2));
 			if (self) start = start.add(0, -0.2, 0);
-			glows.add(Glow.beam(start, end, 0.075 * flicker * scale, argb(0.35f, 0xFF1A1A)));
-			glows.add(Glow.beam(start, end, 0.035 * scale, argb(0.75f, 0xFF3020)));
-			glows.add(Glow.beam(start, end, 0.012 * scale, argb(0.95f, 0xFFE0D0)));
-			if (!self) glows.add(Glow.sphere(start, 0.06, argb(0.9f, 0xFF2A1A)));
+			glows.add(Glow.beam(start, end, (blue ? 0.11 : 0.075) * flicker * scale, argb(0.35f, outer)));
+			glows.add(Glow.beam(start, end, (blue ? 0.05 : 0.035) * scale, argb(0.75f, mid)));
+			glows.add(Glow.beam(start, end, 0.012 * scale, argb(0.95f, core)));
+			if (!self) glows.add(Glow.sphere(start, 0.06, argb(0.9f, mid)));
 		}
-		glows.add(Glow.sphere(end, 0.25 * flicker, argb(0.6f, 0xFF4020)));
-		glows.add(Glow.sphere(end, 0.1, argb(0.9f, 0xFFF0C0)));
+		glows.add(Glow.sphere(end, (blue ? 0.4 : 0.25) * flicker, argb(0.6f, mid)));
+		glows.add(Glow.sphere(end, 0.1, argb(0.9f, core)));
 	}
 
 	private static void chestBeam(ClientLevel level, AbstractClientPlayer p, float pt, long time, boolean self, List<Glow> glows) {
@@ -644,6 +657,59 @@ public final class EffectRenderer {
 				Vec3 a = c.add(rnd.nextGaussian() * 0.35, rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.35);
 				Vec3 b = a.add(rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.5);
 				glows.add(Glow.bolt(jagged(a, b, rnd, 0.12), 0.012, argb(0.9f, 0xCFE6FF)));
+			}
+		}
+	}
+
+	/** Black Adam: golden god-lightning, the zap that burns someone to the bones, sparks when he flies. */
+	private static void blackAdam(ClientLevel level, AbstractClientPlayer p, ActiveState state, float pt, long time, boolean self, List<Glow> glows) {
+		Random rnd = new Random(p.getId() * 131L + time * 7L);
+		Vec3[] hands = hands(p, pt, self);
+		Entity target = state.targetId() >= 0 ? level.getEntity(state.targetId()) : null;
+		if (state.has(ActiveState.HAND_BEAM)) {
+			Vec3 end = target != null ? chest(target, pt) : hit(level, p, p.getEyePosition(pt), p.getViewVector(pt), 64);
+			for (Vec3 h : hands) {
+				for (int k = 0; k < 3; k++) {
+					List<Vec3> pts = jagged(h, end, rnd, 0.45);
+					glows.add(Glow.bolt(pts, self ? 0.06 : 0.12, argb(0.35f, 0xF2C230)));
+					glows.add(Glow.bolt(pts, self ? 0.016 : 0.03, argb(0.95f, 0xFFFBE6)));
+				}
+				glows.add(Glow.sphere(h, self ? 0.1 : 0.2, argb(0.7f, 0xFFE27A)));
+			}
+			glows.add(Glow.sphere(end, 0.7, argb(0.4f, 0xF2C230)));
+			glows.add(Glow.sphere(end, 0.25, argb(0.95f, 0xFFFFFF)));
+		}
+		if (state.has(ActiveState.ZAP) && target != null) {
+			// both hands pour lightning into the victim; it glows from the inside
+			Vec3 c = chest(target, pt);
+			for (Vec3 h : hands) {
+				for (int k = 0; k < 3; k++) {
+					List<Vec3> pts = jagged(h, c.add(rnd.nextGaussian() * 0.2, rnd.nextGaussian() * 0.3, rnd.nextGaussian() * 0.2), rnd, 0.25);
+					glows.add(Glow.bolt(pts, 0.08, argb(0.4f, 0xF2C230)));
+					glows.add(Glow.bolt(pts, 0.02, argb(0.95f, 0xFFFFFF)));
+				}
+			}
+			float k = Math.min(1f, state.charge() > 0 ? 1f - state.charge() / (float) de.theboys.power.BlackAdam.ZAP_TICKS : 0f);
+			glows.add(Glow.sphere(c, target.getBbHeight() * (0.45 + 0.25 * k), argb(0.25f + 0.45f * k, 0xFFF2B0)));
+			for (int i = 0; i < 4; i++) {
+				Vec3 a = c.add(rnd.nextGaussian() * 0.3, rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.3);
+				glows.add(Glow.bolt(jagged(a, a.add(rnd.nextGaussian() * 0.8, rnd.nextGaussian() * 0.8, rnd.nextGaussian() * 0.8), rnd, 0.2), 0.02, argb(0.9f, 0xFFFBE6)));
+			}
+		}
+		if (!self && !p.isInvisible() && (state.has(ActiveState.FLYING) || state.has(ActiveState.HAND_BEAM) || state.has(ActiveState.ZAP))) {
+			// his eyes burn blue while his power is up, sparks run over his body
+			Vec3 eye = p.getEyePosition(pt);
+			Vec3 dir = p.getViewVector(pt);
+			Vec3 right = dir.cross(new Vec3(0, 1, 0));
+			right = right.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : right.normalize();
+			for (int side = -1; side <= 1; side += 2) {
+				glows.add(Glow.sphere(eye.add(right.scale(0.095 * side)).add(dir.scale(0.26)), 0.05, argb(0.95f, 0x7FC4FF)));
+			}
+			Vec3 c = chest(p, pt).add(0, -0.3, 0);
+			for (int i = 0; i < 4; i++) {
+				Vec3 a = c.add(rnd.nextGaussian() * 0.35, rnd.nextGaussian() * 0.55, rnd.nextGaussian() * 0.35);
+				Vec3 b = a.add(rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.5);
+				glows.add(Glow.bolt(jagged(a, b, rnd, 0.12), 0.015, argb(0.9f, 0xFFE27A)));
 			}
 		}
 	}

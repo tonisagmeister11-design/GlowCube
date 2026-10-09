@@ -54,7 +54,7 @@ public final class Homelander {
 		boolean firing = s.keyDown[0] && s.ready(0) && s.heat < MAX_HEAT;
 		if (firing) {
 			s.heat += 1;
-			laser(player, s, level);
+			laser(player, s, level, 6.0f, 30);
 			if (s.heat >= MAX_HEAT) {
 				s.cool(0, 80);
 				Supe.sound(level, player.getEyePosition(), SoundEvents.FIRE_EXTINGUISH, 1.0f, 0.8f);
@@ -100,7 +100,7 @@ public final class Homelander {
 		return s.heat * 1000 / MAX_HEAT;
 	}
 
-	private static void laser(ServerPlayer player, PlayerSession s, ServerLevel level) {
+	static void laser(ServerPlayer player, PlayerSession s, ServerLevel level, float damage, float maxHardness) {
 		Vec3 eye = player.getEyePosition();
 		Supe.Ray ray = Supe.ray(player, eye, 64);
 		if (player.tickCount % 6 == 0) {
@@ -111,14 +111,14 @@ public final class Homelander {
 		level.sendParticles(ParticleTypes.SMOKE, end.x, end.y, end.z, 1, 0.05, 0.05, 0.05, 0.01);
 		if (ray.entity() != null) {
 			if (player.tickCount % 3 == 0) {
-				Supe.hurt(player, ray.entity(), 6.0f);
+				Supe.hurt(player, ray.entity(), damage);
 				ray.entity().igniteForSeconds(4);
 				if (ray.entity() instanceof LivingEntity living && living.isDeadOrDying()) {
 					Supe.blood(level, end, 2.5f);
 				}
 			}
 		} else if (ray.block() != null) {
-			burn(player, s, level, ray.block());
+			burn(player, s, level, ray.block(), maxHardness);
 		}
 	}
 
@@ -154,13 +154,13 @@ public final class Homelander {
 	}
 
 	/** Heat vision slowly melts through the block it is aimed at and sets things on fire. */
-	private static void burn(ServerPlayer player, PlayerSession s, ServerLevel level, BlockPos pos) {
+	private static void burn(ServerPlayer player, PlayerSession s, ServerLevel level, BlockPos pos, float maxHardness) {
 		if (!pos.equals(s.burnPos)) {
 			if (s.burnPos != null) level.destroyBlockProgress(player.getId(), s.burnPos, -1);
 			s.burnPos = pos;
 			s.burnProgress = 0;
 		}
-		if (!Supe.breakable(level, pos, 30)) return;
+		if (!Supe.breakable(level, pos, maxHardness)) return;
 		float hardness = level.getBlockState(pos).getDestroySpeed(level, pos);
 		int needed = Math.max(3, (int) (hardness * 5));
 		s.burnProgress++;

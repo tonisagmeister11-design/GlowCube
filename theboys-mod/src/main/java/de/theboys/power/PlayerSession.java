@@ -104,6 +104,15 @@ public final class PlayerSession {
 	public Vec3 deepDash = Vec3.ZERO;
 	public final java.util.Set<Integer> dashHit = new java.util.HashSet<>();
 
+	// Black Adam
+	public int zapTicks;
+	public int bonesId = -1;
+	public int bonesTicks;
+	public final java.util.List<Integer> lifted = new java.util.ArrayList<>();
+	public final java.util.Map<Integer, Integer> thrown = new java.util.HashMap<>();
+	public int shazamCool;
+	public int stormCool;
+
 	// shared
 	public Vec3 lastPos;
 	public Vec3 motion = Vec3.ZERO;
