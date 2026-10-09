@@ -44,6 +44,7 @@ public final class EffectRenderer {
 	/** Where each tendril leg of a Cancer-Walking Butcher stands (per player id). */
 	private static final Map<Integer, Vec3[]> FEET = new HashMap<>();
 	private static final Map<Integer, ArrayDeque<Vec3>> TRAILS = new HashMap<>();
+	private static final Map<Integer, ArrayDeque<Vec3>> ADAM_TRAILS = new HashMap<>();
 
 	/** Which level render phase draws the effects (switchable for testing). */
 	public static int phase = 0;
@@ -89,6 +90,20 @@ public final class EffectRenderer {
 			}
 		}
 		TRAILS.keySet().removeIf(id -> level.getEntity(id) == null);
+		for (AbstractClientPlayer p : level.players()) {
+			boolean flying = PowerAttachments.powerOf(p) == Power.BLACK_ADAM && PowerAttachments.active(p).has(ActiveState.FLYING)
+					&& p.position().distanceToSqr(p.xo, p.yo, p.zo) > 0.04;
+			ArrayDeque<Vec3> trail = ADAM_TRAILS.get(p.getId());
+			if (flying) {
+				if (trail == null) ADAM_TRAILS.put(p.getId(), trail = new ArrayDeque<>());
+				trail.addFirst(p.position());
+				while (trail.size() > 14) trail.pollLast();
+			} else if (trail != null) {
+				trail.pollLast();
+				if (trail.isEmpty()) ADAM_TRAILS.remove(p.getId());
+			}
+		}
+		ADAM_TRAILS.keySet().removeIf(id -> level.getEntity(id) == null);
 	}
 
 	public static void render(LevelRenderContext context) {
@@ -195,13 +210,21 @@ public final class EffectRenderer {
 					}
 				}
 				case FxPayload.GOD_BOLT -> {
+					// a pillar of golden power: straight white-hot core, glowing shaft, spirals, an impact ring
 					float fade = Math.max(0f, 1 - age / fx.duration);
+					float grow = Math.min(1f, age / 1.5f);
 					Vec3 to = new Vec3(d.x2(), d.y2(), d.z2());
-					Random rnd = new Random(fx.hashCode() * 37L + fx.age);
+					Vec3 tip = at.add(to.subtract(at).scale(grow));
+					glows.add(Glow.beam(at, tip, 0.75 * fade, argb(0.12f * fade, 0xF2A23A)));
+					glows.add(Glow.beam(at, tip, 0.32, argb(0.4f * fade, 0xF2C230)));
+					glows.add(Glow.beam(at, tip, 0.1, argb(0.95f * fade, 0xFFFDF0)));
 					for (int k = 0; k < 2; k++) {
-						List<Vec3> pts = jagged(at, to, rnd, 0.5);
-						glows.add(Glow.bolt(pts, 0.16, argb(0.35f * fade, 0xF2C230)));
-						glows.add(Glow.bolt(pts, 0.04, argb(0.95f * fade, 0xFFFBE6)));
+						glows.add(Glow.bolt(helix(at, tip, 0.55, at.distanceTo(tip) / 3.0, age * 0.8 + k * Math.PI, 80), 0.04, argb(0.8f * fade, 0xFFE27A)));
+					}
+					if (grow >= 1f) {
+						double r = 0.6 + age * 0.45;
+						glows.add(Glow.ring(to.subtract(0, 0.6, 0), new Vec3(0, 1, 0), r, r + 0.35, argb(0.6f * fade, 0xF2C230)));
+						glows.add(Glow.sphere(to, 1.0 * fade + 0.3, argb(0.5f * fade, 0xFFF2B0)));
 					}
 				}
 				case FxPayload.LIGHT_STREAM -> {
@@ -661,55 +684,126 @@ public final class EffectRenderer {
 		}
 	}
 
-	/** Black Adam: golden god-lightning, the zap that burns someone to the bones, sparks when he flies. */
+	/** Points of a spiral winding around the line a -> b. */
+	private static List<Vec3> helix(Vec3 a, Vec3 b, double radius, double turns, double phase, int steps) {
+		Vec3 d = b.subtract(a);
+		Vec3[] uv = Geo.basis(d.lengthSqr() < 1.0E-4 ? new Vec3(0, 1, 0) : d);
+		List<Vec3> pts = new ArrayList<>();
+		for (int i = 0; i <= steps; i++) {
+			double u = i / (double) steps;
+			double ang = phase + u * turns * Math.PI * 2;
+			// thin at both ends, wide in the middle
+			double r = radius * (0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, u * 1.15)));
+			pts.add(a.add(d.scale(u)).add(uv[0].scale(Math.cos(ang) * r)).add(uv[1].scale(Math.sin(ang) * r)));
+		}
+		return pts;
+	}
+
+	/**
+	 * Black Adam's own look: a solid beam of golden power wrapped in spiralling energy with rings racing
+	 * along it, a cocoon of spirals around the one he burns, a comet trail when he flies and golden
+	 * threads to the blocks he lifts. Nothing like Stormfront's flickering arcs.
+	 */
 	private static void blackAdam(ClientLevel level, AbstractClientPlayer p, ActiveState state, float pt, long time, boolean self, List<Glow> glows) {
-		Random rnd = new Random(p.getId() * 131L + time * 7L);
+		double t = time + pt;
 		Vec3[] hands = hands(p, pt, self);
+		Vec3 palm = hands[0].add(hands[1]).scale(0.5);
 		Entity target = state.targetId() >= 0 ? level.getEntity(state.targetId()) : null;
 		if (state.has(ActiveState.HAND_BEAM)) {
 			Vec3 end = target != null ? chest(target, pt) : hit(level, p, p.getEyePosition(pt), p.getViewVector(pt), 64);
-			for (Vec3 h : hands) {
-				for (int k = 0; k < 3; k++) {
-					List<Vec3> pts = jagged(h, end, rnd, 0.45);
-					glows.add(Glow.bolt(pts, self ? 0.06 : 0.12, argb(0.35f, 0xF2C230)));
-					glows.add(Glow.bolt(pts, self ? 0.016 : 0.03, argb(0.95f, 0xFFFBE6)));
-				}
-				glows.add(Glow.sphere(h, self ? 0.1 : 0.2, argb(0.7f, 0xFFE27A)));
+			double pulse = 1 + 0.18 * Math.sin(t * 1.9);
+			double k = self ? 0.55 : 1.0;
+			for (Vec3 h : hands) glows.add(Glow.beam(h, palm, 0.07 * k, argb(0.8f, 0xFFE27A)));
+			glows.add(Glow.beam(palm, end, 0.55 * pulse * k, argb(0.12f, 0xF2A23A)));
+			glows.add(Glow.beam(palm, end, 0.26 * pulse * k, argb(0.35f, 0xF2C230)));
+			glows.add(Glow.beam(palm, end, 0.09 * k, argb(0.95f, 0xFFFDF0)));
+			for (int i = 0; i < 3; i++) {
+				List<Vec3> spiral = helix(palm, end, 0.42 * k, palm.distanceTo(end) / 2.2, t * 0.55 + i * Math.PI * 2 / 3, 90);
+				glows.add(Glow.bolt(spiral, 0.035 * k, argb(0.85f, i == 0 ? 0xFFFBE6 : 0xFFD06A)));
 			}
-			glows.add(Glow.sphere(end, 0.7, argb(0.4f, 0xF2C230)));
-			glows.add(Glow.sphere(end, 0.25, argb(0.95f, 0xFFFFFF)));
+			Vec3 dir = end.subtract(palm);
+			double len = dir.length();
+			if (len > 0.5) {
+				Vec3 n = dir.normalize();
+				for (int i = 0; i < 4; i++) {
+					// rings of power racing down the beam
+					double u = ((t * 0.09 + i / 4.0) % 1.0);
+					Vec3 c = palm.add(n.scale(u * len));
+					double r = (0.35 + 0.25 * Math.sin(u * Math.PI)) * k;
+					glows.add(Glow.ring(c, n, r, r + 0.08, argb(0.7f * (float) (1 - u * 0.5), 0xFFE27A)));
+				}
+			}
+			glows.add(Glow.sphere(palm, 0.32 * pulse * k, argb(0.75f, 0xFFF2B0)));
+			glows.add(Glow.sphere(end, 1.1 * pulse, argb(0.25f, 0xF2A23A)));
+			glows.add(Glow.sphere(end, 0.5, argb(0.8f, 0xFFFBE6)));
+			glows.add(Glow.ring(end, new Vec3(0, 1, 0), 1.0 + (t * 0.3) % 1.5, 1.2 + (t * 0.3) % 1.5, argb(0.5f, 0xF2C230)));
 		}
 		if (state.has(ActiveState.ZAP) && target != null) {
-			// both hands pour lightning into the victim; it glows from the inside
 			Vec3 c = chest(target, pt);
-			for (Vec3 h : hands) {
-				for (int k = 0; k < 3; k++) {
-					List<Vec3> pts = jagged(h, c.add(rnd.nextGaussian() * 0.2, rnd.nextGaussian() * 0.3, rnd.nextGaussian() * 0.2), rnd, 0.25);
-					glows.add(Glow.bolt(pts, 0.08, argb(0.4f, 0xF2C230)));
-					glows.add(Glow.bolt(pts, 0.02, argb(0.95f, 0xFFFFFF)));
-				}
+			float k = Math.min(1f, 1f - state.charge() / (float) de.theboys.power.BlackAdam.ZAP_TICKS);
+			double h = target.getBbHeight();
+			Vec3 feet = target.getPosition(pt);
+			for (Vec3 hd : hands) {
+				glows.add(Glow.beam(hd, c, 0.16, argb(0.35f, 0xF2C230)));
+				glows.add(Glow.beam(hd, c, 0.05, argb(0.95f, 0xFFFDF0)));
+				glows.add(Glow.bolt(helix(hd, c, 0.22, 3, t * 0.9, 30), 0.025, argb(0.9f, 0xFFE27A)));
 			}
-			float k = Math.min(1f, state.charge() > 0 ? 1f - state.charge() / (float) de.theboys.power.BlackAdam.ZAP_TICKS : 0f);
-			glows.add(Glow.sphere(c, target.getBbHeight() * (0.45 + 0.25 * k), argb(0.25f + 0.45f * k, 0xFFF2B0)));
+			// a cocoon of spirals that tightens and burns brighter until only bones are left
 			for (int i = 0; i < 4; i++) {
-				Vec3 a = c.add(rnd.nextGaussian() * 0.3, rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.3);
-				glows.add(Glow.bolt(jagged(a, a.add(rnd.nextGaussian() * 0.8, rnd.nextGaussian() * 0.8, rnd.nextGaussian() * 0.8), rnd, 0.2), 0.02, argb(0.9f, 0xFFFBE6)));
+				List<Vec3> coil = new ArrayList<>();
+				for (int j = 0; j <= 40; j++) {
+					double u = j / 40.0;
+					double ang = t * (0.5 + i * 0.12) + u * Math.PI * 6 + i * Math.PI / 2;
+					double r = (target.getBbWidth() * 0.75 + 0.25) * (1.0 - 0.35 * k);
+					coil.add(feet.add(Math.cos(ang) * r, u * h * 1.05, Math.sin(ang) * r));
+				}
+				glows.add(Glow.bolt(coil, 0.03, argb(0.85f, i % 2 == 0 ? 0xFFFBE6 : 0xF2C230)));
 			}
+			glows.add(Glow.sphere(c, h * (0.4 + 0.3 * k), argb(0.2f + 0.5f * k, 0xFFF2B0)));
+			glows.add(Glow.sphere(c, h * 0.2, argb(0.6f + 0.35f * k, 0xFFFFFF)));
+		}
+		if (state.has(ActiveState.HOLD) && !state.has(ActiveState.ZAP) && target != null) {
+			glows.add(Glow.sphere(chest(target, pt), target.getBbWidth() * 0.6, argb(0.12f, 0xF2C230)));
+		}
+		// golden threads to every block he holds in the air
+		for (Entity e : level.getEntitiesOfClass(net.minecraft.world.entity.item.FallingBlockEntity.class, p.getBoundingBox().inflate(8), fb -> fb.isNoGravity())) {
+			Vec3 b = e.getPosition(pt).add(0, 0.5, 0);
+			Vec3 from = self ? palm : p.getEyePosition(pt).add(0, 0.3, 0);
+			List<Vec3> wave = new ArrayList<>();
+			Vec3 d = b.subtract(from);
+			Vec3[] uv = Geo.basis(d.lengthSqr() < 1.0E-4 ? new Vec3(0, 1, 0) : d);
+			for (int j = 0; j <= 16; j++) {
+				double u = j / 16.0;
+				wave.add(from.add(d.scale(u)).add(uv[0].scale(Math.sin(u * 9 + t * 0.4 + e.getId()) * 0.12 * Math.sin(u * Math.PI))));
+			}
+			glows.add(Glow.bolt(wave, 0.02, argb(0.6f, 0xFFD06A)));
+			glows.add(Glow.sphere(b, 0.75, argb(0.1f, 0xF2C230)));
 		}
 		if (!self && !p.isInvisible() && (state.has(ActiveState.FLYING) || state.has(ActiveState.HAND_BEAM) || state.has(ActiveState.ZAP))) {
-			// his eyes burn blue while his power is up, sparks run over his body
+			// his eyes burn blue while his power is up
 			Vec3 eye = p.getEyePosition(pt);
 			Vec3 dir = p.getViewVector(pt);
 			Vec3 right = dir.cross(new Vec3(0, 1, 0));
 			right = right.lengthSqr() < 1.0E-4 ? new Vec3(1, 0, 0) : right.normalize();
 			for (int side = -1; side <= 1; side += 2) {
-				glows.add(Glow.sphere(eye.add(right.scale(0.095 * side)).add(dir.scale(0.26)), 0.05, argb(0.95f, 0x7FC4FF)));
+				Vec3 e = eye.add(right.scale(0.095 * side)).add(dir.scale(0.26));
+				glows.add(Glow.sphere(e, 0.05, argb(0.95f, 0x9FD4FF)));
+				glows.add(Glow.sphere(e, 0.12, argb(0.3f, 0x1A6BFF)));
 			}
-			Vec3 c = chest(p, pt).add(0, -0.3, 0);
-			for (int i = 0; i < 4; i++) {
-				Vec3 a = c.add(rnd.nextGaussian() * 0.35, rnd.nextGaussian() * 0.55, rnd.nextGaussian() * 0.35);
-				Vec3 b = a.add(rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.5, rnd.nextGaussian() * 0.5);
-				glows.add(Glow.bolt(jagged(a, b, rnd, 0.12), 0.015, argb(0.9f, 0xFFE27A)));
+			// a golden aura around him
+			double pulse = 1 + 0.05 * Math.sin(t * 0.4);
+			glows.add(Glow.sphere(chest(p, pt).add(0, -0.25, 0), 1.0 * pulse * p.getBbHeight() / 1.8, argb(0.06f, 0xF2C230)));
+		}
+		// comet trail behind him when he flies
+		ArrayDeque<Vec3> trail = ADAM_TRAILS.get(p.getId());
+		if (trail != null && trail.size() > 2 && !self) {
+			List<Vec3> pts = new ArrayList<>();
+			pts.add(chest(p, pt).add(0, -0.2, 0));
+			for (Vec3 q : trail) pts.add(q.add(0, 0.9, 0));
+			for (int i = 0; i + 1 < pts.size(); i++) {
+				float f = 1f - i / (float) pts.size();
+				glows.add(Glow.beam(pts.get(i), pts.get(i + 1), 0.45 * f, argb(0.12f * f, 0xF2A23A)));
+				glows.add(Glow.beam(pts.get(i), pts.get(i + 1), 0.16 * f, argb(0.45f * f, 0xFFD06A)));
 			}
 		}
 	}

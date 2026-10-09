@@ -177,15 +177,16 @@ public final class BlackAdam {
 		List<LivingEntity> near = Supe.livingAround(level, Supe.chest(hit), 9, player);
 		near.removeIf(e -> e == hit);
 		near.sort(Comparator.comparingDouble(e -> e.distanceToSqr(hit)));
-		Vec3 from = Supe.chest(hit);
 		for (int i = 0; i < Math.min(5, near.size()); i++) {
 			LivingEntity e = near.get(i);
 			Vec3 to = Supe.chest(e);
 			Supe.hurtNow(player, e, 5f);
 			e.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 20, 4), player);
-			ModNetworking.sendFx(level, from, new FxPayload(FxPayload.GOD_BOLT, player.getId(), (float) from.x, (float) from.y, (float) from.z,
-					(float) to.x, (float) to.y, (float) to.z));
-			from = to;
+			// every enemy near the target is struck by a pillar from the sky
+			if (player.tickCount % 6 == 0) {
+				ModNetworking.sendFx(level, to, new FxPayload(FxPayload.GOD_BOLT, player.getId(), (float) to.x, (float) to.y + 30, (float) to.z,
+						(float) to.x, (float) to.y, (float) to.z));
+			}
 		}
 		return hit.getId();
 	}
@@ -239,6 +240,8 @@ public final class BlackAdam {
 		for (int i = 0; i < Math.min(16, targets.size()); i++) {
 			LivingEntity e = targets.get(i);
 			bolt(player, level, e.position());
+			Vec3 c = Supe.chest(e);
+			ModNetworking.sendFx(level, c, new FxPayload(FxPayload.GOD_BOLT, player.getId(), (float) c.x, (float) c.y + 40, (float) c.z, (float) c.x, (float) c.y, (float) c.z));
 			Supe.hurtNow(player, e, 20f);
 			e.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 60, 5), player);
 		}

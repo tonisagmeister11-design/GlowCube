@@ -16,5 +16,6 @@ public abstract class AvatarRendererLayerMixin {
 	private void theboys$mouseParts(CallbackInfo ci) {
 		((LivingEntityRendererInvoker) (Object) this).theboys$addLayer(new MouseLayer((AvatarRenderer) (Object) this));
 		((LivingEntityRendererInvoker) (Object) this).theboys$addLayer(new de.theboys.client.render.KatanaLayer((AvatarRenderer) (Object) this));
+		((LivingEntityRendererInvoker) (Object) this).theboys$addLayer(new de.theboys.client.render.SuitPartsLayer((AvatarRenderer) (Object) this));
 	}
 }

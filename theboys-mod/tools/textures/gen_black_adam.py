@@ -5,8 +5,8 @@ from gen_skins import Box, mk_head, arm_edge, put, hline, rows
 from gen_misc import syringe
 from gen_extra import syringe_sheet
 
-K, K2, K3, HI = C("#2a2d33"), C("#383c44"), C("#464b54"), C("#5a606b")
-KD, KDD = C("#1d1f24"), C("#141519")
+K, K2, K3, HI = C("#141416"), C("#1f2024"), C("#2c2e34"), C("#3f424a")
+KD, KDD = C("#0d0d0f"), C("#070708")
 GOLD, GOLD_D, GOLD_L, GOLD_W = C("#f2a23a"), C("#b8641c"), C("#ffd06a"), C("#fff3c0")
 SKIN, SKIN_D, SKIN_L = C("#b47a52"), C("#93603c"), C("#cd9670")
 SIDES = ("front", "back", "left", "right")
