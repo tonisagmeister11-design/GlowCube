@@ -151,7 +151,13 @@ public final class BlackNoir {
 		if (t != 4 && t != 8 && t != 12) return;
 		swing(player, InteractionHand.MAIN_HAND);
 		Supe.sound(level, player.position(), SoundEvents.PLAYER_ATTACK_SWEEP, 1.2f, 1.3f + t * 0.03f);
-		if (target == null || !target.isAlive() || target.distanceTo(player) > 4.5) return;
+		if (target == null || !target.isAlive() || target.distanceTo(player) > 7) return;
+		// every cut is a lunge: he closes in on the target again
+		Vec3 to = target.position().subtract(player.position());
+		if (to.horizontalDistance() > 2.2) {
+			Vec3 dir = new Vec3(to.x, 0, to.z).normalize();
+			Supe.setVelocity(player, dir.scale(Math.min(1.6, (to.horizontalDistance() - 1.4) * 0.6)).add(0, 0.08, 0));
+		}
 		boolean last = t == 12;
 		Supe.hurt(player, target, last ? 10f : 7f);
 		Vec3 at = Supe.chest(target);
