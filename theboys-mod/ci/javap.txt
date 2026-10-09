@@ -18,3 +18,6 @@ net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket | <init>|pu
 -p net.minecraft.world.entity.LivingEntity | lastHurt|nvulnerab|ooldown|hurtTime
 -p net.minecraft.world.entity.Entity | nvulnerab
 -c net.minecraft.world.entity.LivingEntity | public boolean hurtServer
+net.minecraft.client.gui.components.ChatComponent | clear|Messages
+net.minecraft.client.gui.Gui | hat|Chat
+-p net.minecraft.client.gui.Gui | hat
