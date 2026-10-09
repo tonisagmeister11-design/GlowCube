@@ -1,7 +1,7 @@
 # The Boys – Fabric-Mod für Minecraft 26.3
 
 Compound V, Vought-Labore und die Kräfte von **Homelander**, **Soldier Boy**, **A-Train**,
-**Billy Butcher**, **Starlight**, **The Deep**, **Black Noir**, **Stormfront** und **MiniMaus** (Stand: Ende Staffel 5).
+**Billy Butcher**, **Starlight**, **The Deep**, **Black Noir**, **Stormfront**, **MiniMaus** und **Black Adam** (Stand: Ende Staffel 5).
 
 ## Installation
 
@@ -21,6 +21,8 @@ also bei allen Mitspielern).
   oder **Black Noir**.
 * **V-One** (viel seltener) gibt dir die Kräfte von **Homelander**, **Soldier Boy** oder **Stormfront**
   (Stormfront gibt es nur mit V-One).
+* **Shazam-Serum** (golden, extrem selten: etwa jeder 300. Kühlschrank, ganz selten in Laborkisten) macht dich zu
+  **Black Adam**, dem Gott im Spiel.
 * **Mini V** (rosa Spritze, etwa jeder zwölfte Kühlschrank und manche Laborkisten) macht dich zu **MiniMaus**.
 * Spritze in die Hand nehmen und **[V]** drücken (oder Rechtsklick halten). Du setzt dir die Spritze
   dann mit einer Animation in den Arm, in der Ego-Perspektive wie in der Third-Person-Ansicht.
@@ -153,6 +155,25 @@ Lippenstift und ein blauer Umhang mit rotem Futter (schlankes Modell).
   Gegner, den sie anvisiert hat.
 * **EMP-Nova (X):** Eine elektrische Entladung um sie herum. Blitzbögen treffen jeden in der Nähe, lähmen ihn
   und schleudern ihn weg.
+
+### Black Adam (nur Shazam-Serum)
+Glatze, dunkelgrauer Anzug mit glühendem goldenem Blitz in der Brust, dunkler Gürtel und Umhang. Er ist der Gott
+im Spiel: 40 zusätzliche Herzen, maximale Rüstung, enorme Kraft. Feuer, Blitze, Explosionen, Fallen, Ertrinken,
+Kälte, Ersticken in Blöcken und schlechte Effekte machen ihm nichts. Blitze heilen ihn sogar. Seine einzige Schwäche
+ist **Magie** (Tränke des Schadens, Hexen).
+* **Götterblitz (R halten):** Goldene Blitze aus beiden Händen, viel stärker als bei Stormfront. Sie springen auf
+  bis zu 5 weitere Gegner über und sprengen den Boden, wo sie einschlagen.
+* **Blaue Augenstrahlen (Schleichen + R halten):** Strahlen aus den Augen, die verbrennen und sich durch Blöcke fressen.
+* **Fliegen (G):** Der schnellste Flug von allen, und dabei fliegt er **durch Blöcke hindurch**, ohne sie zu
+  zerstören. Mit Funken am ganzen Körper und blau glühenden Augen.
+* **SHAZAM! (Schleichen + G):** Der magische Blitz schlägt in ihn ein. Er ist sofort wieder ganz geheilt, und die
+  Druckwelle schleudert alles im Umkreis weg.
+* **Telekinese (C):** Hebt einen ganzen Haufen Blöcke an der Stelle, auf die er schaut. Sie kreisen wie eine
+  Krone über ihm. Nochmal C schleudert sie dorthin, wohin er zielt, und sie zermalmen alles, was sie treffen.
+* **Packen (X):** Er packt den, der vor ihm steht (Mob oder Spieler), an der Kehle und hält ihn hoch. Drückt er
+  nochmal X, jagt er so viel Strom in ihn, dass am Ende **nur noch ein Skelett in seiner Hand** übrig ist. Wenn er
+  loslässt, zerfällt es zu Knochen.
+* **Blitzsturm (Schleichen + X):** Ein echter Blitz schlägt auf jeden Gegner im Umkreis von 30 Blöcken ein.
 
 ### MiniMaus (Mini V)
 Du wirst zu einer Maus: grauer Pelz, cremefarbener Bauch, rosa Pfoten, Schnurrhaare, Hasenzähne und ein
