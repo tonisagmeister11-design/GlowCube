@@ -157,7 +157,9 @@ Lippenstift und ein blauer Umhang mit rotem Futter (schlankes Modell).
   und schleudern ihn weg.
 
 ### Black Adam (nur Shazam-Serum)
-Glatze, dunkelgrauer Anzug mit glühendem goldenem Blitz in der Brust, dunkler Gürtel und Umhang. Er ist der Gott
+Glatze, schwarzer Anzug mit glühendem goldenem Blitz in der Brust, Kapuze, dunkler Gürtel und Umhang. Seine Kräfte sehen anders
+aus als alle anderen: ein massiver goldener Energiestrahl mit Spiralen und Energieringen, Blitzsäulen vom Himmel, ein goldener
+Kometenschweif beim Fliegen und goldene Energiefäden zu den Blöcken, die er hebt. Er ist der Gott
 im Spiel: 40 zusätzliche Herzen, maximale Rüstung, enorme Kraft. Feuer, Blitze, Explosionen, Fallen, Ertrinken,
 Kälte, Ersticken in Blöcken und schlechte Effekte machen ihm nichts. Blitze heilen ihn sogar. Seine einzige Schwäche
 ist **Magie** (Tränke des Schadens, Hexen).
@@ -197,6 +199,20 @@ Rennen hin und her schwingt.
   Du kannst Blöcke auch **aushöhlen und dich darin verstecken**: Knabber einen Tunnel hinein und eine Kammer
   aus, lauf hinein, und von außen sieht man nur den Block. Drinnen erstickst du nicht, und die Kamera schaut
   auch ganz nah an der Wand nicht durch die Pixel. Groß baust du ganz normal ganze Blöcke ab.
+
+## 3D-Anzüge
+
+Jeder Anzug hat Teile, die echt vom Körper abstehen und sich mit jeder Animation mitbewegen:
+- **Homelander:** goldene Adler-Epauletten mit Fransen, Adler auf der Brust und Gürtelschnalle
+- **Soldier Boy:** das Schild auf dem Rücken, Taschen am Gürtel
+- **A-Train:** die Brille mit leuchtend blauen Gläsern, Geschwindigkeitsflossen und Knieschoner
+- **Butcher:** hochgestellter Mantelkragen, Revers und lange Mantelschöße
+- **Starlight:** der leuchtende Silberstern, lange blonde Haare und Schulterstücke
+- **The Deep:** Flossen an den Unterarmen und am Rücken, Kiemen an den Seiten
+- **Black Noir:** Helmvisier mit Linsen, Ohrstücke, Panzerplatten und das Katana
+- **Stormfront:** Bob-Frisur mit Volumen, Epauletten und der goldene Blitz
+- **Black Adam:** die Kapuze, der glühende Blitz in der Brust (er strahlt heller, wenn er seine Kraft benutzt),
+  mehrlagiger Gürtel und Armschienen
 
 ## Animationen
 
