@@ -15,3 +15,6 @@ net.minecraft.network.protocol.game.ClientboundAnimatePacket
 net.minecraft.server.level.ServerChunkCache | broadcast
 net.minecraft.world.entity.EntityType | builtInRegistryHolder| is\(
 net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket | <init>|public
+-p net.minecraft.world.entity.LivingEntity | lastHurt|nvulnerab|ooldown|hurtTime
+-p net.minecraft.world.entity.Entity | nvulnerab
+-c net.minecraft.world.entity.LivingEntity | public boolean hurtServer
