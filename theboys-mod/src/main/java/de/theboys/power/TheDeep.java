@@ -149,7 +149,6 @@ public final class TheDeep {
 				d.setPos(at);
 				d.setYRot(player.getYRot());
 				d.setNoAi(true);
-				d.setInvulnerable(true);
 				level.addFreshEntity(d);
 				s.dolphins.put(d.getId(), 0);
 				level.sendParticles(ParticleTypes.SPLASH, at.x, at.y, at.z, 30, 0.4, 0.4, 0.4, 0.2);

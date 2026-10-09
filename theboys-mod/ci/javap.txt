@@ -10,3 +10,7 @@ net.minecraft.tags.EntityTypeTags | UNDEAD
 net.minecraft.core.particles.ParticleTypes | FLASH|ELECTRIC|SPLASH|BUBBLE|SQUID|SMOKE|SWEEP|FALLING_WATER|END_ROD
 net.fabricmc.fabric.api.message.v1.ServerMessageEvents
 net.minecraft.world.entity.Mob | setNoAi|setTarget
+net.minecraft.world.item.component.SwingAnimation
+net.minecraft.network.protocol.game.ClientboundAnimatePacket
+net.minecraft.server.level.ServerChunkCache | broadcast
+net.minecraft.world.entity.EntityType | builtInRegistryHolder| is\(

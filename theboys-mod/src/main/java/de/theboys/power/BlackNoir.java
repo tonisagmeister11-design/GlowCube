@@ -150,7 +150,7 @@ public final class BlackNoir {
 		int t = COMBO_TICKS - s.comboTicks--;
 		Entity target = s.comboTarget >= 0 ? level.getEntity(s.comboTarget) : null;
 		if (t != 4 && t != 8 && t != 12) return;
-		player.swing(InteractionHand.MAIN_HAND, true);
+		swing(player, InteractionHand.MAIN_HAND);
 		Supe.sound(level, player.position(), SoundEvents.PLAYER_ATTACK_SWEEP, 1.2f, 1.3f + t * 0.03f);
 		if (target == null || !target.isAlive() || target.distanceTo(player) > 4.5) return;
 		boolean last = t == 12;
@@ -233,7 +233,7 @@ public final class BlackNoir {
 		s.cool(3, 80);
 		ServerLevel level = player.level();
 		Vec3 eye = player.getEyePosition();
-		player.swing(InteractionHand.OFF_HAND, true);
+		swing(player, InteractionHand.OFF_HAND);
 		for (int i = -1; i <= 1; i++) {
 			Vec3 dir = Vec3.directionFromRotation(player.getXRot(), player.getYRot() + i * 6f);
 			Vec3 end = eye.add(dir.scale(32));
@@ -259,6 +259,13 @@ public final class BlackNoir {
 					(float) stop.x, (float) stop.y, (float) stop.z));
 		}
 		Supe.sound(level, eye, SoundEvents.TRIDENT_THROW, 1.0f, 1.8f);
+	}
+
+	/** Plays the arm swing for everyone, him included (so the fight animation and slash trail show up). */
+	private static void swing(ServerPlayer player, InteractionHand hand) {
+		player.level().getChunkSource().broadcastAndSend(player, new net.minecraft.network.protocol.game.ClientboundAnimatePacket(player,
+				hand == InteractionHand.MAIN_HAND ? net.minecraft.network.protocol.game.ClientboundAnimatePacket.SWING_MAIN_HAND
+						: net.minecraft.network.protocol.game.ClientboundAnimatePacket.SWING_OFF_HAND));
 	}
 
 	static void stop(ServerPlayer player, PlayerSession s) {

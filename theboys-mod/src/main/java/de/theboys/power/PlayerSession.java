@@ -79,7 +79,6 @@ public final class PlayerSession {
 
 	// Stormfront
 	public int strikeBolts;
-	public int strikeDelay;
 	public int strikeTarget = -1;
 	public Vec3 strikeAt;
 

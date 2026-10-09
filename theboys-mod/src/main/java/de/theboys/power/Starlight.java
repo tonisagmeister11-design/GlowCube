@@ -120,7 +120,7 @@ public final class Starlight {
 			Supe.push(ray.entity(), player.getLookAngle().scale(0.35).add(0, 0.08, 0));
 			if (ray.entity() instanceof LivingEntity living) {
 				living.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 30, 0), player);
-				if (living.getType().is(EntityTypeTags.UNDEAD)) living.igniteForSeconds(3);
+				if (living.getType().builtInRegistryHolder().is(EntityTypeTags.UNDEAD)) living.igniteForSeconds(3);
 				if (living.isDeadOrDying()) Supe.blood(level, end, 1.5f);
 			}
 		}
@@ -148,7 +148,7 @@ public final class Starlight {
 			e.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 80, 2), player);
 			e.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 120, 1), player);
 			e.addEffect(new MobEffectInstance(MobEffects.GLOWING, 120, 0), player);
-			boolean undead = e.getType().is(EntityTypeTags.UNDEAD);
+			boolean undead = e.getType().builtInRegistryHolder().is(EntityTypeTags.UNDEAD);
 			Supe.hurt(player, e, (undead ? 10f : 3f) + 4f * k);
 			if (undead) e.igniteForSeconds(5);
 		}
