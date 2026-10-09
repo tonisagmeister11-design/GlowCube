@@ -335,10 +335,6 @@ def the_deep():
     # swept back: the overlay hair is combed backwards, a wet shine on top
     for x in range(8):
         px(ho.f["top"], x, 1, C("#7a583e") if x % 3 == 0 else C("#4a3324"))
-    # stubble
-    f = hb.f["front"]
-    for (x, y) in ((1, 6), (2, 7), (5, 7), (6, 6), (3, 7), (4, 7)):
-        px(f, x, y, C("#b58c6c"))
     hb.place(img, 0, 0); ho.place(img, 32, 0)
 
     # ---- body: teal scale suit, gold emblem, gills on the flanks

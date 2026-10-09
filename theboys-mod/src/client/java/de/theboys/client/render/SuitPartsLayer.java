@@ -198,11 +198,6 @@ public class SuitPartsLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		legs(at, -2.3f, 11.2f, -2.7f, 2.3f, 12.1f, 2.3f, 0xF2F6FB);
 		box(at, BODY, -1.4f, 7.9f, -2.4f, 1.4f, 10.2f, -2.05f, 0xF2F6FB);
 
-		box(bu, HEAD, -4.3f, -1.1f, -4.55f, 4.3f, 0.4f, -4.0f, 0x1C1613);
-		box(bu, HEAD, -4.3f, -3.0f, -4.4f, -1.8f, -1.1f, -4.0f, 0x1C1613);
-		box(bu, HEAD, 1.8f, -3.0f, -4.4f, 4.3f, -1.1f, -4.0f, 0x1C1613);
-		box(bu, HEAD, -4.4f, -3.6f, -4.3f, -4.0f, 0.2f, 0.0f, 0x1C1613);
-		box(bu, HEAD, 4.0f, -3.6f, -4.3f, 4.4f, 0.2f, 0.0f, 0x1C1613);
 		legs(bu, -2.35f, 10.0f, -2.45f, 2.35f, 12.05f, 2.35f, 0x101113);
 
 		box(sl, BODY, -4.25f, 7.8f, -2.25f, 4.25f, 8.8f, 2.25f, 0x8FB4D9);
@@ -229,6 +224,15 @@ public class SuitPartsLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		legs(ba, -2.35f, 4.4f, -2.6f, 2.35f, 6.4f, -2.0f, 0x1A1B1F);
 		legs(ba, -2.3f, 8.0f, -2.3f, 2.3f, 8.8f, 2.3f, 0x1A1B1F);
 		box(ba, BODY, -4.3f, 0.6f, -0.8f, 4.3f, 1.8f, 2.6f, 0x0E0E10);
+
+		// a nose that really sticks out of every face (a pixel and a half), with a darker tip
+		int[][] noses = {{0xEBC0A0, 0xCF9F82}, {0xD9A581, 0xBD8A68}, {0x80502F, 0x633A21}, {0xE4BDA3, 0xC99F86}, {0xF2D2BD, 0xDCB59D},
+				{0xF0CDB4, 0xD6AD93}, {0xE2B896, 0xC69A78}, {0x7A4A30, 0x5F3822}};
+		Power[] faces = {Power.HOMELANDER, Power.SOLDIER_BOY, Power.A_TRAIN, Power.BUTCHER, Power.STARLIGHT, Power.STORMFRONT, Power.THE_DEEP, Power.BLACK_ADAM};
+		for (int i = 0; i < faces.length; i++) {
+			box(faces[i], HEAD, -0.9f, -3.3f, -5.4f, 0.9f, -2.1f, -4.0f, noses[i][0]);
+			box(faces[i], HEAD, -0.9f, -2.5f, -5.6f, 0.9f, -2.0f, -4.0f, noses[i][1]);
+		}
 
 		Power mm = Power.MINIMAUS;
 		box(mm, HEAD, -0.7f, -3.3f, -4.7f, 0.7f, -2.4f, -4.0f, 0xF2A2B4);

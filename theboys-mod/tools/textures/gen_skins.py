@@ -254,7 +254,7 @@ def soldier_boy():
     img = new(64, 64)
     hb, ho = mk_head(dict(skin="#d9a581", skin_d="#bd8a68", hair="#5e3d25", hair_d="#44291a",
                           hair_l="#82583a", eye="#6f8696", brow="#3a2315", brow_low=True,
-                          beard="#4a2f1d", beard_d="#35200f", beard_full=True, mouth="#8f4a45",
+                          mouth="#8f4a45",
                           back_rows=6, front_h=[2, 3, 2, 1, 1, 2, 3, 2], side_h=[1, 2, 3, 4, 5, 5, 6, 6],
                           ov=dict(back=7, side=[0, 1, 2, 3, 3, 4, 5, 5], front=[1, 2, 1, 0, 0, 1, 2, 1])))
     hb.place(img, 0, 0); ho.place(img, 32, 0)
@@ -420,7 +420,7 @@ def butcher():
     img = new(64, 64)
     hb, ho = mk_head(dict(skin="#e4bda3", skin_d="#c99f86", hair="#171413", hair_d="#0d0b0a",
                           hair_l="#2c2523", eye="#5b6e7c", brow="#0d0b0a", brow_low=True,
-                          beard="#1c1613", beard_d="#0e0b0a", beard_full=True, mouth="#6a3836",
+                          mouth="#6a3836",
                           back_rows=6, front_h=[2, 1, 1, 1, 1, 1, 1, 2], side_h=[1, 2, 3, 3, 4, 5, 6, 6],
                           ov=dict(back=7, side=[0, 0, 1, 3, 3, 4, 5, 5], front=[0, 0, 0, 1, 1, 0, 0, 0])))
     hb.place(img, 0, 0); ho.place(img, 32, 0)
