@@ -8,7 +8,7 @@ from gen_extra import syringe_sheet
 K, K2, K3, HI = C("#141416"), C("#1f2024"), C("#2c2e34"), C("#3f424a")
 KD, KDD = C("#0d0d0f"), C("#070708")
 GOLD, GOLD_D, GOLD_L, GOLD_W = C("#f2a23a"), C("#b8641c"), C("#ffd06a"), C("#fff3c0")
-SKIN, SKIN_D, SKIN_L = C("#b47a52"), C("#93603c"), C("#cd9670")
+SKIN, SKIN_D, SKIN_L = C("#7a4a30"), C("#5f3822"), C("#946045")
 SIDES = ("front", "back", "left", "right")
 
 
@@ -25,7 +25,7 @@ def suit(box, seed, faces=("top", "bottom") + SIDES):
 def skin():
     img = new(64, 64)
     # bald: the "hair" is skin, with a shine on top
-    hb, ho = mk_head(dict(skin="#b47a52", skin_d="#93603c", hair="#b07650", hair_d="#a86f4b", hair_l="#b8805a",
+    hb, ho = mk_head(dict(skin="#7a4a30", skin_d="#5f3822", hair="#764730", hair_d="#6e422c", hair_l="#8a5a3e",
                           eye="#2a1a10", brow="#3a2418", mouth="#7a4434", brow_low=True,
                           back_rows=8, front_h=[0] * 8, side_h=[0] * 8,
                           ov=dict(back=0, side=[0] * 8, front=[0] * 8)))

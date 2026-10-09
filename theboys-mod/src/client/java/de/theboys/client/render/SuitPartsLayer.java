@@ -183,6 +183,59 @@ public class SuitPartsLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		arms(ba, -3.5f, 5.6f, -2.5f, 1.5f, 9.4f, 2.5f, 0x0E0E10);
 		arms(ba, -3.65f, 6.4f, -1.5f, -3.3f, 8.8f, 1.5f, 0x2A2C31);
 		arms(ba, -3.6f, -2.5f, -2.6f, 1.4f, -1.2f, 2.6f, 0x1A1B1F);
+
+		// ---------------------------------------------------------- more relief on every suit
+		arms(hl, -3.3f, 7.6f, -2.3f, 1.3f, 8.6f, 2.3f, 0x741420);
+		legs(hl, -2.3f, 8.6f, -2.3f, 2.3f, 9.4f, 2.3f, 0x503030);
+		box(hl, BODY, -4.25f, 9.0f, -2.25f, 4.25f, 10.2f, 2.25f, 0xC9962A);
+
+		legs(sb, -2.3f, 8.8f, -2.3f, 2.3f, 9.5f, 2.3f, 0x17181B);
+		arms(sb, -3.3f, 8.8f, -2.3f, 1.3f, 9.6f, 2.3f, 0x17181B);
+		box(sb, BODY, -0.5f, 1.4f, -2.35f, 0.5f, 2.6f, -2.05f, 0xC0C4C8);
+		box(sb, BODY, -4.25f, 9.0f, -2.25f, 4.25f, 10.4f, 2.25f, 0x17181B);
+
+		arms(at, -3.3f, 6.0f, -2.3f, 1.3f, 7.2f, 2.3f, 0x16171A);
+		legs(at, -2.3f, 11.2f, -2.7f, 2.3f, 12.1f, 2.3f, 0xF2F6FB);
+		box(at, BODY, -1.4f, 7.9f, -2.4f, 1.4f, 10.2f, -2.05f, 0xF2F6FB);
+
+		box(bu, HEAD, -4.3f, -3.2f, -4.6f, 4.3f, 0.3f, -4.0f, 0x1C1613);
+		box(bu, HEAD, -4.4f, -3.6f, -4.3f, -4.0f, 0.2f, 0.0f, 0x1C1613);
+		box(bu, HEAD, 4.0f, -3.6f, -4.3f, 4.4f, 0.2f, 0.0f, 0x1C1613);
+		legs(bu, -2.35f, 10.0f, -2.45f, 2.35f, 12.05f, 2.35f, 0x101113);
+
+		box(sl, BODY, -4.25f, 7.8f, -2.25f, 4.25f, 8.8f, 2.25f, 0x8FB4D9);
+		legs(sl, -2.3f, 5.8f, -2.3f, 2.3f, 6.8f, 2.3f, 0xFFFFFF);
+		box(sl, BODY, -0.6f, 7.7f, -2.5f, 0.6f, 8.9f, -2.2f, 0xE8C46A);
+
+		box(dp, BODY, -1.0f, 7.8f, -2.6f, 1.0f, 9.2f, -2.05f, 0xECC96E);
+		legs(dp, -2.3f, 7.8f, -2.3f, 2.3f, 8.6f, 2.3f, 0xC9A24A);
+		arms(dp, -3.3f, 8.6f, -2.3f, 1.3f, 9.4f, 2.3f, 0x123F44);
+
+		box(bn, BODY, -4.3f, 8.0f, -2.4f, 4.3f, 9.0f, 2.4f, 0x1E1F23);
+		box(bn, BODY, -3.6f, 8.4f, -2.85f, -2.0f, 10.2f, -2.3f, 0x2B2C32);
+		box(bn, BODY, 2.0f, 8.4f, -2.85f, 3.6f, 10.2f, -2.3f, 0x2B2C32);
+		arms(bn, -3.45f, 4.2f, -1.2f, -3.0f, 6.2f, 1.2f, 0x2B2C32);
+		arms(bn, -3.3f, 8.0f, -2.3f, 1.3f, 8.8f, 2.3f, 0x1E1F23);
+
+		arms(sf, -3.3f, 7.6f, -2.3f, 1.3f, 8.4f, 2.3f, 0xB3212B);
+		box(sf, BODY, -4.25f, 7.8f, -2.25f, 4.25f, 8.7f, 2.25f, 0x0B0C10);
+		legs(sf, -2.35f, 5.6f, -2.35f, 2.35f, 6.4f, 2.35f, 0xB3212B);
+
+		// Black Adam's eyes always burn blue
+		glow(ba, HEAD, -2.9f, -4.0f, -4.25f, -1.1f, -3.1f, -4.0f, 0x7FC4FF);
+		glow(ba, HEAD, 1.1f, -4.0f, -4.25f, 2.9f, -3.1f, -4.0f, 0x7FC4FF);
+		legs(ba, -2.35f, 4.4f, -2.6f, 2.35f, 6.4f, -2.0f, 0x1A1B1F);
+		legs(ba, -2.3f, 8.0f, -2.3f, 2.3f, 8.8f, 2.3f, 0x1A1B1F);
+		box(ba, BODY, -4.3f, 0.6f, -0.8f, 4.3f, 1.8f, 2.6f, 0x0E0E10);
+
+		Power mm = Power.MINIMAUS;
+		box(mm, HEAD, -0.7f, -3.3f, -4.7f, 0.7f, -2.4f, -4.0f, 0xF2A2B4);
+		box(mm, HEAD, -0.7f, -1.2f, -4.45f, 0.7f, -0.2f, -4.0f, 0xFBFBF4);
+		for (int i = 0; i < 2; i++) {
+			box(mm, HEAD, -7.0f, -2.9f + i * 1.2f, -4.25f, -4.0f, -2.75f + i * 1.2f, -4.1f, 0x4C4E55);
+			box(mm, HEAD, 4.0f, -2.9f + i * 1.2f, -4.25f, 7.0f, -2.75f + i * 1.2f, -4.1f, 0x4C4E55);
+		}
+		box(mm, BODY, -1.1f, 7.6f, -2.6f, 1.1f, 9.3f, -2.05f, 0xF2C230);
 	}
 
 	public SuitPartsLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
@@ -227,7 +280,7 @@ public class SuitPartsLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 				float hx = (x1 - x0) / 32f, hy = (p.y1() - p.y0()) / 32f, hz = (p.z1() - p.z0()) / 32f;
 				int color = 0xFF000000 | p.color();
 				int l = p.glow() ? FULL_BRIGHT : light;
-				if (p.glow() && charged) color = 0xFFFFF6D0;
+				if (p.glow() && charged) color = p.color() == 0x7FC4FF ? 0xFFE6F4FF : 0xFFFFF6D0;
 				int c = color;
 				collector.submitCustomGeometry(poseStack, RenderTypes.entityCutout(WHITE), (pose, buffer) -> cube(buffer, pose, hx, hy, hz, c, l));
 				poseStack.popPose();

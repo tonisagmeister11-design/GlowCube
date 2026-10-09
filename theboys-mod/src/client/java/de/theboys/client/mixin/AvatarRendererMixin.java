@@ -28,17 +28,8 @@ public abstract class AvatarRendererMixin<AvatarlikeEntity extends Avatar & Clie
 		if (power == Power.NONE || !data.suit()) {
 			return;
 		}
-		Identifier id = TheBoys.id("suit/" + power.id());
-		ClientAsset.ResourceTexture body = new ClientAsset.ResourceTexture(id, TheBoys.id("textures/entity/suit/" + power.id() + ".png"));
-		ClientAsset.Texture cape = state.skin.cape();
-		if (power == Power.HOMELANDER || power == Power.STORMFRONT || power == Power.STARLIGHT || power == Power.BLACK_ADAM) {
-			String name = power.id() + "_cape";
-			cape = new ClientAsset.ResourceTexture(TheBoys.id(name), TheBoys.id("textures/entity/" + name + ".png"));
-			state.showCape = true;
-		}
-		// the women of the Seven get the slim model
-		PlayerModelType model = power == Power.STARLIGHT || power == Power.STORMFRONT ? PlayerModelType.SLIM : PlayerModelType.WIDE;
-		state.skin = new PlayerSkin(body, cape, state.skin.elytra(), model, true);
+		state.skin = de.theboys.client.render.SuitSkins.suit(data, state.skin);
+		if (de.theboys.client.render.SuitSkins.hasCape(power)) state.showCape = true;
 		state.showHat = true;
 		state.showJacket = true;
 		state.showLeftSleeve = true;

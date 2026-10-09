@@ -1434,6 +1434,13 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					sideView(ctx, server, -0.6, -58.6, -1.1, -34, 16);
 					ctx.waitTicks(2);
 					ctx.takeScreenshot("closeup_" + p.id() + "_back");
+					if (p == Power.BLACK_ADAM || p == Power.HOMELANDER) {
+						// first person: the hand must wear the suit too
+						de.theboys.client.ClientState.cameraOverride = null;
+						ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+						ctx.waitTicks(3);
+						ctx.takeScreenshot("hand_" + p.id());
+					}
 				}
 				de.theboys.client.ClientState.hideHud = false;
 				playerView(ctx, server);
