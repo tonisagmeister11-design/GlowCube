@@ -1,5 +1,8 @@
 package de.theboys.client;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import de.theboys.TheBoys;
 import de.theboys.net.StatusPayload;
 import de.theboys.power.ActiveState;
@@ -39,12 +42,25 @@ public final class HudOverlay {
 		ActiveState active = PowerAttachments.active(player);
 		StatusPayload status = ClientState.status;
 
-		// --- ability panel on the right
-		int panelW = 132;
+		// --- ability panel on the right: long names (and "Sneak + ..." parts) wrap instead of running off the screen
+		int panelW = Math.min(176, w / 2 - 10);
 		int x = w - panelW - 6;
-		int y = h / 2 - 52;
-		g.fill(x - 4, y - 4, x + panelW, y + 98, 0x88000000);
-		g.fill(x - 4, y - 4, x - 2, y + 98, 0xFF000000 | power.color());
+		int textW = panelW - 18 - 40;
+		List<List<String>> lines = new ArrayList<>();
+		int rows = 0;
+		for (int i = 0; i < 4; i++) {
+			List<String> l = wrap(font, Component.translatable(power.abilityKey(i)).getString(), textW);
+			lines.add(l);
+			rows += 5 + 10 * Math.max(1, l.size()) + (l.size() > 1 ? 0 : 0);
+		}
+		boolean hasMeter = switch (power) {
+			case HOMELANDER, SOLDIER_BOY, BUTCHER, STARLIGHT, STORMFRONT, THE_DEEP, BLACK_ADAM -> true;
+			default -> false;
+		};
+		int height = 22 + rows + (hasMeter ? 22 : 0) + 4;
+		int y = Math.max(8, h / 2 - height / 2);
+		g.fill(x - 4, y - 4, x + panelW, y + height, 0x88000000);
+		g.fill(x - 4, y - 4, x - 2, y + height, 0xFF000000 | power.color());
 		Identifier icon = TheBoys.id("textures/gui/power/" + power.id() + ".png");
 		g.blit(RenderPipelines.GUI_TEXTURED, icon, x, y, 0f, 0f, 16, 16, 16, 16);
 		g.text(font, Component.translatable(power.translationKey()), x + 20, y + 4, 0xFF000000 | power.color(), true);
@@ -54,17 +70,21 @@ public final class HudOverlay {
 			int remaining = StatusPayload.remaining(packed);
 			int total = Math.max(1, StatusPayload.total(packed));
 			boolean ready = remaining == 0;
+			List<String> l = lines.get(i);
+			int rowH = 5 + 10 * Math.max(1, l.size());
 			Component key = Keys.ABILITY[i].getTranslatedKeyMessage();
-			g.fill(x, y, x + 14, y + 12, ready ? 0xCC2E7D32 : 0xCC5A1A1A);
-			g.centeredText(font, key, x + 7, y + 2, 0xFFFFFFFF);
-			g.text(font, Component.translatable(power.abilityKey(i)), x + 18, y + 2, ready ? 0xFFFFFFFF : 0xFF9A9A9A, true);
+			g.fill(x, y, x + 14, y + rowH - 3, ready ? 0xCC2E7D32 : 0xCC5A1A1A);
+			g.centeredText(font, key, x + 7, y + (rowH - 3) / 2 - 3, 0xFFFFFFFF);
+			for (int k = 0; k < l.size(); k++) {
+				g.text(font, l.get(k), x + 18, y + 2 + 10 * k, ready ? 0xFFFFFFFF : 0xFF9A9A9A, true);
+			}
 			if (!ready) {
 				int barW = (int) ((panelW - 22) * (remaining / (float) total));
-				g.fill(x + 18, y + 11, x + 18 + barW, y + 12, 0xFFE53935);
+				g.fill(x + 18, y + rowH - 4, x + 18 + barW, y + rowH - 3, 0xFFE53935);
 				String secs = String.format("%.1fs", remaining / 20f);
 				g.text(font, secs, x + panelW - 6 - font.width(secs), y + 2, 0xFFE57373, true);
 			}
-			y += 15;
+			y += rowH;
 		}
 
 		// meter
@@ -96,6 +116,29 @@ public final class HudOverlay {
 		if (power == Power.A_TRAIN && (active.has(ActiveState.SPEED) || ClientState.speedKmh > 20)) {
 			speedometer(g, font, w, h, active);
 		}
+	}
+
+	/** Breaks text into lines no wider than maxW, at spaces (a single too-long word is cut). */
+	private static List<String> wrap(Font font, String text, int maxW) {
+		List<String> out = new ArrayList<>();
+		StringBuilder cur = new StringBuilder();
+		for (String word : text.split(" ")) {
+			String test = cur.length() == 0 ? word : cur + " " + word;
+			if (font.width(test) <= maxW) {
+				cur = new StringBuilder(test);
+				continue;
+			}
+			if (cur.length() > 0) out.add(cur.toString());
+			cur = new StringBuilder(word);
+			while (font.width(cur.toString()) > maxW && cur.length() > 1) {
+				int cut = cur.length() - 1;
+				while (cut > 1 && font.width(cur.substring(0, cut)) > maxW) cut--;
+				out.add(cur.substring(0, cut));
+				cur = new StringBuilder(cur.substring(cut));
+			}
+		}
+		if (cur.length() > 0) out.add(cur.toString());
+		return out;
 	}
 
 	private static void speedometer(GuiGraphicsExtractor g, Font font, int w, int h, ActiveState active) {
