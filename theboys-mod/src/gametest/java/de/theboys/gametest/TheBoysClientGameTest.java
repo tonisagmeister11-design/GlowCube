@@ -125,6 +125,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 					Power.STARLIGHT, Power.STORMFRONT, Power.THE_DEEP, Power.BLACK_NOIR}) {
 				step(ctx, "suit_" + p.id(), () -> {
 					server.runCommand("theboys power set @a " + p.id());
+					clearChat(ctx);
 					ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
 					ctx.waitTicks(8);
 					ctx.takeScreenshot("suit_" + p.id());
@@ -1355,7 +1356,13 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 		server.runCommand("time set noon");
 		server.runCommand("weather clear");
 		server.runCommand("tp @a 0.5 -60 0.5 0 0");
+		clearChat(ctx);
 		ctx.waitTicks(15);
+	}
+
+	/** Old chat lines (the injection message of an earlier step) would show the wrong hero in the screenshots. */
+	private static void clearChat(ClientGameTestContext ctx) {
+		ctx.runOnClient(mc -> mc.gui.getChat().clearMessages(true));
 	}
 
 	private static void husk(net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, double x, double z, String tag) {
