@@ -61,7 +61,10 @@ public final class BlackAdam {
 		if (!pressed) return;
 		boolean sneak = player.isShiftKeyDown();
 		switch (slot) {
-			case 0 -> Supe.sound(player.level(), player.getEyePosition(), sneak ? SoundEvents.BEACON_ACTIVATE : SoundEvents.TRIDENT_THUNDER, 0.8f, 1.6f);
+			case 0 -> {
+				if (sneak) Supe.sound(player.level(), player.getEyePosition(), SoundEvents.BEACON_ACTIVATE, 0.8f, 1.6f);
+				else Supe.sound(player.level(), player.getEyePosition(), SoundEvents.TRIDENT_THUNDER, 0.8f, 1.6f);
+			}
 			case 1 -> {
 				if (sneak) shazam(player, s);
 				else {
