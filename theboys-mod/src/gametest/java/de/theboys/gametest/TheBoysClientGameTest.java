@@ -1318,6 +1318,30 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				if (bones < 1) problems.add("skeleton did not crumble");
 				playerView(ctx, server);
 				server.runCommand("kill @e[type=!player]");
+				// grabbing from afar, a little beside the crosshair: he pulls the victim in
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				server.runCommand("summon minecraft:zombie 3.5 -60 18.5 {NoAI:1b,Silent:1b}");
+				ctx.waitTicks(10);
+				ctx.getInput().lookAt(0, 0);
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(4);
+				int heldFar = server.computeOnServer(s -> de.theboys.power.PowerManager.session(s.getPlayerList().getPlayers().get(0)).heldId);
+				ctx.waitTicks(30);
+				double pulled = server.computeOnServer(s -> {
+					var pl = s.getPlayerList().getPlayers().get(0);
+					double best = 999;
+					for (var e : s.overworld().getAllEntities()) {
+						if (e.getType() == net.minecraft.world.entity.EntityTypes.ZOMBIE) best = Math.min(best, e.distanceTo(pl));
+					}
+					return best;
+				});
+				LOG.info("adam far grab: held={} zombie distance after pull={}", heldFar, pulled);
+				if (heldFar < 0) problems.add("far grab caught nothing");
+				if (pulled > 3.5) problems.add("far victim was not pulled in (" + pulled + ")");
+				ctx.getInput().pressKey(Keys.ABILITY[3]);
+				ctx.waitTicks(80);
+				server.runCommand("kill @e[type=!player]");
+				server.runCommand("kill @e[type=minecraft:item]");
 				// telekinesis
 				server.runCommand("tp @a 0.5 -60 0.5 0 0");
 				ctx.waitTicks(5);

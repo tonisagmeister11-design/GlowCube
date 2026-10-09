@@ -274,8 +274,8 @@ public final class BlackAdam {
 			return;
 		}
 		if (s.bonesId >= 0) return;
-		Entity target = Supe.ray(player, player.getEyePosition(), 5, 1.2f).entity();
-		if (!(target instanceof LivingEntity) || !target.isAlive()) {
+		Entity target = grabTarget(player);
+		if (target == null) {
 			player.sendSystemMessage(Component.translatable("message.theboys.no_target").withStyle(ChatFormatting.GRAY), true);
 			return;
 		}
@@ -285,6 +285,27 @@ public final class BlackAdam {
 		if (target instanceof ServerPlayer p) {
 			p.sendSystemMessage(Component.translatable("message.theboys.adam_grabbed").withStyle(ChatFormatting.GOLD), true);
 		}
+	}
+
+	public static final double GRAB_RANGE = 40;
+
+	/** Whoever he points at, up to 40 blocks away; with some aim assist for the one closest to the crosshair. */
+	private static LivingEntity grabTarget(ServerPlayer player) {
+		Entity hit = Supe.ray(player, player.getEyePosition(), GRAB_RANGE, 1.5f).entity();
+		if (hit instanceof LivingEntity l && l.isAlive()) return l;
+		Vec3 eye = player.getEyePosition();
+		Vec3 look = player.getLookAngle();
+		LivingEntity best = null;
+		double bestDot = 0.94;
+		for (LivingEntity e : Supe.livingAround(player.level(), eye, GRAB_RANGE, player)) {
+			Vec3 to = Supe.chest(e).subtract(eye);
+			double dot = to.normalize().dot(look);
+			if (dot > bestDot) {
+				bestDot = dot;
+				best = e;
+			}
+		}
+		return best;
 	}
 
 	/** Where he holds someone: up in his raised fist, by the throat, feet dangling. */
@@ -309,13 +330,22 @@ public final class BlackAdam {
 	private static void tickHeld(ServerPlayer player, PlayerSession s, ServerLevel level) {
 		if (s.heldId < 0) return;
 		Entity held = level.getEntity(s.heldId);
-		if (held == null || !held.isAlive() || held.distanceTo(player) > 8) {
+		if (held == null || !held.isAlive() || held.distanceTo(player) > GRAB_RANGE + 24) {
 			s.heldId = -1;
 			s.zapTicks = 0;
 			return;
 		}
 		s.holdTicks++;
-		hold(held, handSpot(player, held));
+		Vec3 spot = handSpot(player, held);
+		Vec3 gap = spot.subtract(held.position());
+		if (gap.length() > 1.5) {
+			// telekinetic pull: he drags the one he grabbed through the air into his fist
+			Vec3 step = gap.scale(Math.max(0.3, 2.5 / gap.length()));
+			spot = held.position().add(step);
+			level.sendParticles(ParticleTypes.ELECTRIC_SPARK, held.getX(), held.getY() + held.getBbHeight() / 2, held.getZ(), 3, 0.2, 0.3, 0.2, 0.1);
+			if (s.holdTicks % 4 == 1) Supe.sound(level, held.position(), SoundEvents.ENDERMAN_TELEPORT, 0.6f, 1.6f);
+		}
+		hold(held, spot);
 		if (held instanceof LivingEntity l && s.zapTicks == 0) {
 			l.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 5, 10, false, false));
 		}
