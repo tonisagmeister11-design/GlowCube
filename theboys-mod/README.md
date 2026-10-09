@@ -21,7 +21,7 @@ also bei allen Mitspielern).
   oder **Black Noir**.
 * **V-One** (viel seltener) gibt dir die Kräfte von **Homelander**, **Soldier Boy** oder **Stormfront**
   (Stormfront gibt es nur mit V-One).
-* **Shazam-Serum** (golden, extrem selten: etwa jeder 300. Kühlschrank, ganz selten in Laborkisten) macht dich zu
+* **God V** (goldene Spritze, extrem selten: etwa jeder 300. Kühlschrank, ganz selten in Laborkisten) macht dich zu
   **Black Adam**, dem Gott im Spiel.
 * **Mini V** (rosa Spritze, etwa jeder zwölfte Kühlschrank und manche Laborkisten) macht dich zu **MiniMaus**.
 * Spritze in die Hand nehmen und **[V]** drücken (oder Rechtsklick halten). Du setzt dir die Spritze
@@ -156,7 +156,7 @@ Lippenstift und ein blauer Umhang mit rotem Futter (schlankes Modell).
 * **EMP-Nova (X):** Eine elektrische Entladung um sie herum. Blitzbögen treffen jeden in der Nähe, lähmen ihn
   und schleudern ihn weg.
 
-### Black Adam (nur Shazam-Serum)
+### Black Adam (nur God V)
 Glatze, schwarzer Anzug mit glühendem goldenem Blitz in der Brust, Kapuze, dunkler Gürtel und Umhang. Seine Kräfte sehen anders
 aus als alle anderen: ein massiver goldener Energiestrahl mit Spiralen und Energieringen, Blitzsäulen vom Himmel, ein goldener
 Kometenschweif beim Fliegen und goldene Energiefäden zu den Blöcken, die er hebt. Er ist der Gott
