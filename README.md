@@ -174,8 +174,9 @@ Der Fabric-Client (`dist/glowcube-26.3.jar`) hat ein neues Kampfmodul **Legendor
 * **Schlagen:** nur, wenn das Fadenkreuz wirklich auf dem Ziel liegt und eine Waffe (Schwert/Axt)
   in der Hand ist. Der Takt schwankt: Schwelle der Aufladung zufaellig zwischen 93 % und 100 %,
   dazu manchmal 1-5 Ticks Verzoegerung (`Variance`) - fast voller Schaden, aber nie das gleiche Muster.
-* **Freigabe:** wie PvP Pro nur in der eigenen Welt oder auf Servern, die es freigeben
-  (GlowCube-Plugin, `pvp-pro-erlaubt`); sonst schaltet sich das Modul mit Hinweis wieder aus.
+* **Freigabe:** keine Server-Bestaetigung mehr noetig - `PvpFreigabe.erlaubt()` ist immer wahr,
+  das gilt auch fuer PvP Pro. Nur Funktionen, die wirklich das GlowCube-Plugin brauchen
+  (Agenten, Orbital Strike), verlangen es weiterhin.
 
 Bauen: `JAVAC=<jdk25>/bin/javac JAVA=<jdk25>/bin/java ./build-client.sh`
 (Quelle in `client-src/`, Minecraft-Platzhalter in `tools/client-stubs/`, Original in
