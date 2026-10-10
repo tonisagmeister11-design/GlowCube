@@ -209,6 +209,18 @@ public final class EffectRenderer {
 						glows.add(Glow.bolt(jagged(mid, tip, rnd, 0.2), 0.012, argb(0.8f * fade, 0xDDEBFF)));
 					}
 				}
+				case FxPayload.TRACER -> {
+					// a bright streak shooting along the bullet's path, then fading
+					Vec3 to = new Vec3(d.x2(), d.y2(), d.z2());
+					double len = to.distanceTo(at);
+					double head = Math.min(1.0, age * 9 / Math.max(1, len) * 2.2);
+					double tail = Math.max(0.0, head - 14 / Math.max(1, len));
+					float fade = Math.max(0f, 1 - age / fx.duration);
+					Vec3 dir = to.subtract(at);
+					glows.add(Glow.beam(at.add(dir.scale(tail)), at.add(dir.scale(head)), 0.035, argb(0.55f * fade, 0xFFB43A)));
+					glows.add(Glow.beam(at.add(dir.scale(tail)), at.add(dir.scale(head)), 0.012, argb(0.95f * fade, 0xFFF6D8)));
+					if (age < 2f) glows.add(Glow.sphere(at, 0.22, argb(0.8f * fade, 0xFFE27A)));
+				}
 				case FxPayload.GOD_BOLT -> {
 					// a pillar of golden power: straight white-hot core, glowing shaft, spirals, an impact ring
 					float fade = Math.max(0f, 1 - age / fx.duration);

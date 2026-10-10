@@ -1559,6 +1559,67 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				ctx.waitTicks(10);
 			});
 
+			step(ctx, "hunters", () -> {
+				arena(ctx, server);
+				List<String> problems = new ArrayList<>();
+				de.theboys.client.ClientState.hideHud = true;
+				// a whole camp, placed like worldgen does
+				server.runCommand("place structure theboys:hunter_camp 30 -60 30");
+				ctx.waitTicks(40);
+				int camp = server.computeOnServer(s -> {
+					int n = 0;
+					for (var e : s.overworld().getAllEntities()) if (e.getType() == de.theboys.registry.ModEntities.SUPE_HUNTER) n++;
+					return n;
+				});
+				LOG.info("hunter camp: {} hunters", camp);
+				if (camp < 5) problems.add("camp has only " + camp + " hunters");
+				sideView(ctx, server, 43.5, -47.0, 14.0, 0, 38);
+				ctx.takeScreenshot("hunter_camp_view");
+				sideView(ctx, server, 14.0, -53.0, 43.5, -90, 28);
+				ctx.takeScreenshot("hunter_camp_side");
+				// close-up of the people
+				server.runCommand("kill @e[type=theboys:supe_hunter]");
+				for (int i = 0; i < 4; i++) {
+					server.runCommand(String.format(java.util.Locale.ROOT, "summon theboys:supe_hunter %.1f -60 6.5 {NoAI:1b,PersistenceRequired:1b,Silent:1b,UUID:[I;%d,1,1,%d]}", -3.0 + i * 2.0, 100 + i, i == 0 ? 0 : i));
+				}
+				ctx.waitTicks(10);
+				sideView(ctx, server, 0.0, -58.3, 11.5, 180, 8);
+				ctx.takeScreenshot("hunters_closeup");
+				sideView(ctx, server, 0.0, -58.3, 1.0, 0, 8);
+				ctx.takeScreenshot("hunters_closeup_back");
+				playerView(ctx, server);
+				de.theboys.client.ClientState.hideHud = false;
+				server.runCommand("kill @e[type=theboys:supe_hunter]");
+				ctx.waitTicks(5);
+				// a normal person is left alone
+				server.runCommand("summon theboys:supe_hunter 0.5 -60 18.5 {PersistenceRequired:1b,Rotation:[180f,0f]}");
+				ctx.waitTicks(100);
+				float calm = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getHealth() - s.getPlayerList().getPlayers().get(0).getMaxHealth());
+				if (calm < -0.01f) problems.add("hunter shot a normal player");
+				// ... but a supe is hunted, also when he is fast and flying past
+				server.runCommand("theboys power set @a homelander");
+				ctx.waitTicks(10);
+				server.runCommand("summon theboys:supe_hunter 4.5 -60 20.5 {PersistenceRequired:1b}");
+				server.runCommand("summon theboys:supe_hunter -4.5 -60 20.5 {PersistenceRequired:1b}");
+				ctx.waitTicks(30);
+				sideView(ctx, server, 9.0, -57.5, 12.0, 90, 10);
+				ctx.waitTicks(40);
+				ctx.takeScreenshot("hunters_shooting");
+				ctx.waitTicks(80);
+				float hp = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getHealth());
+				float max = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getMaxHealth());
+				LOG.info("hunters vs homelander: health {} of {}", hp, max);
+				if (hp >= max - 0.01f) problems.add("hunters did not hurt a supe");
+				playerView(ctx, server);
+				server.runCommand("kill @e[type=theboys:supe_hunter]");
+				server.runCommand("theboys power clear @a");
+				server.runCommand("fill -12 -60 -12 12 -40 30 minecraft:air");
+				server.runCommand("tp @a 0.5 -60 0.5 0 0");
+				server.runCommand("effect give @a minecraft:instant_health 1 10");
+				ctx.waitTicks(20);
+				if (!problems.isEmpty()) throw new AssertionError(String.join("; ", problems));
+			});
+
 			step(ctx, "remove", () -> {
 				server.runCommand("clear @a");
 				server.runCommand("give @a theboys:uranium_injector");

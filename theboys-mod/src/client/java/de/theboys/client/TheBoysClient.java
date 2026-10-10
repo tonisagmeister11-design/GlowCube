@@ -23,6 +23,7 @@ public class TheBoysClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		Keys.init();
+		EntityRendererRegistry.register(ModEntities.SUPE_HUNTER, de.theboys.client.render.SupeHunterRenderer::new);
 		EntityRendererRegistry.register(ModEntities.THROWN_SHIELD, ctx -> new ThrownItemRenderer<>(ctx, 1.6f, true));
 		net.minecraft.client.renderer.blockentity.BlockEntityRenderers.register(de.theboys.registry.ModBlocks.CARVED_TYPE,
 				ctx -> new de.theboys.client.render.CarvedBlockRenderer());
@@ -65,6 +66,7 @@ public class TheBoysClient implements ClientModInitializer {
 				ClientState.EFFECTS.add(new ClientState.Fx(fx, 7));
 			}
 			case FxPayload.BOLT -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 5));
+			case FxPayload.TRACER -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 5));
 			case FxPayload.GOD_BOLT -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 10));
 			case FxPayload.LIGHT_STREAM -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 16));
 			case FxPayload.NOVA -> ClientState.EFFECTS.add(new ClientState.Fx(fx, 22));

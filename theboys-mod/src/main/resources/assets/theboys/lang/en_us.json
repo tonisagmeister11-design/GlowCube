@@ -131,5 +131,6 @@
   "ability.theboys.black_adam.shazam": "SHAZAM!",
   "ability.theboys.black_adam.storm": "Lightning Storm",
   "hud.theboys.zap": "Discharge",
-  "message.theboys.adam_grabbed": "Black Adam has you by the throat..."
+  "message.theboys.adam_grabbed": "Black Adam has you by the throat...",
+  "entity.theboys.supe_hunter": "Supe Hunter"
 }

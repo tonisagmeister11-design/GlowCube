@@ -297,7 +297,7 @@ public class SuitPartsLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 
 	private static final float[][] NORMALS = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
 
-	private static void cube(VertexConsumer b, PoseStack.Pose pose, float hx, float hy, float hz, int color, int light) {
+	static void cube(VertexConsumer b, PoseStack.Pose pose, float hx, float hy, float hz, int color, int light) {
 		for (float[] n : NORMALS) {
 			float[][] q;
 			if (n[0] != 0) {
