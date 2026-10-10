@@ -200,6 +200,21 @@ Rennen hin und her schwingt.
   aus, lauf hinein, und von außen sieht man nur den Block. Drinnen erstickst du nicht, und die Kamera schaut
   auch ganz nah an der Wand nicht durch die Pixel. Groß baust du ganz normal ganze Blöcke ab.
 
+## Supe-Jäger-Lager
+
+In der Oberwelt stehen **Jäger-Lager**, ungefähr so oft wie Dörfer (in Wäldern, Ebenen, Wüsten, Savannen, Taiga, Bergen,
+Sümpfen und mehr). Jedes Lager hat einen Zaun aus Strohballen, **zwei Wachtürme**, Zelte, ein Lagerfeuer, einen Schießstand,
+einen Käfig für gefangene Supes und Vorratskisten (darin selten ein **Uran-Injektor** und anderes Jägerzeug).
+
+Darin leben **sechs Supe-Jäger**: ganz normale Menschen in vier verschiedenen Outfits (Camo, taktisch schwarz, Warnweste,
+rote Kappe), mit Helm oder Kappe, Weste, Taschen, Rucksack und einem **Scharfschützengewehr**, alles in 3D.
+* Sie jagen **jeden Spieler mit einer Kraft**, auch wenn er nur vorbeifliegt: Sie sehen bis zu 56 Blöcke weit, und sobald einer
+  von ihnen dich sieht, **greift das ganze Lager an**. Spieler ohne Kraft lassen sie in Ruhe, außer sie werden angegriffen.
+* Ihre **V-Kugeln** durchschlagen jede Rüstung. Selbst Homelander und Black Adam spüren sie, wenn viele zugleich schießen.
+  Sie zielen nicht perfekt (je weiter weg, desto mehr Streuung), laufen seitlich und gehen auf Abstand.
+* Sie haben 22 Herzen und Rüstung, sind also etwas stärker als normale Mobs. Wenn du an einem Lager vorbeiziehst,
+  solltest du es zerstören, sonst schießen sie dir hinterher. `/summon theboys:supe_hunter` ruft einen einzelnen Jäger.
+
 ## 3D-Anzüge
 
 Jeder Anzug hat Teile, die echt vom Körper abstehen und sich mit jeder Animation mitbewegen:
