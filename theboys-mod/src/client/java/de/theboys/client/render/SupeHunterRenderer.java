@@ -38,10 +38,10 @@ public class SupeHunterRenderer extends MobRenderer<SupeHunter, SupeHunterRender
 				leftArm.zRot = 0f;
 			} else {
 				float walk = Mth.cos(s.walkAnimationPos * 0.6662f) * 0.15f * s.walkAnimationSpeed;
-				rightArm.xRot = -0.75f + walk;
+				rightArm.xRot = -1.15f + walk;
 				rightArm.yRot = -0.1f;
-				leftArm.xRot = -0.95f - walk;
-				leftArm.yRot = 0.45f;
+				leftArm.xRot = -1.25f - walk;
+				leftArm.yRot = 0.5f;
 			}
 		}
 	}

@@ -34,8 +34,8 @@ public class HunterGearLayer extends RenderLayer<SupeHunterRenderer.State, SupeH
 		// the rifle is held in the right hand, barrel along the arm; the left hand supports it from below
 		rifle(RIGHT_ARM, -2.2f, 1.0f, -4.4f, 0.2f, 9.0f, -1.6f, 0x6B4A2F, false);   // stock
 		rifle(RIGHT_ARM, -2.0f, 9.0f, -4.2f, 0.0f, 16.0f, -2.0f, 0x2B2D33, false);  // receiver
-		rifle(RIGHT_ARM, -1.45f, 16.0f, -3.5f, -0.55f, 31.0f, -2.7f, 0x1B1C20, false); // barrel
-		rifle(RIGHT_ARM, -1.7f, 29.5f, -3.8f, -0.3f, 32.0f, -2.4f, 0x111114, false);  // muzzle brake
+		rifle(RIGHT_ARM, -1.45f, 16.0f, -3.5f, -0.55f, 25.0f, -2.7f, 0x1B1C20, false); // barrel
+		rifle(RIGHT_ARM, -1.7f, 23.8f, -3.8f, -0.3f, 26.2f, -2.4f, 0x111114, false);  // muzzle brake
 		rifle(RIGHT_ARM, -1.9f, 10.0f, -5.4f, -0.1f, 15.0f, -4.2f, 0x2B2D33, false);  // scope
 		rifle(RIGHT_ARM, -1.25f, 14.4f, -5.7f, -0.75f, 15.2f, -5.3f, 0xFF3030, true);  // red lens
 		rifle(RIGHT_ARM, -1.7f, 12.0f, -2.0f, -0.3f, 14.5f, 0.6f, 0x1B1C20, false);   // magazine

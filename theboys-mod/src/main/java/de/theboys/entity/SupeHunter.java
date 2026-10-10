@@ -39,7 +39,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public class SupeHunter extends Monster {
 	public static final double SIGHT = 56;
-	private static final float BULLET_DAMAGE = 6f;
+	private static final float BULLET_DAMAGE = 4.5f;
 
 	public int aimTicks;
 	private int shotCooldown = 30 + (int) (Math.random() * 30);
@@ -215,7 +215,7 @@ public class SupeHunter extends Monster {
 			}
 			if (hunter.shotCooldown > 0) hunter.shotCooldown--;
 			if (sees && d < SIGHT && hunter.shotCooldown <= 0) {
-				hunter.shotCooldown = 26 + hunter.random.nextInt(24);
+				hunter.shotCooldown = 36 + hunter.random.nextInt(30);
 				hunter.shoot(level, t);
 			}
 		}

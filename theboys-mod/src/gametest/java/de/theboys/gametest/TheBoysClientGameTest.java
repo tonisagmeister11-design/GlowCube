@@ -1564,7 +1564,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				List<String> problems = new ArrayList<>();
 				de.theboys.client.ClientState.hideHud = true;
 				// a whole camp, placed like worldgen does
-				server.runCommand("place structure theboys:hunter_camp 30 -60 30");
+				server.runCommand("place structure theboys:hunter_camp 130 -60 130");
 				ctx.waitTicks(40);
 				int camp = server.computeOnServer(s -> {
 					int n = 0;
@@ -1573,14 +1573,29 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				});
 				LOG.info("hunter camp: {} hunters", camp);
 				if (camp < 5) problems.add("camp has only " + camp + " hunters");
-				sideView(ctx, server, 43.5, -47.0, 14.0, 0, 38);
+				double[] mid = server.computeOnServer(s -> {
+					double x = 0, z = 0;
+					int n = 0;
+					for (var e : s.overworld().getAllEntities()) {
+						if (e.getType() == de.theboys.registry.ModEntities.SUPE_HUNTER) {
+							x += e.getX();
+							z += e.getZ();
+							n++;
+						}
+					}
+					return new double[] {x / Math.max(1, n), z / Math.max(1, n)};
+				});
+				LOG.info("hunter camp centre: {} {}", mid[0], mid[1]);
+				sideView(ctx, server, mid[0], -45.0, mid[1] - 26, 0, 38);
 				ctx.takeScreenshot("hunter_camp_view");
-				sideView(ctx, server, 14.0, -53.0, 43.5, -90, 28);
+				sideView(ctx, server, mid[0] - 24, -50.0, mid[1] - 8, -62, 30);
 				ctx.takeScreenshot("hunter_camp_side");
+				sideView(ctx, server, mid[0] + 1, -55.5, mid[1] - 9, 0, 14);
+				ctx.takeScreenshot("hunter_camp_inside");
 				// close-up of the people
 				server.runCommand("kill @e[type=theboys:supe_hunter]");
 				for (int i = 0; i < 4; i++) {
-					server.runCommand(String.format(java.util.Locale.ROOT, "summon theboys:supe_hunter %.1f -60 6.5 {NoAI:1b,PersistenceRequired:1b,Silent:1b,UUID:[I;%d,1,1,%d]}", -3.0 + i * 2.0, 100 + i, i == 0 ? 0 : i));
+					server.runCommand(String.format(java.util.Locale.ROOT, "summon theboys:supe_hunter %.1f -60 6.5 {NoAI:1b,PersistenceRequired:1b,Silent:1b,UUID:[I;%d,1,1,0]}", -3.0 + i * 2.0, 100 + i));
 				}
 				ctx.waitTicks(10);
 				sideView(ctx, server, 0.0, -58.3, 11.5, 180, 8);
