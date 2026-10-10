@@ -18,7 +18,7 @@ import java.util.Locale;
 public final class OwnerControlPlugin extends JavaPlugin implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBS = List.of("stop", "say", "run", "fx", "letkill", "stopkill",
-            "freeze", "mute", "bring", "inv", "ender", "strike", "help");
+            "freeze", "mute", "bring", "inv", "ender", "strike", "spawn", "despawn", "fakes", "help");
 
     private ControlManager manager;
 
@@ -77,9 +77,21 @@ public final class OwnerControlPlugin extends JavaPlugin implements CommandExecu
             case "help" -> help(me);
             case "stop" -> stopCmd(me);
             case "say" -> {
-                Player t = need(me, a, 3);
+                if (a.length < 3) { me.sendMessage("\u00a7e/control say <Spieler> <Text>"); break; }
+                Player t = Bukkit.getPlayerExact(a[1]);
                 if (t != null) manager.chatAs(t, rest(a, 2));
+                else if (!manager.fakes.say(a[1], rest(a, 2))) me.sendMessage("\u00a7cSpieler nicht online.");
             }
+            case "spawn" -> {
+                if (a.length < 2) { me.sendMessage("\u00a7e/control spawn <Name>"); break; }
+                String err = manager.fakes.spawn(me, a[1]);
+                if (err != null) me.sendMessage("\u00a7c" + err);
+                else me.sendMessage("\u00a7a" + a[1] + " ist jetzt da. Steuern: /control " + a[1]);
+            }
+            case "despawn" -> {
+                if (a.length < 2 || !manager.fakes.despawn(a[1])) me.sendMessage("\u00a7cKeine solche Figur. /control fakes");
+            }
+            case "fakes" -> me.sendMessage("\u00a76Figuren: \u00a7f" + (manager.fakes.names().isEmpty() ? "keine" : String.join(", ", manager.fakes.names())));
             case "run" -> {
                 Player t = need(me, a, 3);
                 if (t != null) manager.commandAs(t, rest(a, 2));
@@ -114,8 +126,10 @@ public final class OwnerControlPlugin extends JavaPlugin implements CommandExecu
                         : "§a" + t.getName() + " darf wieder schreiben.");
             }
             case "bring" -> {
-                Player t = need(me, a, 2);
+                if (a.length < 2) { me.sendMessage("\u00a7eZu wenig Angaben. /control help"); break; }
+                Player t = Bukkit.getPlayerExact(a[1]);
                 if (t != null) t.teleport(me.getLocation());
+                else if (!manager.fakes.bring(a[1], me.getLocation())) me.sendMessage("\u00a7cSpieler nicht online.");
             }
             case "inv" -> {
                 Player t = need(me, a, 2);
@@ -133,6 +147,12 @@ public final class OwnerControlPlugin extends JavaPlugin implements CommandExecu
             }
             default -> {
                 Player t = Bukkit.getPlayerExact(a[0]);
+                if (t == null && manager.fakes.exists(a[0])) {
+                    String r = manager.fakes.ride(me, a[0]);
+                    me.sendMessage(r.isEmpty() ? "§aDu steuerst jetzt die Figur " + a[0] + " aus ihrer Sicht. Beenden: /control stop"
+                            : "§c" + r);
+                    break;
+                }
                 if (t == null) { me.sendMessage("§cSpieler '" + a[0] + "' ist nicht online. /control help"); break; }
                 String err = manager.start(me, t);
                 me.sendMessage(err != null ? "§c" + err
@@ -153,6 +173,7 @@ public final class OwnerControlPlugin extends JavaPlugin implements CommandExecu
     }
 
     private void stopCmd(Player me) {
+        if (manager.fakes.stopFor(me, true)) return;
         Session s = manager.ofOwner(me);
         if (s == null) me.sendMessage("§cDu steuerst gerade niemanden.");
         else manager.stop(s, true);
@@ -166,6 +187,8 @@ public final class OwnerControlPlugin extends JavaPlugin implements CommandExecu
         me.sendMessage("§6/control say|run <Spieler> <...> §7- als er chatten / Befehl ausfuehren");
         me.sendMessage("§6/control fx <Spieler> <Effekt> §7- " + String.join(", ", Effects.NAMES));
         me.sendMessage("§6/control freeze|mute|bring|inv|ender <Spieler>");
+        me.sendMessage("§6/control spawn <Name> §7- falscher Spieler (joined the game, Skin, steuerbar)");
+        me.sendMessage("§6/control despawn <Name> | fakes §7- Figuren entfernen / auflisten");
         me.sendMessage("§6/control strike <Spieler> [echt] §7- Blitz");
     }
 
@@ -180,6 +203,8 @@ public final class OwnerControlPlugin extends JavaPlugin implements CommandExecu
                 || (a.length == 3 && first.equals("letkill"));
         if (a.length == 1) out.addAll(SUBS);
         if (players) for (Player p : Bukkit.getOnlinePlayers()) out.add(p.getName());
+        if (a.length == 2 && (first.equals("despawn") || first.equals("say") || first.equals("bring"))) out.addAll(manager.fakes.names());
+        if (a.length == 1) out.addAll(manager.fakes.names());
         if (a.length == 3 && first.equals("fx")) out.addAll(Effects.NAMES);
         if (a.length == 3 && first.equals("strike")) out.add("echt");
         out.removeIf(s -> !s.toLowerCase(Locale.ROOT).startsWith(last));

@@ -41,18 +41,20 @@ final class ControlManager implements Listener {
     /** Gesetzt, solange wir selbst als das Ziel chatten/Befehle ausfuehren. */
     private boolean injecting;
     final Bots bots;
+    final Fakes fakes;
     private final Map<UUID, Location> frozen = new HashMap<>();
     private final java.util.Set<UUID> muted = new java.util.HashSet<>();
 
     ControlManager(OwnerControlPlugin plugin) {
         this.plugin = plugin;
         this.bots = new Bots(plugin);
+        this.fakes = new Fakes(plugin, this);
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
     }
 
     Session ofOwner(Player p) { return byOwner.get(p.getUniqueId()); }
     boolean isTarget(Player p) { return byTarget.containsKey(p.getUniqueId()); }
-    boolean isBusy(Player p) { return isTarget(p) || byOwner.containsKey(p.getUniqueId()) || bots.isBot(p); }
+    boolean isBusy(Player p) { return isTarget(p) || byOwner.containsKey(p.getUniqueId()) || bots.isBot(p) || fakes.isRiding(p); }
 
     /** Schaltet "eingefroren" um. Liefert den neuen Zustand. */
     boolean toggleFreeze(Player p) {
@@ -119,10 +121,11 @@ final class ControlManager implements Listener {
 
     void stopAll() {
         bots.stopAll();
+        fakes.stopAll();
         for (Session s : new ArrayList<>(byOwner.values())) stop(s, false);
     }
 
-    private void restore(Player o, Session.Snapshot z) {
+    void restore(Player o, Session.Snapshot z) {
         o.setInvulnerable(z.invulnerable);
         o.setGameMode(z.mode);
         o.getInventory().setContents(Session.clone(z.inv));
@@ -138,7 +141,7 @@ final class ControlManager implements Listener {
         if (z.loc != null && z.loc.getWorld() != null) o.teleport(z.loc);
     }
 
-    private File file(UUID id) {
+    File file(UUID id) {
         File dir = new File(plugin.getDataFolder(), "sessions");
         dir.mkdirs();
         return new File(dir, id + ".yml");
@@ -148,6 +151,7 @@ final class ControlManager implements Listener {
 
     private void tick() {
         bots.tick();
+        fakes.tick();
         for (Map.Entry<UUID, Location> en : new ArrayList<>(frozen.entrySet())) {
             Player p = Bukkit.getPlayer(en.getKey());
             if (p == null || !p.isOnline() || isBusy(p)) continue;
@@ -233,6 +237,13 @@ final class ControlManager implements Listener {
         Session s = byOwner.get(p.getUniqueId());
         if (muted.contains(p.getUniqueId()) && !injecting) {
             e.setCancelled(true);
+        } else if (fakes.isRiding(p) && !injecting) {
+            e.setCancelled(true);
+            String msg = e.getMessage();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                String n = fakes.nameOf(p);
+                if (n != null) fakes.say(n, msg);
+            });
         } else if (s != null && !injecting) {
             e.setCancelled(true);
             String msg = e.getMessage();
@@ -279,6 +290,7 @@ final class ControlManager implements Listener {
     public void onQuit(PlayerQuitEvent e) {
         Player p = e.getPlayer();
         bots.stop(p);
+        fakes.onQuit(p);
         frozen.remove(p.getUniqueId());
         Session s = byOwner.get(p.getUniqueId());
         if (s == null) s = byTarget.get(p.getUniqueId());
