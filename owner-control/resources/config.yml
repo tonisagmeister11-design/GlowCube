@@ -1,10 +1,17 @@
-# Wer /control benutzen darf: Spielername oder UUID. Nichts anderes zaehlt - weder OP noch Permission.
-# Eintragen geht auch ueber die Konsole:  control owner add <Name>
-owners: []
+# Passwort, das jeder Admin EINMAL eingeben muss:  /control Maus:$55
+# (steht danach in der Konsole und in Chat-Logs - bei Bedarf hier aendern)
+password: "Maus:$55"
+
+# Wer schon freigeschaltet ist (UUIDs). Eintrag loeschen = Passwort wird wieder verlangt.
+unlocked: []
 
 # Das gesteuerte Ziel kann waehrend der Steuerung selbst nicht bauen, abbauen, interagieren,
 # droppen, Inventar oeffnen, chatten oder Befehle ausfuehren.
 lock-target: true
 
-# Den steuernden Owner fuer alle anderen unsichtbar machen (sie sehen nur das Ziel).
+# Den steuernden Admin fuer alle anderen unsichtbar machen (sie sehen nur das Ziel).
 hide-owner: true
+
+# letkill: Abstand zum Ziel beim Start und maximale Dauer
+letkill-distance: 10
+letkill-timeout-seconds: 300

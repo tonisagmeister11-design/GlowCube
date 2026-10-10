@@ -40,22 +40,39 @@ final class ControlManager implements Listener {
     private final Map<UUID, Session> byTarget = new HashMap<>();
     /** Gesetzt, solange wir selbst als das Ziel chatten/Befehle ausfuehren. */
     private boolean injecting;
+    final Bots bots;
+    private final Map<UUID, Location> frozen = new HashMap<>();
+    private final java.util.Set<UUID> muted = new java.util.HashSet<>();
 
     ControlManager(OwnerControlPlugin plugin) {
         this.plugin = plugin;
+        this.bots = new Bots(plugin);
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
     }
 
     Session ofOwner(Player p) { return byOwner.get(p.getUniqueId()); }
     boolean isTarget(Player p) { return byTarget.containsKey(p.getUniqueId()); }
+    boolean isBusy(Player p) { return isTarget(p) || byOwner.containsKey(p.getUniqueId()) || bots.isBot(p); }
+
+    /** Schaltet "eingefroren" um. Liefert den neuen Zustand. */
+    boolean toggleFreeze(Player p) {
+        if (frozen.remove(p.getUniqueId()) != null) return false;
+        frozen.put(p.getUniqueId(), p.getLocation());
+        return true;
+    }
+
+    boolean toggleMute(Player p) {
+        if (muted.remove(p.getUniqueId())) return false;
+        muted.add(p.getUniqueId());
+        return true;
+    }
 
     // ------------------------------------------------------------------ Start / Stop
 
     String start(Player owner, Player target) {
         if (owner.getUniqueId().equals(target.getUniqueId())) return "Du kannst dich nicht selbst steuern.";
-        if (isTarget(target)) return target.getName() + " wird schon gesteuert.";
-        if (isTarget(owner)) return "Du wirst gerade selbst gesteuert.";
-        if (plugin.isOwnerName(target.getName(), target.getUniqueId())) return "Einen Owner kannst du nicht steuern.";
+        if (isBusy(target)) return target.getName() + " ist gerade belegt (gesteuert oder Bot).";
+        if (isTarget(owner) || bots.isBot(owner)) return "Du wirst gerade selbst gesteuert.";
         if (byOwner.containsKey(owner.getUniqueId())) stop(byOwner.get(owner.getUniqueId()), false);
 
         Session s = new Session(owner, target);
@@ -101,6 +118,7 @@ final class ControlManager implements Listener {
     }
 
     void stopAll() {
+        bots.stopAll();
         for (Session s : new ArrayList<>(byOwner.values())) stop(s, false);
     }
 
@@ -129,6 +147,18 @@ final class ControlManager implements Listener {
     // ------------------------------------------------------------------ Tick
 
     private void tick() {
+        bots.tick();
+        for (Map.Entry<UUID, Location> en : new ArrayList<>(frozen.entrySet())) {
+            Player p = Bukkit.getPlayer(en.getKey());
+            if (p == null || !p.isOnline() || isBusy(p)) continue;
+            Location at = en.getValue(), now = p.getLocation();
+            if (now.getWorld() != at.getWorld() || now.distance(at) > 0.05) {
+                Location back = at.clone();
+                back.setYaw(now.getYaw());
+                back.setPitch(now.getPitch());
+                p.teleport(back);
+            }
+        }
         for (Session s : new ArrayList<>(byOwner.values())) {
             if (!s.owner.isOnline() || !s.target.isOnline()) { stop(s, true); continue; }
             Player o = s.owner, t = s.target;
@@ -201,7 +231,9 @@ final class ControlManager implements Listener {
     public void onChat(AsyncPlayerChatEvent e) {
         Player p = e.getPlayer();
         Session s = byOwner.get(p.getUniqueId());
-        if (s != null && !injecting) {
+        if (muted.contains(p.getUniqueId()) && !injecting) {
+            e.setCancelled(true);
+        } else if (s != null && !injecting) {
             e.setCancelled(true);
             String msg = e.getMessage();
             Bukkit.getScheduler().runTask(plugin, () -> { if (s.target.isOnline()) chatAs(s.target, msg); });
@@ -246,6 +278,8 @@ final class ControlManager implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         Player p = e.getPlayer();
+        bots.stop(p);
+        frozen.remove(p.getUniqueId());
         Session s = byOwner.get(p.getUniqueId());
         if (s == null) s = byTarget.get(p.getUniqueId());
         if (s != null) stop(s, true);

@@ -23,7 +23,7 @@ final class Effects {
 
     static final List<String> NAMES = List.of(
             "screamer", "creeper", "haunt", "fakeerror", "fakeop",
-            "spin", "launch", "blind", "nausea", "shuffle", "stumble");
+            "fakeban", "spin", "launch", "blind", "nausea", "shuffle", "stumble");
 
     private static final String[] HAUNT_SOUNDS = {
             "ambient.cave", "entity.ghast.scream", "entity.enderman.scream", "entity.warden.heartbeat",
@@ -62,6 +62,11 @@ final class Effects {
                 p.sendMessage("§4[ERROR] §cThe server is shutting down...");
             }
             case "fakeop" -> p.sendMessage("§7§o[Server: Made " + p.getName() + " a server operator]");
+            case "fakeban" -> {
+                p.sendTitle("\u00a74Gebannt", "\u00a7cDu wurdest vom Server gebannt", 0, 80, 10);
+                p.sendMessage("\u00a7cDu wurdest permanent von diesem Server gebannt.");
+                p.sendMessage("\u00a77Grund: \u00a7fHacking (Kill Aura)");
+            }
             case "spin" -> {
                 int[] n = {0};
                 BukkitTask[] t = new BukkitTask[1];
