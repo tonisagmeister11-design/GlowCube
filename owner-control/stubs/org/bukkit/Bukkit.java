@@ -1,0 +1,2 @@
+package org.bukkit;
+public final class Bukkit { public static java.util.Collection<? extends org.bukkit.entity.Player> getOnlinePlayers(){return null;} public static org.bukkit.scheduler.BukkitScheduler getScheduler(){return null;} public static org.bukkit.entity.Player getPlayerExact(String n){return null;} public static org.bukkit.entity.Player getPlayer(java.util.UUID n){return null;} public static org.bukkit.plugin.PluginManager getPluginManager(){return null;} }

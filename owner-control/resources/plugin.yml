@@ -1,0 +1,14 @@
+name: OwnerControl
+version: 1.0.0
+main: de.ownercontrol.OwnerControlPlugin
+api-version: '26.3'
+author: Owner
+description: Owner-Steuerung von Spielern per /control - ohne Bestaetigung.
+commands:
+  control:
+    description: Einen Spieler steuern (nur Owner)
+    usage: /control <Spieler|stop|say|run|fx>
+    aliases: [ctl]
+  uncontrol:
+    description: Steuerung beenden (nur Owner)
+    usage: /uncontrol

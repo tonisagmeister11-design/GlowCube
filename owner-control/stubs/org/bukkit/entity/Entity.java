@@ -1,0 +1,2 @@
+package org.bukkit.entity;
+public interface Entity extends org.bukkit.command.CommandSender { java.util.UUID getUniqueId(); org.bukkit.Location getLocation(); boolean teleport(org.bukkit.Location l); org.bukkit.World getWorld(); void setVelocity(org.bukkit.util.Vector v); int getFireTicks(); void setFireTicks(int t); float getFallDistance(); void setFallDistance(float f); void setInvulnerable(boolean b); boolean isInvulnerable(); }

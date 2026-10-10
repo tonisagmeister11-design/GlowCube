@@ -1,0 +1,10 @@
+# Wer /control benutzen darf: Spielername oder UUID. Nichts anderes zaehlt - weder OP noch Permission.
+# Eintragen geht auch ueber die Konsole:  control owner add <Name>
+owners: []
+
+# Das gesteuerte Ziel kann waehrend der Steuerung selbst nicht bauen, abbauen, interagieren,
+# droppen, Inventar oeffnen, chatten oder Befehle ausfuehren.
+lock-target: true
+
+# Den steuernden Owner fuer alle anderen unsichtbar machen (sie sehen nur das Ziel).
+hide-owner: true
