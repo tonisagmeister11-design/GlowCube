@@ -8,7 +8,6 @@ import de.theboys.power.Power;
 import de.theboys.power.PowerAttachments;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -146,9 +145,7 @@ public class SupeHunter extends Monster {
 			DamageSource src = supe ? level.damageSources().indirectMagic(this, this) : level.damageSources().mobProjectile(this, this);
 			if (victim.hurtServer(level, src, BULLET_DAMAGE)) {
 				level.sendParticles(ParticleTypes.CRIT, stop.x, stop.y, stop.z, 8, 0.1, 0.1, 0.1, 0.2);
-				if (victim instanceof ServerPlayer sp) {
-					sp.playNotifySound(SoundEvents.ARROW_HIT_PLAYER, SoundSource.HOSTILE, 0.8f, 1.2f);
-				}
+				level.playSound(null, stop.x, stop.y, stop.z, SoundEvents.ARROW_HIT_PLAYER, SoundSource.HOSTILE, 0.8f, 1.2f);
 			}
 		} else {
 			level.sendParticles(ParticleTypes.SMOKE, stop.x, stop.y, stop.z, 3, 0.05, 0.05, 0.05, 0.01);
@@ -156,7 +153,7 @@ public class SupeHunter extends Monster {
 		aimTicks = 14;
 		ModNetworking.sendFx(level, from, new FxPayload(FxPayload.TRACER, getId(), (float) from.x, (float) from.y, (float) from.z,
 				(float) stop.x, (float) stop.y, (float) stop.z));
-		level.sendParticles(ParticleTypes.FLASH, from.x, from.y, from.z, 1, 0, 0, 0, 0);
+		level.sendParticles(ParticleTypes.SMOKE, from.x, from.y, from.z, 4, 0.05, 0.05, 0.05, 0.02);
 		level.playSound(null, getX(), getY(), getZ(), SoundEvents.CROSSBOW_SHOOT, SoundSource.HOSTILE, 1.4f, 0.7f + random.nextFloat() * 0.2f);
 		level.playSound(null, getX(), getY(), getZ(), SoundEvents.FIREWORK_ROCKET_BLAST, SoundSource.HOSTILE, 1.0f, 1.4f);
 	}
