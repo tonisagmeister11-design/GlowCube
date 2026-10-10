@@ -1564,7 +1564,7 @@ public class TheBoysClientGameTest implements FabricClientGameTest {
 				List<String> problems = new ArrayList<>();
 				de.theboys.client.ClientState.hideHud = true;
 				// a whole camp, placed like worldgen does
-				server.runCommand("place structure theboys:hunter_camp 130 -60 130");
+				server.runCommand("place structure theboys:hunter_camp 30 -60 30");
 				ctx.waitTicks(40);
 				int camp = server.computeOnServer(s -> {
 					int n = 0;
