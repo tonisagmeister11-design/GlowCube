@@ -24,7 +24,8 @@ final class Fakes {
     private static final class Fake {
         final String name;
         final Mannequin body;
-        Fake(String name, Mannequin body) { this.name = name; this.body = body; }
+        final boolean quiet; // Testfigur: keine Chatmeldungen an andere
+        Fake(String name, Mannequin body, boolean quiet) { this.name = name; this.body = body; this.quiet = quiet; }
     }
 
     private static final class Ride {
@@ -55,7 +56,7 @@ final class Fakes {
 
     // ------------------------------------------------------------------ Spawn / Despawn
 
-    String spawn(Player admin, String name) {
+    String spawn(Player admin, String name, boolean quiet) {
         if (!name.matches("[A-Za-z0-9_]{3,16}")) return "Ungueltiger Name (3-16 Zeichen: Buchstaben, Zahlen, _).";
         if (exists(name)) return name + " gibt es schon.";
         if (Bukkit.getPlayerExact(name) != null) return name + " ist ein echter Spieler, der online ist.";
@@ -76,8 +77,8 @@ final class Fakes {
             try { e.setImmovable(true); } catch (Throwable ignored) { }
             hideDescription(e);
         });
-        fakes.put(name.toLowerCase(Locale.ROOT), new Fake(name, m));
-        announce("multiplayer.player.joined", name);
+        fakes.put(name.toLowerCase(Locale.ROOT), new Fake(name, m, quiet));
+        if (!quiet) announce("multiplayer.player.joined", name);
         return null;
     }
 
@@ -86,8 +87,31 @@ final class Fakes {
         if (f == null) return false;
         for (Ride r : new ArrayList<>(rides.values())) if (r.fake == f) stop(r, true);
         f.body.remove();
-        announce("multiplayer.player.left", f.name);
+        if (!f.quiet) announce("multiplayer.player.left", f.name);
         return true;
+    }
+
+    Location where(String name) {
+        Fake f = fakes.get(name.toLowerCase(Locale.ROOT));
+        return f == null ? null : f.body.getLocation();
+    }
+
+    /** Testfigur mit zufaelligem Namen - ohne Meldung an andere. Liefert den Namen oder null. */
+    String spawnTest(Player admin) {
+        String[] pool = {"Steve", "Alex", "Kai", "Mia", "Leo", "Nora", "Finn", "Lena"};
+        java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
+        for (int i = 0; i < 20; i++) {
+            String n = pool[rnd.nextInt(pool.length)] + "_Test" + rnd.nextInt(10, 100);
+            if (spawn(admin, n, true) == null) return n;
+        }
+        return null;
+    }
+
+    /** Alle Testfiguren entfernen. */
+    int despawnTests() {
+        int n = 0;
+        for (Fake f : new ArrayList<>(fakes.values())) if (f.quiet && despawn(f.name)) n++;
+        return n;
     }
 
     boolean bring(String name, Location to) {
