@@ -331,6 +331,14 @@ public final class BedwarsBot extends Husk {
 
     /** Haengt der Bot fest, kurz springen. */
     private void unstick(ServerLevel level) {
+        // Rettung: wer tief unter der Inselhoehe auf irgendetwas gelandet ist, kommt zum Team-Spawn zurueck
+        if (age % 40 == 0 && getY() < Arena.Y - 3 && onGround()) {
+            Vec3 spawn = profile.team.spawn;
+            teleportTo(spawn.x, spawn.y, spawn.z);
+            fallDistance = 0;
+            setDeltaMovement(Vec3.ZERO);
+            return;
+        }
         if (age % 20 != 0) return;
         if (position().distanceToSqr(lastPos) < 0.04 && (enemy != null || profile.role == BotProfile.Role.RAIDER)) {
             if (++stuckTicks >= 2) {
