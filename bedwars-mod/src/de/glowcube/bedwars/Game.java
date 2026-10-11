@@ -776,6 +776,7 @@ public final class Game {
             StringBuilder sb = new StringBuilder("[BW dump t=" + tick / 20 + "s] " + t.team.label + " bed=" + t.bedAlive + " ");
             for (BotProfile b : t.bots) {
                 sb.append(b.name).append('(').append(b.role.name().charAt(0)).append(b.eliminated ? " OUT" : b.body == null ? " dead" : String.format(" hp%.0f @%.0f,%.0f,%.0f", b.body.getHealth(), b.body.getX() - arena.center.getX(), b.body.getY() - Arena.Y, b.body.getZ() - arena.center.getZ()))
+                        .append(b.body == null ? "" : " ->" + (t.targetTeam == null ? "?" : t.targetTeam.label) + " d" + (int) Math.sqrt(b.body.distanceToSqr(Vec3.atCenterOf(teams[(t.targetTeam == null ? t.team : t.targetTeam).ordinal()].island))))
                         .append(" fe").append(t.iron).append("/au").append(t.gold).append("/bl").append(b.blocks).append("/sw").append(b.swordTier).append("/ar").append(b.armorTier).append(") ");
             }
             System.out.println(sb);
