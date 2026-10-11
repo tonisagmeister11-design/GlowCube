@@ -9,6 +9,7 @@
 #   2. client-src/ wird gegen die Original-JAR plus Platzhalter uebersetzt.
 #   3. PatchModuleManager traegt Legendora hinter KillAura in die Modulliste ein.
 #   3b. PatchPvpFreigabe macht PvpFreigabe.erlaubt() immer wahr (keine Server-Bestaetigung).
+#   3c. PatchFreecam gibt der Freecam-Kamera eine Entity-ID (Absturz mit Iris beim Beitritt).
 #   4. Die neuen/geaenderten .class-Dateien kommen in eine Kopie der Original-JAR.
 #
 set -euo pipefail
@@ -47,11 +48,14 @@ find "$ROOT/client-src" -name '*.java' > "$WORK/sources.txt"
 "$JAVAC" -nowarn -proc:none -encoding UTF-8 -cp "$ORIGINAL:$WORK/stubs" -d "$WORK/classes" "@$WORK/sources.txt"
 
 echo "==> ModuleManager patchen"
-( cd "$WORK" && unzip -q -o "$ORIGINAL" 'net/glowcube/client/core/ModuleManager.class' 'net/glowcube/client/agent/PvpFreigabe.class' -d "$WORK/classes" )
-"$JAVAC" -nowarn -cp "$ASM_JAR" -d "$WORK/tools" "$ROOT/tools/client/PatchModuleManager.java" "$ROOT/tools/client/PatchPvpFreigabe.java"
+( cd "$WORK" && unzip -q -o "$ORIGINAL" 'net/glowcube/client/core/ModuleManager.class' 'net/glowcube/client/agent/PvpFreigabe.class' 'net/glowcube/client/module/render/Freecam.class' -d "$WORK/classes" )
+"$JAVAC" -nowarn -cp "$ASM_JAR" -d "$WORK/tools" "$ROOT/tools/client/PatchModuleManager.java" "$ROOT/tools/client/PatchPvpFreigabe.java" "$ROOT/tools/client/PatchFreecam.java"
 "$JAVA" -cp "$ASM_JAR:$WORK/tools" PatchModuleManager "$WORK/classes/net/glowcube/client/core/ModuleManager.class"
 echo "==> PvP-Freigabe abschalten"
 "$JAVA" -cp "$ASM_JAR:$WORK/tools" PatchPvpFreigabe "$WORK/classes/net/glowcube/client/agent/PvpFreigabe.class"
+
+echo "==> Freecam-Kamera mit ID versehen"
+"$JAVA" -cp "$ASM_JAR:$WORK/tools" PatchFreecam "$WORK/classes/net/glowcube/client/module/render/Freecam.class"
 
 echo "==> packe JAR"
 rm -f "$OUTPUT"

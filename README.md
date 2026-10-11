@@ -181,3 +181,7 @@ Der Fabric-Client (`dist/glowcube-26.3.jar`) hat ein neues Kampfmodul **Legendor
 Bauen: `JAVAC=<jdk25>/bin/javac JAVA=<jdk25>/bin/java ./build-client.sh`
 (Quelle in `client-src/`, Minecraft-Platzhalter in `tools/client-stubs/`, Original in
 `lib/glowcube-26.3-original.jar`).
+
+**Absturz beim Beitritt (Freecam + Iris):** Freecam gab seiner Kamera-Entity keine ID, beim Rendern
+warf Minecraft `Tried to access entity ID before ID assignment`. Die Kamera bekommt jetzt direkt
+nach dem Anlegen eine ID (`tools/client/PatchFreecam.java`).
