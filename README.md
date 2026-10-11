@@ -185,3 +185,36 @@ Bauen: `JAVAC=<jdk25>/bin/javac JAVA=<jdk25>/bin/java ./build-client.sh`
 **Absturz beim Beitritt (Freecam + Iris):** Freecam gab seiner Kamera-Entity keine ID, beim Rendern
 warf Minecraft `Tried to access entity ID before ID assignment`. Die Kamera bekommt jetzt direkt
 nach dem Anlegen eine ID (`tools/client/PatchFreecam.java`).
+
+## GlowCube Bedwars (Fabric-Mod, Minecraft 26.3)
+
+`dist/glowcube-bedwars-1.0.0.jar` in den `mods`-Ordner legen (Fabric Loader + Fabric API, Java 25).
+Sobald du eine **Einzelspielerwelt** betrittst, startet nach zwei Sekunden eine Bedwars-Runde.
+
+* **5 Teams, je 4 Spieler:** du plus 19 Bots. Dein Team bekommt 3 Bots, die anderen vier Teams je 4.
+* **Arena:** fuenf Teaminseln im Kreis um eine Mittelinsel, hoch in der Luft (Hoehe 180) ueber deiner
+  Position. Beim Ende wird alles wieder weggeraeumt, du landest mit deinem alten Inventar an deiner
+  alten Stelle.
+* **Betten:** Bei den vier anderen Teams steht das Bett von Anfang an. Bei deinem Team ist es Zufall
+  (60 %): Entweder ein Bot hat es gesetzt, oder niemand - dann bekommst du das Bett ins Inventar und
+  musst es selbst auf deine Insel setzen (nach 45 s macht es sonst ein Bot).
+* **Bots:** Husk-Koerper (brennen nicht), vanilla-KI abgeschaltet, eigene Steuerung:
+  Sammler holen Eisen/Gold am Generator, Verteidiger bauen eine Wolle-Huelle um das Bett, Raider
+  waehlen zufaellig ein gegnerisches Team (nicht immer dich!), **bauen Bruecken** ueber die Luecke und
+  zerstoeren dessen Bett. Sie kaufen virtuell Schwerter und Ruestung, essen goldene Aepfel, kaempfen mit
+  Strafen, Abstand halten und Sprung-Treffern. Teams bekaempfen sich auch untereinander.
+* **Shop:** Dorfbewohner "SHOP" auf jeder Insel (oder `/bedwars shop`). Wolle, Stein-/Eisen-/Diamantschwert,
+  Ketten-/Eisen-/Diamantruestung, **Feuerball** (Rechtsklick verschiesst ihn), goldener Apfel, Enderperle.
+  Waehrung: Eisen, Gold, Diamant (Mitte), Smaragd (Mitte).
+* **Regeln:** ohne Bett nur ein Leben, sonst Respawn nach 5 s (Spawnschutz 3 s). Kein Friendly Fire.
+  Die Karte (Inseln, Generatoren) ist unzerstoerbar, nur platzierte Bloecke gehen. Betten ueberleben
+  Explosionen. Wer unter die Karte faellt, stirbt. Letztes Team gewinnt.
+
+Befehle: `/bedwars start | stop | shop | status | auto an|aus | test`
+(`test` ist der Selbsttest mit Fake-Spieler und Log-Ausgabe, nur fuer Entwicklung.)
+
+Bauen: `JAVAC=<jdk25>/bin/javac ./build-bedwars.sh` - holt Minecraft 26.3, Fabric Loader und
+Fabric API selbst und uebersetzt direkt gegen die (ab 26.x unverschleierte) `client.jar`.
+
+**Hinweis:** Benutze dafuer am besten eine eigene Welt. Dein Inventar wird beim Start gesichert und
+beim Verlassen zurueckgegeben; bei einem Absturz mitten in der Runde ginge es verloren.

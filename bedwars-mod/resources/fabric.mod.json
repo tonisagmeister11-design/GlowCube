@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "glowcube_bedwars",
+  "version": "1.0.0",
+  "name": "GlowCube Bedwars",
+  "description": "Beim Betreten einer Einzelspielerwelt startet sofort eine Bedwars-Runde mit Bots: 5 Teams, Shop, Feuerbaelle.",
+  "authors": ["GlowCube"],
+  "license": "GPL-3.0-or-later",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["de.glowcube.bedwars.BedwarsMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.17.0",
+    "fabric-api": "*",
+    "minecraft": ">=26.3",
+    "java": ">=25"
+  }
+}
