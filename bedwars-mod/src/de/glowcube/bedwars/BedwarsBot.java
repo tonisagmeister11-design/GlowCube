@@ -106,9 +106,16 @@ public final class BedwarsBot extends Husk {
             level.playSound(null, blockPosition(), SoundEvents.GENERIC_EAT.value(), SoundSource.NEUTRAL, 1.0f, 1.0f);
         }
 
-        boolean guardingBed = profile.role == BotProfile.Role.DEFENDER
-                || distanceToSqr(Vec3.atCenterOf(profile.team.island)) < 10 * 10;
-        if (enemy != null && (guardingBed || distanceToSqr(enemy) < 7 * 7 || profile.role != BotProfile.Role.RAIDER)) {
+        boolean raider = profile.role == BotProfile.Role.RAIDER;
+        boolean atHome = distanceToSqr(Vec3.atCenterOf(profile.team.island)) < 9 * 9;
+        double engage;
+        if (raider) {
+            // Raider haben ein Ziel: nur kaempfen, wenn der Gegner direkt dran ist oder sie angreift
+            engage = enemy != null && enemy == getLastHurtByMob() ? 8.0 : 4.0;
+        } else {
+            engage = atHome || profile.role == BotProfile.Role.DEFENDER ? 12.0 : 7.0;
+        }
+        if (enemy != null && distanceToSqr(enemy) < engage * engage) {
             fight(level, enemy);
             mining = 0;
         } else {
@@ -162,6 +169,10 @@ public final class BedwarsBot extends Husk {
         // Raider, die nichts mehr zum Bauen haben, holen erst Nachschub
         if (role == BotProfile.Role.RAIDER && profile.blocks < 6 && profile.team.iron < 4) {
             role = BotProfile.Role.GATHERER;
+        }
+        // Mit der Zeit wird jeder zum Angreifer, sonst steht die Runde still
+        if (profile.role == BotProfile.Role.DEFENDER && age > 1800 && age % 200 == 0 && RND.nextInt(3) == 0) {
+            profile.role = BotProfile.Role.RAIDER;
         }
         // Sammler werden irgendwann zu Raidern, wenn sie gut ausgestattet sind
         if (profile.role == BotProfile.Role.GATHERER && profile.blocks >= 24 && profile.swordTier >= 1 && age % 200 == 0 && RND.nextInt(3) == 0) {
