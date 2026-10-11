@@ -38,6 +38,7 @@ public final class BedwarsBot extends Husk {
     private int strafeTicks;
     private int mining;
     private int fortifyIndex;
+    private int wallMining;
     private int eatCd;
     private LivingEntity enemy;
     private int enemyCheck;
@@ -250,6 +251,24 @@ public final class BedwarsBot extends Husk {
             goal = Vec3.atCenterOf(target.island.offset(0, 1, 0));
         }
         double d = Math.sqrt(distanceToSqr(goal));
+        // Ist das Bett eingemauert, erst die Wolle davor aufbrechen
+        if (target.bedAlive && d < 7.0) {
+            BlockPos wall = blockingBlock(level, goal);
+            if (wall != null) {
+                getLookControl().setLookAt(wall.getX() + 0.5, wall.getY() + 0.5, wall.getZ() + 0.5);
+                if (distanceToSqr(Vec3.atCenterOf(wall)) > 3.6 * 3.6) {
+                    stepTowards(level, goal, 1.1, true);
+                    return;
+                }
+                if (wallMining++ % 5 == 0) swingForAttack(InteractionHand.MAIN_HAND);
+                if (wallMining >= 12) {
+                    wallMining = 0;
+                    level.destroyBlock(wall, false);
+                }
+                return;
+            }
+        }
+        wallMining = 0;
         if (target.bedAlive && d < 3.4) {
             getLookControl().setLookAt(goal.x, goal.y, goal.z);
             if (mining % 6 == 0) swingForAttack(InteractionHand.MAIN_HAND);
@@ -261,6 +280,23 @@ public final class BedwarsBot extends Husk {
         }
         mining = 0;
         stepTowards(level, goal, 1.1, true);
+    }
+
+    /** Erster abbaubarer Block (kein Teil der Karte, kein Bett) auf dem Weg zum Ziel, sonst null. */
+    private BlockPos blockingBlock(ServerLevel level, Vec3 goal) {
+        Vec3 from = getEyePosition();
+        Vec3 dir = goal.subtract(from);
+        double len = dir.length();
+        if (len < 1.0E-3) return null;
+        dir = dir.scale(1.0 / len);
+        for (double t = 0.8; t < len - 0.9; t += 0.4) {
+            BlockPos p = BlockPos.containing(from.add(dir.scale(t)));
+            BlockState st = level.getBlockState(p);
+            if (st.isAir() || !st.getFluidState().isEmpty()) continue;
+            if (st.getBlock() instanceof net.minecraft.world.level.block.BedBlock) return null;
+            return Game.arena().map.contains(p.asLong()) ? null : p;
+        }
+        return null;
     }
 
     // --- Bewegung und Bruecken --------------------------------------------------------------
