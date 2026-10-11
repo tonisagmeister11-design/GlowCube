@@ -161,3 +161,9 @@ werden neu übersetzt. Bei jeder davon wird geprüft, dass sie danach exakt dies
 öffentliche Signatur und dieselben externen Aufrufe hat wie vorher – der Quelltext-Diff
 zeigt jeweils nur die bewusst eingefügten Zeilen. `config.yml` und `plugin.yml` sind
 unangetastet.
+
+## Ebenfalls im Repo: GlowCube Bedwars
+
+Unter [`bedwars/`](bedwars/) liegt die Fabric-Mod *GlowCube Bedwars* für Minecraft 26.3:
+Bedwars gegen Bots mit Steve-/Alex-Skins, Team-Strategie, Brückenbau, Bett-Verteidigung,
+Chat-KI und römischer Karte. Fertiges JAR: `bedwars/dist/glowcube-bedwars-2.0.0.jar`.
