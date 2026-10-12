@@ -53,8 +53,15 @@ public final class BotProfile {
    public final Role role;
    /** 0..1: wie gerne er kaempft. */
    public final double aggression;
-   /** 0..1: Reaktion, Zielgenauigkeit, Bautempo. */
+   /** 0..1: grobes Koennen (aus dem Spielertyp). */
    public final double skill;
+   /** Wie er an Maus und Tastatur ist. */
+   public final Hands hands;
+   /** Wie genervt er gerade ist (steigt bei Toden kurz hintereinander). */
+   public double tilt;
+   /** Wie er im Chat schreibt. */
+   public final ChatBrain.Voice voice;
+   public int lastDeathTick = -100000;
    /** 0..1: wie oft er im Chat schreibt. */
    public final double chattiness;
    /** 0..1: wie frech er im Chat ist. */
@@ -94,19 +101,21 @@ public final class BotProfile {
    public int beds;
    public int lastSpoke = -10000;
 
-   public BotProfile(String name, Game.TeamState team, Random rnd, boolean alex) {
+   public BotProfile(String name, Game.TeamState team, Random rnd, boolean alex, int difficulty) {
       this.name = name;
       this.team = team;
       this.alex = alex;
       double r = rnd.nextDouble();
       this.role = r < 0.28 ? Role.RUSHER : (r < 0.52 ? Role.BUILDER : (r < 0.74 ? Role.COLLECTOR : Role.FIGHTER));
-      this.skill = 0.45 + rnd.nextDouble() * 0.55;
+      this.hands = Hands.roll(rnd, difficulty);
+      this.skill = this.hands.skill();
       this.aggression = clamp(
          (this.role == Role.RUSHER || this.role == Role.FIGHTER ? 0.55 : 0.25) + rnd.nextDouble() * 0.45 - (this.role == Role.BUILDER ? 0.1 : 0.0)
       );
       this.caution = clamp(1.0 - this.aggression * 0.7 + (rnd.nextDouble() - 0.5) * 0.4);
       this.chattiness = 0.25 + rnd.nextDouble() * 0.75;
       this.cheek = rnd.nextDouble();
+      this.voice = new ChatBrain.Voice(rnd, this.cheek, this.hands.style);
    }
 
    private static double clamp(double v) {
@@ -242,6 +251,9 @@ public final class BotProfile {
    /** Was er beim Tod verliert - wie im echten Bedwars: Schwert und Bloecke weg, Ruestung bleibt. */
    public void onDeath() {
       this.deaths++;
+      int now = Game.tick();
+      this.tilt = Math.min(1.0, this.tilt * Math.exp(-(now - this.lastDeathTick) / 1200.0) + 0.35);
+      this.lastDeathTick = now;
       this.swordTier = 0;
       this.wool = 0;
       this.endStone = 0;

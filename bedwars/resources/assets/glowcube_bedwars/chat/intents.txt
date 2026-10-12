@@ -1,0 +1,194 @@
+# Trainingsbeispiele fuer den Absicht-Klassifikator (was meint der Spieler?).
+# Format: absicht|beispiel
+greet|hi
+greet|hallo
+greet|hey
+greet|moin
+greet|servus
+greet|hallo leute
+greet|hi zusammen
+greet|guten tag
+greet|yo
+greet|hey ihr
+greet|hallo alle
+greet|huhu
+gg|gg
+gg|gg wp
+gg|good game
+gg|gut gespielt
+gg|ggs
+gg|gg ez
+insult|noob
+insult|ihr seid alle noobs
+insult|du bist schlecht
+insult|ez
+insult|easy
+insult|ihr seid trash
+insult|lappen
+insult|kacke
+insult|ihr seid so schlecht
+insult|loser
+insult|bots sind schlecht
+insult|du kannst nichts
+insult|haha noob
+praise|nice
+praise|gut gemacht
+praise|krass
+praise|stark
+praise|wow
+praise|geil
+praise|cool
+praise|nicht schlecht
+praise|respekt
+praise|du bist gut
+bot|bist du ein bot
+bot|seid ihr bots
+bot|ist das eine ki
+bot|bist du echt
+bot|seid ihr menschen
+bot|du bist doch ein bot
+bot|bist du ein npc
+truce|wollen wir teamen
+truce|team
+truce|frieden
+truce|buendnis
+truce|lass uns zusammen spielen
+truce|truce
+laugh|haha
+laugh|lol
+laugh|xd
+laugh|hahaha
+laugh|lmao
+cmd_defend|verteidigt
+cmd_defend|verteidigt das bett
+cmd_defend|bleibt beim bett
+cmd_defend|defend
+cmd_defend|def
+cmd_defend|schuetzt das bett
+cmd_defend|bewacht das bett
+cmd_defend|bleibt zu hause
+cmd_defend|passt aufs bett auf
+cmd_defend|bleibt auf der insel
+cmd_attack|greift an
+cmd_attack|greift blau an
+cmd_attack|angriff auf rot
+cmd_attack|rush gelb
+cmd_attack|rusht pink
+cmd_attack|attack
+cmd_attack|holt das bett von gruen
+cmd_attack|zerstoert das bett von blau
+cmd_attack|los auf rot
+cmd_attack|angriff
+cmd_attack|geht auf gelb
+cmd_attack|macht blau kaputt
+cmd_follow|folgt mir
+cmd_follow|folg mir
+cmd_follow|kommt mit
+cmd_follow|kommt mit mir
+cmd_follow|begleitet mich
+cmd_follow|mitkommen
+cmd_follow|bleibt bei mir
+cmd_help|hilfe
+cmd_help|help
+cmd_help|hilf mir
+cmd_help|helft mir
+cmd_help|komm schnell
+cmd_help|kommt her
+cmd_help|ich brauche hilfe
+cmd_help|ich werde angegriffen
+cmd_mid|holt dias
+cmd_mid|holt diamanten
+cmd_mid|geht mitte
+cmd_mid|holt smaragde
+cmd_mid|mid
+cmd_mid|holt emeralds
+cmd_mid|geht in die mitte
+cmd_mid|wir brauchen diamanten
+cmd_fortify|baut das bett zu
+cmd_fortify|bett zubauen
+cmd_fortify|baut eine verteidigung
+cmd_fortify|macht das bett dicht
+cmd_fortify|mehr bloecke ums bett
+cmd_fortify|endstein ums bett
+cmd_stop|stop
+cmd_stop|stopp
+cmd_stop|normal
+cmd_stop|macht was ihr wollt
+cmd_stop|egal
+cmd_stop|vergesst es
+cmd_buy|kauft euch was
+cmd_buy|kauft ruestung
+cmd_buy|geht shoppen
+cmd_buy|kauft euch schwerter
+cmd_buy|ruestet euch aus
+cmd_buy|geht einkaufen
+ask_where|wo seid ihr
+ask_where|wo bist du
+ask_where|wo seid ihr alle
+ask_where|wer ist wo
+ask_where|wo bist du gerade
+ask_res|wie viel eisen habt ihr
+ask_res|wie viele dias habt ihr
+ask_res|was habt ihr an ressourcen
+ask_res|wie viel gold haben wir
+ask_res|status
+ask_res|wie viele smaragde
+ask_doing|was macht ihr
+ask_doing|was machst du
+ask_doing|was macht ihr gerade
+ask_doing|was ist euer plan
+ask_strategy|was ist die strategie
+ask_strategy|was sollen wir machen
+ask_strategy|wen greifen wir an
+ask_strategy|wer ist am schwaechsten
+ask_strategy|was meint ihr
+ask_how|wie gehts
+ask_how|wie geht es euch
+ask_how|alles gut bei euch
+ask_how|na wie laeufts
+thanks|danke
+thanks|dankeschoen
+thanks|thx
+thanks|danke euch
+sorry|sorry
+sorry|entschuldigung
+sorry|mein fehler
+question|warum
+question|wieso
+question|was
+question|wer
+question|was ist das
+question|wer war das
+question|warum macht ihr das
+cmd_defend|verteidigt mal unser bett
+cmd_defend|bleibt mal alle hier
+cmd_defend|einer muss das bett bewachen
+cmd_defend|verteidigen
+cmd_attack|lasst uns angreifen
+cmd_attack|wir greifen jetzt an
+cmd_attack|holt euch das bett von rot
+cmd_attack|lasst uns gelb rushen
+cmd_attack|alle auf pink
+cmd_mid|holt mal diamanten
+cmd_mid|geht dias holen
+cmd_mid|wir brauchen smaragde
+cmd_follow|kommt mal mit
+cmd_follow|folgt mir mal
+cmd_help|hilfe ich sterbe
+cmd_help|kommt schnell her
+cmd_buy|kauft euch mal was
+cmd_buy|holt euch ruestung
+cmd_buy|kauft bessere schwerter
+cmd_fortify|baut mal das bett zu
+cmd_fortify|macht mehr bloecke ums bett
+ask_strategy|was ist der plan
+ask_strategy|was machen wir jetzt
+ask_strategy|was ist unsere strategie
+ask_doing|was machst du gerade
+insult|ihr seid voll die noobs
+insult|alle noobs hier
+insult|ihr koennt gar nichts
+praise|gut gespielt
+praise|krass gemacht
+bot|bist du eigentlich ein bot
+bot|seid ihr echte menschen

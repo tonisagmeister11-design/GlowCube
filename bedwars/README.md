@@ -1,100 +1,137 @@
-# GlowCube Bedwars 2.0 – Fabric-Mod für Minecraft 26.3
+# GlowCube Bedwars 3.0 – Fabric-Mod für Minecraft 26.3
 
 Beim Betreten einer Einzelspielerwelt startet sofort eine Bedwars-Runde: fünf Teams,
 du bist mit drei Bots in einem davon, die anderen vier Teams sind komplett Bots.
 
-Das fertige JAR liegt unter `dist/glowcube-bedwars-2.0.0.jar`
+Das fertige JAR liegt unter `dist/glowcube-bedwars-3.0.0.jar`
 (braucht Fabric Loader ≥ 0.17 und die Fabric API für 26.3).
 
 ![Karte](docs/karte.png)
 
-## Was neu ist gegenüber 1.0
+## Neu in 3.0: die Bots spielen wie Menschen
 
-### Bots sehen aus wie Spieler
+### Kämpfen wie ein Mensch statt Kill-Aura
 
-Statt Wüstenzombies sind die Bots jetzt echte Spielermodelle (das Mannequin von 26.x)
-mit **Steve- oder Alex-Skin** – Mädchennamen bekommen Alex, Jungennamen Steve.
-Damit man die Skins auch sieht, tragen Bots nur Teamhose und Teamschuhe; den fehlenden
-Schutz von Helm und Brustpanzer bekommen sie unsichtbar dazu. Über dem Kopf steht
-`[Team] Name`, darunter die Lebenspunkte.
+Jeder Bot bekommt einen **Spielertyp** – Anfänger, Gelegenheitsspieler, solide oder
+Schwitzer – und damit eigene „Hände":
 
-![Skins](docs/skins.png)
+* **Reaktionszeit**: Bots sehen Bewegungen erst 150–650 ms später, je nach Typ.
+* **Echtes Zielen**: Ein Fadenkreuz dreht sich mit begrenzter Geschwindigkeit zum Ziel,
+  zittert, zieht nach und schießt beim schnellen Umdrehen über. **Getroffen wird nur,
+  wenn der Strahl aus dem Auge die Hitbox trifft** – strafed man, schlagen sie daneben.
+* **Klick-Rhythmus**: Disziplinierte Spieler warten die Schlag-Abklingzeit ab, andere
+  spammen – dann richten die Schläge wie bei Spielern nur einen Bruchteil des Schadens an
+  (Schadensformel aus 1.9+). Anfänger schlagen auch schon aus zu großer Entfernung ins Leere.
+* **Fehler**: kurze Aussetzer mitten im Kampf, nicht strafen, an der Kante nicht aufpassen
+  und runterfallen, beim Brücken einen Block verpassen, den Goldapfel vergessen. Wer
+  mehrmals kurz hintereinander stirbt, wird **genervt (Tilt)** und spielt schlechter.
+* In einem Testspiel trafen solide Bots etwa 36–44 % ihrer Schläge, Gelegenheitsspieler
+  7–43 %, Anfänger um 8 %.
 
-### Die KI
+Mit `/bedwars schwierigkeit leicht|normal|schwer|profi` verschiebt sich die Mischung der
+Spielertypen (leicht: fast nur Anfänger und Gelegenheitsspieler, profi: fast nur Schwitzer).
 
-Jeder Bot hat einen Charakter (Stürmer, Bauer, Sammler, Kämpfer) mit eigenen Werten
-für Aggressivität, Können, Vorsicht, Gesprächigkeit und Frechheit.
+### Eine echte kleine KI für die Strategie
 
-**Bewegen und Bauen** – eine A*-Wegsuche über das Blockraster kennt Laufen, Springen,
-Fallen, **Brücken bauen**, **Hochbauen** und **Blöcke abbauen**, jeweils mit Kosten.
-Vorhandene Brücken werden bevorzugt, neue werden gerade und gezielt gebaut statt zufällig.
-Steht ein Block im Weg, wird gesprungen, abgebaut oder neu geplant – nie mehr endlos
-dagegenlaufen. Wer von einer Kante gestoßen wird, setzt (je nach Können) einen
-**Clutch-Block** unter sich.
+Was jeder Bot gerade macht – sammeln, einkaufen, Bett zubauen, verteidigen, angreifen,
+Mitte, jagen, begleiten, sammeln – entscheidet jetzt ein **kleines neuronales Netz**
+(36 Eingänge → 24 Neuronen → 9 Bewertungen). Es sieht die Lage aus Sicht des Bots:
+Bett, Leben, Ausrüstung, Blöcke, Team-Ressourcen, Gegner auf der Insel oder auf dem Weg,
+wie gut das eigene Bett geschützt ist, was die Teamkollegen schon machen, das lohnendste
+Angriffsziel, ob der Spieler in der Nähe ist, und wie die Gegner spielen.
 
-**Kämpfen** – Strafen, Krit-Sprünge, W-Tap mit Rückstoß, Zielen nach Reichweite,
-Rückzug mit Goldapfel bei wenig Leben, Feuerbälle auf Gegner aus der Ferne. Bots laufen
-nicht blind in die Leere, sondern prüfen den Boden vor jedem Schritt.
+**Gegner-Modell**: Jedes Team beobachtet die anderen und erkennt ihre Strategie –
+*Rusher* (kommen ständig rüber), *Bunker* (bauen sich ein), *Wirtschaft* (campen die Mitte).
+Das fließt ins Netz ein, und die Bots sagen es im Team-Chat („gelb rusht dauernd, wir
+müssen mehr verteidigen").
 
-**Team-Strategie** – jedes Team hat einen Strategen, der alle zwei Sekunden (und sofort
-bei Alarm) die Aufträge verteilt:
+**So wurde das Netz trainiert** (Skript: `tools/train_brain.py`, alles auf einem Testserver im Zeitraffer):
 
-* einer baut das Bett zu: Wolle innen, Endstein, dann Holz – Schicht für Schicht,
-  und Löcher werden nachgebaut
-* einer verteidigt, Eindringlinge auf der Insel lösen sofort Alarm aus – **wer auf ihre
-  Insel geht, wird angegriffen**, die ganze Truppe kommt zurück
-* baut jemand eine Brücke zur Insel, **reißt ein Bot sie ab**
-* Mitte: Diamanten und Smaragde holen, Diamanten gehen in Team-Upgrades
-  (Eisenschmiede, Geschärfte Klingen, Schutz I–III, Heilfeld)
-* Angriffe zu zweit (Stürmer + Begleitschutz) auf das lohnendste Ziel: Nachbarn,
-  schwach verteidigte Betten, Teams mit wenig Leuten – und Teams mit Rechnung offen
-* manchmal **jagen sie dich** – öfter, wenn du ihr Bett geholt oder sie oft getötet hast
-* **ohne Bett spielen sie vorsichtig**: wer weit weg und schlecht ausgerüstet ist, kommt
-  heim, erst wird eingekauft, dann geht es nur gemeinsam und nur gegen Schwächere los
+1. 30 Runden mit dem alten Regelwerk, dabei jede Entscheidung aufgezeichnet (24 487 Beispiele).
+2. Das Netz hat diese Entscheidungen nachgelernt – 79 % Übereinstimmung auf Daten, die es
+   beim Lernen nicht gesehen hat.
+3. Feinabstimmung gegen das Regelwerk: in jeder Runde zwei Netz-Teams gegen drei Regel-Teams,
+   15 Generationen Evolutionsstrategie auf den Neigungen des Netzes (wie gern es angreift,
+   verteidigt, sammelt, jagt …).
 
-**Chat-KI** – die Bots schreiben in den Chat: Begrüßung, Reaktionen auf Betten,
-Kills, Clutches, Käufe, Absprachen im Team (`[TEAM]`). Sie verstehen auch dich:
+**Ehrliches Ergebnis** aus je 30 Vergleichsrunden: Das Netz spielt **so stark wie das
+handgeschriebene Regelwerk**, aber nicht stärker (mittlere Platzierung 3,04 gegen 2,96;
+es holt etwas weniger Betten, 0,56 gegen 0,77 pro Team und Runde). Ein erster Versuch mit
+30 Generationen reinem Selbstspiel über alle Gewichte hat nichts gebracht – das so
+trainierte Netz war schwächer und ist nicht eingebaut. Der Vorteil des Netzes: Es
+entscheidet weicher und abwechslungsreicher als feste Regeln, und es lässt sich mit dem
+Skript weiter trainieren.
 
-| Du schreibst | Deine Teamkollegen … |
+Reflexe bleiben fest eingebaut: Eindringlinge auf der Insel werden angegriffen (aber nicht
+alle bemerken es sofort, und meist bleibt einer bei seiner Aufgabe), Brücken zur Insel
+werden abgerissen, Teamkollegen helfen, wenn einer angegriffen wird.
+
+### Teamkollegen kaufen aktiv ein
+
+Wer zu Hause ist und sich etwas Sinnvolles leisten kann, geht zum Shop: Schwerter,
+Rüstung, Wolle, Endstein, Schere, Spitzhacke, Goldäpfel, Feuerbälle. Deine Teamkollegen
+erzählen im Team-Chat, was sie sich geholt haben. Mit „kauft euch was" schickst du alle
+zum Shop.
+
+![Einkaufen](docs/einkaufen.png)
+
+### Hochbauen
+
+Bots bauen sich hoch: als Teil der Wegsuche (über Hindernisse, zurück auf eine Insel),
+um an einen Gegner über ihnen heranzukommen und – solide Spieler und Schwitzer – in Not,
+um einem verlorenen Nahkampf zu entkommen. In einem 12-Minuten-Testspiel wurden 61 Blöcke
+zum Hochbauen gesetzt, dazu 39 Clutch-Blöcke.
+
+### Der Chat schreibt sich selbst
+
+Die Bots ziehen keine fertigen Sätze mehr aus einer Liste. Ein **Sprachmodell**
+(Wort-Trigramme pro Situation, gelernt aus `resources/.../chat/corpus.txt`) bildet neue
+Sätze, bewertet mehrere Kandidaten nach Flüssigkeit und Neuheit und vermeidet, was gerade
+erst jemand geschrieben hat. Beispiele aus einem Testspiel: „die leere hat mich geschubst",
+„zu einfach das bett war zu schwach blau", „jetzt kommt es drauf an".
+
+Jeder Bot hat seinen **eigenen Schreibstil**: klein oder groß, Slang („digga", „alter",
+„bro"), Abkürzungen („nich", „hab", „nen"), Smileys, gelegentliches Schreien in
+Großbuchstaben und Tippfehler – Anfänger vertippen sich öfter.
+
+**Verstehen**: Ein **Naive-Bayes-Klassifikator**, trainiert auf Beispielsätzen
+(`chat/intents.txt`), erkennt, was du meinst – Befehl, Frage, Gruß, Beleidigung, Lob,
+„bist du ein bot?" … – und wie sicher er sich ist. Ist er unsicher, helfen Schlüsselwörter.
+
+| Du schreibst (zum Beispiel) | Deine Teamkollegen … |
 | --- | --- |
-| `verteidigt`, `bleibt beim bett` | bleiben am Bett |
-| `greift blau an`, `rush gelb` | greifen dieses Team an |
-| `folgt mir`, `kommt mit` | laufen hinter dir her |
-| `hilfe`, `komm schnell` | kommen zu dir |
-| `holt dias`, `mitte` | gehen Diamanten/Smaragde holen |
-| `baut das bett zu` | bauen die Verteidigung neu |
-| `wo seid ihr` | sagen, wo sie sind |
-| `wie viel eisen habt ihr` | nennen den Team-Vorrat |
-| `stop`, `normal` | machen wieder ihr eigenes Ding |
+| „verteidigt mal unser bett" | bleiben am Bett |
+| „greift blau an", „lasst uns gelb rushen" | greifen dieses Team an |
+| „kommt mit", „folgt mir mal" | laufen hinter dir her |
+| „hilfe", „kommt schnell her" | kommen zu dir |
+| „holt dias", „wir brauchen smaragde" | gehen in die Mitte |
+| „baut das bett zu" | bauen die Verteidigung neu |
+| „kauft euch was", „holt euch rüstung" | gehen einkaufen |
+| „was ist der plan" | erklären, was das Team vorhat |
+| „wo seid ihr" / „wie viel eisen habt ihr" | sagen, wo sie sind / was das Team hat |
+| „stop", „macht was ihr wollt" | machen wieder ihr eigenes Ding |
 
-Auf `hallo`, `gg`, `noob`, `bist du ein bot?` und Ähnliches antworten auch die Gegner.
+Auf Gruß, „gg", Lob, Beleidigungen, „bist du ein bot?" oder „wie gehts" antworten auch
+die Gegner. Zwischendurch reden die Bots von sich aus („wer campt mitte", „ich spare auf
+diamantruestung").
 
-![Angriff](docs/angriff.png)
+![Chat](docs/chat.png)
 
-### Die Karte
+## Weiterhin dabei (aus 2.0)
 
-* **Römische Team-Inseln**: Quarzboden mit Teamweg, Säulen mit Laternen, Statue mit
-  leuchtendem Speer, Shop-Pavillon, Generator aus Eisen- und Goldblöcken, darunter
-  ein schwebender Felsen. **Das Bett steht von Anfang an** – nie mehr im Inventar.
-* **Die Mitte**: ein runder Tempel aus zehn Säulen, in der Mitte ein **Leuchtfeuer**,
-  dessen Strahl durch die offene Kuppel in den Himmel geht, vier goldene Wächterstatuen
-  und die Smaragd-Spawner.
-* **Fünf Diamant-Inseln** zwischen den Team-Inseln.
+* **Spielermodelle mit Steve- oder Alex-Skin**, `[Team] Name` und Lebensanzeige über dem Kopf.
+  Bots tragen nur Teamhose und -schuhe, damit man die Skins sieht.
+* **A*-Wegsuche** mit Laufen, Springen, Fallen, Brückenbau, Hochbauen und Abbauen.
+* Bett in Schichten zubauen (Wolle, Endstein, Holz), Brücken der Gegner abreissen,
+  Mitte und Team-Upgrades (Eisenschmiede, Geschärfte Klingen, Schutz I–III, Heilfeld).
+* Ohne Bett spielen Teams vorsichtig: erst ausrüsten, dann nur gemeinsam.
+* **Römische Karte**: Inseln mit Säulen und Statuen, Rundtempel mit Leuchtfeuer in der
+  Mitte, fünf Diamant-Inseln. Das Bett steht von Anfang an.
+* Nach 12 Minuten fallen alle Betten, ab 15 Minuten Sudden Death. Während der Runde ist
+  Mittag und der Schwierigkeitsgrad „Normal"; beides wird danach zurückgesetzt.
 
 ![Mitte](docs/mitte.png)
-![Insel](docs/insel.png)
-
-### Spielablauf
-
-* mehr Eisen als vorher, Diamant- und Smaragd-Spawner werden nach 6/9/12/15 Minuten schneller
-* Shop mit Wolle, Endstein, Holz, Schere, Spitzhacken, Schwertern, Feuerbällen,
-  Goldäpfeln, Enderperlen, Rüstung und den Team-Upgrades
-* nach 12 Minuten fallen alle Betten, ab 15 Minuten **Sudden Death** (alle Bots leuchten
-  und greifen an) – jede Runde findet ein Ende
-* während der Runde ist immer Mittag, danach läuft die Weltuhr dort weiter, wo sie war
-* der Schwierigkeitsgrad steht während der Runde auf „Normal“ (sonst machen die Bots
-  auf „Friedlich“ keinen Schaden) und wird danach zurückgesetzt
-* am Ende: Siegerteam und bester Bot mit Kills, Finals und Betten
+![Skins](docs/skins.png)
 
 ## Befehle
 
@@ -102,32 +139,37 @@ Auf `hallo`, `gg`, `noob`, `bist du ein bot?` und Ähnliches antworten auch die 
 | --- | --- |
 | `/bedwars start` | neue Runde |
 | `/bedwars stop` | Runde beenden, Inventar zurück |
-| `/bedwars status` | Teams, Betten und was jeder Bot gerade macht |
+| `/bedwars status` | Teams, Betten, Spielertyp, Trefferquote und Auftrag jedes Bots |
+| `/bedwars schwierigkeit <stufe>` | leicht, normal, schwer oder profi (ab der nächsten Runde) |
 | `/bedwars shop` | Shop öffnen |
 | `/bedwars auto an\|aus` | Autostart beim Betreten |
-| `/bedwars test` | Runde mit einem Platzhalter-Spieler und Protokoll in der Konsole |
+| `/bedwars test` | reine Bot-Runde mit Protokoll in der Konsole |
 | `/bedwars say <text>` | Chat-KI testen, als hätte man es geschrieben |
+| `/bedwars train <ordner>` / `record <ordner>` | fürs Training: Runde mit Netzen aus `teams.json` bzw. mit Aufzeichnung |
+
+Die Schwierigkeit steht in `config/glowcube_bedwars.properties`.
 
 ## Aufbau
 
 | Datei | Inhalt |
 | --- | --- |
 | `BedwarsMod` | Einstieg, Ereignisse, Befehle |
-| `Game` | Runde, Teams, Betten, Kills, Spawner, Upgrades, Endspiel |
+| `Game` | Runde, Teams, Betten, Kills, Spawner, Upgrades, Endspiel, Training |
 | `Arena` | die Karte |
-| `BedwarsBot` | der Bot-Körper: Steuerung, Wege, Kampf, Bauen, Abbauen |
+| `BedwarsBot` | der Bot-Körper: Steuerung, Wege, Zielen, Kampf, Bauen, Hochbauen |
+| `Hands` | Spielertyp: Reaktion, Zielen, Klicks, Fehlerquoten |
 | `Pathfinder` | A*-Wegsuche mit Brücken, Hochbauen und Abbauen |
-| `TeamBrain` | der Stratege jedes Teams |
+| `TeamBrain` | Stratege: Reflexe, Gegner-Modell, Planung mit dem Netz, Befehle |
+| `StrategyNet` | das neuronale Netz (Gewichte in `resources/.../brain.json`) |
 | `BotProfile` | Charakter, Inventar, Einkauf, Auftrag |
-| `BotChat` | die Chat-KI |
-| `Shop`, `BwTeam` | Shop und Teamfarben |
-
-`lib/glowcube-bedwars-1.0.0.jar` ist die alte Fassung, nur zum Vergleich.
+| `ChatBrain` | Sprachmodell, Schreibstil, Absicht-Klassifikator |
+| `BotChat` | wann wer was schreibt, Spieler verstehen |
+| `Shop`, `BwTeam`, `Config` | Shop, Teamfarben, Einstellungen |
 
 ## Bauen
 
 ```bash
-./build.sh          # -> dist/glowcube-bedwars-2.0.0.jar
+./build.sh          # -> dist/glowcube-bedwars-3.0.0.jar
 ```
 
 Voraussetzungen: JDK 25 oder neuer, `curl`, `unzip`, `zip`.
@@ -136,3 +178,15 @@ Seit 26.x liefert Mojang das Spiel unverschleiert aus. Eine Mod ohne Mixins läs
 deshalb direkt mit `javac` gegen das Client-JAR, seine Bibliotheken, den Fabric Loader
 und die Fabric API übersetzen – ohne Gradle und Loom. Das Skript lädt diese einmalig
 nach `.build/`.
+
+Das Netz neu trainieren (braucht Python 3 mit numpy und einen Fabric-Server mit der Mod,
+dessen Konsole an einer FIFO hängt):
+
+```bash
+python3 tools/train_brain.py teacher --console server/console.in --work /tmp/bw --games 30
+python3 tools/train_brain.py clone   --console server/console.in --work /tmp/bw
+python3 tools/train_brain.py evolve  --console server/console.in --work /tmp/bw \
+    --bias-only --vs-rules --out brain_tuned.json --generations 15 --sigma 0.3 --lr 0.4 --pairs 4
+python3 tools/train_brain.py eval    --console server/console.in --work /tmp/bw --games 30 --candidate brain_tuned.json
+cp /tmp/bw/brain_tuned.json resources/assets/glowcube_bedwars/brain.json
+```

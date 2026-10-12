@@ -1,0 +1,504 @@
+# Trainingstext fuer das Chat-Sprachmodell der Bots.
+# Format: absicht|satz   - {player} {name} {team} {item} sind Platzhalter.
+# Das Modell lernt daraus Wortfolgen pro Absicht und bildet neue Saetze.
+
+start|gl hf
+start|viel glueck euch allen
+start|viel glueck und viel spass
+start|los gehts leute
+start|diesmal gewinne ich safe
+start|hallo zusammen
+start|hi leute
+start|na wer rusht mich zuerst
+start|endlich wieder bedwars
+start|ok diesmal spiele ich richtig
+start|ich hoffe ihr seid bereit
+start|wer gewinnt diesmal
+start|gl euch allen
+start|auf ein gutes spiel
+start|let's go
+start|hallo an alle
+start|na dann mal los
+start|viel spass euch
+start|heute gewinne ich
+start|wer ist alles dabei
+
+plan|ich bau unser bett zu
+plan|ich baue das bett zu und ihr holt eisen
+plan|wer geht rushen
+plan|ich hol erstmal wolle
+plan|lasst uns zuerst {team} angreifen
+plan|ich geh gleich mitte
+plan|ich bleib erstmal hier und verteidige
+plan|wir sollten erst ausruesten
+plan|ich hol mir erstmal ein schwert
+plan|einer muss das bett zubauen
+plan|ich kauf erstmal wolle und dann gehts los
+plan|wir greifen zusammen an
+plan|wer holt die dias
+plan|ich mach defense
+plan|lasst uns {team} zuerst rushen
+plan|schreibt einfach was wir machen sollen
+
+kill|ez
+kill|zu langsam {name}
+kill|der naechste bitte
+kill|sorry {name}
+kill|1
+kill|nice
+kill|und weg
+kill|bye {name}
+kill|das war einfach
+kill|weg mit dir {name}
+kill|komm wieder {name}
+kill|zu einfach
+kill|tschau {name}
+kill|gg {name}
+kill|noch einer
+kill|ok das war knapp
+kill|hab ihn
+kill|das war mein kill
+kill|geht doch
+kill|easy {name}
+kill|du warst zu langsam
+kill|sorry aber das musste sein
+
+killfinal|tschuess {name}
+killfinal|final kill
+killfinal|{name} ist raus
+killfinal|und {name} ist raus
+killfinal|gg {name}
+killfinal|der ist endgueltig weg
+killfinal|kein bett kein leben {name}
+killfinal|das wars fuer dich {name}
+killfinal|bye bye {name}
+killfinal|final auf {name}
+
+death|lag
+death|glueck gehabt {name}
+death|boah
+death|das war knapp
+death|ok rache kommt
+death|wie hat der mich getroffen
+death|warte nur {name}
+death|ich komme wieder
+death|unfair
+death|mein ping ist so schlecht
+death|ich hab nicht aufgepasst
+death|das war mein fehler
+death|ich war abgelenkt
+death|na toll
+death|ach komm
+death|der hat mich voll erwischt
+death|ich hatte kein leben mehr
+death|warum hab ich nicht gegessen
+death|nicht schon wieder
+death|du hattest glueck {name}
+
+deathvoid|ups
+deathvoid|wer hat mich geschubst
+deathvoid|die leere hat mich
+deathvoid|ich kann nicht bridgen lol
+deathvoid|verrutscht
+deathvoid|ich bin einfach runtergefallen
+deathvoid|warum bin ich runtergefallen
+deathvoid|das zaehlt nicht
+deathvoid|mein finger ist abgerutscht
+deathvoid|ich hab vergessen zu sneaken
+deathvoid|die kante war da einfach nicht
+
+deathfinal|gg
+deathfinal|gg wp
+deathfinal|naja
+deathfinal|das wars fuer mich
+deathfinal|nicht fair
+deathfinal|gg ihr wart besser
+deathfinal|ok ich bin raus
+deathfinal|ich schau jetzt zu
+deathfinal|gg nochmal spielen
+deathfinal|schade
+
+bedlost|nein unser bett
+bedlost|bett ist weg
+bedlost|wer hat nicht aufgepasst
+bedlost|na super kein bett mehr
+bedlost|ok jetzt wirds ernst
+bedlost|wie konnte das passieren
+bedlost|unser bett ist weg leute
+bedlost|warum hat keiner verteidigt
+bedlost|jetzt muessen wir vorsichtig sein
+bedlost|das bett ist weg jetzt keiner mehr sterben
+bedlost|oh nein das bett
+bedlost|ich war nicht da sorry
+
+bedbroke|bett weg
+bedbroke|ez bett
+bedbroke|{team} hat kein bett mehr
+bedbroke|noch ein bett
+bedbroke|das war einfach
+bedbroke|hab das bett von {team}
+bedbroke|bett von {team} ist weg
+bedbroke|sorry {team} euer bett ist weg
+bedbroke|das bett war nicht gut verteidigt
+bedbroke|zu einfach das bett
+bedbroke|und das bett ist weg
+
+bedother|rip {team}
+bedother|uff
+bedother|ein bett weniger
+bedother|gut so
+bedother|{team} hat kein bett mehr
+bedother|rip euer bett {team}
+bedother|haha {team}
+bedother|wer war das
+
+bedpraise|nice bett
+bedpraise|stark gemacht
+bedpraise|gg bett
+bedpraise|weiter so
+bedpraise|krass gemacht {player}
+bedpraise|so gehts
+bedpraise|nice {player}
+bedpraise|super gemacht
+
+bedrevenge|{player} warte nur
+bedrevenge|wie bist du da reingekommen {player}
+bedrevenge|das gibt rache {player}
+bedrevenge|du bist als naechstes dran {player}
+bedrevenge|na warte {player}
+bedrevenge|{player} das bereust du
+
+clutch|clutch
+clutch|puh knapp
+clutch|fast runtergefallen
+clutch|nice clutch
+clutch|nicht mit mir
+clutch|gerade so
+clutch|das war knapp
+clutch|haha gerettet
+
+fortified|bett ist zugebaut
+fortified|bett ist sicher
+fortified|hab das bett mit endstein zugemacht
+fortified|verteidigung steht
+fortified|das bett ist jetzt gut geschuetzt
+fortified|da kommt keiner mehr durch
+
+cutbridge|ich reiss die bruecke von {name} ab
+cutbridge|bruecke weg haha
+cutbridge|da baut einer zu uns ich kuemmer mich
+cutbridge|ich mach die bruecke kaputt
+cutbridge|{name} kommt ueber die bruecke ich hau sie weg
+
+hunt|ich komm dich holen {player}
+hunt|hab dich gesehen {player}
+hunt|lauf lieber {player}
+hunt|{player} du bist dran
+hunt|da ist {player} ich geh drauf
+hunt|ich jage jetzt {player}
+hunt|{player} wo willst du hin
+hunt|ich hab dich {player}
+
+raid|ich geh auf {team}
+raid|{team} ist dran
+raid|ich rush {team}
+raid|wer kommt mit zu {team}
+raid|bett von {team} sieht schwach aus
+raid|ich hol mir das bett von {team}
+raid|ich geh jetzt zu {team}
+raid|{team} hat ein schwaches bett
+
+playsafe|bett ist weg jetzt vorsichtig spielen
+playsafe|kein bett mehr erstmal ausruesten
+playsafe|wir bleiben zusammen keiner stirbt sinnlos
+playsafe|ruhig bleiben erst ruestung dann angreifen
+playsafe|jetzt nicht mehr einzeln rein
+playsafe|wir haben nur noch ein leben also aufpassen
+
+sortie|alle zusammen auf {team}
+sortie|jetzt gemeinsam rein {team} ist schwach
+sortie|folgt mir wir holen {team}
+sortie|zusammen sind wir staerker los auf {team}
+
+alarmbed|hilfe {name} ist an unserem bett
+alarmbed|{name} am bett
+alarmbed|bett {name} baut ab
+alarmbed|schnell zum bett {name}
+alarmbed|hilfe am bett
+alarmbed|kommt alle zum bett
+
+alarm|{name} ist auf unserer insel
+alarm|gegner auf der insel
+alarm|achtung {name} kommt
+alarm|da ist {name} bei uns
+alarm|{name} ist bei uns
+alarm|einer ist auf unserer insel
+
+purchase|hab {item}
+purchase|{item} gekauft
+purchase|jetzt mit {item}
+purchase|endlich {item}
+purchase|hab mir {item} geholt
+purchase|neues {item} lets go
+purchase|ich hab jetzt {item}
+
+upgrade|hab {item} fuers team geholt
+upgrade|{item} ist gekauft
+upgrade|wir haben jetzt {item}
+
+stratrush|{team} rusht dauernd wir muessen mehr verteidigen
+stratrush|{team} kommt staendig rueber
+stratrush|achtung {team} spielt voll aggressiv
+stratrush|{team} greift nur an
+stratrush|passt auf {team} rusht
+
+strateco|{team} campt die ganze zeit mitte
+strateco|{team} holt alle dias da sollten wir hin
+strateco|{team} farmt nur smaragde
+strateco|{team} ist nur in der mitte
+
+stratbunker|{team} hat sich komplett eingebunkert
+stratbunker|{team} verteidigt nur noch
+stratbunker|bei {team} kommt keiner raus
+stratbunker|{team} hat das bett voll zugebaut
+
+teamout|{team} ist raus
+teamout|einer weniger
+teamout|bye {team}
+teamout|{team} ist komplett raus
+
+win|gg ez
+win|gg
+win|gewonnen
+win|gg wp alle
+win|ja man
+win|gg das war gut
+win|wir haben gewonnen
+
+lose|gg
+lose|gg wp
+lose|naechste runde
+lose|gg das war knapp
+lose|naechstes mal gewinne ich
+
+tilt|ich hasse diese runde
+tilt|warum sterbe ich dauernd
+tilt|ok jetzt bin ich sauer
+tilt|das ist doch nicht normal
+tilt|mein spiel laggt so hart
+tilt|ich treffe heute gar nichts
+
+bored|wer hat schon diamanten
+bored|wie viele smaragde habt ihr so
+bored|wer campt mitte
+bored|das bett von {team} ist richtig gut zugebaut
+bored|ist {team} noch im spiel
+bored|ich brauche mehr eisen
+bored|hat jemand feuerbaelle
+bored|wie lange geht die runde noch
+bored|die map ist echt schoen
+bored|wer ist hier eigentlich am besten
+bored|ich glaube {team} gewinnt
+bored|langweilig
+bored|wo sind alle
+bored|ich hab hunger
+bored|gleich kommen die diamanten
+
+rgreet|hi {player}
+rgreet|hey
+rgreet|moin
+rgreet|servus
+rgreet|hallo
+rgreet|yo {player}
+rgreet|hey {player} wie gehts
+rgreet|hallo {player}
+
+rgg|gg
+rgg|gg wp
+rgg|ggs
+rgg|gg {player}
+
+rinsult|selber noob
+rinsult|sagt der richtige
+rinsult|warte bis ich dein bett hab {player}
+rinsult|erst mal bridgen lernen
+rinsult|wir sehen uns gleich {player}
+rinsult|du redest viel fuer jemanden mit lederruestung
+rinsult|aha
+rinsult|komm her wenn du dich traust
+rinsult|ok und
+rinsult|sagt der der dauernd stirbt
+rinsult|schreib weniger und spiel mehr
+
+rpraise|danke
+rpraise|ich weiss
+rpraise|danke dir
+rpraise|du auch {player}
+rpraise|haha danke
+
+rbot|ich bin doch kein bot
+rbot|selber bot
+rbot|beep boop nein spass
+rbot|sagt der der nicht bridgen kann
+rbot|nein ich bin {me}
+rbot|wie kommst du darauf
+rbot|bots koennen nicht so gut spielen wie ich
+
+rtruce|teamen ist verboten
+rtruce|netter versuch
+rtruce|nur wenn du mir dein bett gibst
+rtruce|nein danke
+rtruce|vergiss es
+
+rlaugh|was lachst du
+rlaugh|haha
+rlaugh|lol
+rlaugh|xd
+
+rhow|gut und dir
+rhow|passt
+rhow|ganz gut ich gewinne gleich
+rhow|alles gut
+
+rthanks|gerne
+rthanks|kein ding
+rthanks|klar doch
+
+rquestion|keine ahnung
+rquestion|vielleicht
+rquestion|frag mich nicht
+rquestion|ja
+rquestion|nein
+rquestion|hm
+rquestion|weiss ich nicht
+
+runknown|was
+runknown|hm
+runknown|ja
+runknown|ich bin beschaeftigt
+runknown|spaeter
+runknown|was meinst du
+
+ackdefend|ok wir bleiben beim bett
+ackdefend|alles klar ich verteidige
+ackdefend|keiner kommt an unser bett
+ackdefend|machen wir
+ackdefend|ok ich bleib hier
+
+ackattack|ok wir greifen an
+ackattack|los gehts
+ackattack|bin dabei
+ackattack|ok auf {team}
+ackattack|{team} wird zerlegt
+ackattack|bin unterwegs zu {team}
+ackattack|alles klar {team}
+
+ackfollow|bin hinter dir
+ackfollow|ok ich folge dir
+ackfollow|komme mit
+ackfollow|wohin gehts
+
+ackhelp|komme
+ackhelp|bin unterwegs
+ackhelp|halt durch
+ackhelp|wo bist du ich komme
+
+ackmid|ich hol die dias
+ackmid|ok ich geh mitte
+ackmid|smaragde holen alles klar
+
+ackfortify|ich bau das bett zu
+ackfortify|mach ich mit endstein
+ackfortify|ok die verteidigung kommt
+
+ackstop|ok wir machen unser ding
+ackstop|alles klar
+ackstop|ok
+
+ackbuy|ok ich kauf mir was
+ackbuy|ich geh shoppen
+ackbuy|gute idee ich hol mir ruestung
+
+denyenemy|du bist nicht in meinem team
+denyenemy|netter versuch
+denyenemy|warum sollte ich auf dich hoeren
+denyenemy|wir sind nicht im selben team {player}
+
+# --- Erweiterung
+kill|der war leicht
+kill|nicht schlecht aber ich war schneller
+kill|ich hab dich erwischt {name}
+kill|das war knapp aber meiner
+kill|lauf nicht weg {name}
+kill|und wieder einer weniger
+kill|komm doch nochmal {name}
+kill|hab dich runtergeschubst
+kill|runter mit dir {name}
+kill|tschuess {name} bis gleich
+death|der hat mich einfach runtergehauen
+death|ich hab den nicht kommen sehen
+death|ich war nur kurz weg
+death|wo kam der denn her
+death|ich hatte noch einen apfel
+death|der hat so oft getroffen
+death|ok du bist gut {name}
+death|warum stehe ich auch da rum
+death|ich hab daneben geschlagen
+death|zwei gegen einen ist unfair
+deathvoid|ich wollte nur bridgen
+deathvoid|war wohl ein block zu weit
+deathvoid|ich bin von der bruecke gefallen
+deathvoid|ich hab nicht nach unten geschaut
+bedlost|ich hab doch gesagt wir muessen verteidigen
+bedlost|jetzt kommt es drauf an
+bedlost|egal wir holen uns ihr bett auch
+bedlost|ich war gerade beim shop sorry
+bedbroke|euer bett war zu schwach {team}
+bedbroke|endstein haette geholfen {team}
+bedbroke|und schon ist das bett weg
+bored|ich spare auf diamantruestung
+bored|wer hat eigentlich das beste schwert
+bored|die mitte ist heute voll leer
+bored|hat jemand schon schutz gekauft
+bored|ich glaube ich hol mir gleich feuerbaelle
+bored|warum ist es so ruhig
+bored|wer greift als naechstes an
+bored|ich hab heute richtig gutes ping
+bored|wie viele kills habt ihr
+bored|die statuen sind cool
+bored|das leuchtfeuer in der mitte ist krass
+bored|wer baut hier eigentlich so komische bruecken
+plan|ich geh shoppen und dann rushen
+plan|ich hol uns diamanten fuer upgrades
+plan|lasst uns erst endstein ums bett bauen
+plan|wenn wer kommt schreibt in den chat
+purchase|ich hab mir {item} gegoennt
+purchase|gerade {item} gekauft
+purchase|mit {item} bin ich jetzt staerker
+tilt|ich spiele heute echt schlecht
+tilt|immer sterbe ich zuerst
+tilt|ich hab keine lust mehr
+tilt|warum trifft der jedes mal
+rgreet|na
+rgreet|hi wie gehts
+rgreet|servus {player} viel glueck
+rinsult|ich warte auf dich {player}
+rinsult|du bist doch selber nicht besser
+rinsult|chill mal
+rinsult|mal sehen wer gleich lacht
+rbot|ich bin ein ganz normaler spieler
+rbot|nein ich spiele nur gut
+rquestion|gute frage
+rquestion|kann sein
+rquestion|frag die anderen
+runknown|hae
+runknown|ok
+runknown|wie meinst du das
+ackattack|okay ich bin dabei {team}
+ackattack|wir machen {team} fertig
+ackdefend|ich pass auf das bett auf
+ackdefend|niemand kommt durch
+ackhelp|ich bin gleich da
+ackhelp|warte ich helfe dir
+ackbuy|ich kauf mir gleich ein besseres schwert
+ackbuy|ok ich ruest mich aus

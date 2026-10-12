@@ -27,6 +27,7 @@ import net.minecraft.world.phys.Vec3;
 public final class BedwarsMod implements ModInitializer {
    @Override
    public void onInitialize() {
+      Config.load();
       ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> Game.onJoin(handler.getPlayer(), server));
       ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> Game.onDisconnect(handler.getPlayer()));
       ServerLifecycleEvents.SERVER_STOPPING.register(server -> Game.onServerStopping());
@@ -100,6 +101,44 @@ public final class BedwarsMod implements ModInitializer {
 
                return 1;
             })))
+            .then(Commands.literal("train").then(Commands.argument("dir", com.mojang.brigadier.arguments.StringArgumentType.greedyString()).executes(ctx -> {
+               ServerLevel level = ctx.getSource().getServer().overworld();
+               FakePlayer fake = FakePlayer.get(level);
+               fake.setPos(0.5, 70.0, 0.5);
+               Game.startTraining(fake, java.nio.file.Path.of(com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "dir")), false);
+               return 1;
+            })))
+            .then(Commands.literal("record").then(Commands.argument("dir", com.mojang.brigadier.arguments.StringArgumentType.greedyString()).executes(ctx -> {
+               ServerLevel level = ctx.getSource().getServer().overworld();
+               FakePlayer fake = FakePlayer.get(level);
+               fake.setPos(0.5, 70.0, 0.5);
+               Game.startTraining(fake, java.nio.file.Path.of(com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "dir")), true);
+               return 1;
+            })))
+            .then(Commands.literal("schwierigkeit")
+               .then(Commands.argument("stufe", com.mojang.brigadier.arguments.StringArgumentType.word())
+                  .suggests((ctx, b) -> {
+                     for (String d : Config.DIFFICULTIES) {
+                        b.suggest(d);
+                     }
+
+                     return b.buildFuture();
+                  })
+                  .executes(ctx -> {
+                     String want = com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "stufe").toLowerCase();
+
+                     for (int i = 0; i < Config.DIFFICULTIES.length; i++) {
+                        if (Config.DIFFICULTIES[i].equals(want)) {
+                           Config.difficulty = i;
+                           Config.save();
+                           ctx.getSource().sendSuccess(() -> Component.literal("Schwierigkeit: " + want + " (gilt ab der naechsten Runde)").withStyle(ChatFormatting.GREEN), false);
+                           return 1;
+                        }
+                     }
+
+                     ctx.getSource().sendFailure(Component.literal("Gibt es nicht. Moeglich: leicht, normal, schwer, profi"));
+                     return 0;
+                  })))
             .then(Commands.literal("shop").executes(ctx -> {
                Shop.open(ctx.getSource().getPlayerOrException());
                return 1;

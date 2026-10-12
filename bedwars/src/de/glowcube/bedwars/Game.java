@@ -90,6 +90,96 @@ public final class Game {
    private static final Map<UUID, Integer> protectedUntil = new HashMap<>();
    private static final List<Villager> shops = new ArrayList<>();
    public static boolean autoStart = true;
+   /** Zaehler fuer das Testprotokoll (hochbauen, abrutschen, clutchen ...). */
+   public static final Map<String, Integer> STATS = new java.util.TreeMap<>();
+
+   public static void count(String what) {
+      STATS.merge(what, 1, Integer::sum);
+   }
+   /** Lehrer-Modus: Regelwerk statt Netz (zum Aufzeichnen von Trainingsdaten). */
+   public static boolean forceRules;
+   public static java.io.BufferedWriter recorder;
+
+   /** Trainingsmodus: Ordner mit teams.json (Netze pro Team), Ergebnis landet in result.json. */
+   public static Path trainDir;
+
+   /** Startet eine reine Bot-Runde fuer das Training (oder zum Aufzeichnen von Lehrer-Daten). */
+   public static void startTraining(ServerPlayer placeholder, Path dir, boolean recordTeacher) {
+      trainDir = dir;
+      forceRules = recordTeacher;
+      debug = false;
+
+      try {
+         Files.createDirectories(dir);
+         Files.deleteIfExists(dir.resolve("result.json"));
+         if (recordTeacher) {
+            recorder = Files.newBufferedWriter(dir.resolve("teacher.jsonl"), java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+         }
+      } catch (Exception e) {
+         System.err.println("[Bedwars] Trainingsordner: " + e);
+      }
+
+      start(placeholder);
+      benchPlayer();
+      Path teams = dir.resolve("teams.json");
+      if (Files.exists(teams)) {
+         try {
+            com.google.gson.JsonArray arr = JsonParser.parseString(Files.readString(teams)).getAsJsonArray();
+
+            for (int i = 0; i < teams().size() && i < arr.size(); i++) {
+               if (arr.get(i).isJsonObject()) {
+                  Game.teams[i].net = StrategyNet.parse(arr.get(i));
+               } else {
+                  Game.teams[i].rulesOnly = true;
+               }
+            }
+         } catch (Exception e) {
+            System.err.println("[Bedwars] teams.json: " + e);
+         }
+      }
+   }
+
+   private static void writeResult(TeamState winner) {
+      if (trainDir == null) {
+         return;
+      }
+
+      try {
+         List<TeamState> order = new ArrayList<>(List.of(teams));
+         order.sort(Comparator.comparingInt((TeamState t) -> t == winner ? Integer.MAX_VALUE : (t.elimTick < 0 ? Integer.MAX_VALUE - 1 - (4 - t.aliveCount()) : t.elimTick)).reversed());
+         JsonArray arr = new JsonArray();
+
+         for (int place = 0; place < order.size(); place++) {
+            TeamState t = order.get(place);
+            JsonObject o = new JsonObject();
+            o.addProperty("team", t.team.ordinal());
+            o.addProperty("place", place + 1);
+            o.addProperty("beds", t.bedsDestroyed);
+            o.addProperty("finals", t.finalsDealt);
+            o.addProperty("kills", t.killsDealt);
+            o.addProperty("elimTick", t.elimTick);
+            o.addProperty("bedLost", !t.bedAlive);
+            arr.add(o);
+         }
+
+         JsonObject res = new JsonObject();
+         res.add("teams", arr);
+         res.addProperty("ticks", tick);
+         Files.writeString(trainDir.resolve("result.tmp"), res.toString());
+         Files.move(trainDir.resolve("result.tmp"), trainDir.resolve("result.json"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+      } catch (Exception e) {
+         System.err.println("[Bedwars] Ergebnis nicht geschrieben: " + e);
+      }
+   }
+
+   public static void writeRecord(String line) {
+      try {
+         recorder.write(line);
+         recorder.newLine();
+      } catch (Exception e) {
+         recorder = null;
+      }
+   }
    public static boolean debug;
 
    private Game() {
@@ -197,6 +287,51 @@ public final class Game {
       return best;
    }
 
+   // ---------------------------------------------------------------- Wahrnehmung mit Verzoegerung
+
+   private static final class Track {
+      final Vec3[] buf = new Vec3[32];
+      int idx = -1;
+   }
+
+   private static final Map<Integer, Track> tracks = new HashMap<>();
+
+   private static void recordTracks() {
+      if (tick % 100 == 0) {
+         tracks.keySet().removeIf(id -> level.getEntity(id) == null);
+      }
+
+      if (player != null) {
+         record(player);
+      }
+
+      for (TeamState t : teams) {
+         for (BotProfile b : t.bots) {
+            if (b.body != null && b.body.isAlive()) {
+               record(b.body);
+            }
+         }
+      }
+   }
+
+   private static void record(Entity e) {
+      Track tr = tracks.computeIfAbsent(e.getId(), k -> new Track());
+      tr.idx = (tr.idx + 1) % tr.buf.length;
+      tr.buf[tr.idx] = e.position();
+   }
+
+   /** Wo war das Wesen vor so vielen Ticks? So sehen Bots die Welt mit menschlicher Reaktionszeit. */
+   public static Vec3 pastPosition(Entity e, int ago) {
+      Track tr = tracks.get(e.getId());
+      if (tr == null || tr.idx < 0) {
+         return e.position();
+      } else {
+         int a = Math.max(0, Math.min(ago, tr.buf.length - 1));
+         Vec3 v = tr.buf[Math.floorMod(tr.idx - a, tr.buf.length)];
+         return v == null ? e.position() : v;
+      }
+   }
+
    public static boolean takePlanBudget() {
       if (planBudget > 0) {
          planBudget--;
@@ -232,7 +367,7 @@ public final class Game {
       }
 
       if (buyer != null && t.hasPlayer) {
-         BotChat.say(buyer, "hab " + name.toLowerCase() + " fuers team geholt", 20, true);
+         BotChat.upgrade(buyer, name);
       }
    }
 
@@ -316,6 +451,7 @@ public final class Game {
       emeraldTier = 1;
       firstBlood = false;
       suddenDeath = false;
+      STATS.clear();
       protectedUntil.clear();
       BotChat.reset();
       arena = new Arena(level, p.blockPosition());
@@ -343,12 +479,12 @@ public final class Game {
       Collections.shuffle(girls, RND);
 
       for (TeamState t : teams) {
-         int count = t.hasPlayer ? 3 : 4;
+         int count = t.hasPlayer && trainDir == null ? 3 : 4;
 
          for (int i = 0; i < count; i++) {
             boolean alex = RND.nextBoolean() && !girls.isEmpty() || boys.isEmpty();
             String name = alex ? girls.remove(0) : boys.remove(0);
-            t.bots.add(new BotProfile(name, t, RND, alex));
+            t.bots.add(new BotProfile(name, t, RND, alex, Config.difficulty));
          }
 
          t.thinkAt = 20 + t.team.ordinal() * 8;
@@ -475,6 +611,17 @@ public final class Game {
          }
 
          restoreDaylight();
+         if (recorder != null) {
+            try {
+               recorder.close();
+            } catch (Exception ignored) {
+            }
+
+            recorder = null;
+         }
+
+         trainDir = null;
+         forceRules = false;
          BotChat.reset();
          player = null;
          backup = null;
@@ -601,6 +748,10 @@ public final class Game {
          }
 
          if (byTeam != null) {
+            byTeam.bedsDestroyed++;
+         }
+
+         if (byTeam != null) {
             victim.grudgeAgainst[byTeam.team.ordinal()] += 3.0;
             if (byTeam.hasPlayer && byPlayer != null) {
                victim.grudgePlayer += 1.5;
@@ -700,6 +851,11 @@ public final class Game {
       TeamState killerTeam = killer instanceof BedwarsBot kb2 && kb2.profile != null ? kb2.profile.team : (killer == player ? playerTeam() : null);
       TeamState victimTeam = victim instanceof BedwarsBot vb && vb.profile != null ? vb.profile.team : (victim == player ? playerTeam() : null);
       if (killerTeam != null && victimTeam != null && killerTeam != victimTeam) {
+         killerTeam.killsDealt++;
+         if (finalKill) {
+            killerTeam.finalsDealt++;
+         }
+
          victimTeam.grudgeAgainst[killerTeam.team.ordinal()] += 0.4;
          if (killer == player) {
             victimTeam.grudgePlayer += 0.25;
@@ -789,6 +945,7 @@ public final class Game {
       } else {
          p.eliminated = true;
          if (!t.alive()) {
+            t.elimTick = tick;
             tell(Component.literal("TEAM AUSGESCHIEDEN > ").withStyle(ChatFormatting.RED, ChatFormatting.BOLD).append(Component.literal("Team " + t.team.label).withStyle(t.team.format)));
             BotChat.teamEliminated(t);
          }
@@ -827,6 +984,7 @@ public final class Game {
          tick++;
          planBudget = 3;
          if (player != null && !player.hasDisconnected()) {
+            recordTracks();
             generators();
             if (playerRespawnAt >= 0 && tick >= playerRespawnAt) {
                respawnPlayer();
@@ -967,6 +1125,25 @@ public final class Game {
          tell(Component.literal("Die Smaragd-Spawner sind jetzt Stufe " + (emeraldTier == 2 ? "II" : "III") + "!").withStyle(ChatFormatting.DARK_GREEN));
       }
 
+      if (trainDir != null && tick > 20 * 1500 && endAt < 0) {
+         TeamState best = null;
+
+         for (TeamState t : teams) {
+            if (t.alive() && (best == null || t.aliveCount() > best.aliveCount())) {
+               best = t;
+            }
+         }
+
+         for (TeamState t : teams) {
+            if (t != best && t.alive()) {
+               t.elimTick = tick - t.aliveCount();
+            }
+         }
+
+         writeResult(best);
+         endAt = tick + 2;
+      }
+
       checkWinner();
       if (running) {
          statusBar();
@@ -977,6 +1154,7 @@ public final class Game {
    }
 
    private static void debugDump() {
+      System.out.println("[BW stats t=" + tick / 20 + "s] " + STATS);
       for (TeamState t : teams) {
          StringBuilder sb = new StringBuilder("[BW dump t=" + tick / 20 + "s] " + t.team.label + " bed=" + t.bedAlive + " fort=" + t.fortificationStrength() + " fe" + t.iron + "/au" + t.gold + "/di" + t.diamond + "/em" + t.emerald + " ");
 
@@ -1093,6 +1271,10 @@ public final class Game {
             }
 
             BotChat.gameOver(last);
+            if (trainDir != null) {
+               writeResult(last);
+               endAt = tick + 2;
+            }
          } else if (alive == 0) {
             endAt = tick + 40;
          }
@@ -1161,7 +1343,12 @@ public final class Game {
 
             for (BotProfile b : t.bots) {
                if (!b.eliminated) {
-                  sb.append("\n  ").append(b.name).append(" - ").append(b.body == null ? "tot" : b.taskLabel());
+                  sb.append("\n  ").append(b.name).append(" (").append(b.hands.style.label);
+                  if (b.body != null && b.body.hits + b.body.misses > 0) {
+                     sb.append(", trifft ").append(100 * b.body.hits / (b.body.hits + b.body.misses)).append("%");
+                  }
+
+                  sb.append(") - ").append(b.body == null ? "tot" : b.taskLabel());
                }
             }
          }
@@ -1303,6 +1490,20 @@ public final class Game {
       public int emerald;
       public final List<BotProfile> bots = new ArrayList<>();
       public Map<BlockPos, BlockState> bedSnapshot = new HashMap<>();
+
+      // Statistik fuer das Training
+      public int elimTick = -1;
+      public int bedsDestroyed;
+      public int finalsDealt;
+      public int killsDealt;
+
+      // Strategie-Netz (null = mitgeliefertes) und Gegner-Modell
+      public StrategyNet net;
+      public boolean rulesOnly;
+      public final double[] rushPressure = new double[BwTeam.values().length];
+      public final double[] awayShare = new double[BwTeam.values().length];
+      public final double[] midShare = new double[BwTeam.values().length];
+      public final String[] detected = new String[BwTeam.values().length];
 
       // Team-Upgrades (mit Diamanten)
       public boolean sharpness;

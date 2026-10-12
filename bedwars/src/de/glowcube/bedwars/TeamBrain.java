@@ -27,7 +27,8 @@ public final class TeamBrain {
       FOLLOW,
       MID,
       FORTIFY,
-      HELP
+      HELP,
+      SHOP
    }
 
    private TeamBrain() {
@@ -89,6 +90,10 @@ public final class TeamBrain {
    }
 
    private static void assign(BotProfile p, BotProfile.Task task, Game.TeamState team, LivingEntity entity, BlockPos pos, int lockTicks) {
+      if (planning && Game.recorder != null && planCtx != null) {
+         record(p, planCtx, task);
+      }
+
       boolean changed = p.task != task || p.taskTeam != team || p.taskEntity != entity;
       p.task = task;
       p.taskTeam = team;
@@ -165,6 +170,7 @@ public final class TeamBrain {
       }
 
       buyUpgrades(t, live);
+      observeOpponents(t);
       Arena arena = Game.arena();
       Arena.Island is = t.island();
       Vec3 home = is.centerVec();
@@ -190,12 +196,18 @@ public final class TeamBrain {
          LivingEntity main = bedThreat != null ? bedThreat : intruders.stream().min(Comparator.comparingDouble(e -> e.position().distanceTo(bed))).get();
          boolean critical = bedThreat != null;
 
+         // nicht alle bemerken es sofort - und nicht alle rennen los
+         int responders = 0;
+         int maxResponders = critical ? live.size() : Math.max(1, live.size() - 1);
+
          for (BotProfile p : live) {
             double d = horizontal(p.body.position(), home);
             boolean raidingFar = p.task == BotProfile.Task.RAID && p.taskTeam != null && horizontal(p.body.position(), p.taskTeam.island().centerVec()) < 14.0;
-            if (d < 30.0 || critical && d < 60.0 && !raidingFar) {
+            boolean notices = RND.nextDouble() < p.hands.awareness * (d < 15.0 ? 1.0 : 0.7);
+            if ((d < 30.0 || critical && d < 60.0 && !raidingFar) && notices && responders < maxResponders) {
                if (p.task != BotProfile.Task.HUNT || p.taskEntity == null || !p.taskEntity.isAlive()) {
                   assign(p, BotProfile.Task.DEFEND, null, main, null, 60);
+                  responders++;
                }
             }
          }
@@ -240,10 +252,443 @@ public final class TeamBrain {
          }
       }
 
+      if (t.command != Command.NONE && Game.tick() < t.commandUntil) {
+         applyCommand(t, live);
+         return;
+      }
+
+      // Einkaufen ist Pflicht: wer zu Hause ist und sich etwas Sinnvolles leisten kann, geht zum Shop
+      for (BotProfile p : live) {
+         boolean home2 = arena.islandAt(p.body.position(), 1.0) == t.team;
+         boolean busy = p.task == BotProfile.Task.SHOP || p.task == BotProfile.Task.FORTIFY && locked(p) || p.body.isFighting();
+         if (home2 && !busy && wantsToShop(p) && (!locked(p) || p.task == BotProfile.Task.GATHER || p.task == BotProfile.Task.DEFEND || p.task == BotProfile.Task.IDLE)) {
+            BotProfile.Task back = p.task == BotProfile.Task.IDLE ? BotProfile.Task.IDLE : p.task;
+            Game.TeamState backTeam = p.taskTeam;
+            assign(p, BotProfile.Task.SHOP, backTeam, null, null, 200);
+            p.afterShop = back;
+         }
+      }
+
+      StrategyNet net = t.rulesOnly || Game.forceRules ? null : (t.net != null ? t.net : StrategyNet.builtIn());
+      planCtx = context(t, live, intruders, approaching, bedThreat);
+      planning = true;
+
+      try {
+         if (net != null) {
+            planWithNet(t, live, net, planCtx);
+         } else if (t.bedAlive) {
+            planWithBed(t, live);
+         } else {
+            planWithoutBed(t, live);
+         }
+      } finally {
+         planning = false;
+      }
+   }
+
+   // ====================================================================== Strategie-Netz
+
+   private static boolean planning;
+   private static Ctx planCtx;
+
+   /** Was das Team ueber die Lage weiss (einmal pro Denkrunde berechnet). */
+   static final class Ctx {
+      Game.TeamState team;
+      int intruders;
+      boolean bedThreat;
+      int approaching;
+      double defenseRatio;
+      Game.TeamState raidTarget;
+      double raidScore;
+      double targetDefense;
+      double rushThreat;
+      double enemiesNoBed;
+      double playerNear;
+      LivingEntity huntTarget;
+   }
+
+   private static Ctx context(Game.TeamState t, List<BotProfile> live, List<LivingEntity> intruders, List<LivingEntity> approaching, LivingEntity bedThreat) {
+      Ctx c = new Ctx();
+      c.team = t;
+      c.intruders = intruders.size();
+      c.bedThreat = bedThreat != null;
+      c.approaching = approaching.size();
       if (t.bedAlive) {
-         planWithBed(t, live);
-      } else {
-         planWithoutBed(t, live);
+         int total = 0;
+
+         for (Game.DefenseCell d : t.defensePlan()) {
+            if (d.layer() <= 2) {
+               total++;
+            }
+         }
+
+         c.defenseRatio = total == 0 ? 1.0 : 1.0 - (double)t.missingDefense(2) / total;
+      }
+
+      c.raidTarget = chooseRaidTarget(t, live.isEmpty() ? null : live.get(0));
+      if (c.raidTarget != null) {
+         c.raidScore = raidScore(t, c.raidTarget, null);
+         c.targetDefense = c.raidTarget.fortificationStrength() / 60.0;
+      }
+
+      int enemies = 0;
+      int noBed = 0;
+
+      for (Game.TeamState o : Game.teams()) {
+         if (o != t && o.alive()) {
+            enemies++;
+            if (!o.bedAlive) {
+               noBed++;
+            }
+
+            c.rushThreat = Math.max(c.rushThreat, t.rushPressure[o.team.ordinal()]);
+         }
+      }
+
+      c.enemiesNoBed = enemies == 0 ? 0.0 : (double)noBed / enemies;
+      ServerPlayer pl = Game.player();
+      Vec3 home = t.island().centerVec();
+      if (pl != null && Game.isEnemy(t, pl)) {
+         c.playerNear = Math.max(0.0, 1.0 - pl.position().distanceTo(home) / 50.0);
+      }
+
+      // bevorzugtes Jagdziel: Gegner, die nah und schwach sind - oder der Spieler, wenn wir Rache wollen
+      double best = Double.MAX_VALUE;
+
+      for (LivingEntity e : Game.enemiesOf(t)) {
+         if (!Game.isProtected(e)) {
+            double score = e.position().distanceTo(home) + e.getHealth() * 0.8 - (e == pl ? t.grudgePlayer * 10.0 : 0.0);
+            if (score < best) {
+               best = score;
+               c.huntTarget = e;
+            }
+         }
+      }
+
+      return c;
+   }
+
+   private static int[] counts(Game.TeamState t, BotProfile except) {
+      int[] n = new int[StrategyNet.OUT];
+
+      for (BotProfile b : t.bots) {
+         if (b != except && b.body != null && b.body.isAlive()) {
+            n[planOf(b).ordinal()]++;
+         }
+      }
+
+      return n;
+   }
+
+   private static StrategyNet.Plan planOf(BotProfile b) {
+      BotProfile.Task task = b.task == BotProfile.Task.SHOP && b.afterShop != null ? b.afterShop : b.task;
+      if (b.task == BotProfile.Task.SHOP && (task == BotProfile.Task.IDLE || task == BotProfile.Task.SHOP)) {
+         return StrategyNet.Plan.SHOP;
+      }
+
+      return switch (task) {
+         case FORTIFY -> StrategyNet.Plan.FORTIFY;
+         case DEFEND, CUT_BRIDGE -> StrategyNet.Plan.DEFEND;
+         case RAID -> StrategyNet.Plan.RAID;
+         case MID -> StrategyNet.Plan.MID;
+         case HUNT -> StrategyNet.Plan.HUNT;
+         case ESCORT, FOLLOW_PLAYER -> StrategyNet.Plan.ESCORT;
+         case REGROUP, RETREAT -> StrategyNet.Plan.REGROUP;
+         case SHOP -> StrategyNet.Plan.SHOP;
+         default -> StrategyNet.Plan.GATHER;
+      };
+   }
+
+   /** Die 36 Eingaenge des Netzes aus Sicht eines Bots. */
+   static double[] features(BotProfile b, Ctx c, int[] n) {
+      Game.TeamState t = b.team;
+      double[] x = new double[StrategyNet.IN];
+      int i = 0;
+      x[i++] = Math.min(1.5, Game.tick() / 18000.0);
+      x[i++] = t.bedAlive ? 1 : 0;
+      x[i++] = Game.suddenDeath() ? 1 : 0;
+      x[i++] = b.body == null ? 1.0 : b.body.getHealth() / 20.0;
+      x[i++] = b.gearScore() / 12.0;
+      x[i++] = Math.min(2.0, b.blocks() / 64.0);
+      x[i++] = Math.min(2.0, t.iron / 64.0);
+      x[i++] = Math.min(2.0, t.gold / 24.0);
+      x[i++] = Math.min(2.0, t.diamond / 16.0);
+      x[i++] = Math.min(2.0, t.emerald / 8.0);
+      x[i++] = t.aliveCount() / 4.0;
+      x[i++] = Math.min(1.0, c.intruders / 3.0);
+      x[i++] = c.bedThreat ? 1 : 0;
+      x[i++] = Math.min(1.0, c.approaching / 3.0);
+      x[i++] = c.defenseRatio;
+      x[i++] = n[StrategyNet.Plan.FORTIFY.ordinal()] / 4.0;
+      x[i++] = n[StrategyNet.Plan.DEFEND.ordinal()] / 4.0;
+      x[i++] = n[StrategyNet.Plan.RAID.ordinal()] / 4.0;
+      x[i++] = n[StrategyNet.Plan.MID.ordinal()] / 4.0;
+      x[i++] = n[StrategyNet.Plan.HUNT.ordinal()] / 4.0;
+      x[i++] = c.raidTarget == null ? -1.0 : Math.tanh(c.raidScore / 5.0);
+      x[i++] = Math.min(1.5, c.targetDefense);
+      x[i++] = Math.min(1.0, c.rushThreat);
+      x[i++] = c.enemiesNoBed;
+      x[i++] = c.playerNear;
+      x[i++] = Math.min(1.0, t.grudgePlayer / 3.0);
+      x[i++] = b.role == BotProfile.Role.RUSHER ? 1 : 0;
+      x[i++] = b.role == BotProfile.Role.BUILDER ? 1 : 0;
+      x[i++] = b.role == BotProfile.Role.COLLECTOR ? 1 : 0;
+      x[i++] = b.role == BotProfile.Role.FIGHTER ? 1 : 0;
+      x[i++] = b.aggression;
+      x[i++] = b.caution;
+      x[i++] = b.skill;
+      x[i++] = b.task == BotProfile.Task.RAID ? 1 : 0;
+      x[i++] = b.task == BotProfile.Task.DEFEND ? 1 : 0;
+      x[i++] = b.body == null ? 0.0 : Math.min(1.5, b.body.position().distanceTo(t.island().centerVec()) / 50.0);
+      return x;
+   }
+
+   private static void record(BotProfile p, Ctx c, BotProfile.Task task) {
+      if (p.body == null) {
+         return;
+      }
+
+      BotProfile.Task saved = p.task;
+      BotProfile.Task savedAfter = p.afterShop;
+      int[] n = counts(p.team, p);
+      double[] x = features(p, c, n);
+      p.task = task;
+      StrategyNet.Plan a = planOf(p);
+      p.task = saved;
+      p.afterShop = savedAfter;
+      StringBuilder sb = new StringBuilder("{\"a\":").append(a.ordinal()).append(",\"x\":[");
+
+      for (int i = 0; i < x.length; i++) {
+         if (i > 0) {
+            sb.append(',');
+         }
+
+         sb.append(String.format(java.util.Locale.ROOT, "%.4f", x[i]));
+      }
+
+      Game.writeRecord(sb.append("]}").toString());
+   }
+
+   private static boolean valid(StrategyNet.Plan a, BotProfile b, Ctx c) {
+      Game.TeamState t = b.team;
+      return switch (a) {
+         case SHOP -> wantsToShop(b);
+         case FORTIFY -> t.bedAlive && t.missingDefense(t.defenseLayers()) > 0;
+         case DEFEND -> true;
+         case RAID -> c.raidTarget != null;
+         case MID -> true;
+         case HUNT -> c.huntTarget != null;
+         case ESCORT -> escortLeader(b) != null;
+         default -> true;
+      };
+   }
+
+   private static BotProfile escortLeader(BotProfile b) {
+      BotProfile best = null;
+      double bd = Double.MAX_VALUE;
+
+      for (BotProfile o : b.team.bots) {
+         if (o != b && o.body != null && o.body.isAlive() && (o.task == BotProfile.Task.RAID || o.task == BotProfile.Task.HUNT)) {
+            double d = o.body.distanceTo(b.body);
+            if (d < bd) {
+               bd = d;
+               best = o;
+            }
+         }
+      }
+
+      return best;
+   }
+
+   /**
+    * Verteilt die freien Bots mit Hilfe des Netzes: wer die eindeutigste Wahl hat, bekommt sie zuerst,
+    * danach wird fuer die uebrigen neu bewertet - so lernt das Netz, Aufgaben sinnvoll aufzuteilen.
+    */
+   private static void planWithNet(Game.TeamState t, List<BotProfile> live, StrategyNet net, Ctx c) {
+      List<BotProfile> free = new ArrayList<>();
+
+      for (BotProfile p : live) {
+         if (!locked(p) || p.task == BotProfile.Task.IDLE) {
+            free.add(p);
+         }
+      }
+
+      while (!free.isEmpty()) {
+         BotProfile pick = null;
+         StrategyNet.Plan pickPlan = null;
+         double pickScore = -1.0E9;
+
+         for (BotProfile b : free) {
+            double[] u = net.forward(features(b, c, counts(t, b)));
+            for (StrategyNet.Plan a : StrategyNet.Plan.values()) {
+               // ein wenig Zufall: Menschen entscheiden auch nicht immer gleich
+               double score = u[a.ordinal()] + RND.nextGaussian() * 0.15;
+               if (score > pickScore && valid(a, b, c)) {
+                  pickScore = score;
+                  pick = b;
+                  pickPlan = a;
+               }
+            }
+         }
+
+         if (pick == null) {
+            break;
+         }
+
+         free.remove(pick);
+         execute(pick, pickPlan, c);
+      }
+   }
+
+   private static void execute(BotProfile b, StrategyNet.Plan a, Ctx c) {
+      Game.TeamState t = b.team;
+      switch (a) {
+         case GATHER -> assign(b, BotProfile.Task.GATHER, null, null, null, 200 + RND.nextInt(200));
+         case SHOP -> {
+            assign(b, BotProfile.Task.SHOP, null, null, null, 300);
+            b.afterShop = BotProfile.Task.IDLE;
+         }
+         case FORTIFY -> {
+            if (b.blocks() >= 8) {
+               assign(b, BotProfile.Task.FORTIFY, null, null, null, 500);
+            } else {
+               assign(b, BotProfile.Task.SHOP, null, null, null, 300);
+               b.afterShop = BotProfile.Task.FORTIFY;
+            }
+         }
+         case DEFEND -> assign(b, BotProfile.Task.DEFEND, null, null, null, 600);
+         case RAID -> {
+            Game.TeamState target = c.raidTarget;
+            if (b.blocks() >= 28) {
+               assign(b, BotProfile.Task.RAID, target, null, null, 1400);
+               if (RND.nextInt(3) == 0) {
+                  BotChat.event(b, BotChat.Event.GOING_RAID, target);
+               }
+            } else {
+               assign(b, BotProfile.Task.SHOP, target, null, null, 300);
+               b.afterShop = BotProfile.Task.RAID;
+            }
+         }
+         case MID -> {
+            if (b.blocks() >= 16) {
+               assign(b, BotProfile.Task.MID, null, null, null, 700);
+            } else {
+               assign(b, BotProfile.Task.SHOP, null, null, null, 300);
+               b.afterShop = BotProfile.Task.MID;
+            }
+         }
+         case HUNT -> {
+            assign(b, BotProfile.Task.HUNT, null, c.huntTarget, null, 400);
+            if (c.huntTarget instanceof ServerPlayer sp && RND.nextInt(3) == 0) {
+               BotChat.event(b, BotChat.Event.HUNT_PLAYER, sp);
+            }
+         }
+         case ESCORT -> {
+            BotProfile lead = escortLeader(b);
+            assign(b, BotProfile.Task.ESCORT, null, lead == null ? null : lead.body, null, 600);
+         }
+         case REGROUP -> assign(b, BotProfile.Task.REGROUP, null, null, null, 200);
+      }
+   }
+
+   /** Erklaert in einem Satz, was das Team gerade vorhat (fuer die Frage nach der Strategie). */
+   public static String explain(Game.TeamState t) {
+      int[] n = counts(t, null);
+      StringBuilder sb = new StringBuilder();
+      if (n[StrategyNet.Plan.RAID.ordinal()] > 0 && t.raidTarget != null) {
+         sb.append(n[StrategyNet.Plan.RAID.ordinal()]).append(" von uns greifen ").append(t.raidTarget.team.label.toLowerCase()).append(" an");
+      }
+
+      if (n[StrategyNet.Plan.DEFEND.ordinal()] + n[StrategyNet.Plan.FORTIFY.ordinal()] > 0) {
+         sb.append(sb.length() > 0 ? ", " : "").append(n[StrategyNet.Plan.DEFEND.ordinal()] + n[StrategyNet.Plan.FORTIFY.ordinal()]).append(" bleiben am bett");
+      }
+
+      if (n[StrategyNet.Plan.MID.ordinal()] > 0) {
+         sb.append(sb.length() > 0 ? ", " : "").append("einer holt dias");
+      }
+
+      for (Game.TeamState o : Game.teams()) {
+         String d = t.detected[o.team.ordinal()];
+         if (o != t && o.alive() && d != null && !d.equals("normal")) {
+            sb.append(sb.length() > 0 ? ". " : "").append(o.team.label.toLowerCase()).append(switch (d) {
+               case "rush" -> " rusht viel, aufpassen";
+               case "eco" -> " farmt mitte";
+               default -> " bunkert sich ein";
+            });
+            break;
+         }
+      }
+
+      if (!t.bedAlive) {
+         sb.append(sb.length() > 0 ? ". " : "").append("ohne bett spielen wir vorsichtig");
+      }
+
+      return sb.length() == 0 ? "erstmal ressourcen sammeln und ausruesten" : sb.toString();
+   }
+
+   // ====================================================================== Gegner-Modell
+
+   /** Beobachtet die anderen Teams und erkennt ihre Strategie: Rusher, Bunker, Wirtschaft oder ausgeglichen. */
+   private static void observeOpponents(Game.TeamState t) {
+      Arena arena = Game.arena();
+      Vec3 home = t.island().centerVec();
+
+      for (Game.TeamState o : Game.teams()) {
+         if (o == t) {
+            continue;
+         }
+
+         int k = o.team.ordinal();
+         int alive = 0;
+         int away = 0;
+         int mid = 0;
+         int atUs = 0;
+
+         for (BotProfile b : o.bots) {
+            if (b.body != null && b.body.isAlive()) {
+               alive++;
+               Vec3 pos = b.body.position();
+               if (arena.islandAt(pos, 3.0) != o.team) {
+                  away++;
+               }
+
+               if (pos.distanceTo(Vec3.atCenterOf(arena.center)) < Arena.MID_RADIUS + 4) {
+                  mid++;
+               }
+
+               if (horizontal(pos, home) < Arena.ISLAND_RADIUS + 12) {
+                  atUs++;
+               }
+            }
+         }
+
+         if (o.hasPlayer && Game.player() != null && Game.isEnemy(t, Game.player()) && horizontal(Game.player().position(), home) < Arena.ISLAND_RADIUS + 12) {
+            atUs++;
+         }
+
+         t.rushPressure[k] = t.rushPressure[k] * 0.97 + atUs * 0.08;
+         if (alive > 0) {
+            t.awayShare[k] = t.awayShare[k] * 0.9 + (double)away / alive * 0.1;
+            t.midShare[k] = t.midShare[k] * 0.9 + (double)mid / alive * 0.1;
+         }
+
+         String label;
+         if (t.rushPressure[k] > 0.5 || t.awayShare[k] > 0.65) {
+            label = "rush";
+         } else if (t.midShare[k] > 0.35) {
+            label = "eco";
+         } else if (o.fortificationStrength() > 40 && t.awayShare[k] < 0.3) {
+            label = "bunker";
+         } else {
+            label = "normal";
+         }
+
+         if (!label.equals(t.detected[k]) && o.alive() && Game.tick() > 1200) {
+            t.detected[k] = label;
+            if (!label.equals("normal")) {
+               BotChat.strategySpotted(t, o, label);
+            }
+         }
       }
    }
 
@@ -632,6 +1077,16 @@ public final class TeamBrain {
                   n++;
                }
             }
+         }
+         case SHOP -> {
+            for (BotProfile p : live) {
+               if (p.task != BotProfile.Task.SHOP && wantsToShop(p)) {
+                  assign(p, BotProfile.Task.SHOP, null, null, null, 200);
+                  p.afterShop = BotProfile.Task.IDLE;
+               }
+            }
+
+            t.command = Command.NONE;
          }
          case MID -> {
             for (int i = 0; i < live.size(); i++) {

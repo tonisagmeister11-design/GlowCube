@@ -85,6 +85,28 @@ public final class BedwarsBot extends Mannequin {
    private int strafeUntil;
    private LivingEntity lastAttacker;
    private int lastAttackedAt = -1000;
+   // Fadenkreuz und Klicks
+   private boolean aiming;
+   private Vec3 aimPoint;
+   private float aimYaw;
+   private float aimPitch;
+   private double aimNoiseYaw;
+   private double aimNoisePitch;
+   private int sinceSwing = 20;
+   private int nextClickAt;
+   private boolean timedClicker;
+   private boolean strafing;
+   private int freezeUntil;
+   private Vec3 freezeDir;
+   private LivingEntity engagedWith;
+   private int engagedSince;
+   private boolean edgeCareful = true;
+   private boolean wantsPillarEscape;
+   private int pillarLeft;
+   private BlockPos pillarBase;
+   private int gappleDecisionAt;
+   public int hits;
+   public int misses;
 
    // Handlungen
    private BlockPos breakPos;
@@ -229,6 +251,8 @@ public final class BedwarsBot extends Mannequin {
          this.wtap--;
       }
 
+      this.sinceSwing++;
+      this.aiming = false;
       this.moveDir = null;
       this.sprint = false;
       this.jump = false;
@@ -244,7 +268,13 @@ public final class BedwarsBot extends Mannequin {
       this.tickEating();
       if (!this.clutch(level)) {
          this.think(level);
+         if (this.tickPillar(level)) {
+            this.moveDir = null;
+            this.sprint = false;
+         }
       }
+
+      this.updateAim();
 
       this.detectStuck();
       this.giveUpIfTrapped(level);
@@ -303,7 +333,9 @@ public final class BedwarsBot extends Mannequin {
 
    private void applyIntent() {
       float yaw;
-      if (this.faceYaw != null) {
+      if (this.aiming) {
+         yaw = this.aimYaw;
+      } else if (this.faceYaw != null) {
          yaw = this.faceYaw;
       } else if (this.moveDir != null && this.moveDir.horizontalDistanceSqr() > 1.0E-4) {
          yaw = yawOf(this.moveDir.x, this.moveDir.z);
@@ -311,12 +343,15 @@ public final class BedwarsBot extends Mannequin {
          yaw = this.getYRot();
       }
 
-      float maxTurn = (float)(35.0 + this.profile.skill * 45.0);
+      float maxTurn = this.aiming ? 360.0F : (float)(25.0 + this.profile.skill * 35.0);
       float newYaw = this.getYRot() + Mth.clamp(Mth.wrapDegrees(yaw - this.getYRot()), -maxTurn, maxTurn);
       this.setYRot(newYaw);
       float headYaw = newYaw;
       float pitch = 0.0F;
-      if (this.lookPos != null) {
+      if (this.aiming) {
+         headYaw = this.aimYaw;
+         pitch = this.aimPitch;
+      } else if (this.lookPos != null) {
          Vec3 eye = this.getEyePosition();
          double dx = this.lookPos.x - eye.x;
          double dy = this.lookPos.y - eye.y;
@@ -539,10 +574,18 @@ public final class BedwarsBot extends Mannequin {
                break;
             case BRIDGE:
                BlockPos place = step.place != null ? step.place : step.pos.below();
-               this.crouch = this.profile.skill < 0.8;
+               this.crouch = this.profile.hands.style != Hands.Style.SWEAT;
                if (!this.solid(place)) {
                   this.lookPos = Vec3.atCenterOf(place);
                   if (this.placeCd == 0 && this.onGround() && hd < 1.7) {
+                     if (RND.nextDouble() < this.profile.hands.bridgeSlip * (1.0 + this.profile.tilt)) {
+                        // verschaetzt: ohne Block weitergelaufen
+                        Game.count("abgerutscht");
+                        this.go(c, false);
+                        this.placeCd = 10;
+                        return Nav.MOVING;
+                     }
+
                      if (!this.place(level, place, false, 1)) {
                         this.path = null;
                      }
@@ -555,6 +598,10 @@ public final class BedwarsBot extends Mannequin {
                break;
             case PILLAR:
                BlockPos under = step.place != null ? step.place : step.pos.below();
+               if (!this.solid(under) && this.onGround()) {
+                  Game.count("hochbauen-weg");
+               }
+
                if (!this.solid(under)) {
                   this.go(c, false);
                   this.lookPos = Vec3.atCenterOf(under);
@@ -608,7 +655,7 @@ public final class BedwarsBot extends Mannequin {
             level.playSound(null, pos, state.getSoundType().getPlaceSound(), SoundSource.BLOCKS, 1.0F, 0.9F + RND.nextFloat() * 0.2F);
             this.holdBlock(block);
             this.swingArm();
-            this.placeCd = Math.max(1, (int)Math.round(5.0 - this.profile.skill * 3.0) + RND.nextInt(2));
+            this.placeCd = Math.max(1, this.profile.hands.bridgeDelay + RND.nextInt(3) - 1);
             return true;
          }
       }
@@ -666,9 +713,10 @@ public final class BedwarsBot extends Mannequin {
          }
 
          this.clutchCd = 14;
-         if (RND.nextDouble() < 0.2 + this.profile.skill * 0.7) {
+         if (RND.nextDouble() < this.profile.hands.clutch) {
             BlockPos under = feet.below();
             if (this.place(level, under, false, 1)) {
+               Game.count("clutch");
                this.setDeltaMovement(this.getDeltaMovement().multiply(0.3, 0.0, 0.3));
                this.path = null;
                if (RND.nextInt(3) == 0) {
@@ -699,7 +747,7 @@ public final class BedwarsBot extends Mannequin {
    }
 
    private LivingEntity chooseEnemy() {
-      double range = this.awareness();
+      double range = this.awareness() * this.profile.hands.awareness;
       LivingEntity best = null;
       double bestScore = Double.MAX_VALUE;
 
@@ -780,22 +828,62 @@ public final class BedwarsBot extends Mannequin {
    }
 
    private void fight(ServerLevel level, LivingEntity e) {
+      Hands h = this.profile.hands;
       double d = this.distanceTo(e);
-      this.lookPos = new Vec3(e.getX(), e.getY() + e.getBbHeight() * 0.8, e.getZ());
-      boolean lowAndLosing = this.getHealth() < 7.0F && this.advantageOver(e) < -4.0 && this.profile.caution > 0.35;
-      if (lowAndLosing && d > 2.0) {
-         // zurueckweichen statt sinnlos sterben
-         Vec3 away = this.position().subtract(e.position()).multiply(1.0, 0.0, 1.0);
-         Vec3 home = this.profile.team.island().spawn().subtract(this.position()).multiply(1.0, 0.0, 1.0);
-         Vec3 dir = away.normalize().add(home.normalize().scale(0.8));
-         this.moveDir = this.safe(dir);
-         this.sprint = true;
-         this.hold(HeldItem.SWORD);
-         if (d < 3.0 && this.attackCd == 0) {
-            this.attack(level, e);
+      Vec3 seen = Game.pastPosition(e, h.reaction + (this.profile.tilt > 0.5 ? 2 : 0));
+      this.aimAt(seen.add(0.0, e.getBbHeight() * 0.72, 0.0));
+      if (this.engagedWith != e) {
+         this.engagedWith = e;
+         this.engagedSince = this.ticks;
+         this.edgeCareful = RND.nextDouble() < h.edge;
+         this.wantsPillarEscape = RND.nextDouble() < h.pillar;
+         this.timedClicker = RND.nextDouble() < h.timing;
+      }
+
+      if (this.ticks % 20 == 0) {
+         this.edgeCareful = RND.nextDouble() < h.edge;
+      }
+
+      // kurzer Aussetzer: stehen bleiben oder falsch laufen, wie ein Mensch, der kurz nicht aufpasst
+      if (this.ticks < this.freezeUntil) {
+         if (this.freezeDir != null) {
+            this.moveDir = this.edgeCareful ? this.safe(this.freezeDir) : this.freezeDir;
          }
 
+         this.clickAt(level, e, d);
          return;
+      } else if (RND.nextDouble() < h.brainfart * (1.0 + this.profile.tilt)) {
+         this.freezeUntil = this.ticks + 5 + RND.nextInt(16);
+         Game.count("aussetzer");
+         this.freezeDir = RND.nextBoolean() ? null : new Vec3(RND.nextGaussian(), 0.0, RND.nextGaussian());
+      }
+
+      boolean lowAndLosing = this.getHealth() < 7.0F && this.advantageOver(e) < -4.0 && this.profile.caution > 0.35;
+      if (lowAndLosing && this.wantsPillarEscape && this.profile.blocks() >= 3 && this.pillarLeft == 0 && d < 5.0) {
+         // in Not hochbauen
+         this.pillarLeft = 3;
+         this.wantsPillarEscape = false;
+         Game.count("flucht-hochbauen");
+      }
+
+      if (lowAndLosing && d > 2.0) {
+         // zurueckweichen statt sinnlos sterben
+         Vec3 away = this.position().subtract(seen).multiply(1.0, 0.0, 1.0);
+         Vec3 home = this.profile.team.island().spawn().subtract(this.position()).multiply(1.0, 0.0, 1.0);
+         Vec3 dir = away.normalize().add(home.normalize().scale(0.8));
+         this.moveDir = this.edgeCareful ? this.safe(dir) : dir;
+         this.sprint = true;
+         this.hold(HeldItem.SWORD);
+         this.clickAt(level, e, d);
+         return;
+      }
+
+      // Gegner steht ueber ihm: hochbauen
+      double above = e.getY() - this.getY();
+      if (above > 1.8 && Math.hypot(e.getX() - this.getX(), e.getZ() - this.getZ()) < 2.8 && this.profile.blocks() > 0 && this.pillarLeft == 0
+         && RND.nextDouble() < h.pillar * 0.2) {
+         this.pillarLeft = (int)Math.ceil(above);
+         Game.count("hochbauen-zum-gegner");
       }
 
       boolean direct = d < 7.0 && Math.abs(e.getY() - this.getY()) < 1.3 && this.hasLineOfSight(e) && this.walkableTowards(e.position());
@@ -812,53 +900,190 @@ public final class BedwarsBot extends Mannequin {
          }
 
          if (nav == Nav.FAILED || nav == Nav.WAITING) {
-            this.go(e.position(), true);
-            this.moveDir = this.safe(this.moveDir);
+            this.go(seen, true);
+            this.moveDir = this.edgeCareful ? this.safe(this.moveDir) : this.moveDir;
+         }
+
+         // unterwegs schaut er dorthin, wohin er laeuft - ausser der Gegner ist schon nah
+         if (d > 6.0) {
+            this.aiming = false;
          }
       } else {
          this.path = null;
          this.hold(HeldItem.SWORD);
-         Vec3 to = new Vec3(e.getX() - this.getX(), 0.0, e.getZ() - this.getZ());
+         Vec3 to = new Vec3(seen.x - this.getX(), 0.0, seen.z - this.getZ());
          if (to.lengthSqr() < 1.0E-4) {
             to = new Vec3(1.0, 0.0, 0.0);
          }
 
          to = to.normalize();
-         this.faceYaw = yawOf(to.x, to.z);
          if (this.ticks >= this.strafeUntil || this.horizontalCollision) {
+            this.strafing = RND.nextDouble() < h.strafe;
             this.strafeDir = RND.nextBoolean() ? 1 : -1;
-            this.strafeUntil = this.ticks + 8 + RND.nextInt(18);
+            this.strafeUntil = this.ticks + 6 + RND.nextInt(h.style == Hands.Style.NOOB ? 30 : 18);
          }
 
          Vec3 side = new Vec3(-to.z, 0.0, to.x).scale(this.strafeDir);
          Vec3 move;
-         if (d > 2.7) {
-            move = to.add(side.scale(0.25 * this.profile.skill));
+         if (d > 2.8) {
+            move = this.strafing ? to.add(side.scale(0.3)) : to;
             this.sprint = true;
-         } else if (d < 1.5) {
+         } else if (d < 1.4 && h.strafe > 0.3) {
             move = to.scale(-0.7).add(side.scale(0.5));
+         } else if (this.strafing) {
+            move = side.scale(0.5 + h.strafe * 0.5).add(to.scale(0.35));
+            this.sprint = true;
          } else {
-            move = side.scale(0.55 + this.profile.skill * 0.45).add(to.scale(0.3));
+            // wer nicht strafed, laeuft einfach weiter drauf
+            move = to;
             this.sprint = true;
          }
 
-         this.moveDir = this.safe(move);
+         this.moveDir = this.edgeCareful ? this.safe(move) : move;
          if (this.moveDir == null) {
             this.strafeDir = -this.strafeDir;
          }
 
-         if (this.onGround() && d < 3.4 && this.attackCd <= 5 && RND.nextDouble() < 0.06 + this.profile.skill * 0.12) {
+         if (this.onGround() && d < 3.4 && RND.nextDouble() < h.crits * 0.12) {
             this.jump = true;
          }
       }
 
-      double reach = 2.85 + this.profile.skill * 0.3;
-      if (d <= reach && this.attackCd <= 0 && this.hasLineOfSight(e)) {
+      this.clickAt(level, e, d);
+   }
+
+   /** Entscheidet, ob er in diesem Tick klickt - wie ein Mensch, nicht wie eine Kill-Aura. */
+   private void clickAt(ServerLevel level, LivingEntity e, double d) {
+      Hands h = this.profile.hands;
+      if (d > h.clickRange + 0.4 || this.ticks < this.nextClickAt || this.eatTicks > 0) {
+         return;
+      }
+
+      if (this.timedClicker) {
+         if (d > 3.05) {
+            return;
+         }
+
+         // wartet die Abklingzeit ab, mal etwas zu frueh, mal zu spaet
+         int ready = 11 + (int)Math.round(RND.nextGaussian() * (1.6 - h.timing));
+         if (this.sinceSwing < ready) {
+            this.nextClickAt = this.ticks + Math.max(1, ready - this.sinceSwing);
+            return;
+         }
+
+         // Krit-Timing: kurz warten, bis er faellt
          boolean rising = !this.onGround() && this.getDeltaMovement().y > 0.05;
-         if (!rising || this.profile.skill < 0.65 || d > reach - 0.3) {
-            this.attack(level, e);
+         if (rising && RND.nextDouble() < h.crits && d < 3.0) {
+            return;
          }
       }
+
+      this.swingSword(level);
+      double interval = 20.0 / h.cps * (0.6 + RND.nextDouble() * 0.8);
+      this.nextClickAt = this.ticks + Math.max(1, (int)Math.round(interval));
+      if (RND.nextDouble() > 0.92) {
+         this.timedClicker = RND.nextDouble() < h.timing;
+      }
+   }
+
+   /** Schwingt das Schwert entlang des Fadenkreuzes. Getroffen wird nur, wenn der Strahl die Hitbox trifft. */
+   private void swingSword(ServerLevel level) {
+      float strength = Mth.clamp((this.sinceSwing + 0.5F) / 12.5F, 0.0F, 1.0F);
+      this.sinceSwing = 0;
+      this.swingArm();
+      Vec3 eye = this.getEyePosition();
+      Vec3 dir = Vec3.directionFromRotation(this.aimPitch, this.aimYaw);
+      double reach = 3.0;
+      Vec3 end = eye.add(dir.scale(reach));
+      BlockHitResult block = level.clip(new ClipContext(eye, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
+      if (block.getType() != HitResult.Type.MISS) {
+         end = block.getLocation();
+      }
+
+      LivingEntity hit = null;
+      double best = Double.MAX_VALUE;
+
+      for (LivingEntity c : level.getEntitiesOfClass(LivingEntity.class, this.getBoundingBox().inflate(4.5), x -> x != this && x.isAlive())) {
+         Optional<Vec3> on = c.getBoundingBox().inflate(0.1).clip(eye, end);
+         if (on.isPresent()) {
+            double dd = on.get().distanceToSqr(eye);
+            if (dd < best) {
+               best = dd;
+               hit = c;
+            }
+         }
+      }
+
+      if (hit == null || Game.teamOf(hit) == this.profile.team.team || hit instanceof net.minecraft.world.entity.npc.villager.Villager) {
+         if (hit == null) {
+            this.misses++;
+         }
+
+         return;
+      }
+
+      float dmg = this.profile.swordDamage() * (0.2F + strength * strength * 0.8F);
+      boolean full = strength > 0.9F;
+      boolean crit = full && !this.onGround() && this.getDeltaMovement().y < 0.0 && this.fallDistance > 0.0;
+      if (crit) {
+         dmg *= 1.5F;
+      }
+
+      boolean sprintHit = full && this.isSprinting();
+      DamageSource src = this.damageSources().mobAttack(this);
+      if (hit.hurtServer(level, src, dmg)) {
+         if (sprintHit) {
+            hit.knockback(0.5, Mth.sin(this.getYRot() * DEG), -Mth.cos(this.getYRot() * DEG), src, dmg);
+            this.setDeltaMovement(this.getDeltaMovement().multiply(0.6, 1.0, 0.6));
+            if (RND.nextDouble() < this.profile.hands.wtap) {
+               this.wtap = 3 + RND.nextInt(3);
+            }
+         }
+
+         if (crit) {
+            level.sendParticles(ParticleTypes.CRIT, hit.getX(), hit.getY() + hit.getBbHeight() * 0.5, hit.getZ(), 10, 0.3, 0.4, 0.3, 0.2);
+            level.playSound(null, hit.blockPosition(), SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0F, 1.0F);
+         } else {
+            level.playSound(null, hit.blockPosition(), !full ? SoundEvents.PLAYER_ATTACK_WEAK : (sprintHit ? SoundEvents.PLAYER_ATTACK_KNOCKBACK : SoundEvents.PLAYER_ATTACK_STRONG), SoundSource.PLAYERS, 1.0F, 1.0F);
+         }
+
+         this.setLastHurtMob(hit);
+         this.hits++;
+      }
+   }
+
+   /** Fadenkreuz Richtung Ziel bewegen: begrenzte Drehgeschwindigkeit, Nachziehen, Zittern, Ueberschiessen. */
+   private void aimAt(Vec3 point) {
+      this.aiming = true;
+      this.aimPoint = point;
+   }
+
+   private void updateAim() {
+      Hands h = this.profile.hands;
+      if (!this.aiming || this.aimPoint == null) {
+         this.aimYaw = this.getYHeadRot();
+         this.aimPitch = this.getXRot();
+         return;
+      }
+
+      Vec3 eye = this.getEyePosition();
+      double dx = this.aimPoint.x - eye.x;
+      double dy = this.aimPoint.y - eye.y;
+      double dz = this.aimPoint.z - eye.z;
+      float wantYaw = yawOf(dx, dz);
+      float wantPitch = (float)(-Mth.atan2(dy, Math.sqrt(dx * dx + dz * dz)) * (180.0 / Math.PI));
+      float errYaw = Mth.wrapDegrees(wantYaw - this.aimYaw);
+      float errPitch = wantPitch - this.aimPitch;
+      double gain = h.aimGain * (1.0 - this.profile.tilt * 0.3);
+      if (Math.abs(errYaw) > 25.0F) {
+         gain *= 1.0 + h.overshoot;
+      }
+
+      double max = h.aimSpeed();
+      this.aimNoiseYaw = this.aimNoiseYaw * 0.75 + RND.nextGaussian() * h.aimNoise * 0.45 * (1.0 + this.profile.tilt);
+      this.aimNoisePitch = this.aimNoisePitch * 0.75 + RND.nextGaussian() * h.aimNoise * 0.25;
+      this.aimYaw += (float)(Mth.clamp(errYaw * gain, -max, max) + this.aimNoiseYaw * 0.35);
+      this.aimPitch = Mth.clamp(this.aimPitch + (float)(Mth.clamp(errPitch * gain, -max, max) + this.aimNoisePitch * 0.35), -90.0F, 90.0F);
    }
 
    private boolean walkableTowards(Vec3 target) {
@@ -886,42 +1111,37 @@ public final class BedwarsBot extends Mannequin {
       }
    }
 
-   private void attack(ServerLevel level, LivingEntity e) {
-      float dmg = this.profile.swordDamage();
-      boolean crit = !this.onGround() && this.getDeltaMovement().y < 0.0 && this.fallDistance > 0.0;
-      if (crit) {
-         dmg *= 1.5F;
-      }
-
-      boolean sprinting = this.isSprinting();
-      DamageSource src = this.damageSources().mobAttack(this);
-      if (e.hurtServer(level, src, dmg)) {
-         if (sprinting) {
-            e.knockback(0.5, Mth.sin(this.getYRot() * DEG), -Mth.cos(this.getYRot() * DEG), src, dmg);
-            this.setDeltaMovement(this.getDeltaMovement().multiply(0.6, 1.0, 0.6));
-            this.wtap = 3 + RND.nextInt(3);
+   /** Hochbauen: springen und im hoechsten Punkt einen Block unter sich setzen. */
+   private boolean tickPillar(ServerLevel level) {
+      if (this.pillarLeft <= 0) {
+         return false;
+      } else if (this.profile.blocks() == 0 || this.solid(this.blockPosition().above(2))) {
+         this.pillarLeft = 0;
+         return false;
+      } else {
+         if (this.onGround()) {
+            this.pillarBase = this.blockPosition();
+            this.jump = true;
+         } else if (this.pillarBase != null && this.getY() >= this.pillarBase.getY() + 1.02 && this.placeCd == 0) {
+            if (this.place(level, this.pillarBase, false, 1)) {
+               Game.count("hochgebaut");
+               this.pillarLeft--;
+               this.pillarBase = null;
+            }
          }
 
-         if (crit) {
-            level.sendParticles(ParticleTypes.CRIT, e.getX(), e.getY() + e.getBbHeight() * 0.5, e.getZ(), 10, 0.3, 0.4, 0.3, 0.2);
-            level.playSound(null, e.blockPosition(), SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.0F, 1.0F);
-         } else {
-            level.playSound(null, e.blockPosition(), sprinting ? SoundEvents.PLAYER_ATTACK_KNOCKBACK : SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1.0F, 1.0F);
-         }
-
-         this.setLastHurtMob(e);
+         this.lookPos = Vec3.atCenterOf(this.blockPosition().below());
+         return true;
       }
-
-      this.swingArm();
-      this.attackCd = 10 + (int)Math.round((1.0 - this.profile.skill) * 5.0) + RND.nextInt(3);
    }
 
    private void throwFireball(ServerLevel level, LivingEntity e) {
       Vec3 eye = this.getEyePosition();
       double d = this.distanceTo(e);
-      Vec3 aim = e.position().add(0.0, e.getBbHeight() * 0.5, 0.0).add(e.getDeltaMovement().scale(d * 0.9));
+      Vec3 seen = Game.pastPosition(e, this.profile.hands.reaction);
+      Vec3 aim = seen.add(0.0, e.getBbHeight() * 0.5, 0.0).add(e.getDeltaMovement().scale(d * 0.9 * this.profile.skill));
       Vec3 dir = aim.subtract(eye).normalize();
-      double spread = (1.0 - this.profile.skill) * 0.12;
+      double spread = this.profile.hands.aimNoise * 0.02;
       dir = dir.add(RND.nextGaussian() * spread, RND.nextGaussian() * spread * 0.5, RND.nextGaussian() * spread).normalize();
       this.hold(HeldItem.FIREBALL);
       this.lookPos = aim;
@@ -937,6 +1157,15 @@ public final class BedwarsBot extends Mannequin {
    // ======================================================================== Essen
 
    private boolean shouldEat() {
+      if (this.ticks < this.gappleDecisionAt) {
+         return false;
+      } else if (this.profile.gapples > 0 && this.getHealth() < 10.0F && RND.nextDouble() < this.profile.hands.forgetGapple * 0.05) {
+         // vergisst den Goldapfel - passiert
+         Game.count("apfel-vergessen");
+         this.gappleDecisionAt = this.ticks + 100;
+         return false;
+      }
+
       return this.profile.gapples > 0
          && this.eatTicks == 0
          && this.getHealth() < 9.0F + (float)(this.profile.caution * 4.0)
@@ -972,12 +1201,11 @@ public final class BedwarsBot extends Mannequin {
          Vec3 away = this.position().subtract(this.enemy.position()).multiply(1.0, 0.0, 1.0);
          this.moveDir = this.safe(away);
          this.lookPos = this.enemy.getEyePosition();
-         if (this.distanceTo(this.enemy) < 2.6 && this.attackCd == 0) {
+         if (this.distanceTo(this.enemy) < 2.2 && this.profile.hands.style != Hands.Style.NOOB && RND.nextDouble() < 0.1) {
             this.stopUsingItem();
             this.eatTicks = 0;
             this.profile.gapples++;
             this.hold(HeldItem.SWORD);
-            this.attack(level, this.enemy);
          }
       }
    }

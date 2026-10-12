@@ -417,7 +417,7 @@ public final class Pathfinder {
       if (this.opt.blocks > 0 && headroom && this.free(x, y + 1, z)) {
          BlockPos place = new BlockPos(x, y, z);
          if (this.arena.inBuildArea(place.above())) {
-            this.offer(n, x, y + 1, z, 1.2 + this.opt.bridgeCost, Move.PILLAR, place, null);
+            this.offer(n, x, y + 1, z, 1.0 + this.opt.bridgeCost * 0.75, Move.PILLAR, place, null);
          }
       }
    }

@@ -66,7 +66,7 @@ rm -rf "$WORK/classes"
 mkdir -p "$WORK/classes"
 find "$ROOT/src" -name '*.java' > "$WORK/sources.txt"
 "$JAVAC" -nowarn -proc:none -encoding UTF-8 --release 25 -cp "$CP" -d "$WORK/classes" "@$WORK/sources.txt"
-cp "$ROOT/resources/fabric.mod.json" "$WORK/classes/"
+cp -r "$ROOT/resources/." "$WORK/classes/"
 
 echo "==> packe JAR"
 rm -f "$OUTPUT"
