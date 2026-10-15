@@ -166,4 +166,4 @@ unangetastet.
 
 Unter [`bedwars/`](bedwars/) liegt die Fabric-Mod *GlowCube Bedwars* für Minecraft 26.3:
 Bedwars gegen Bots mit Steve-/Alex-Skins, menschlichem Kampfverhalten, einem trainierten Strategie-Netz,
-selbstschreibender Chat-KI und römischer Karte. Fertiges JAR: `bedwars/dist/glowcube-bedwars-3.0.0.jar`.
+selbstschreibender Chat-KI und römischer Karte. Fertiges JAR: `bedwars/dist/glowcube-bedwars-3.1.0.jar` (neu: Multiplayer mit "bedwars 2").

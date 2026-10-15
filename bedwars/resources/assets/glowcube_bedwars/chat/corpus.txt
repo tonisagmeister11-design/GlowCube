@@ -502,3 +502,40 @@ ackhelp|ich bin gleich da
 ackhelp|warte ich helfe dir
 ackbuy|ich kauf mir gleich ein besseres schwert
 ackbuy|ok ich ruest mich aus
+# --- Multiplayer: echte Spieler in der Runde
+mpstart|oh es sind echte spieler dabei
+mpstart|{n} echte leute heute uff
+mpstart|na {player} heute mit freunden da
+mpstart|ok mit {player} wird das schwer
+mpstart|wer hat {player} eingeladen haha
+mpstart|endlich mal richtige gegner
+mpstart|{player} und seine freunde gegen uns alle
+mpstart|heute wird es spannend mit {player}
+mpstart|ich hab gehoert {player} ist gut
+mpstart|na dann zeigt mal was ihr koennt
+mpstart|ihr seid {n} echte spieler oder wie
+mpstart|wir bots halten zusammen heute
+mpteam|hi {player} wir sind im selben team
+mpteam|nice {player} ist bei uns
+mpteam|willkommen im team {player}
+mpteam|{player} sag einfach was wir machen sollen
+mpteam|ok {player} du fuehrst wir folgen
+mpteam|hey {player} ich pass aufs bett auf
+mpteam|{player} lass zusammen rushen
+mpteam|gut dass du da bist {player}
+mpteam|{player} schreib @ vor die nachricht dann hoert es nur das team
+mpteam|yo {player} heute holen wir den sieg
+mppvp|uff {player} hat {name} weggeklatscht
+mppvp|{player} gegen {name} das war knapp
+mppvp|haha {name} gegen {player} keine chance
+mppvp|echte spieler unter sich krass
+mppvp|{player} ist heute on fire
+mppvp|{name} das lass ich nicht auf mir sitzen an deiner stelle
+mppvp|ok {player} ist gefaehrlich
+mppvp|rache {name} rache
+mpmatekill|stark {player}
+mpmatekill|nice {player} weiter so
+mpmatekill|{player} hat {name} erwischt nice
+mpmatekill|unser {player} ist einfach zu gut
+mpmatekill|gg {name} {player} war besser
+mpmatekill|{player} carry

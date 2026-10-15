@@ -1,12 +1,40 @@
-# GlowCube Bedwars 3.0 – Fabric-Mod für Minecraft 26.3
+# GlowCube Bedwars 3.1 – Fabric-Mod für Minecraft 26.3
 
-Beim Betreten einer Einzelspielerwelt startet sofort eine Bedwars-Runde: fünf Teams,
-du bist mit drei Bots in einem davon, die anderen vier Teams sind komplett Bots.
+Fünf Teams mit je vier Spielern; alle Plätze, die keine echten Spieler haben, füllen Bots.
+Beim Betreten der Welt startet nichts von selbst: Im Chat erscheinen die Knöpfe
+**[▶ ALLEIN MIT BOTS]** und **[MULTIPLAYER]** (oder `/bedwars start`).
 
-Das fertige JAR liegt unter `dist/glowcube-bedwars-3.0.0.jar`
+Das fertige JAR liegt unter `dist/glowcube-bedwars-3.1.0.jar`
 (braucht Fabric Loader ≥ 0.17 und die Fabric API für 26.3).
 
 ![Karte](docs/karte.png)
+
+## Neu in 3.1: Multiplayer (z.B. mit Essential)
+
+Teile deine Welt mit Essential (oder über LAN / einen Server). Die Mod braucht nur der
+Host: Die Bots sind normale Minecraft-Figuren, Freunde können auch ohne die Mod beitreten.
+
+1. Jemand schreibt **`bedwars 2`** oder **`bedwars multiplayer`** in den Chat
+   (auch „bad wars 2“, „bedwars zu zweit“, `/bedwars multiplayer`).
+2. Alle anderen auf dem Server bekommen eine Einladung mit Titel-Einblendung, Ton und den Knöpfen
+   **[✔ JA, ICH SPIEL MIT]** / **[✖ NEIN]**. Man kann auch einfach „ja“ oder „nein“ schreiben.
+3. Wer eingeladen hat, sieht **[▶ JETZT STARTEN]**, **[⇄ ZUSAMMEN / GEGENEINANDER]** und
+   **[✖ ABBRECHEN]**. Sobald alle geantwortet haben (spätestens nach 30 Sekunden), geht es los.
+
+**Gleich viele Spieler:** Jeder echte Spieler ersetzt einen Bot. Es bleiben immer
+5 Teams mit je 4. Zu zweit zusammen heißt also: ihr zwei und zwei Bots in einem Team.
+
+* **Zusammen:** Alle in dasselbe Team (bis 4, wer darüber hinaus dabei ist, kommt ins nächste Team).
+* **Gegeneinander:** Jeder bekommt ein eigenes Team mit Bots.
+* **Teamchat:** Mit `@` vor der Nachricht lesen nur dein Team und deine Bots mit
+  (`@ verteidigt das bett`). Befehle an die Bots funktionieren für jeden echten Spieler im Team.
+* Die Bots reden über die echten Spieler: Sie begrüßen ihre echten Teamkollegen,
+  kommentieren Kämpfe zwischen echten Spielern und loben Kills im Team.
+* Am Ende kommen eine Rangliste aller echten Spieler (Kills, Finals, Betten, Tode) und der
+  Knopf **[↻ REVANCHE]**.
+* Wer die Runde verlässt, scheidet aus. Kommt er zurück, schaut er zu. Inventar und Position
+  bekommt jeder am Ende zurück (wer offline ist, beim nächsten Betreten).
+* Wer nicht mitspielt, kann Bots und Mitspielern keinen Schaden machen und die Arena nicht abbauen.
 
 ## Neu in 3.0: die Bots spielen wie Menschen
 
@@ -137,12 +165,15 @@ diamantruestung").
 
 | Befehl | Wirkung |
 | --- | --- |
-| `/bedwars start` | neue Runde |
+| `/bedwars start` | neue Runde allein mit Bots |
+| `/bedwars multiplayer` | alle auf dem Server einladen (wie „bedwars 2“ im Chat) |
+| `/bedwars ja` / `nein` | Einladung annehmen / ablehnen |
+| `/bedwars los` / `modus` / `abbrechen` | (wer eingeladen hat) sofort starten / zusammen ↔ gegeneinander / abbrechen |
 | `/bedwars stop` | Runde beenden, Inventar zurück |
 | `/bedwars status` | Teams, Betten, Spielertyp, Trefferquote und Auftrag jedes Bots |
 | `/bedwars schwierigkeit <stufe>` | leicht, normal, schwer oder profi (ab der nächsten Runde) |
 | `/bedwars shop` | Shop öffnen |
-| `/bedwars auto an\|aus` | Autostart beim Betreten |
+| `/bedwars auto an\|aus` | Autostart beim Betreten (Standard: aus) |
 | `/bedwars test` | reine Bot-Runde mit Protokoll in der Konsole |
 | `/bedwars say <text>` | Chat-KI testen, als hätte man es geschrieben |
 | `/bedwars train <ordner>` / `record <ordner>` | fürs Training: Runde mit Netzen aus `teams.json` bzw. mit Aufzeichnung |
@@ -169,7 +200,7 @@ Die Schwierigkeit steht in `config/glowcube_bedwars.properties`.
 ## Bauen
 
 ```bash
-./build.sh          # -> dist/glowcube-bedwars-3.0.0.jar
+./build.sh          # -> dist/glowcube-bedwars-3.1.0.jar
 ```
 
 Voraussetzungen: JDK 25 oder neuer, `curl`, `unzip`, `zip`.

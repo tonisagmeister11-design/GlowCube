@@ -90,11 +90,11 @@ public final class Shop {
    }
 
    private static boolean armor(ServerPlayer p, Game.TeamState t, int tier) {
-      if (t.playerArmorTier >= tier) {
+      if (Game.armorTier(p) >= tier) {
          p.sendSystemMessage(Component.literal("Du hast schon diese oder eine bessere Ruestung.").withStyle(ChatFormatting.RED));
          return false;
       } else {
-         t.playerArmorTier = tier;
+         Game.setArmorTier(p, tier);
          Game.equipPlayerArmor(p, t);
          return true;
       }
@@ -248,7 +248,7 @@ public final class Shop {
       }
 
       private void buy(ServerPlayer p, int slot) {
-         Game.TeamState t = Game.playerTeam();
+         Game.TeamState t = Game.teamOfPlayer(p);
          if (t != null) {
             for (Offer o : OFFERS) {
                if (o.slot == slot) {

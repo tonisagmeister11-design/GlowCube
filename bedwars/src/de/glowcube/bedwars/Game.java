@@ -71,11 +71,10 @@ public final class Game {
    private static ServerLevel level;
    private static Arena arena;
    private static TeamState[] teams;
-   private static ServerPlayer player;
-   private static Backup backup;
+   /** Alle echten Spieler der Runde (im Multiplayer mehrere, sonst einer). */
+   private static final List<Human> humans = new ArrayList<>();
    private static boolean running;
    private static int tick;
-   private static int playerRespawnAt = -1;
    private static int endAt = -1;
    private static int pendingStartAt = -1;
    private static ServerPlayer pendingStartPlayer;
@@ -89,7 +88,8 @@ public final class Game {
    private static boolean suddenDeath;
    private static final Map<UUID, Integer> protectedUntil = new HashMap<>();
    private static final List<Villager> shops = new ArrayList<>();
-   public static boolean autoStart = true;
+   public static boolean autoStart = false;
+   public static final int TEAM_SIZE = 4;
    /** Zaehler fuer das Testprotokoll (hochbauen, abrutschen, clutchen ...). */
    public static final Map<String, Integer> STATS = new java.util.TreeMap<>();
 
@@ -193,8 +193,46 @@ public final class Game {
       return arena;
    }
 
-   public static ServerPlayer player() {
-      return player;
+   /** Die echten Spieler der laufenden Runde. */
+   public static List<Human> humans() {
+      return humans;
+   }
+
+   public static Human human(Entity e) {
+      if (e instanceof ServerPlayer sp) {
+         for (Human h : humans) {
+            if (h.p == sp) {
+               return h;
+            }
+         }
+      }
+
+      return null;
+   }
+
+   public static boolean isHuman(Entity e) {
+      return human(e) != null;
+   }
+
+   /** Ein echter Spieler, an den sich die Bots dieses Teams halten (fuer "folgt mir" und Chat). */
+   public static ServerPlayer humanOf(TeamState t) {
+      for (Human h : t.humans) {
+         if (h.active()) {
+            return h.p;
+         }
+      }
+
+      for (Human h : t.humans) {
+         if (!h.offline) {
+            return h.p;
+         }
+      }
+
+      return null;
+   }
+
+   public static boolean multiplayer() {
+      return humans.size() > 1;
    }
 
    public static int tick() {
@@ -209,18 +247,10 @@ public final class Game {
       return teams == null ? List.of() : List.of(teams);
    }
 
-   public static TeamState playerTeam() {
-      if (teams == null) {
-         return null;
-      } else {
-         for (TeamState t : teams) {
-            if (t.hasPlayer) {
-               return t;
-            }
-         }
-
-         return null;
-      }
+   /** Das Team eines echten Spielers (oder null, wenn er nicht mitspielt). */
+   public static TeamState teamOfPlayer(ServerPlayer p) {
+      Human h = human(p);
+      return h == null ? null : h.team;
    }
 
    public static BwTeam teamOf(Entity e) {
@@ -228,19 +258,18 @@ public final class Game {
          return null;
       } else if (e instanceof BedwarsBot bot && bot.profile != null) {
          return bot.profile.team.team;
-      } else if (e == player) {
-         TeamState t = playerTeam();
-         return t == null ? null : t.team;
       } else {
-         return null;
+         Human h = human(e);
+         return h == null ? null : h.team.team;
       }
    }
 
    public static boolean isEnemy(TeamState t, Entity e) {
       if (e == null || !e.isAlive()) {
          return false;
-      } else if (e == player) {
-         return player.gameMode() == GameType.SURVIVAL && !t.hasPlayer;
+      } else if (e instanceof ServerPlayer) {
+         Human h = human(e);
+         return h != null && h.active() && h.team != t;
       } else {
          return e instanceof BedwarsBot bot && bot.profile != null && bot.profile.team != t;
       }
@@ -249,8 +278,10 @@ public final class Game {
    /** Alle lebenden Gegner eines Teams: der Spieler und die Bots der anderen Teams. */
    public static List<LivingEntity> enemiesOf(TeamState t) {
       List<LivingEntity> list = new ArrayList<>();
-      if (player != null && player.isAlive() && player.gameMode() == GameType.SURVIVAL && !t.hasPlayer) {
-         list.add(player);
+      for (Human h : humans) {
+         if (h.team != t && h.active()) {
+            list.add(h.p);
+         }
       }
 
       for (TeamState o : teams) {
@@ -269,9 +300,11 @@ public final class Game {
    public static LivingEntity nearestMember(TeamState t, Vec3 from) {
       LivingEntity best = null;
       double bd = Double.MAX_VALUE;
-      if (t.hasPlayer && player != null && player.isAlive() && player.gameMode() == GameType.SURVIVAL) {
-         best = player;
-         bd = player.position().distanceToSqr(from);
+      for (Human h : t.humans) {
+         if (h.active() && h.p.position().distanceToSqr(from) < bd) {
+            best = h.p;
+            bd = h.p.position().distanceToSqr(from);
+         }
       }
 
       for (BotProfile p : t.bots) {
@@ -301,8 +334,10 @@ public final class Game {
          tracks.keySet().removeIf(id -> level.getEntity(id) == null);
       }
 
-      if (player != null) {
-         record(player);
+      for (Human h : humans) {
+         if (h.p != null && !h.offline) {
+            record(h.p);
+         }
       }
 
       for (TeamState t : teams) {
@@ -360,10 +395,15 @@ public final class Game {
          }
       }
 
-      if (t.hasPlayer && player != null) {
-         applyPlayerUpgrades(player, t);
-         Component who = playerBuyer != null ? Component.literal(playerBuyer.getName().getString()) : Component.literal(buyer == null ? "Dein Team" : buyer.name);
-         player.sendSystemMessage(Component.literal("[TEAM-UPGRADE] ").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD).append(who.copy().withStyle(t.team.format)).append(Component.literal(" hat " + name + " gekauft.").withStyle(ChatFormatting.GRAY)));
+      Component who = playerBuyer != null ? Component.literal(playerBuyer.getName().getString()) : Component.literal(buyer == null ? "Dein Team" : buyer.name);
+      for (Human h : t.humans) {
+         if (h.p != null && !h.offline) {
+            if (h.active()) {
+               applyPlayerUpgrades(h.p, t);
+            }
+
+            h.p.sendSystemMessage(Component.literal("[TEAM-UPGRADE] ").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD).append(who.copy().withStyle(t.team.format)).append(Component.literal(" hat " + name + " gekauft.").withStyle(ChatFormatting.GRAY)));
+         }
       }
 
       if (buyer != null && t.hasPlayer) {
@@ -407,8 +447,20 @@ public final class Game {
    }
 
    public static int playerGearScore(ServerPlayer p) {
-      TeamState t = playerTeam();
-      return playerSwordTier(p) * 2 + (t == null ? 0 : t.playerArmorTier * 2);
+      Human h = human(p);
+      return playerSwordTier(p) * 2 + (h == null ? 0 : h.armorTier * 2);
+   }
+
+   public static int armorTier(ServerPlayer p) {
+      Human h = human(p);
+      return h == null ? 0 : h.armorTier;
+   }
+
+   public static void setArmorTier(ServerPlayer p, int tier) {
+      Human h = human(p);
+      if (h != null) {
+         h.armorTier = tier;
+      }
    }
 
    public static boolean isProtected(Entity e) {
@@ -417,36 +469,69 @@ public final class Game {
    }
 
    public static void onJoin(ServerPlayer p, MinecraftServer srv) {
-      if (!running) {
-         Backup b = Backup.load(srv);
+      Human back = null;
+      if (running) {
+         for (Human h : humans) {
+            if (h.id.equals(p.getUUID())) {
+               back = h;
+            }
+         }
+      }
+
+      if (back != null) {
+         // wieder da, aber die Runde ist fuer ihn gelaufen: zuschauen, Sachen gibt es am Ende zurueck
+         back.p = p;
+         back.offline = false;
+         p.setGameMode(GameType.SPECTATOR);
+         teleportTo(p, back.team.island().spawn().add(0.0, 8.0, 0.0));
+         p.sendSystemMessage(Component.literal("Du hattest die Runde verlassen und schaust jetzt zu. Am Ende bekommst du deine Sachen zurueck.").withStyle(ChatFormatting.YELLOW));
+         return;
+      }
+
+      if (!running || !isHuman(p)) {
+         Backup b = Backup.load(srv, p);
          if (b != null) {
-            b.restore(p, p.level());
-            Backup.delete(srv);
+            b.restore(p, srv);
+            Backup.delete(srv, p);
             p.sendSystemMessage(Component.literal("Deine Sachen aus der letzten Bedwars-Runde wurden zurueckgegeben.").withStyle(ChatFormatting.GREEN));
          }
       }
 
-      if (autoStart && srv.isSingleplayer()) {
+      if (running || Lobby.open()) {
+         // jemand kommt per Essential/LAN dazu, waehrend schon gespielt wird
+         Lobby.greetLateJoiner(p);
+      } else if (autoStart && srv.isSingleplayer() && srv.getPlayerCount() <= 1) {
          pendingStartPlayer = p;
          pendingStartAt = srv.getTickCount() + 40;
+      } else {
+         // die Runde startet erst, wenn man es will (Knopf im Chat, /bedwars start oder "bedwars 2")
+         Lobby.hint(p);
       }
    }
 
    // ====================================================================== Start und Ende
 
    public static void start(ServerPlayer p) {
+      start(List.of(p), true);
+   }
+
+   /**
+    * Startet eine Runde mit allen echten Spielern. Jeder echte Spieler ersetzt einen Bot,
+    * die Teams bleiben also gleich gross (5 Teams mit je 4).
+    *
+    * @param together true: alle in dasselbe Team (bis es voll ist), false: jeder in ein anderes Team
+    */
+   public static void start(List<ServerPlayer> players, boolean together) {
       if (running) {
          stop(true);
       }
 
-      server = p.level().getServer();
-      level = p.level();
-      player = p;
-      backup = new Backup(p);
-      backup.save(server);
+      ServerPlayer host = players.get(0);
+      server = host.level().getServer();
+      level = host.level();
+      humans.clear();
       tick = 0;
       endAt = -1;
-      playerRespawnAt = -1;
       diamondTier = 1;
       emeraldTier = 1;
       firstBlood = false;
@@ -454,7 +539,7 @@ public final class Game {
       STATS.clear();
       protectedUntil.clear();
       BotChat.reset();
-      arena = new Arena(level, p.blockPosition());
+      arena = new Arena(level, host.blockPosition());
       arena.forceLoad(true);
       removeLeftovers();
       arena.build();
@@ -471,15 +556,45 @@ public final class Game {
          teams[t.ordinal()] = new TeamState(t, arena);
       }
 
-      TeamState mine = teams[RND.nextInt(teams.length)];
-      mine.hasPlayer = true;
+      // echte Spieler auf die Teams verteilen
+      List<TeamState> order = new ArrayList<>(List.of(teams));
+      Collections.shuffle(order, RND);
+      int slot = 0;
+
+      for (ServerPlayer sp : players) {
+         TeamState t;
+         if (together) {
+            t = order.get(Math.min(slot / TEAM_SIZE, order.size() - 1));
+         } else {
+            t = order.get(slot % order.size());
+         }
+
+         slot++;
+         if (t.humans.size() >= TEAM_SIZE) {
+            continue;
+         }
+
+         Human h = new Human(sp, t);
+         h.backup = new Backup(sp);
+         h.backup.save(server, sp);
+         t.humans.add(h);
+         t.hasPlayer = true;
+         humans.add(h);
+      }
+
       List<String> boys = new ArrayList<>(List.of(BOYS));
       List<String> girls = new ArrayList<>(List.of(GIRLS));
+      for (Human h : humans) {
+         boys.removeIf(n -> n.equalsIgnoreCase(h.name));
+         girls.removeIf(n -> n.equalsIgnoreCase(h.name));
+      }
+
       Collections.shuffle(boys, RND);
       Collections.shuffle(girls, RND);
 
       for (TeamState t : teams) {
-         int count = t.hasPlayer && trainDir == null ? 3 : 4;
+         // jeder echte Spieler nimmt einem Bot den Platz weg - im Training spielt der Platzhalter nicht mit
+         int count = trainDir == null ? TEAM_SIZE - t.humans.size() : TEAM_SIZE;
 
          for (int i = 0; i < count; i++) {
             boolean alex = RND.nextBoolean() && !girls.isEmpty() || boys.isEmpty();
@@ -506,18 +621,44 @@ public final class Game {
          }
       }
 
-      preparePlayer(mine);
-      tell(
-         Component.literal("=== BEDWARS === 5 Teams, du bist im Team ")
-            .withStyle(ChatFormatting.GOLD)
-            .append(Component.literal(mine.team.label).withStyle(mine.team.format, ChatFormatting.BOLD))
-      );
-      tell(Component.literal("Zerstoere die Betten der anderen Teams und ueberlebe. Shop: Haendler unter dem Pavillon auf deiner Insel oder /bedwars shop.").withStyle(ChatFormatting.YELLOW));
-      tell(
-         Component.literal("Deine Teamkollegen hoeren auf den Chat: \"verteidigt\", \"greift blau an\", \"folgt mir\", \"holt dias\", \"baut das bett zu\", \"wo seid ihr\"...")
-            .withStyle(ChatFormatting.AQUA)
-      );
+      for (Human h : humans) {
+         preparePlayer(h);
+      }
+
+      for (Human h : humans) {
+         ServerPlayer sp = h.p;
+         sp.sendSystemMessage(
+            Component.literal("=== BEDWARS === 5 Teams mit je " + TEAM_SIZE + ", du bist im Team ")
+               .withStyle(ChatFormatting.GOLD)
+               .append(Component.literal(h.team.team.label).withStyle(h.team.team.format, ChatFormatting.BOLD))
+         );
+         if (multiplayer()) {
+            sp.sendSystemMessage(Lobby.lineup(h));
+         }
+
+         sp.sendSystemMessage(Component.literal("Zerstoere die Betten der anderen Teams und ueberlebe. Shop: Haendler unter dem Pavillon auf deiner Insel oder /bedwars shop.").withStyle(ChatFormatting.YELLOW));
+         sp.sendSystemMessage(
+            Component.literal("Deine Bot-Kollegen hoeren auf den Chat: \"verteidigt\", \"greift blau an\", \"folgt mir\", \"holt dias\", \"baut das bett zu\", \"wo seid ihr\"...")
+               .withStyle(ChatFormatting.AQUA)
+         );
+         if (multiplayer()) {
+            sp.sendSystemMessage(Component.literal("Teamchat: schreib ein @ vor deine Nachricht (z.B. \"@ ich geh mitte\") - dann lesen nur dein Team und deine Bots mit.").withStyle(ChatFormatting.DARK_AQUA));
+         }
+
+         title(sp, Component.literal("BEDWARS").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
+            Component.literal("Team " + h.team.team.label).withStyle(h.team.team.format));
+      }
+
       BotChat.gameStart();
+   }
+
+   /** Grosse Einblendung in der Bildschirmmitte. */
+   public static void title(ServerPlayer p, Component title, Component subtitle) {
+      if (p != null && p.connection != null) {
+         p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket(8, 50, 12));
+         p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket(subtitle));
+         p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(title));
+      }
    }
 
    private static Holder<net.minecraft.world.clock.WorldClock> overworldClock() {
@@ -562,10 +703,11 @@ public final class Game {
 
    /** Testmodus: der Platzhalter-Spieler schaut nur zu, die Bots spielen unter sich. */
    public static void benchPlayer() {
-      TeamState t = playerTeam();
-      if (running && t != null && player != null) {
-         t.playerOut = true;
-         player.setGameMode(GameType.SPECTATOR);
+      if (running) {
+         for (Human h : humans) {
+            h.out = true;
+            h.p.setGameMode(GameType.SPECTATOR);
+         }
       }
    }
 
@@ -599,9 +741,14 @@ public final class Game {
             e.discard();
          }
 
-         if (restore && player != null && backup != null) {
-            backup.restore(player, level);
-            Backup.delete(server);
+         if (restore) {
+            for (Human h : humans) {
+               // wer offline ist, bekommt seine Sachen beim naechsten Betreten (Datei bleibt liegen)
+               if (h.p != null && !h.offline && !h.p.hasDisconnected() && h.backup != null) {
+                  h.backup.restore(h.p, server);
+                  Backup.delete(server, h.p);
+               }
+            }
          }
 
          arena.clear();
@@ -623,23 +770,31 @@ public final class Game {
          trainDir = null;
          forceRules = false;
          BotChat.reset();
-         player = null;
-         backup = null;
+         humans.clear();
       }
    }
 
-   private static void preparePlayer(TeamState t) {
+   private static void preparePlayer(Human h) {
+      ServerPlayer player = h.p;
+      TeamState t = h.team;
       player.getInventory().clearContent();
       player.removeAllEffects();
       player.setGameMode(GameType.SURVIVAL);
       player.setHealth(player.getMaxHealth());
       player.getFoodData().setFoodLevel(20);
-      t.playerArmorTier = 0;
+      h.armorTier = 0;
       equipPlayerArmor(player, t);
       player.getInventory().add(new ItemStack(Items.WOODEN_SWORD));
       player.getInventory().add(new ItemStack(t.team.wool.asItem(), 16));
-      teleportTo(player, t.island().spawn());
+      teleportTo(player, spawnFor(h));
       protectedUntil.put(player.getUUID(), tick + 60);
+   }
+
+   /** Mehrere echte Spieler im selben Team nicht aufeinander stapeln. */
+   private static Vec3 spawnFor(Human h) {
+      int idx = Math.max(0, h.team.humans.indexOf(h));
+      double[][] off = {{0.0, 0.0}, {1.2, 0.0}, {-1.2, 0.0}, {0.0, 1.2}};
+      return h.team.island().spawn().add(off[idx % 4][0], 0.0, off[idx % 4][1]);
    }
 
    private static void teleportTo(ServerPlayer p, Vec3 pos) {
@@ -653,20 +808,21 @@ public final class Game {
       enchant(chest, Enchantments.PROTECTION, t.protection);
       p.setItemSlot(EquipmentSlot.HEAD, helmet);
       p.setItemSlot(EquipmentSlot.CHEST, chest);
-      Item legs = switch (t.playerArmorTier) {
+      int armorTier = armorTier(p);
+      Item legs = switch (armorTier) {
          case 0 -> Items.LEATHER_LEGGINGS;
          case 1 -> Items.CHAINMAIL_LEGGINGS;
          case 2 -> Items.IRON_LEGGINGS;
          default -> Items.DIAMOND_LEGGINGS;
       };
-      Item boots = switch (t.playerArmorTier) {
+      Item boots = switch (armorTier) {
          case 0 -> Items.LEATHER_BOOTS;
          case 1 -> Items.CHAINMAIL_BOOTS;
          case 2 -> Items.IRON_BOOTS;
          default -> Items.DIAMOND_BOOTS;
       };
-      ItemStack legStack = t.playerArmorTier == 0 ? dyed(legs, t.team) : new ItemStack(legs);
-      ItemStack bootStack = t.playerArmorTier == 0 ? dyed(boots, t.team) : new ItemStack(boots);
+      ItemStack legStack = armorTier == 0 ? dyed(legs, t.team) : new ItemStack(legs);
+      ItemStack bootStack = armorTier == 0 ? dyed(boots, t.team) : new ItemStack(boots);
       enchant(legStack, Enchantments.PROTECTION, t.protection);
       enchant(bootStack, Enchantments.PROTECTION, t.protection);
       p.setItemSlot(EquipmentSlot.LEGS, legStack);
@@ -747,6 +903,11 @@ public final class Game {
             byBot.beds++;
          }
 
+         Human byHuman = human(byPlayer);
+         if (byHuman != null) {
+            byHuman.beds++;
+         }
+
          if (byTeam != null) {
             byTeam.bedsDestroyed++;
          }
@@ -758,8 +919,11 @@ public final class Game {
             }
          }
 
-         if (victim.hasPlayer && player != null) {
-            player.sendSystemMessage(Component.literal("Dein Bett ist weg - du hast nur noch ein Leben!").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+         for (Human h : victim.humans) {
+            if (h.online()) {
+               h.p.sendSystemMessage(Component.literal("Dein Bett ist weg - du hast nur noch ein Leben!").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+               title(h.p, Component.literal("BETT ZERSTOERT!").withStyle(ChatFormatting.RED, ChatFormatting.BOLD), Component.literal("Du erscheinst nicht mehr neu").withStyle(ChatFormatting.GRAY));
+            }
          }
 
          BotChat.bedDestroyed(victim, byTeam, byBot, byPlayer);
@@ -768,19 +932,23 @@ public final class Game {
    }
 
    public static boolean onPlayerBreak(ServerPlayer p, BlockPos pos, BlockState state) {
-      if (!running || p != player) {
+      Human h = human(p);
+      if (!running) {
          return true;
+      } else if (h == null) {
+         // Zuschauer und Nicht-Mitspieler machen die Arena nicht kaputt
+         return !arena.bounds().contains(Vec3.atCenterOf(pos));
       } else if (state.getBlock() instanceof BedBlock) {
          BwTeam owner = arena.bedOwner(pos);
          if (owner == null) {
             return false;
          } else {
             TeamState t = teams[owner.ordinal()];
-            if (t.hasPlayer) {
+            if (t == h.team) {
                p.sendSystemMessage(Component.literal("Du kannst dein eigenes Bett nicht abbauen.").withStyle(ChatFormatting.RED));
                return false;
             } else {
-               destroyBed(t, playerTeam(), null, p);
+               destroyBed(t, h.team, null, p);
                return false;
             }
          }
@@ -792,8 +960,8 @@ public final class Game {
    public static boolean onDeath(LivingEntity e, DamageSource src) {
       if (!running) {
          return true;
-      } else if (e == player) {
-         handlePlayerDeath(src);
+      } else if (human(e) != null) {
+         handlePlayerDeath(human(e), src);
          return false;
       } else if (e instanceof BedwarsBot bot && bot.profile != null) {
          handleBotDeath(bot, src);
@@ -806,9 +974,8 @@ public final class Game {
    private static Component nameOf(Entity e) {
       if (e instanceof BedwarsBot bot && bot.profile != null) {
          return bot.displayName();
-      } else if (e == player) {
-         TeamState t = playerTeam();
-         return Component.literal(player.getName().getString()).withStyle(t == null ? ChatFormatting.WHITE : t.team.format);
+      } else if (human(e) != null) {
+         return Component.literal(e.getName().getString()).withStyle(human(e).team.team.format);
       } else {
          return e.getName();
       }
@@ -848,8 +1015,21 @@ public final class Game {
          }
       }
 
-      TeamState killerTeam = killer instanceof BedwarsBot kb2 && kb2.profile != null ? kb2.profile.team : (killer == player ? playerTeam() : null);
-      TeamState victimTeam = victim instanceof BedwarsBot vb && vb.profile != null ? vb.profile.team : (victim == player ? playerTeam() : null);
+      Human killerHuman = human(killer);
+      Human victimHuman = human(victim);
+      if (killerHuman != null) {
+         killerHuman.kills++;
+         if (finalKill) {
+            killerHuman.finals++;
+         }
+      }
+
+      if (victimHuman != null) {
+         victimHuman.deaths++;
+      }
+
+      TeamState killerTeam = killer instanceof BedwarsBot kb2 && kb2.profile != null ? kb2.profile.team : (killerHuman != null ? killerHuman.team : null);
+      TeamState victimTeam = victim instanceof BedwarsBot vb && vb.profile != null ? vb.profile.team : (victimHuman != null ? victimHuman.team : null);
       if (killerTeam != null && victimTeam != null && killerTeam != victimTeam) {
          killerTeam.killsDealt++;
          if (finalKill) {
@@ -857,14 +1037,15 @@ public final class Game {
          }
 
          victimTeam.grudgeAgainst[killerTeam.team.ordinal()] += 0.4;
-         if (killer == player) {
+         if (killerHuman != null) {
             victimTeam.grudgePlayer += 0.25;
          }
       }
    }
 
-   private static void handlePlayerDeath(DamageSource src) {
-      TeamState t = playerTeam();
+   private static void handlePlayerDeath(Human h, DamageSource src) {
+      ServerPlayer player = h.p;
+      TeamState t = h.team;
       Entity killer = killerOf(player, src);
       boolean canRespawn = t.bedAlive;
       announceKill(player, killer, !canRespawn);
@@ -874,6 +1055,9 @@ public final class Game {
          kb.profile.team.gold += loot[1];
          kb.profile.team.diamond += loot[2];
          kb.profile.team.emerald += loot[3];
+      } else if (killer instanceof ServerPlayer ks && isHuman(ks)) {
+         // im Multiplayer: der Gewinner bekommt die Ressourcen, wie auf Hypixel
+         giveLoot(ks, loot);
       }
 
       player.getInventory().clearContent();
@@ -885,13 +1069,41 @@ public final class Game {
       player.setGameMode(GameType.SPECTATOR);
       teleportTo(player, t.island().spawn().add(0.0, 8.0, 0.0));
       if (canRespawn) {
-         playerRespawnAt = tick + 100;
+         h.respawnAt = tick + 100;
          player.sendSystemMessage(Component.literal("Du erscheinst in 5 Sekunden wieder.").withStyle(ChatFormatting.YELLOW));
+         title(player, Component.literal("DU BIST GESTORBEN").withStyle(ChatFormatting.RED, ChatFormatting.BOLD), Component.literal("Wiederbelebung in 5 Sekunden").withStyle(ChatFormatting.YELLOW));
       } else {
-         t.playerOut = true;
-         player.sendSystemMessage(Component.literal("Du bist ausgeschieden! Du schaust nur noch zu.").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
-         checkWinner();
+         eliminate(h, "Du bist ausgeschieden! Du schaust nur noch zu.");
       }
+   }
+
+   private static void giveLoot(ServerPlayer p, int[] loot) {
+      Item[] kinds = {Items.IRON_INGOT, Items.GOLD_INGOT, Items.DIAMOND, Items.EMERALD};
+
+      for (int i = 0; i < 4; i++) {
+         if (loot[i] > 0) {
+            p.getInventory().add(new ItemStack(kinds[i], loot[i]));
+         }
+      }
+   }
+
+   /** Ein echter Spieler ist raus (kein Bett mehr oder Runde verlassen). */
+   private static void eliminate(Human h, String why) {
+      h.out = true;
+      h.respawnAt = -1;
+      if (h.online()) {
+         h.p.sendSystemMessage(Component.literal(why).withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+         title(h.p, Component.literal("AUSGESCHIEDEN").withStyle(ChatFormatting.RED, ChatFormatting.BOLD), Component.literal(h.kills + " Kills, " + h.finals + " Finals, " + h.beds + " Betten").withStyle(ChatFormatting.GRAY));
+      }
+
+      TeamState t = h.team;
+      if (!t.alive() && t.elimTick < 0) {
+         t.elimTick = tick;
+         tell(Component.literal("TEAM AUSGESCHIEDEN > ").withStyle(ChatFormatting.RED, ChatFormatting.BOLD).append(Component.literal("Team " + t.team.label).withStyle(t.team.format)));
+         BotChat.teamEliminated(t);
+      }
+
+      checkWinner();
    }
 
    private static int[] takeLoot(ServerPlayer p) {
@@ -919,18 +1131,12 @@ public final class Game {
       Entity killer = killerOf(bot, src);
       boolean canRespawn = t.bedAlive;
       announceKill(bot, killer, !canRespawn);
-      if (killer == player) {
+      if (killer instanceof ServerPlayer ks && isHuman(ks)) {
          int iron = Math.min(t.iron, 8);
          int gold = Math.min(t.gold, 2);
          t.iron -= iron;
          t.gold -= gold;
-         if (iron > 0) {
-            player.getInventory().add(new ItemStack(Items.IRON_INGOT, iron));
-         }
-
-         if (gold > 0) {
-            player.getInventory().add(new ItemStack(Items.GOLD_INGOT, gold));
-         }
+         giveLoot(ks, new int[]{iron, gold, 0, 0});
       } else if (killer instanceof BedwarsBot kb && kb.profile != null) {
          int iron = Math.min(t.iron, 6);
          t.iron -= iron;
@@ -944,7 +1150,7 @@ public final class Game {
          p.respawnAt = tick + 100;
       } else {
          p.eliminated = true;
-         if (!t.alive()) {
+         if (!t.alive() && t.elimTick < 0) {
             t.elimTick = tick;
             tell(Component.literal("TEAM AUSGESCHIEDEN > ").withStyle(ChatFormatting.RED, ChatFormatting.BOLD).append(Component.literal("Team " + t.team.label).withStyle(t.team.format)));
             BotChat.teamEliminated(t);
@@ -954,16 +1160,17 @@ public final class Game {
       }
    }
 
-   private static void respawnPlayer() {
-      TeamState t = playerTeam();
-      playerRespawnAt = -1;
+   private static void respawnPlayer(Human h) {
+      ServerPlayer player = h.p;
+      TeamState t = h.team;
+      h.respawnAt = -1;
       player.setGameMode(GameType.SURVIVAL);
       player.getInventory().clearContent();
       equipPlayerArmor(player, t);
       player.getInventory().add(new ItemStack(Items.WOODEN_SWORD));
       applyPlayerUpgrades(player, t);
       player.setHealth(player.getMaxHealth());
-      teleportTo(player, t.island().spawn());
+      teleportTo(player, spawnFor(h));
       protectedUntil.put(player.getUUID(), tick + 60);
       player.sendSystemMessage(Component.literal("Du bist wieder da!").withStyle(ChatFormatting.GREEN));
    }
@@ -971,6 +1178,7 @@ public final class Game {
    // ====================================================================== Tick
 
    public static void tick(MinecraftServer srv) {
+      Lobby.tick(srv);
       if (pendingStartAt >= 0 && srv.getTickCount() >= pendingStartAt) {
          ServerPlayer p = pendingStartPlayer;
          pendingStartAt = -1;
@@ -983,12 +1191,15 @@ public final class Game {
       if (running) {
          tick++;
          planBudget = 3;
-         if (player != null && !player.hasDisconnected()) {
+         if (anyoneOnline()) {
             recordTracks();
             generators();
-            if (playerRespawnAt >= 0 && tick >= playerRespawnAt) {
-               respawnPlayer();
+            for (Human h : humans) {
+               if (h.respawnAt >= 0 && tick >= h.respawnAt && h.online()) {
+                  respawnPlayer(h);
+               }
             }
+
 
             if (tick % 5 == 0) {
                for (TeamState t : teams) {
@@ -1020,9 +1231,21 @@ public final class Game {
       }
    }
 
+   private static boolean anyoneOnline() {
+      for (Human h : humans) {
+         if (h.online()) {
+            return true;
+         }
+      }
+
+      return false;
+   }
+
    private static void voidCheck() {
-      if (player.isAlive() && player.gameMode() == GameType.SURVIVAL && player.getY() < Arena.VOID_Y) {
-         player.kill(level);
+      for (Human h : humans) {
+         if (h.active() && h.p.getY() < Arena.VOID_Y) {
+            h.p.kill(level);
+         }
       }
 
       for (TeamState t : teams) {
@@ -1035,18 +1258,23 @@ public final class Game {
    }
 
    private static void oncePerSecond() {
-      player.getFoodData().setFoodLevel(20);
-      TeamState pt = playerTeam();
-      if (pt != null && player.gameMode() == GameType.SURVIVAL) {
-         applyPlayerUpgrades(player, pt);
+      for (Human h : humans) {
+         if (h.online()) {
+            h.p.getFoodData().setFoodLevel(20);
+            if (h.active()) {
+               applyPlayerUpgrades(h.p, h.team);
+            }
+         }
       }
 
       for (TeamState t : teams) {
          if (t.healPool) {
             Vec3 home = t.island().centerVec();
             List<LivingEntity> members = new ArrayList<>();
-            if (t.hasPlayer && player.gameMode() == GameType.SURVIVAL) {
-               members.add(player);
+            for (Human h : t.humans) {
+               if (h.active()) {
+                  members.add(h.p);
+               }
             }
 
             for (BotProfile b : t.bots) {
@@ -1094,8 +1322,10 @@ public final class Game {
             }
          }
 
-         if (player != null) {
-            player.sendSystemMessage(Component.literal("Ab jetzt hast du nur noch ein Leben!").withStyle(ChatFormatting.RED));
+         for (Human h : humans) {
+            if (h.online() && !h.out) {
+               h.p.sendSystemMessage(Component.literal("Ab jetzt hast du nur noch ein Leben!").withStyle(ChatFormatting.RED));
+            }
          }
       }
 
@@ -1185,7 +1415,11 @@ public final class Game {
          bar.append(Component.literal(t.team.label + " " + mark + t.aliveCount() + "  ").withStyle(color));
       }
 
-      player.sendOverlayMessage(bar);
+      for (Human h : humans) {
+         if (h.online()) {
+            h.p.sendOverlayMessage(bar);
+         }
+      }
    }
 
    private static void generators() {
@@ -1250,10 +1484,22 @@ public final class Game {
          if (alive <= 1 && last != null) {
             endAt = tick + 200;
             tell(Component.literal("TEAM " + last.team.label.toUpperCase() + " HAT GEWONNEN!").withStyle(last.team.format, ChatFormatting.BOLD));
-            player.sendSystemMessage(
-               Component.literal(last.hasPlayer ? "Sieg! Du hast Bedwars gewonnen." : "Verloren. Naechste Runde: /bedwars start")
-                  .withStyle(last.hasPlayer ? ChatFormatting.GOLD : ChatFormatting.RED)
-            );
+            for (Human h : humans) {
+               if (h.online()) {
+                  boolean won = h.team == last;
+                  h.p.sendSystemMessage(
+                     Component.literal(won ? "Sieg! Du hast Bedwars gewonnen." : "Verloren. Naechste Runde: /bedwars start" + (multiplayer() ? " oder \"bedwars 2\" in den Chat" : ""))
+                        .withStyle(won ? ChatFormatting.GOLD : ChatFormatting.RED)
+                  );
+                  title(h.p, Component.literal(won ? "SIEG!" : "VERLOREN").withStyle(won ? ChatFormatting.GOLD : ChatFormatting.RED, ChatFormatting.BOLD),
+                     Component.literal("Team " + last.team.label + " gewinnt").withStyle(last.team.format));
+               }
+            }
+
+            if (multiplayer()) {
+               tell(Lobby.scoreboard());
+            }
+
             BotProfile mvp = null;
 
             for (TeamState t : teams) {
@@ -1284,17 +1530,57 @@ public final class Game {
    public static void afterTick() {
       if (running && endAt >= 0 && tick >= endAt) {
          endAt = -1;
-         ServerPlayer p = player;
+         List<ServerPlayer> was = new ArrayList<>();
+         for (Human h : humans) {
+            if (h.online()) {
+               was.add(h.p);
+            }
+         }
+
+         boolean mp = multiplayer();
          stop(true);
-         if (p != null) {
+         for (ServerPlayer p : was) {
             p.sendSystemMessage(Component.literal("Runde vorbei. Mit /bedwars start geht es von vorne los.").withStyle(ChatFormatting.GREEN));
+            if (mp) {
+               p.sendSystemMessage(Lobby.rematchButton());
+            }
+         }
+      }
+   }
+
+   /** Nach dem Vanilla-Respawn (z.B. wer beim Rundenstart gerade tot war) ist der Spieler ein neues Objekt. */
+   public static void onRespawn(ServerPlayer p) {
+      if (!running) {
+         return;
+      }
+
+      for (Human h : humans) {
+         if (h.id.equals(p.getUUID())) {
+            h.p = p;
+            if (h.out) {
+               p.setGameMode(GameType.SPECTATOR);
+               teleportTo(p, h.team.island().spawn().add(0.0, 8.0, 0.0));
+            } else {
+               respawnPlayer(h);
+               p.getInventory().add(new ItemStack(h.team.team.wool.asItem(), 16));
+            }
          }
       }
    }
 
    public static void onDisconnect(ServerPlayer p) {
-      if (running && p == player) {
-         stop(true);
+      Lobby.onDisconnect(p);
+      Human h = human(p);
+      if (running && h != null) {
+         h.offline = true;
+         if (!h.out) {
+            tell(nameOf(p).copy().append(Component.literal(" hat die Runde verlassen.").withStyle(ChatFormatting.GRAY)));
+            eliminate(h, "");
+         }
+
+         if (!anyoneOnline()) {
+            stop(true);
+         }
       }
    }
 
@@ -1304,8 +1590,39 @@ public final class Game {
       }
    }
 
+   /** Teamchat: "@ nachricht" lesen nur das eigene Team und die Bots darin. */
+   public static boolean allowChat(ServerPlayer p, String text) {
+      Human me = human(p);
+      if (!running || me == null || text == null || !text.startsWith("@")) {
+         return true;
+      }
+
+      String msg = text.substring(1).trim();
+      if (msg.isEmpty()) {
+         return false;
+      }
+
+      Component line = Component.literal("[TEAM] ").withStyle(ChatFormatting.DARK_AQUA)
+         .append(Component.literal("<").withStyle(ChatFormatting.GRAY))
+         .append(Component.literal(me.name).withStyle(me.team.team.format))
+         .append(Component.literal("> ").withStyle(ChatFormatting.GRAY))
+         .append(Component.literal(msg).withStyle(ChatFormatting.WHITE));
+      for (Human h : me.team.humans) {
+         if (h.online()) {
+            h.p.sendSystemMessage(line);
+         }
+      }
+
+      BotChat.onPlayerChat(p, msg);
+      return false;
+   }
+
    public static void onChat(ServerPlayer p, String text) {
-      if (running && p == player) {
+      if (Lobby.onChat(p, text)) {
+         return;
+      }
+
+      if (running && isHuman(p)) {
          BotChat.onPlayerChat(p, text);
       }
    }
@@ -1322,14 +1639,18 @@ public final class Game {
       }
    }
 
+   /** Spielnachricht an alle auf dem Server (Mitspieler und Zuschauer). */
    private static void tell(Component msg) {
       if (debug) {
          System.out.println("[BW t=" + tick / 20 + "s] " + msg.getString());
       }
 
-      if (player != null) {
-         player.sendSystemMessage(msg);
+      if (server != null) {
+         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            p.sendSystemMessage(msg);
+         }
       }
+
    }
 
    public static String status() {
@@ -1361,6 +1682,7 @@ public final class Game {
 
    private static final class Backup {
       final List<ItemStack> items = new ArrayList<>();
+      final ResourceKey<net.minecraft.world.level.Level> dim;
       final Vec3 pos;
       final float yaw;
       final float pitch;
@@ -1373,6 +1695,7 @@ public final class Game {
             this.items.add(p.getInventory().getItem(i).copy());
          }
 
+         this.dim = p.level().dimension();
          this.pos = p.position();
          this.yaw = p.getYRot();
          this.pitch = p.getXRot();
@@ -1381,8 +1704,9 @@ public final class Game {
          this.food = p.getFoodData().getFoodLevel();
       }
 
-      private Backup(List<ItemStack> items, Vec3 pos, float yaw, float pitch, GameType mode, float health, int food) {
+      private Backup(List<ItemStack> items, ResourceKey<net.minecraft.world.level.Level> dim, Vec3 pos, float yaw, float pitch, GameType mode, float health, int food) {
          this.items.addAll(items);
+         this.dim = dim;
          this.pos = pos;
          this.yaw = yaw;
          this.pitch = pitch;
@@ -1391,7 +1715,12 @@ public final class Game {
          this.food = food;
       }
 
-      void restore(ServerPlayer p, ServerLevel lvl) {
+      void restore(ServerPlayer p, MinecraftServer srv) {
+         ServerLevel lvl = srv.getLevel(this.dim);
+         if (lvl == null) {
+            lvl = srv.overworld();
+         }
+
          p.getInventory().clearContent();
 
          for (int i = 0; i < this.items.size(); i++) {
@@ -1405,14 +1734,20 @@ public final class Game {
          p.getFoodData().setFoodLevel(this.food);
       }
 
-      static Path file(MinecraftServer srv) {
+      static Path file(MinecraftServer srv, ServerPlayer p) {
+         return srv.getWorldPath(LevelResource.ROOT).resolve("glowcube_bedwars_backup_" + p.getUUID() + ".json");
+      }
+
+      /** Alte Fassung (nur ein Spieler) hatte eine einzige Datei - die gehoert dem Weltbesitzer. */
+      static Path legacyFile(MinecraftServer srv) {
          return srv.getWorldPath(LevelResource.ROOT).resolve("glowcube_bedwars_backup.json");
       }
 
-      void save(MinecraftServer srv) {
+      void save(MinecraftServer srv, ServerPlayer p) {
          try {
             RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, srv.registryAccess());
             JsonObject json = new JsonObject();
+            json.addProperty("dim", this.dim.identifier().toString());
             json.addProperty("x", this.pos.x);
             json.addProperty("y", this.pos.y);
             json.addProperty("z", this.pos.z);
@@ -1428,15 +1763,19 @@ public final class Game {
             }
 
             json.add("items", arr);
-            Files.writeString(file(srv), json.toString());
+            Files.writeString(file(srv, p), json.toString());
          } catch (Exception e) {
             System.err.println("[Bedwars] Inventar-Sicherung fehlgeschlagen: " + e);
          }
       }
 
-      static Backup load(MinecraftServer srv) {
+      static Backup load(MinecraftServer srv, ServerPlayer p) {
          try {
-            Path f = file(srv);
+            Path f = file(srv, p);
+            if (!Files.exists(f) && srv.isSingleplayerOwner(p.nameAndId())) {
+               f = legacyFile(srv);
+            }
+
             if (!Files.exists(f)) {
                return null;
             } else {
@@ -1448,8 +1787,12 @@ public final class Game {
                   items.add((ItemStack)ItemStack.OPTIONAL_CODEC.parse(ops, el).getOrThrow());
                }
 
+               ResourceKey<net.minecraft.world.level.Level> dim = json.has("dim")
+                  ? ResourceKey.create(Registries.DIMENSION, net.minecraft.resources.Identifier.parse(json.get("dim").getAsString()))
+                  : net.minecraft.world.level.Level.OVERWORLD;
                return new Backup(
                   items,
+                  dim,
                   new Vec3(json.get("x").getAsDouble(), json.get("y").getAsDouble(), json.get("z").getAsDouble()),
                   json.get("yaw").getAsFloat(),
                   json.get("pitch").getAsFloat(),
@@ -1464,11 +1807,48 @@ public final class Game {
          }
       }
 
-      static void delete(MinecraftServer srv) {
+      static void delete(MinecraftServer srv, ServerPlayer p) {
          try {
-            Files.deleteIfExists(file(srv));
+            Files.deleteIfExists(file(srv, p));
+            if (srv.isSingleplayerOwner(p.nameAndId())) {
+               Files.deleteIfExists(legacyFile(srv));
+            }
          } catch (Exception ignored) {
          }
+      }
+   }
+
+   // ====================================================================== Echte Spieler
+
+   public static final class Human {
+      public ServerPlayer p;
+      public final UUID id;
+      public final String name;
+      public final TeamState team;
+      public boolean out;
+      public boolean offline;
+      public int respawnAt = -1;
+      public int armorTier;
+      public int kills;
+      public int finals;
+      public int beds;
+      public int deaths;
+      Backup backup;
+
+      Human(ServerPlayer p, TeamState team) {
+         this.p = p;
+         this.id = p.getUUID();
+         this.name = p.getName().getString();
+         this.team = team;
+      }
+
+      public boolean online() {
+         return this.p != null && !this.offline && !this.p.hasDisconnected();
+      }
+
+      /** Lebt und kaempft gerade (nicht tot, nicht raus, nicht weg). */
+      public boolean active() {
+         return !this.out && this.online() && this.p.isAlive() && this.p.gameMode() == GameType.SURVIVAL;
       }
    }
 
@@ -1482,8 +1862,7 @@ public final class Game {
       public final Arena.Island island;
       public boolean bedAlive;
       public boolean hasPlayer;
-      public boolean playerOut;
-      public int playerArmorTier;
+      public final List<Human> humans = new ArrayList<>();
       public int iron;
       public int gold;
       public int diamond;
@@ -1526,6 +1905,7 @@ public final class Game {
       public final double[] grudgeAgainst = new double[BwTeam.values().length];
       public TeamBrain.Command command = TeamBrain.Command.NONE;
       public TeamState commandTarget;
+      public ServerPlayer commandBy;
       public int commandUntil;
       private List<DefenseCell> defense;
       private List<BlockPos> defenseSpots;
@@ -1540,7 +1920,7 @@ public final class Game {
       }
 
       public boolean alive() {
-         if (this.hasPlayer && !this.playerOut) {
+         if (this.humansInGame() > 0) {
             return true;
          } else {
             for (BotProfile b : this.bots) {
@@ -1554,10 +1934,23 @@ public final class Game {
       }
 
       public int aliveCount() {
-         int n = this.hasPlayer && !this.playerOut ? 1 : 0;
+         int n = this.humansInGame();
 
          for (BotProfile b : this.bots) {
             if (!b.eliminated) {
+               n++;
+            }
+         }
+
+         return n;
+      }
+
+      /** Echte Spieler, die noch nicht ausgeschieden sind. */
+      public int humansInGame() {
+         int n = 0;
+
+         for (Human h : this.humans) {
+            if (!h.out) {
                n++;
             }
          }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "glowcube_bedwars",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "name": "GlowCube Bedwars",
   "description": "Beim Betreten einer Einzelspielerwelt startet sofort eine Bedwars-Runde mit Bots: 5 Teams auf einer roemischen Karte, Bots mit Steve-/Alex-Skin, Team-Strategie, Brueckenbau, Bett-Verteidigung und Chat-KI.",
   "authors": ["GlowCube"],

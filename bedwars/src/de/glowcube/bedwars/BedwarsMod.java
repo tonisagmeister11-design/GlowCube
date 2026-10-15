@@ -25,11 +25,23 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
 public final class BedwarsMod implements ModInitializer {
+   private static int lobby(com.mojang.brigadier.context.CommandContext<net.minecraft.commands.CommandSourceStack> ctx, java.util.function.Consumer<ServerPlayer> action) {
+      ServerPlayer p = ctx.getSource().getPlayer();
+      if (p == null) {
+         ctx.getSource().sendFailure(Component.literal("Nur fuer Spieler."));
+         return 0;
+      } else {
+         action.accept(p);
+         return 1;
+      }
+   }
+
    @Override
    public void onInitialize() {
       Config.load();
       ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> Game.onJoin(handler.getPlayer(), server));
       ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> Game.onDisconnect(handler.getPlayer()));
+      net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> Game.onRespawn(newPlayer));
       ServerLifecycleEvents.SERVER_STOPPING.register(server -> Game.onServerStopping());
       ServerTickEvents.END_SERVER_TICK.register(server -> {
          Game.tick(server);
@@ -43,6 +55,11 @@ public final class BedwarsMod implements ModInitializer {
             return false;
          } else {
             Entity attacker = source.getEntity();
+            if (attacker instanceof ServerPlayer sp && !Game.isHuman(sp) && (Game.isHuman(entity) || entity instanceof BedwarsBot)) {
+               // wer nicht mitspielt, mischt sich nicht ein
+               return false;
+            }
+
             return attacker == null || attacker == entity || Game.teamOf(attacker) == null || Game.teamOf(attacker) != Game.teamOf(entity);
          }
       });
@@ -60,7 +77,7 @@ public final class BedwarsMod implements ModInitializer {
       });
       UseItemCallback.EVENT.register((player, world, hand) -> {
          ItemStack stack = player.getItemInHand(hand);
-         if (Game.running() && stack.is(Items.FIRE_CHARGE) && world instanceof ServerLevel level && player == Game.player()) {
+         if (Game.running() && stack.is(Items.FIRE_CHARGE) && world instanceof ServerLevel level && Game.isHuman(player)) {
             Vec3 look = player.getLookAngle();
             LargeFireball fb = new LargeFireball(level, player, look.scale(0.1), 2);
             fb.setPos(player.getX() + look.x * 1.5, player.getEyeY() + look.y * 1.5, player.getZ() + look.z * 1.5);
@@ -72,13 +89,27 @@ public final class BedwarsMod implements ModInitializer {
             return InteractionResult.PASS;
          }
       });
+      ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> Game.allowChat(sender, message.signedContent()));
       ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> Game.onChat(sender, message.signedContent()));
       CommandRegistrationCallback.EVENT.register((dispatcher, registry, env) -> dispatcher.register(
          Commands.literal("bedwars")
             .then(Commands.literal("start").executes(ctx -> {
-               Game.start(ctx.getSource().getPlayerOrException());
+               ServerPlayer p = ctx.getSource().getPlayerOrException();
+               if (Game.running() && Game.multiplayer()) {
+                  ctx.getSource().sendFailure(Component.literal("Gerade laeuft eine Multiplayer-Runde. Neue Runde mit allen: \"bedwars 2\" in den Chat."));
+                  return 0;
+               }
+
+               Game.start(p);
                return 1;
             }))
+            .then(Commands.literal("multiplayer").executes(ctx -> lobby(ctx, Lobby::request)))
+            .then(Commands.literal("mp").executes(ctx -> lobby(ctx, Lobby::request)))
+            .then(Commands.literal("ja").executes(ctx -> lobby(ctx, Lobby::accept)))
+            .then(Commands.literal("nein").executes(ctx -> lobby(ctx, Lobby::decline)))
+            .then(Commands.literal("los").executes(ctx -> lobby(ctx, Lobby::startNow)))
+            .then(Commands.literal("modus").executes(ctx -> lobby(ctx, Lobby::toggleMode)))
+            .then(Commands.literal("abbrechen").executes(ctx -> lobby(ctx, Lobby::cancel)))
             .then(Commands.literal("stop").executes(ctx -> {
                Game.stop(true);
                return 1;
@@ -94,8 +125,12 @@ public final class BedwarsMod implements ModInitializer {
             }))
             .then(Commands.literal("say").then(Commands.argument("text", com.mojang.brigadier.arguments.StringArgumentType.greedyString()).executes(ctx -> {
                // zum Testen der Chat-KI ohne echten Chat
-               ServerPlayer p = Game.player();
-               if (p != null) {
+               ServerPlayer p = ctx.getSource().getPlayer();
+               if (p == null && !Game.humans().isEmpty()) {
+                  p = Game.humans().get(0).p;
+               }
+
+               if (p != null && Game.isHuman(p)) {
                   BotChat.onPlayerChat(p, com.mojang.brigadier.arguments.StringArgumentType.getString(ctx, "text"));
                }
 

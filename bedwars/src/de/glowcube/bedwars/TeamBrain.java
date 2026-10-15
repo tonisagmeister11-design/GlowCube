@@ -346,10 +346,11 @@ public final class TeamBrain {
       }
 
       c.enemiesNoBed = enemies == 0 ? 0.0 : (double)noBed / enemies;
-      ServerPlayer pl = Game.player();
       Vec3 home = t.island().centerVec();
-      if (pl != null && Game.isEnemy(t, pl)) {
-         c.playerNear = Math.max(0.0, 1.0 - pl.position().distanceTo(home) / 50.0);
+      for (Game.Human h : Game.humans()) {
+         if (Game.isEnemy(t, h.p)) {
+            c.playerNear = Math.max(c.playerNear, 1.0 - h.p.position().distanceTo(home) / 50.0);
+         }
       }
 
       // bevorzugtes Jagdziel: Gegner, die nah und schwach sind - oder der Spieler, wenn wir Rache wollen
@@ -357,7 +358,7 @@ public final class TeamBrain {
 
       for (LivingEntity e : Game.enemiesOf(t)) {
          if (!Game.isProtected(e)) {
-            double score = e.position().distanceTo(home) + e.getHealth() * 0.8 - (e == pl ? t.grudgePlayer * 10.0 : 0.0);
+            double score = e.position().distanceTo(home) + e.getHealth() * 0.8 - (e instanceof ServerPlayer ? t.grudgePlayer * 10.0 : 0.0);
             if (score < best) {
                best = score;
                c.huntTarget = e;
@@ -662,8 +663,10 @@ public final class TeamBrain {
             }
          }
 
-         if (o.hasPlayer && Game.player() != null && Game.isEnemy(t, Game.player()) && horizontal(Game.player().position(), home) < Arena.ISLAND_RADIUS + 12) {
-            atUs++;
+         for (Game.Human h : o.humans) {
+            if (Game.isEnemy(t, h.p) && horizontal(h.p.position(), home) < Arena.ISLAND_RADIUS + 12) {
+               atUs++;
+            }
          }
 
          t.rushPressure[k] = t.rushPressure[k] * 0.97 + atUs * 0.08;
@@ -795,17 +798,21 @@ public final class TeamBrain {
    }
 
    private static ServerPlayer nearbyPlayerTarget(Game.TeamState t, BotProfile p, double range) {
-      ServerPlayer pl = Game.player();
-      if (pl != null && pl.isAlive() && !pl.isSpectator() && Game.isEnemy(t, pl) && !Game.isProtected(pl)) {
-         return p.body.distanceTo(pl) < range ? pl : null;
-      } else {
-         return null;
+      ServerPlayer best = null;
+      double bd = range;
+      for (Game.Human h : Game.humans()) {
+         if (Game.isEnemy(t, h.p) && !Game.isProtected(h.p) && p.body.distanceTo(h.p) < bd) {
+            bd = p.body.distanceTo(h.p);
+            best = h.p;
+         }
       }
+
+      return best;
    }
 
    private static void planWithBed(Game.TeamState t, List<BotProfile> live) {
       int tick = Game.tick();
-      int members = live.size() + (t.hasPlayer && !t.playerOut ? 1 : 0);
+      int members = live.size() + t.humansInGame();
       boolean commanded = t.command != Command.NONE && tick < t.commandUntil;
       List<BotProfile> free = new ArrayList<>();
 
@@ -1029,8 +1036,9 @@ public final class TeamBrain {
 
    // ====================================================================== Befehle des Spielers
 
-   public static void command(Game.TeamState t, Command c, Game.TeamState target, int seconds) {
+   public static void command(Game.TeamState t, Command c, Game.TeamState target, int seconds, ServerPlayer by) {
       t.command = c;
+      t.commandBy = by;
       t.commandTarget = target;
       t.commandUntil = Game.tick() + seconds * 20;
 
@@ -1042,7 +1050,7 @@ public final class TeamBrain {
    }
 
    private static void applyCommand(Game.TeamState t, List<BotProfile> live) {
-      ServerPlayer pl = Game.player();
+      ServerPlayer pl = t.commandBy != null && Game.isHuman(t.commandBy) ? t.commandBy : Game.humanOf(t);
       switch (t.command) {
          case DEFEND -> {
             for (BotProfile p : live) {

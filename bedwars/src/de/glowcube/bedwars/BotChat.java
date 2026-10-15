@@ -51,7 +51,12 @@ public final class BotChat {
    static Map<String, String> slots(BotProfile p, Object... kv) {
       Map<String, String> m = new HashMap<>();
       m.put("me", p.name.toLowerCase(Locale.ROOT));
-      ServerPlayer pl = Game.player();
+      // "der Spieler" ist fuer einen Bot zuerst der echte Spieler im eigenen Team, sonst irgendeiner
+      ServerPlayer pl = Game.humanOf(p.team);
+      if (pl == null && !Game.humans().isEmpty()) {
+         pl = Game.humans().get(RND.nextInt(Game.humans().size())).p;
+      }
+
       if (pl != null) {
          m.put("player", pl.getName().getString());
       }
@@ -128,8 +133,7 @@ public final class BotChat {
    }
 
    private static void send(Pending q) {
-      Game.TeamState mine = Game.playerTeam();
-      if (q.team && mine != q.who.team) {
+      if (q.team && q.who.team.humans.isEmpty()) {
          return;
       }
 
@@ -142,7 +146,16 @@ public final class BotChat {
          .append(Component.literal(q.who.name).withStyle(q.who.team.team.format))
          .append(Component.literal("> ").withStyle(ChatFormatting.GRAY))
          .append(Component.literal(q.text).withStyle(ChatFormatting.WHITE));
-      Game.broadcast(line);
+      if (q.team) {
+         // Teamchat lesen nur die echten Spieler im selben Team
+         for (Game.Human h : q.who.team.humans) {
+            if (h.online()) {
+               h.p.sendSystemMessage(line);
+            }
+         }
+      } else {
+         Game.broadcast(line);
+      }
    }
 
    static BotProfile randomBot(Game.TeamState team, BotProfile not) {
@@ -216,8 +229,11 @@ public final class BotChat {
          speak(p, "start", slots(p), 30 + i * 30, false);
       }
 
-      Game.TeamState pt = Game.playerTeam();
-      if (pt != null) {
+      for (Game.TeamState pt : Game.teams()) {
+         if (pt.humans.isEmpty()) {
+            continue;
+         }
+
          BotProfile mate = randomBot(pt, null);
          if (mate != null) {
             Game.TeamState target = null;
@@ -229,6 +245,26 @@ public final class BotChat {
             }
 
             speak(mate, "plan", slots(mate, "team", teamName(target)), 120, true);
+         }
+
+         // im Multiplayer begruessen die Bots ihre echten Teamkollegen
+         if (Game.multiplayer()) {
+            for (Game.Human h : pt.humans) {
+               BotProfile b = randomBot(pt, mate);
+               if (b != null && RND.nextBoolean()) {
+                  speak(b, "mpteam", slots(b, "player", h.name), 70 + RND.nextInt(60), true);
+               }
+            }
+         }
+      }
+
+      if (Game.multiplayer()) {
+         List<BotProfile> others = allBots();
+         others.removeIf(b -> !b.team.humans.isEmpty());
+         if (!others.isEmpty()) {
+            BotProfile b = others.get(RND.nextInt(others.size()));
+            Game.Human h = Game.humans().get(RND.nextInt(Game.humans().size()));
+            speak(b, "mpstart", slots(b, "player", h.name, "n", Game.humans().size()), 90 + RND.nextInt(80), false);
          }
       }
    }
@@ -272,7 +308,7 @@ public final class BotChat {
    }
 
    public static void purchase(BotProfile p, String item) {
-      boolean mine = p.team == Game.playerTeam();
+      boolean mine = !p.team.humans.isEmpty();
       if (item.equals("Wolle") || item.equals("Endstein") || item.equals("Holz")) {
          return;
       }
@@ -320,10 +356,10 @@ public final class BotChat {
             speak(angry, "bedrevenge", slots(angry), 50, false);
          }
 
-         Game.TeamState pt = Game.playerTeam();
+         Game.TeamState pt = Game.teamOfPlayer(byPlayer);
          BotProfile mate = pt == null ? null : randomBot(pt, null);
          if (mate != null && RND.nextBoolean()) {
-            speak(mate, "bedpraise", slots(mate), 35, true);
+            speak(mate, "bedpraise", slots(mate, "player", byPlayer.getName().getString()), 35, true);
          }
       }
 
@@ -339,6 +375,18 @@ public final class BotChat {
    }
 
    public static void kill(LivingEntity victim, Entity killer, boolean finalKill) {
+      // echte Spieler gegeneinander: die Bots schauen gern zu und kommentieren
+      Game.Human hk = Game.human(killer);
+      Game.Human hv = Game.human(victim);
+      if (hk != null && hv != null && hk.team != hv.team && RND.nextInt(3) > 0) {
+         List<BotProfile> watchers = allBots();
+         if (!watchers.isEmpty()) {
+            BotProfile w = watchers.get(RND.nextInt(watchers.size()));
+            boolean ownMate = w.team == hk.team;
+            speak(w, ownMate ? "mpmatekill" : "mppvp", slots(w, "player", hk.name, "name", hv.name), 30, ownMate);
+         }
+      }
+
       if (killer instanceof BedwarsBot kb && kb.profile != null && wants(kb.profile, finalKill ? 0.6 : 0.25)) {
          speak(kb.profile, finalKill ? "killfinal" : "kill", slots(kb.profile, "name", nameOf(victim)), 10, false);
       }
@@ -455,7 +503,7 @@ public final class BotChat {
       String s = ChatBrain.normalize(raw);
       ChatBrain.Guess guess = ChatBrain.understand(raw);
       String intent = guess.confidence() >= 0.35 ? guess.intent() : keywordIntent(s);
-      Game.TeamState mine = Game.playerTeam();
+      Game.TeamState mine = Game.teamOfPlayer(player);
       Game.TeamState team = mentionedTeam(s);
       BotProfile named = mentionedBot(s);
       boolean addressedMate = named != null && mine != null && named.team == mine;
@@ -490,7 +538,7 @@ public final class BotChat {
          }
 
          int seconds = c == TeamBrain.Command.HELP ? 45 : (c == TeamBrain.Command.NONE ? 0 : 100);
-         TeamBrain.command(mine, c, c == TeamBrain.Command.ATTACK ? team : null, seconds);
+         TeamBrain.command(mine, c, c == TeamBrain.Command.ATTACK ? team : null, seconds, player);
          String ack = switch (intent) {
             case "cmd_defend" -> "ackdefend";
             case "cmd_attack" -> "ackattack";
@@ -501,7 +549,7 @@ public final class BotChat {
             case "cmd_buy" -> "ackbuy";
             default -> "ackstop";
          };
-         speak(mate, ack, slots(mate, "team", teamName(team)), c == TeamBrain.Command.HELP ? 10 : delay, true);
+         speak(mate, ack, slots(mate, "team", teamName(team), "player", player.getName().getString()), c == TeamBrain.Command.HELP ? 10 : delay, true);
 
          return;
       }
@@ -589,6 +637,6 @@ public final class BotChat {
          return;
       }
 
-      speak(who, reply, slots(who), delay, teamOnly);
+      speak(who, reply, slots(who, "player", player.getName().getString()), delay, teamOnly);
    }
 }
