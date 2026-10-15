@@ -228,9 +228,8 @@ public final class Lobby {
          return;
       }
 
-      together = !together;
-      tellLobby(Component.literal("Modus: ").withStyle(ChatFormatting.GRAY).append(modeName().withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD)));
-      p.sendSystemMessage(hostButtons());
+      // alle echten Spieler sind immer zusammen in einem Team, die anderen 4 Teams sind Bots
+      p.sendSystemMessage(Component.literal("Ihr seid immer zusammen in einem Team - gegen 4 Bot-Teams.").withStyle(ChatFormatting.AQUA));
    }
 
    public static void startNow(ServerPlayer p) {
@@ -417,14 +416,11 @@ public final class Lobby {
       return Component.empty()
          .append(button("[▶ JETZT STARTEN]", "/bedwars los", "Nicht mehr warten", ChatFormatting.GREEN))
          .append(Component.literal("  "))
-         .append(button("[⇄ " + (together ? "ZUSAMMEN" : "GEGENEINANDER") + "]", "/bedwars modus",
-            "Umschalten: zusammen in einem Team / jeder in einem eigenen Team", ChatFormatting.AQUA))
-         .append(Component.literal("  "))
          .append(button("[✖ ABBRECHEN]", "/bedwars abbrechen", "Einladung zuruecknehmen", ChatFormatting.RED));
    }
 
    private static MutableComponent modeName() {
-      return Component.literal(together ? "zusammen in einem Team (max. " + Game.TEAM_SIZE + ", Bots fuellen auf)" : "gegeneinander - jeder in einem eigenen Team");
+      return Component.literal("ihr zusammen in einem Team gegen 4 Bot-Teams");
    }
 
    private static MutableComponent header(String title) {

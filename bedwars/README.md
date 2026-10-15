@@ -18,14 +18,13 @@ Host: Die Bots sind normale Minecraft-Figuren, Freunde können auch ohne die Mod
    (auch „bad wars 2“, „bedwars zu zweit“, `/bedwars multiplayer`).
 2. Alle anderen auf dem Server bekommen eine Einladung mit Titel-Einblendung, Ton und den Knöpfen
    **[✔ JA, ICH SPIEL MIT]** / **[✖ NEIN]**. Man kann auch einfach „ja“ oder „nein“ schreiben.
-3. Wer eingeladen hat, sieht **[▶ JETZT STARTEN]**, **[⇄ ZUSAMMEN / GEGENEINANDER]** und
-   **[✖ ABBRECHEN]**. Sobald alle geantwortet haben (spätestens nach 30 Sekunden), geht es los.
+3. Wer eingeladen hat, sieht **[▶ JETZT STARTEN]** und **[✖ ABBRECHEN]**. Sobald alle geantwortet haben (spätestens nach 30 Sekunden), geht es los.
 
 **Gleich viele Spieler:** Jeder echte Spieler ersetzt einen Bot. Es bleiben immer
 5 Teams mit je 4. Zu zweit zusammen heißt also: ihr zwei und zwei Bots in einem Team.
 
-* **Zusammen:** Alle in dasselbe Team (bis 4, wer darüber hinaus dabei ist, kommt ins nächste Team).
-* **Gegeneinander:** Jeder bekommt ein eigenes Team mit Bots.
+* **Immer zusammen:** Alle echten Spieler sind in einem Team, dazu kommen 4 Bot-Teams, die
+  gegen euch und gegeneinander kämpfen (ab 5 echten Spielern kommt der Rest ins nächste Team).
 * **Teamchat:** Mit `@` vor der Nachricht lesen nur dein Team und deine Bots mit
   (`@ verteidigt das bett`). Befehle an die Bots funktionieren für jeden echten Spieler im Team.
 * Die Bots reden über die echten Spieler: Sie begrüßen ihre echten Teamkollegen,
@@ -168,7 +167,7 @@ diamantruestung").
 | `/bedwars start` | neue Runde allein mit Bots |
 | `/bedwars multiplayer` | alle auf dem Server einladen (wie „bedwars 2“ im Chat) |
 | `/bedwars ja` / `nein` | Einladung annehmen / ablehnen |
-| `/bedwars los` / `modus` / `abbrechen` | (wer eingeladen hat) sofort starten / zusammen ↔ gegeneinander / abbrechen |
+| `/bedwars los` / `abbrechen` | (wer eingeladen hat) sofort starten / abbrechen |
 | `/bedwars stop` | Runde beenden, Inventar zurück |
 | `/bedwars status` | Teams, Betten, Spielertyp, Trefferquote und Auftrag jedes Bots |
 | `/bedwars schwierigkeit <stufe>` | leicht, normal, schwer oder profi (ab der nächsten Runde) |
