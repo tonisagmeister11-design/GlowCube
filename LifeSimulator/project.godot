@@ -24,6 +24,7 @@ EventBus="*res://scripts/core/event_bus.gd"
 Settings="*res://scripts/core/settings.gd"
 Game="*res://scripts/core/game.gd"
 AI="*res://scripts/ai/groq_client.gd"
+Audio="*res://scripts/audio/audio_manager.gd"
 
 [display]
 
