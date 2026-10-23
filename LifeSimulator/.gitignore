@@ -1,0 +1,8 @@
+# Godot
+.godot/
+*.tmp
+*.import.tmp
+# Builds
+build/
+export/
+*.pck
