@@ -23,6 +23,7 @@ Log="*res://scripts/core/log.gd"
 EventBus="*res://scripts/core/event_bus.gd"
 Settings="*res://scripts/core/settings.gd"
 Game="*res://scripts/core/game.gd"
+AI="*res://scripts/ai/groq_client.gd"
 
 [display]
 
