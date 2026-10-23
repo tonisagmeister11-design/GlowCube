@@ -35,6 +35,7 @@ window/stretch/aspect="expand"
 
 [gui]
 
+theme/custom="res://assets/ui/theme.tres"
 theme/custom_font="res://assets/fonts/Inter-Variable.ttf"
 
 [physics]

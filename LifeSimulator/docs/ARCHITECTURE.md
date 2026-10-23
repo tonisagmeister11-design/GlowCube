@@ -340,3 +340,52 @@ SubViewport, `set_character(appearance, age, body)`, Drehen per Maus.
   Requisiten als MultiMesh; Sichtweite über `Settings graphics/view_distance`.
 * Kollision: einfache Boxen für Gebäude, ein Bodenquader, Kollision nur für
   Chunks im Umkreis des Spielers.
+
+### UI-Theme (scripts/ui/ui_theme.gd)
+
+Projektweites Theme unter `res://assets/ui/theme.tres` (in project.godot als
+`gui/theme/custom` eingetragen). Alle Bildschirme verwenden Theme-Typvarianten
+statt eigener Farben (`theme_type_variation`):
+
+| Variante | Basis | Verwendung |
+|---|---|---|
+| `HeaderLabel` | Label | Bildschirmtitel (Montserrat, fett, groß) |
+| `TitleLabel` | Label | Abschnittstitel |
+| `SubtitleLabel` | Label | Fließtext gedämpft |
+| `CaptionLabel` | Label | kleine Hinweise |
+| `ValueLabel` | Label | Zahlenwerte (tabellarisch) |
+| `CardPanel` | PanelContainer | Karte/Kachel |
+| `GlassPanel` | PanelContainer | halbtransparente HUD-Fläche |
+| `AccentButton` | Button | Hauptaktion |
+| `GhostButton` | Button | Nebenaktion |
+| `ChipButton` | Button (toggle) | Auswahl-Chips (Lebensphase, Filter) |
+| `DangerButton` | Button | destruktive Aktion |
+
+Icons: `res://assets/icons/<name>.svg`, weiß, 24 px Raster, Einfärbung per `modulate`.
+
+### Charaktereditor-Szene (scenes/menu/character_creator.tscn)
+
+`Control`, Skript `scripts/character/character_creator.gd`:
+`get_character() -> {name, body, age, appearance}`, `set_character(dict)`,
+Signal `changed(character)`. Wird vom Neues-Spiel-Assistenten eingebettet.
+
+### Fahrzeuge (Gruppe `vehicle`)
+
+Vom Spieler fahrbare Fahrzeuge implementieren:
+`can_enter(player) -> bool`, `enter(player)`, `exit() -> Vector3` (Ausstiegspunkt
+auf dem Gehweg), `get_camera_target() -> Node3D`, `is_occupied() -> bool`,
+Eigenschaft `vehicle_id` (int, -1 für fremde Fahrzeuge). Der Spieler-Controller
+deaktiviert sich während der Fahrt; das Fahrzeug verarbeitet die Eingaben
+(`move_forward/back/left/right`, `handbrake`, `horn`, `vehicle` zum Aussteigen).
+
+### Weltszene: Einhängepunkte
+
+* `scenes/player/player.tscn` (Spieler, Gruppe `player`), Methode
+  `teleport(pos: Vector3, yaw := 0.0)`.
+* `scenes/ui/game_ui.tscn` wird in den CanvasLayer `UI` der Weltszene geladen.
+* `scripts/traffic/traffic_manager.gd` und `scripts/npc/crowd_manager.gd`
+  werden als Kinder von `Actors` erzeugt, falls vorhanden; beide haben
+  `setup(world: WorldState, city_root: Node3D)` und folgen dem Knoten in
+  Gruppe `player` (oder der aktiven Kamera).
+* Innenräume: `InteriorBuilder.build(kind, params) -> Node3D` mit
+  Ankerpunkten (`get_anchors() -> Dictionary name -> Transform3D`).
