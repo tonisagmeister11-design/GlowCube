@@ -622,6 +622,7 @@ func _assign_wealth_and_homes(world) -> void:
 		if bed >= 0 and rng.randf() < 0.6:
 			housing.assign("household", hid, bed)
 			h.home = bed
+	housing.init_sale_listings(world)
 	# Hintergrundbewohner fuellen leere Einheiten bis auf ~10 % Leerstand
 	var vac: Array = housing.vacant_rentals()
 	_shuffle(vac)

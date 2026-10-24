@@ -233,15 +233,15 @@ func step(world, dt: float) -> void:
 	var harm := 0.0
 	if world.rules.b("needs_can_harm"):
 		if float(needs.hunger) < 5.0:
-			harm += 3.0
+			harm += 1.0
 		if float(needs.thirst) < 5.0:
-			harm += 5.0
-		if float(needs.energy) < 3.0:
 			harm += 1.5
-		if float(needs.hygiene) < 5.0:
+		if float(needs.energy) < 3.0:
 			harm += 0.5
+		if float(needs.hygiene) < 5.0:
+			harm += 0.2
 	if not illness.is_empty():
-		harm += 1.2 * float(illness.severity)
+		harm += 0.6 * float(illness.severity)
 	if harm > 0.0:
 		needs.health = maxf(0.0, float(needs.health) - harm * h)
 	elif float(needs.hunger) > 40.0 and float(needs.thirst) > 40.0 and illness.is_empty():
@@ -271,6 +271,14 @@ func on_hour(world, day: int, hour: int) -> void:
 		return
 	world.emit_event("player_needs_changed", [])
 	var a := age(world)
+	# Eltern versorgen minderjaehrige Kinder (Essen aus dem Haushaltsvorrat, Wasser)
+	if a < 18.0 and household >= 0 and world.population and world.population.households.has(household):
+		var hh: Dictionary = world.population.households[household]
+		if float(needs.hunger) < 25.0 and float(hh.pantry) >= 1.0:
+			hh.pantry = float(hh.pantry) - 1.0
+			needs.hunger = minf(100.0, float(needs.hunger) + 45.0)
+		if float(needs.thirst) < 25.0:
+			needs.thirst = minf(100.0, float(needs.thirst) + 40.0)
 	var ai := int(a)
 	if ai != _last_age_int:
 		_last_age_int = ai

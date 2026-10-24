@@ -21,7 +21,7 @@ extends RefCounted
 
 const KIND_LABELS := {"room": "WG-Zimmer", "apartment": "Wohnung", "house": "Haus", "villa": "Villa",
 	"estate": "Anwesen", "shelter_bed": "Notunterkunft (Bett)"}
-const KIND_FACTOR := {"room": 1.0, "apartment": 1.0, "house": 1.0, "villa": 1.12, "estate": 1.25, "shelter_bed": 0.0}
+const KIND_FACTOR := {"room": 1.0, "apartment": 1.0, "house": 1.0, "villa": 1.0, "estate": 1.15, "shelter_bed": 0.0}
 const RENT_YIELD := 0.0011
 const BACKGROUND_VACANCY := 0.10
 const PURCHASE_FEES := 0.05        # 3,5 % Grunderwerbsteuer + 1,5 % Makler
@@ -60,7 +60,7 @@ func setup(world) -> void:
 				var size := rng.randf_range(110.0, 170.0) if kind == "house" else rng.randf_range(90.0, 140.0)
 				_add(b, 0, "house", rooms, size, _quality(cond, wealth), wealth, _developer(hc), 0)
 			"villa":
-				_add(b, 0, "villa", rng.randi_range(7, 10), rng.randf_range(250.0, 420.0), _quality(cond, wealth), wealth, _developer(hc), 0)
+				_add(b, 0, "villa", rng.randi_range(6, 9), rng.randf_range(200.0, 340.0), _quality(cond, wealth), wealth, _developer(hc), 0)
 			"estate":
 				_add(b, 0, "estate", rng.randi_range(12, 20), rng.randf_range(520.0, 900.0), _quality(cond, wealth), wealth, _developer(hc), 0)
 			_:
@@ -484,6 +484,21 @@ func assign(kind: String, id: int, property_id: int, as_owner := false) -> void:
 		p.for_sale = false
 	_home_index["%s:%d" % [kind, id]] = property_id
 	_update_flags(p)
+
+
+## Bauträger bieten einen Teil ihrer freien Haeuser und Wohnungen zum Kauf an
+## (beim Weltaufbau, nachdem die Haushalte eingezogen sind).
+func init_sale_listings(world) -> void:
+	for id in _vacant_rent.keys():
+		var p: Dictionary = properties[id]
+		if p.owner.kind != "company":
+			continue
+		var share := 0.5 if p.kind in ["house", "villa", "estate"] else (0.08 if p.kind == "apartment" else 0.0)
+		if rng.randf() < share:
+			p.for_rent = false
+			p.for_sale = true
+			p.listed_day = world.get_day()
+			_update_flags(p)
 
 
 func set_background(property_id: int) -> void:
