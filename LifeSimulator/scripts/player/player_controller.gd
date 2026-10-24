@@ -328,6 +328,9 @@ func _update_camera(delta: float) -> void:
 		var target_len := 0.0 if first_person else zoom
 		spring.spring_length = target_len if delta <= 0.0 else lerpf(spring.spring_length, target_len, 1.0 - exp(-10.0 * delta))
 	cam_pivot.global_rotation = Vector3(cam_pitch, cam_yaw, 0.0)
+	# Schulterperspektive: Figur leicht links im Bild, Blick frei auf die Strasse
+	camera.h_offset = 0.0 if first_person else 0.65
+	camera.v_offset = 0.0 if first_person else 0.35
 	camera.position = Vector3(0.0, 0.0, 0.0)
 	if first_person and vehicle == null:
 		camera.position = Vector3(0, 0, -0.08)

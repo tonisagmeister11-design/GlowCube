@@ -83,7 +83,8 @@ func _choose_spawn() -> void:
 		var e: Dictionary = c.edges[ne.edge]
 		var q := c.edge_point(e, ne.t)
 		var d := q - p
-		spawn_yaw = atan2(-d.x, -d.y) if d.length() > 0.1 else 0.0
+		# Figuren blicken entlang +Z: zur Strasse schauen, Kamera hinter dem Spieler
+		spawn_yaw = atan2(d.x, d.y) if d.length() > 0.1 else 0.0
 
 
 func _spawn_player() -> void:
