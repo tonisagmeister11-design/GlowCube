@@ -30,6 +30,7 @@ const SYSTEM_ORDER := [
 	["education", "res://scripts/jobs/education.gd"],
 	["population", "res://scripts/npc/population.gd"],
 	["crime", "res://scripts/crime/crime_system.gd"],
+	["politics", "res://scripts/politics/politics.gd"],
 	["player", "res://scripts/life/player_life.gd"],
 ]
 
@@ -50,6 +51,7 @@ var jobs
 var education
 var population
 var crime
+var politics
 var player
 
 var systems: Array = []              # [[name, obj], ...] in Tick-Reihenfolge

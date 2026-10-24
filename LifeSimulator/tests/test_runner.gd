@@ -38,9 +38,8 @@ func _ready() -> void:
 				continue
 			current = "%s::%s" % [f.get_basename(), name]
 			var before := failed
-			var r = inst.call(name)
-			if r is Object and r.has_method("is_valid"):
-				await r
+			# await funktioniert fuer synchrone und asynchrone Testmethoden
+			await inst.call(name)
 			if failed == before:
 				passed += 1
 				print("  OK    ", current)
