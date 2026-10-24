@@ -31,7 +31,7 @@ func _ready() -> void:
 		DisplayServer.window_set_size(Vector2i(int(parts[0]), int(parts[1])))
 		for i in 3:
 			await get_tree().process_frame
-	var cases: Array = [case_name] if case_name != "" else CASES
+	var cases: Array = Array(case_name.split(",")) if case_name != "" else CASES
 	for c in cases:
 		await _run_case(c)
 	get_tree().quit()
