@@ -58,7 +58,7 @@ void fragment() {
 	float age = prm.x;
 	float freck = prm.y;
 	float zone = COLOR.a;
-	vec3 base = pow(COLOR.rgb, vec3(1.8));
+	vec3 base = pow(COLOR.rgb, vec3(1.55));
 	float n1 = vnoise(rest * 140.0);
 	float n2 = vnoise(rest * 26.0);
 	vec3 col = base * (0.955 + 0.075 * n2);

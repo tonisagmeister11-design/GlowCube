@@ -138,10 +138,10 @@ const SKIN_TONES := [
 	{"label": "Oliv", "color": Color(0.78, 0.62, 0.45)},
 	{"label": "Goldbraun", "color": Color(0.72, 0.53, 0.37)},
 	{"label": "Mittelbraun", "color": Color(0.62, 0.44, 0.30)},
-	{"label": "Braun", "color": Color(0.52, 0.35, 0.23)},
-	{"label": "Dunkelbraun", "color": Color(0.41, 0.27, 0.18)},
-	{"label": "Tiefbraun", "color": Color(0.31, 0.20, 0.13)},
-	{"label": "Ebenholz", "color": Color(0.23, 0.15, 0.10)},
+	{"label": "Braun", "color": Color(0.58, 0.40, 0.27)},
+	{"label": "Dunkelbraun", "color": Color(0.49, 0.33, 0.22)},
+	{"label": "Tiefbraun", "color": Color(0.41, 0.27, 0.18)},
+	{"label": "Ebenholz", "color": Color(0.34, 0.22, 0.15)},
 ]
 
 const HAIR_COLORS := [
