@@ -274,6 +274,10 @@ static func default_max_stock(base_price: float, btype: String) -> int:
 	return 50
 
 
+## Wert einer Mahlzeit im Haushaltsvorrat: meals = Grundpreis / MEAL_COST
+## (nur fuer Lebensmittel mit Mahlzeitwert).
+const MEAL_COST := 2.6
+
 static var GOODS: Dictionary = _build()
 
 
@@ -287,7 +291,7 @@ static func _build() -> Dictionary:
 			"needs": r[5], "consumable": flags.contains("c") or flags.contains("s"),
 			"durable": flags.contains("d") or flags.contains("v"), "service": flags.contains("s"),
 			"vehicle": flags.contains("v"), "icon": CATEGORY_ICONS.get(cat, "tag"),
-			"meals": float(r[7]), "tier": int(r[8]), "wholesale": float(WHOLESALE.get(cat, 0.6)),
+			"meals": snappedf(float(r[3]) / MEAL_COST, 0.1) if float(r[7]) > 0.0 else 0.0, "tier": int(r[8]), "wholesale": float(WHOLESALE.get(cat, 0.6)),
 		}
 	return out
 

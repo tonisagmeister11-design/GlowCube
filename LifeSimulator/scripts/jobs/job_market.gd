@@ -12,7 +12,7 @@ extends RefCounted
 ## Rentenbeitrag an den Staat (Government.split_wage).
 
 const PROMO_SHIFTS := 6
-const LABOR_SHARE := 0.50      # Stellen je Einwohner
+const LABOR_SHARE := 0.56      # Stellen je Einwohner
 const PUBLIC_SHARE := 0.15
 
 var positions: Dictionary = {}
@@ -103,6 +103,16 @@ func setup(world) -> void:
 				for i in int(counts[occ]):
 					_add(world, c.building, occ, "company", cid, int(c.account), wl, bld)
 	update_wage_need(world)
+	# Startkapital der Firmen: 12 Tage Lohnsumme
+	if eco:
+		var bill := {}
+		for p in positions.values():
+			if p.employer_kind == "company":
+				bill[p.employer_id] = float(bill.get(p.employer_id, 0.0)) + float(p.wage) * float(p.shift_hours) * float(p.days.size()) / 7.0
+		for cid in bill:
+			var c: Dictionary = eco.companies[cid]
+			c.wage_avg = float(bill[cid])
+			world.ledger.mint(int(c.account), float(bill[cid]) * 12.0 + 2000.0, "Startkapital")
 
 
 func _add(world, building: int, occ: String, ekind: String, eid, acc: int, wl: float, ctx: Dictionary) -> int:
@@ -372,7 +382,7 @@ func hire(world, kind: String, id: int, position_id: int, rank := 0) -> void:
 
 
 func _employer_list_add(world, p: Dictionary, id: int, kind: String) -> void:
-	var lst := _employees_list(world, p)
+	var lst = _employees_list(world, p)
 	if lst != null:
 		var pid := id if kind == "npc" else 0
 		if not lst.has(pid):
@@ -625,9 +635,64 @@ func on_day(world, day: int) -> void:
 				fire(world, "player", 0, "unentschuldigtes Fehlen")
 			else:
 				world.notify("Du bist nicht zur Arbeit erschienen (%d/3 Fehltage)." % int(p.missed), "warning")
+	_grow_positions(world)
 	_match_npcs(world, day)
 	if day % 3 == 0:
 		update_wage_need(world)
+
+
+## Arbeitsnachfrage: Liquide Firmen ohne offene Stellen schaffen bei hoher
+## Arbeitslosigkeit neue Stellen (Exporte steigen mit der Lohnsumme), bis zum
+## 1,6-fachen der Anfangsbelegschaft. Ruhende Stellen werden zuerst reaktiviert.
+func _grow_positions(world) -> void:
+	var pop = world.population
+	var eco = world.economy
+	if pop == null or eco == null:
+		return
+	var seekers: int = pop.job_seekers(world).size()
+	var vacant := 0
+	var held := 0
+	for p in positions.values():
+		if p.holder_kind != "":
+			held += 1
+		if p.active and p.holder_kind == "" and not p.reserved_owner \
+				and Occupations.edu_rank(Occupations.OCCUPATIONS[p.occupation].education) <= 2:
+			vacant += 1
+	var gap := seekers - vacant - int(held * 0.05)
+	if gap <= 10:
+		return
+	var n := mini(12, gap / 8)
+	var cids: Array = eco.companies.keys()
+	var wl: float = world.rules.f("wage_level")
+	for t in n * 4:
+		if n <= 0:
+			break
+		var c: Dictionary = eco.companies[cids[rng.randi() % cids.size()]]
+		var sec: Dictionary = Company.SECTORS[c.sector]
+		if float(sec.export_mult) <= 0.0 or world.ledger.balance(int(c.account)) < float(c.get("cash_target", 0.0)):
+			continue
+		var ids := positions_of_employer("company", c.id)
+		if ids.size() >= int(c.get("base_staff", ids.size())) * 1.6 + 1:
+			continue
+		if not c.has("base_staff"):
+			c.base_staff = ids.size()
+		var revived := false
+		for pid in ids:
+			if not positions[pid].active:
+				positions[pid].active = true
+				revived = true
+				break
+		if not revived:
+			# einfache Taetigkeit der Branche (geringste Bildungsanforderung)
+			var best := ""
+			var br := 99
+			for e in sec.staff:
+				var r := Occupations.edu_rank(Occupations.OCCUPATIONS[e[0]].education)
+				if r < br or (r == br and rng.randf() < 0.5):
+					br = r
+					best = e[0]
+			_add(world, int(c.building), best, "company", c.id, int(c.account), wl, world.city.buildings[int(c.building)])
+		n -= 1
 
 
 ## Vermittlung: offene Stellen werden mit arbeitsuchenden NPCs besetzt.
@@ -656,7 +721,7 @@ func _match_npcs(world, day: int) -> void:
 				break
 			var k := rng.randi() % pool.size()
 			var cand: int = pool[k]
-			if not check_requirements(world, "npc", cand, p.occupation).is_empty():
+			if not _npc_trainable(world, cand, p.occupation):
 				continue
 			if use_switch:
 				var cur := position_of("npc", cand)
@@ -670,6 +735,34 @@ func _match_npcs(world, day: int) -> void:
 			break
 		if not hired and seekers.is_empty():
 			break
+
+
+## NPC-Vermittlung: kleine Faehigkeitsluecken (bis 15 Punkte) werden durch
+## Einarbeitung geschlossen; mit Schulabschluss ist ab 25 ein Quereinstieg in
+## Ausbildungsberufe moeglich.
+func _npc_trainable(world, id: int, occ_id: String) -> bool:
+	var miss := check_requirements(world, "npc", id, occ_id)
+	if miss.is_empty():
+		return true
+	var o: Dictionary = Occupations.OCCUPATIONS[occ_id]
+	var p: Dictionary = world.population.persons[id]
+	var a: float = world.age_years(float(p.birth))
+	if a < float(o.min_age):
+		return false
+	if int(p.criminal_record) > 0 and not o.criminal_record_ok:
+		return false
+	var er := Occupations.edu_rank(p.education)
+	var need := Occupations.edu_rank(o.education)
+	if er < need and not (need == 2 and er >= 1 and a >= 25.0):
+		return false
+	for s in o.skills:
+		if float(p.skills.get(s, 0.0)) + 15.0 < float(o.skills[s]):
+			return false
+	for s in o.skills:
+		p.skills[s] = maxf(float(p.skills.get(s, 0.0)), float(o.skills[s]))
+	if er < need:
+		p.education = o.education
+	return true
 
 
 # ============================================================ Speichern

@@ -185,7 +185,7 @@ func _create_business(world, bld: Dictionary) -> int:
 	var floors_used := 1
 	if bld.kind in ["shop", "restaurant"]:
 		floors_used = mini(2, maxi(1, int(bld.floors)))
-	var lease_rate := (0.05 + 0.20 * wealth) * world.rules.f("price_level")
+	var lease_rate = (0.05 + 0.20 * wealth) * world.rules.f("price_level")
 	if bld.get("open_air", false):
 		lease_rate *= 0.3
 	var staff: Array = BusinessAI.STAFF.get(btype, [2, 3])

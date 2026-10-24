@@ -302,13 +302,11 @@ func on_day(world, day: int) -> void:
 	var target := revenue_ema * RESERVE_DAYS
 	var bal := L.balance(account)
 	spend_factor = clampf(1.0 + (bal - target) / maxf(target, 1.0) * 0.5, 0.6, 1.5)
-	var spend := revenue_ema * spend_factor
+	var spend := revenue_ema * spend_factor + maxf(0.0, bal - target) * 0.04
 	# Rentenkasse: Ueberschuss ueber 15 Tage Bedarf an die Stadtkasse
 	var pen_need := float(spending_today.get("pensions", 0.0))
 	if pen_need > 0.0 and L.balance(pension_account) > pen_need * 15.0:
 		L.transfer(pension_account, account, L.balance(pension_account) - pen_need * 15.0, "Überschuss Rentenkasse")
-	# Rentenzahlungen/Zuschuesse kommen nicht aus den Ressorts
-	spend -= float(spending_today.get("pension_subsidy", 0.0)) * 0.05
 	for dept in budget:
 		var amt: float = maxf(0.0, spend * float(budget[dept]))
 		var paid := L.transfer_partial(account, dept_accounts[dept], amt, "Haushaltsmittel")

@@ -126,7 +126,7 @@ func university() -> int:
 
 # ============================================================ Zugriff auf Lernende
 
-func _get(world, kind: String, id: int) -> Dictionary:
+func _learner(world, kind: String, id: int) -> Dictionary:
 	if kind == "player" and world.player:
 		var pl = world.player
 		return {"skills": pl.skills, "education": pl.education, "age": pl.age(world), "account": world.ledger.player_account}
@@ -161,7 +161,7 @@ func enrollment_of(kind: String, id: int) -> Dictionary:
 ## Programme/Kurse mit Eignung fuer die UI.
 func list_programs(world, kind: String, id: int) -> Array:
 	var out := []
-	var s := _get(world, kind, id)
+	var s := _learner(world, kind, id)
 	for pid in PROGRAMS:
 		if pid == "school":
 			continue
@@ -201,7 +201,7 @@ func _program_block(world, s: Dictionary, program: String) -> String:
 ## Einschreibung in ein Programm ("vocational", "bachelor", ...), einen Kurs
 ## (COURSES) oder "school". Rueckgabe {ok, reason}
 func enroll(world, kind: String, id: int, program: String, field := "") -> Dictionary:
-	var s := _get(world, kind, id)
+	var s := _learner(world, kind, id)
 	if s.is_empty():
 		return {"ok": false, "reason": "Unbekannte Person."}
 	var key := _key(kind, id)
@@ -254,7 +254,7 @@ func _name(program: String) -> String:
 ## Anwesenheit (Unterricht/Vorlesung/Kurs). Rueckgabe {ok, reason, progress, completed, degree}
 func attend(world, kind: String, id: int, hours: float) -> Dictionary:
 	var key := _key(kind, id)
-	var s := _get(world, kind, id)
+	var s := _learner(world, kind, id)
 	if s.is_empty():
 		return {"ok": false, "reason": "Unbekannte Person.", "progress": 0.0, "completed": false}
 	var ek := key + ":course" if enrollments.has(key + ":course") else key
@@ -328,7 +328,7 @@ func on_day(world, day: int) -> void:
 		if float(e.fee_week) <= 0.0:
 			continue
 		var parts: PackedStringArray = key.split(":")
-		var s := _get(world, parts[0], int(parts[1]))
+		var s := _learner(world, parts[0], int(parts[1]))
 		if s.is_empty():
 			enrollments.erase(key)
 			continue
@@ -354,7 +354,7 @@ func forget(kind: String, id: int) -> void:
 ## Uebertraegt Einschreibungen (Erbe uebernimmt Spielfigur).
 func rekey(from_kind: String, from_id: int, to_kind: String, to_id: int) -> void:
 	for suffix in ["", ":course"]:
-		var k := _key(from_kind, from_id) + suffix
+		var k = _key(from_kind, from_id) + suffix
 		if enrollments.has(k):
 			enrollments[_key(to_kind, to_id) + suffix] = enrollments[k]
 			enrollments.erase(k)

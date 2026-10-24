@@ -609,6 +609,13 @@ func _market_sales(world, day: int) -> void:
 		if world.population:
 			buyer = world.population.find_investor(world, price * 1.6)
 		var L: Ledger = world.ledger
+		if buyer < 0 and p.owner.kind != "player":
+			# kein Kaeufer in der Stadt: Eigentuemer vermietet stattdessen
+			if listed_days_exceeded(p, day):
+				p.for_sale = false
+				p.for_rent = str(p.tenant.kind) == ""
+				_update_flags(p)
+			continue
 		if buyer >= 0:
 			var bacc: int = world.population.households[buyer].account
 			if not L.transfer(bacc, seller, price, "Immobilienkauf %s" % p.address):
@@ -623,6 +630,10 @@ func _market_sales(world, day: int) -> void:
 		if p.get("seller_kind", "") == "player" or seller == L.player_account:
 			world.notify("Deine Immobilie %s wurde für %s verkauft." % [str(p.address), Economy.fmt_money(price)], "money")
 		_update_flags(p)
+
+
+func listed_days_exceeded(p: Dictionary, day: int) -> bool:
+	return day - int(p.get("listed_day", day)) > 6
 
 
 # ============================================================ Speichern
