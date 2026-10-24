@@ -280,7 +280,8 @@ void fragment() {
 				} else {
 					lit = h3 < lit_fraction;
 				}
-				vec3 lamp = (ikind == 1) ? vec3(1.0, 0.97, 0.9) : vec3(1.0, 0.78, 0.5);
+				vec3 lamp = (ikind == 1) ? vec3(0.95, 0.88, 0.74) : vec3(1.0, 0.68, 0.38);
+				lamp *= mix(0.75, 1.15, h2);
 				float day_bright = (mode == 2) ? 0.35 : 0.16;
 				if (curtain) day_bright = 0.07;
 				vec3 glass = room * room * day_bright * (1.0 - night * 0.9);
@@ -301,10 +302,10 @@ void fragment() {
 				float wob = texture(noise_tex, uvm * 0.31 + seed).b - 0.5;
 				nmap.xy += vec2(wob * 0.03, wob * 0.02);
 				if (lit && night > 0.01) {
-					float strength = (mode == 2) ? 2.6 * lit_p : 1.6;
+					float strength = (mode == 2) ? 1.5 * lit_p : ((ikind == 1) ? 0.7 : 0.85);
 					emis = room * lamp * strength * night;
 					// Deckenleuchte als heller Fleck oben im Raum
-					emis += lamp * 0.25 * night * smoothstep(0.55, 1.0, loc.y / fh) * (1.0 - float(in_blind));
+					emis += lamp * 0.12 * night * smoothstep(0.6, 1.0, loc.y / fh) * (1.0 - float(in_blind));
 				} else if (mode == 2) {
 					emis = room * 0.08 * (1.0 - night);
 				}
@@ -322,11 +323,11 @@ void fragment() {
 			if (mode == 5) ratio *= 0.5;
 			vec3 avg_glass = curtain ? to_linear(vcol.rgb) * 0.1 : vec3(0.035, 0.04, 0.045);
 			vec3 avg_alb = mix(wall_col, avg_glass, ratio);
-			vec3 lamp_avg = (ikind == 1) ? vec3(0.85, 0.85, 0.8) : vec3(0.9, 0.62, 0.36);
+			vec3 lamp_avg = (ikind == 1) ? vec3(0.8, 0.74, 0.6) : vec3(0.9, 0.58, 0.3);
 			float lp = (mode == 2) ? shop_lit * 0.9 : lit_fraction;
 			// Hash je Zelle beibehalten, damit ferne Gebaeude ungleichmaessig leuchten
 			float far_lit = step(h3, lp);
-			vec3 avg_emis = lamp_avg * 0.55 * night * ratio * mix(lp, far_lit, 0.6) * ((mode == 2) ? 2.0 : 1.0);
+			vec3 avg_emis = lamp_avg * 0.4 * night * ratio * mix(lp, far_lit, 0.6) * ((mode == 2) ? 2.0 : 1.0);
 			if (mode == 5 || mode == 4) avg_emis *= 0.0;
 			albedo = mix(albedo, avg_alb, lod);
 			emis = mix(emis, avg_emis, lod);

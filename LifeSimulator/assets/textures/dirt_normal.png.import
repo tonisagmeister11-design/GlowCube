@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://b22bnjoqrs4a2"
+path.s3tc="res://.godot/imported/dirt_normal.png-96058a3d21ba76d7b1944fa32f508991.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/dirt_normal.png"
+dest_files=["res://.godot/imported/dirt_normal.png-96058a3d21ba76d7b1944fa32f508991.s3tc.ctex"]
 
 [params]
 

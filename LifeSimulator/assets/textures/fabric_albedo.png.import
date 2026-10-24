@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://cmd8qhy4xs60"
+path.s3tc="res://.godot/imported/fabric_albedo.png-bda7849521b0dee66167f3890e04b8a8.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/fabric_albedo.png"
+dest_files=["res://.godot/imported/fabric_albedo.png-bda7849521b0dee66167f3890e04b8a8.s3tc.ctex"]
 
 [params]
 

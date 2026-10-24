@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://3u66xi18d7lo"
+path.s3tc="res://.godot/imported/bark_normal.png-140fe8fd1d05b5bf13ea8fac2c014ed1.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/bark_normal.png"
+dest_files=["res://.godot/imported/bark_normal.png-140fe8fd1d05b5bf13ea8fac2c014ed1.s3tc.ctex"]
 
 [params]
 

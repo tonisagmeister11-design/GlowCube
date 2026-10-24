@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://bi1iaug0rrl0s"
+path.s3tc="res://.godot/imported/plaster_normal.png-c49f3861b68af8bece670f5f4eb06526.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/plaster_normal.png"
+dest_files=["res://.godot/imported/plaster_normal.png-c49f3861b68af8bece670f5f4eb06526.s3tc.ctex"]
 
 [params]
 

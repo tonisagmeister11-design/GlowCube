@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://d8cgcmramrt"
+path.s3tc="res://.godot/imported/curb_normal.png-09bf207a434935f9f4f4bf73dd6b585e.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/curb_normal.png"
+dest_files=["res://.godot/imported/curb_normal.png-09bf207a434935f9f4f4bf73dd6b585e.s3tc.ctex"]
 
 [params]
 

@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://f3njltxvy806"
+path.s3tc="res://.godot/imported/pavers_normal.png-b703c409d7a55eee2b083a820ff1474e.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/pavers_normal.png"
+dest_files=["res://.godot/imported/pavers_normal.png-b703c409d7a55eee2b083a820ff1474e.s3tc.ctex"]
 
 [params]
 

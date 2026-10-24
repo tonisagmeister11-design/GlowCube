@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://bcvqan3bpqwkt"
+path.s3tc="res://.godot/imported/plaza_albedo.png-f7903b988b658ebba9f270a3f0a29387.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/plaza_albedo.png"
+dest_files=["res://.godot/imported/plaza_albedo.png-f7903b988b658ebba9f270a3f0a29387.s3tc.ctex"]
 
 [params]
 

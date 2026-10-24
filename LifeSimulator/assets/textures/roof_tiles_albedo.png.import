@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://1gn3okbfa30i"
+path.s3tc="res://.godot/imported/roof_tiles_albedo.png-0e44dea62366aaa5e04bf77f907fd933.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/roof_tiles_albedo.png"
+dest_files=["res://.godot/imported/roof_tiles_albedo.png-0e44dea62366aaa5e04bf77f907fd933.s3tc.ctex"]
 
 [params]
 

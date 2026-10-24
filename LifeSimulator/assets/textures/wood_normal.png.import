@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://dkbbkfy3xdxr7"
+path.s3tc="res://.godot/imported/wood_normal.png-cca7dd6cadacd62d99f5c37c8ab5eab5.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/wood_normal.png"
+dest_files=["res://.godot/imported/wood_normal.png-cca7dd6cadacd62d99f5c37c8ab5eab5.s3tc.ctex"]
 
 [params]
 

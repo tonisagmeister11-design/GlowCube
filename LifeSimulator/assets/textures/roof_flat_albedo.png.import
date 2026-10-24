@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://dc34rwaqvlv2u"
+path.s3tc="res://.godot/imported/roof_flat_albedo.png-25755eac0ec8b083b0f3dc9bc1e4d4d4.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/roof_flat_albedo.png"
+dest_files=["res://.godot/imported/roof_flat_albedo.png-25755eac0ec8b083b0f3dc9bc1e4d4d4.s3tc.ctex"]
 
 [params]
 

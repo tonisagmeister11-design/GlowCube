@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://btm40nlg4ggdp"
+path.s3tc="res://.godot/imported/brick_normal.png-9bce3cb8a7a87880799aed43e0aaaee9.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/brick_normal.png"
+dest_files=["res://.godot/imported/brick_normal.png-9bce3cb8a7a87880799aed43e0aaaee9.s3tc.ctex"]
 
 [params]
 

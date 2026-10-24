@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://ceotlc2imxepo"
+path.s3tc="res://.godot/imported/roof_flat_normal.png-3b6b72eceb3099504acaa2f216c705d0.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/roof_flat_normal.png"
+dest_files=["res://.godot/imported/roof_flat_normal.png-3b6b72eceb3099504acaa2f216c705d0.s3tc.ctex"]
 
 [params]
 

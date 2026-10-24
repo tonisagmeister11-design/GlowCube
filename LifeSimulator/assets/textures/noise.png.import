@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://bhnbx6jmtpcy7"
+path.s3tc="res://.godot/imported/noise.png-bb7ee9b1cae22f59aa9c7a55a764cfa3.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/noise.png"
+dest_files=["res://.godot/imported/noise.png-bb7ee9b1cae22f59aa9c7a55a764cfa3.s3tc.ctex"]
 
 [params]
 

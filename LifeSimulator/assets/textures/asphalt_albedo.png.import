@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://by42ie1f1oxv4"
+path.s3tc="res://.godot/imported/asphalt_albedo.png-11baa058595a720618ed44d844fa7d91.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/asphalt_albedo.png"
+dest_files=["res://.godot/imported/asphalt_albedo.png-11baa058595a720618ed44d844fa7d91.s3tc.ctex"]
 
 [params]
 

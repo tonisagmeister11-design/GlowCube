@@ -161,10 +161,9 @@ func flat_quad(key: String, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, 
 
 
 ## Senkrechte Wand von a nach b (Draufsicht), Unterkante y0, Oberkante y1.
-## Die Normale zeigt nach rechts von a->b gesehen... genauer: Aussenseite liegt
-## links, wenn man von a nach b blickt und die Wand im Uhrzeigersinn umlaeuft.
-## Hier: Normale = cross(UP, dir) * -1 -> Wand a->b mit Blick von aussen
-## verlaeuft von links nach rechts. UV.x = Meter ab a (+u0), UV.y = Hoehe ab y0 (+v0).
+## Von aussen gesehen verlaeuft die Wand von links (a) nach rechts (b);
+## Normale = dir x UP. UV.x = Meter ab a (+u0), UV.y = -(Hoehe ab y0 + v0),
+## d.h. v waechst nach unten wie bei Bildtexturen (Normal-Map-Konvention).
 func wall(key: String, a: Vector2, b: Vector2, y0: float, y1: float, col := Color.WHITE,
 		cus := NO_CUSTOM, u0 := 0.0, v0 := 0.0) -> void:
 	var s := surf(key)
@@ -179,8 +178,8 @@ func wall(key: String, a: Vector2, b: Vector2, y0: float, y1: float, col := Colo
 	var p1 := Vector3(b.x, y0, b.y)
 	var p2 := Vector3(b.x, y1, b.y)
 	var p3 := Vector3(a.x, y1, a.y)
-	s.quad(p0, p1, p2, p3, nrm, dir3, Vector2(u0, v0), Vector2(u0 + ln, v0),
-		Vector2(u0 + ln, v0 + y1 - y0), Vector2(u0, v0 + y1 - y0), col, cus)
+	s.quad(p0, p1, p2, p3, nrm, dir3, Vector2(u0, -v0), Vector2(u0 + ln, -v0),
+		Vector2(u0 + ln, -(v0 + y1 - y0)), Vector2(u0, -(v0 + y1 - y0)), col, cus)
 
 
 ## Quader (achsparallel) mit Mittelpunkt c und Groesse s. UV in Metern.
@@ -248,8 +247,8 @@ func box_xf(key: String, xf: Transform3D, sz: Vector3, col := Color.WHITE, cus :
 		var p3 := xf * (center - tl * ext_t + bl * ext_b)
 		var nw := (xf.basis * nl).normalized()
 		var tw := (xf.basis * tl).normalized()
-		s.quad(p0, p1, p2, p3, nw, tw, Vector2(0, 0), Vector2(ext_t * 2.0, 0),
-			Vector2(ext_t * 2.0, ext_b * 2.0), Vector2(0, ext_b * 2.0), col, cus)
+		s.quad(p0, p1, p2, p3, nw, tw, Vector2(0, ext_b * 2.0), Vector2(ext_t * 2.0, ext_b * 2.0),
+			Vector2(ext_t * 2.0, 0), Vector2(0, 0), col, cus)
 
 
 ## Zylinder (senkrecht) mit seg Segmenten, ohne Boden. UV: u = Umfang (m), v = Hoehe.
@@ -273,8 +272,8 @@ func cylinder(key: String, base: Vector3, r0: float, r1: float, height: float, s
 		var u1 := circ * float(i + 1) / seg
 		var b := s.vert(p0, n0, Vector3(-d0.z, 0, d0.x), Vector2(u0, 0), col, cus)
 		s.vert(p1, n1, Vector3(-d1.z, 0, d1.x), Vector2(u1, 0), col, cus)
-		s.vert(p2, n1, Vector3(-d1.z, 0, d1.x), Vector2(u1, height), col, cus)
-		s.vert(p3, n0, Vector3(-d0.z, 0, d0.x), Vector2(u0, height), col, cus)
+		s.vert(p2, n1, Vector3(-d1.z, 0, d1.x), Vector2(u1, -height), col, cus)
+		s.vert(p3, n0, Vector3(-d0.z, 0, d0.x), Vector2(u0, -height), col, cus)
 		# Aussenseite: von aussen gesehen gegen den Uhrzeigersinn p0,p3,p2,p1? -> pruefen ueber Normale
 		s.tri_idx(b, b + 3, b + 2)
 		s.tri_idx(b, b + 2, b + 1)

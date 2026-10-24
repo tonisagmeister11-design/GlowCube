@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://cky3tre5p23op"
+path.s3tc="res://.godot/imported/grass_albedo.png-04a7e4555aae8789132c0bcc887b21de.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/grass_albedo.png"
+dest_files=["res://.godot/imported/grass_albedo.png-04a7e4555aae8789132c0bcc887b21de.s3tc.ctex"]
 
 [params]
 

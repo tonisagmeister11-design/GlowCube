@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://dw272w5ka2o2k"
+path.s3tc="res://.godot/imported/concrete_albedo.png-7aca259296fbbeff80a5178612025047.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/concrete_albedo.png"
+dest_files=["res://.godot/imported/concrete_albedo.png-7aca259296fbbeff80a5178612025047.s3tc.ctex"]
 
 [params]
 

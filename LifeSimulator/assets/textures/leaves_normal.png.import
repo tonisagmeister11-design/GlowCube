@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://cyhslymkrg4p7"
+path.s3tc="res://.godot/imported/leaves_normal.png-e4fa292ff1313e7f402a923bb55a309c.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/leaves_normal.png"
+dest_files=["res://.godot/imported/leaves_normal.png-e4fa292ff1313e7f402a923bb55a309c.s3tc.ctex"]
 
 [params]
 

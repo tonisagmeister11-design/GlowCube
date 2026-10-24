@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://c4xvge27qpkir"
+path.s3tc="res://.godot/imported/leaves_albedo.png-6d8f09a108bb57b687f6c9c075a824bb.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/leaves_albedo.png"
+dest_files=["res://.godot/imported/leaves_albedo.png-6d8f09a108bb57b687f6c9c075a824bb.s3tc.ctex"]
 
 [params]
 

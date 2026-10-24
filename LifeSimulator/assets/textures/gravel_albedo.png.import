@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://c6xf86ak3wmqg"
+path.s3tc="res://.godot/imported/gravel_albedo.png-9a5d27dc299b33b7d3d73907380b2950.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/gravel_albedo.png"
+dest_files=["res://.godot/imported/gravel_albedo.png-9a5d27dc299b33b7d3d73907380b2950.s3tc.ctex"]
 
 [params]
 

@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://33dnd4tpl7fr"
+path.s3tc="res://.godot/imported/signs_atlas.png-53988433935eb48f621272f3f27c625d.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/signs_atlas.png"
+dest_files=["res://.godot/imported/signs_atlas.png-53988433935eb48f621272f3f27c625d.s3tc.ctex"]
 
 [params]
 

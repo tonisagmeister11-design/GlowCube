@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://cbcwrbb8kc3mx"
+path.s3tc="res://.godot/imported/fabric_normal.png-c6377ecc06e829d49035a6127af19b83.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/fabric_normal.png"
+dest_files=["res://.godot/imported/fabric_normal.png-c6377ecc06e829d49035a6127af19b83.s3tc.ctex"]
 
 [params]
 

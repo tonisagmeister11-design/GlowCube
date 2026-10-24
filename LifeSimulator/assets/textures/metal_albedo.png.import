@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://c4e3jgeqwv5hk"
+path.s3tc="res://.godot/imported/metal_albedo.png-b6f3b407b3047a7ff86accbca0bb7a0a.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/metal_albedo.png"
+dest_files=["res://.godot/imported/metal_albedo.png-b6f3b407b3047a7ff86accbca0bb7a0a.s3tc.ctex"]
 
 [params]
 

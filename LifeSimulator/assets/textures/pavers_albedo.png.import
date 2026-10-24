@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://bh4a41g38wt7e"
+path.s3tc="res://.godot/imported/pavers_albedo.png-93988fd0095b41d4083dfc91913b5d39.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/pavers_albedo.png"
+dest_files=["res://.godot/imported/pavers_albedo.png-93988fd0095b41d4083dfc91913b5d39.s3tc.ctex"]
 
 [params]
 

@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://bldy66egekq80"
+path.s3tc="res://.godot/imported/grass_normal.png-469e34492d95850956d3053612bbfb61.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/grass_normal.png"
+dest_files=["res://.godot/imported/grass_normal.png-469e34492d95850956d3053612bbfb61.s3tc.ctex"]
 
 [params]
 

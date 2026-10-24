@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://b8n6k7fi8pm8o"
+path.s3tc="res://.godot/imported/plaza_normal.png-429e5b5171d6826d3035a1cdb5b6eda8.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/plaza_normal.png"
+dest_files=["res://.godot/imported/plaza_normal.png-429e5b5171d6826d3035a1cdb5b6eda8.s3tc.ctex"]
 
 [params]
 

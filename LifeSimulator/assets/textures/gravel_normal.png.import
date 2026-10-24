@@ -2,10 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
+uid="uid://buc0bpouh1jur"
+path.s3tc="res://.godot/imported/gravel_normal.png-02787b65914365632ef3e4a0087853e9.s3tc.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
+}
 
 [deps]
 
 source_file="res://assets/textures/gravel_normal.png"
+dest_files=["res://.godot/imported/gravel_normal.png-02787b65914365632ef3e4a0087853e9.s3tc.ctex"]
 
 [params]
 
