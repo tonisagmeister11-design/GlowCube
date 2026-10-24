@@ -65,6 +65,7 @@ var arrive_time := 0.0
 var wait_time := 0.0         # Wartezeit an der aktuellen Haltelinie
 var wait_reason := ""
 var stuck_time := 0.0        # Zeit im Stillstand ohne erkennbaren Grund
+var leader: VehicleAI = null # aktueller Vordermann (falls bekannt)
 var ghost_time := 0.0        # Notfall: Konflikte ignorieren (Verklemmung loesen)
 
 # Anzeige
@@ -225,6 +226,7 @@ func think(sim, dt: float) -> void:
 	a = minf(a, _idm_free(v0))
 	# Vordermann
 	var ld: Array = sim.find_leader(self)
+	leader = ld[2] if ld[0] < LOOKAHEAD else null
 	if ld[0] < LOOKAHEAD:
 		var la := _idm(v0, ld[0], ld[1])
 		if la < a:

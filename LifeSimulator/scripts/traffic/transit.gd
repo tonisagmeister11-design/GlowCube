@@ -191,13 +191,13 @@ func _eval(ld: Dictionary, tc: float) -> Dictionary:
 	if at_stop >= 0:
 		dwell_left = k1[0] - tc
 	var next_k := 0
-	for i in ld.stops.size():
-		if ld.stops[i].s > s + 0.01 or (at_stop == i):
-			next_k = i
-			break
-		next_k = i + 1
-	if next_k >= ld.stops.size():
-		next_k = 0
+	if at_stop >= 0:
+		next_k = at_stop
+	else:
+		for i in ld.stops.size():
+			if ld.stops[i].s >= s - 0.01:
+				next_k = i
+				break
 	return {"s": s, "at_stop_index": at_stop, "next_stop_index": next_k, "dwell_left": dwell_left,
 		"moving": span > 1e-6 and k1[1] != k0[1]}
 
