@@ -349,6 +349,7 @@ func _page_identity() -> void:
 	_years.min_value = 0
 	_years.max_value = 100
 	_years.suffix = "Jahre"
+	_years.custom_minimum_size.x = 130
 	_years.value_changed.connect(func(_v): _from_spin())
 	nrow.add_child(_years)
 	var mb := HBoxContainer.new()
@@ -357,6 +358,7 @@ func _page_identity() -> void:
 	_months.min_value = 0
 	_months.max_value = 11
 	_months.suffix = "Monate"
+	_months.custom_minimum_size.x = 130
 	_months.value_changed.connect(func(_v): _from_spin())
 	mb.add_child(_months)
 	nrow.add_child(mb)
