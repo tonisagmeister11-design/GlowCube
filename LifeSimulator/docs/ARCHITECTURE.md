@@ -118,7 +118,7 @@ ruft nach dem Aufbau `Game.world_scene_ready()` auf.
 Felder: `seed, rules: GameRules, city: CityModel, ledger: Ledger,
 time_minutes, play_time_seconds, character, start_config, news, events` und
 die Systeme `government, economy, housing, jobs, education, population,
-crime, player` (in dieser Setup-/Tick-Reihenfolge).
+crime, politics, player` (in dieser Setup-/Tick-Reihenfolge).
 
 * Zeit: `time_minutes` seit Tag 0, 00:00. Start 07:00 an Tag 0 (Montag).
   `get_day(), get_hour(), get_minute(), get_hour_f(), get_weekday(), is_weekend()`,
@@ -232,6 +232,23 @@ damit Speichern trivial bleibt.
   `npc_shop(world, household_account, business_id, budget) -> float ausgegeben`.
 * Nachschub über Großhandel (Geld verlässt die Stadt per `burn`, Industrie
   erzeugt per `mint` Exporterlöse).
+* Ergänzungen: `GOODS[id]` zusätzlich `{id, tier, meals, service, vehicle, wholesale}`;
+  `GoodsCatalog.SHOP_ASSORTMENT[type]`, `VEHICLE_SPECS`, `MEAL_COST`.
+  `shop_items(id) -> [{good, name, price, stock, max, unit, category, needs, icon, durable, service, vehicle}]`
+  (Ladenansicht), `hours_text(b)`, `is_open_at(id, hour_f)`, `near(district_id, cat)`,
+  `nearest_business(pos, types)`, `npc_basket(world, acc, id, budget, purpose) -> {spent, meals, items, needs}`,
+  `companies` (Firmen in Büro/Hochhaus/Fabrik/Lager, siehe `Company.SECTORS`), `get_company(id)`,
+  `company_for_building(bid)`, `bank: Bank`, `owner_account(world, owner)`, `quick_report(world)`, `history`.
+  Eigentümer (Spieler): `businesses_for_sale()`, `sale_price(id)`,
+  `buy_business(world, kind, id, account, business_id)`, `set_price(world, id, good, price)`,
+  `set_auto(world, id, bool)`, `order_stock(world, id, good, qty)`, `withdraw(world, id, amount)`,
+  `deposit(world, id, from_account, amount)`, `businesses_owned_by(kind, id)`.
+  Insolvenz: `declare_bankrupt(world, id)`; Neugründung durch Investoren automatisch.
+  Statische Helfer: `Economy.fmt_money(x) -> "1.234,50 €"`, `Economy.nice_price(p)`.
+* Bank (scripts/economy/bank.gd, `world.economy.bank`): `credit_limit(world, kind, id, purpose)`,
+  `request_loan(world, kind, id, account, amount, purpose := "consumer"|"mortgage"|"business", weeks, property)`,
+  `repay(world, loan_id, amount)`, `loans_of(kind, id)`, `debt_of(kind, id)`. Annuitäten mit Wochenrate,
+  Kreditrahmen 35 % des Wochennettos; Ausfälle -> Mahnung, Zwangsversteigerung, Kreditsperre.
 
 ### HousingMarket (scripts/housing/housing_market.gd)
 
@@ -243,6 +260,14 @@ damit Speichern trivial bleibt.
   `buy(world, buyer_kind, buyer_id, account, property_id) -> {ok, reason}`,
   `move_out(world, property_id)`, `home_of(kind, id) -> property id or -1`.
   Miete wird wöchentlich (alle 7 Spieltage) eingezogen; Rückstände führen zur Kündigung.
+* Ergänzungen: `buy(..., use_mortgage := false)` (10 % Eigenkapital + 5 % Nebenkosten; zieht bei
+  freier Immobilie ein), `list_available(filter, world)` mit Filtern `{mode: "rent"|"buy", kind,
+  max_rent, max_price, min_rooms, district, zone, limit, sort}` (Einträge zusätzlich `kind_label,
+  district_name, building_kind`), `sell(world, kind, id, pid, price := 0)`,
+  `list_for_rent(world, kind, id, pid, rent)`, `move_in_owned(world, kind, id, pid)`, `owned_by(kind, id)`,
+  `free_shelter_bed()`, `vacant_rentals()`, `market_value(pid)`, `foreclose(world, pid)`.
+  Mieter-Art `background` = nicht simulierte Bewohner (füllen die Stadt auf ~10 % Leerstand).
+  Mietzahltag je Einheit `rent_day` (Wochentag). Regel `rent_required = false` befreit nur den Spieler.
 
 ### JobMarket (scripts/jobs/job_market.gd) und Education (scripts/jobs/education.gd)
 
@@ -256,6 +281,22 @@ damit Speichern trivial bleibt.
   `work(world, kind, id, hours) -> {pay, ...}`, `quit(world, kind, id)`, `fire(...)`.
 * Bildung: `education.enroll(world, kind, id, program)`, `attend(world, kind, id, hours)`,
   Abschlüsse `none, school, vocational, bachelor, master, doctor`.
+* Ergänzungen JobMarket: Arten `"npc"` (Person-ID) und `"player"` (ID 0).
+  `list_openings(world, kind, id, filter := {category, eligible_only, building, limit})` ->
+  `[{position, occupation, name, title, category, building, workplace, address, employer, wage, shift,
+  days, requirements, eligible, missing, district, pos}]`; `job_of(kind, id, world := null)` liefert mit
+  `world` zusätzlich `wage, employer, workplace, address`; `check_requirements(world, kind, id, occ)`,
+  `positions_in_building(bid)`, `hourly_wage(world, pos)`, `is_workday(pos, day)`,
+  `shift_start_minutes(pos, day)`, `release(world, kind, id)`, `lay_off_one`, `expand`,
+  `owner_position(business_id)`, `take_owner_position(world, kind, id, business_id)`.
+  `work()` liefert `{ok, reason, pay (netto), gross, tax, pension, promoted, title, fired}`.
+  `Occupations.OCCUPATIONS[id]` zusätzlich `shifts` (Schichtvarianten), `rotating`, `illegal`;
+  `Occupations.title(occ, rank)`, `requirements_text(occ)`, `legal_ids()`, `illegal_ids()`.
+* Ergänzungen Education: `enroll(world, kind, id, program, field := "")` mit Programmen
+  `vocational, bachelor, master, doctor` (Fachrichtungen `Education.FIELDS`), Kursen
+  (`Education.COURSES`, z. B. `driving_license`) und `school`; `attend()` liefert
+  `{ok, reason, progress, completed, degree}`; `enrollment_of(kind, id)`, `list_programs(world, kind, id)`,
+  `drop_out`, `school_for(world, pos)`, `university()`, statisch `grade_for_age(age)`, `school_stage(age)`.
 
 ### Population (scripts/npc/population.gd)
 
@@ -271,6 +312,19 @@ damit Speichern trivial bleibt.
   `persons_near(world, pos: Vector2, radius) -> Array[int]` (räumlich indiziert),
   `visible_state(world, id) -> {pos, heading, activity, moving, building}`.
 * Entfernte NPCs werden nur datenbasiert simuliert (Stunden-/Schrittlogik).
+* Ergänzungen: Person zusätzlich `{education, skills, health, parents, partner, children, sleep,
+  plan, plan_i, next_t, retired, pension, unemployed_since, homemaker, illness, camp}`; Haushalt
+  `{cls: poor|lower|middle|upper|rich, pantry (Mahlzeiten), car, disc, homeless, player_member, district}`.
+  `location` zusätzlich `mode` (`walk|bus|car`) und beim Pendeln `from_b/to_b`.
+  `persons_near(world, pos, radius, outdoor_only := false) -> Array[int]`;
+  `visible_state()` liefert zusätzlich `dir: Vector2, indoors: bool, mode, age, body`
+  (`heading` = Gierwinkel, Blickrichtung `Vector2(sin, cos)`);
+  `route_of(world, id) -> {points, progress, length, mode, arrive}` (für weiches Laufen der Darstellung).
+  Pendeln ist zeitgerafft (Fußweg 78 m pro Spielminute): Die Darstellung sollte `position_of` zum
+  Platzieren/Spawnen nutzen und lokal mit realistischem Tempo entlang `route_of` laufen.
+  Weitere: `get_household(id)`, `person_name(id)`, `age_of(world, id)`, `adults_of(world, hid)`,
+  `household_income_week(world, hid)`, `job_seekers(world)`, `stats(world)`, `die(world, id, cause)`,
+  `find_parent_household(world, age)`, `PLAYER_ID = 0` (Spieler in `employees`/`relationships`).
 
 ### PlayerLife (scripts/life/player_life.gd)
 
@@ -286,6 +340,18 @@ damit Speichern trivial bleibt.
   `study(world, hours)`, `buy(world, business_id, good_id, qty)`,
   `use_item(world, good_id)`, `see_doctor(world)`.
 * `save_meta(world) -> {character_name, age, money, job_title}` für die Speicherliste.
+* Ergänzungen: Lebensphase als Feld `stage` und Methode `life_stage(age := aktuell)`
+  (GDScript erlaubt kein gleichnamiges Feld). `movement_speed_factor()`, `status(world)`, `money(world)`,
+  `income_week(world)`, `is_busy()`, `stop_activity(world)`, `activity = {name, start, until, data}`
+  (Schlafen/Arbeiten/Lernen/Ausruhen laufen über die Spielzeit; Aktionen liefern `minutes` zum Vorspulen).
+  Weitere Aktionen: `drink(world, "")` (Leitungswasser zu Hause), `eat_at_home(world)`,
+  `rest(world, hours)`, `shower(world, at_building := -1)`, `work_shift(world, at_building := -1)`,
+  `enroll(world, program, field)`, `apply_job(world, pos)`, `quit_job(world)`, `rent_home(world, pid)`,
+  `buy_home(world, pid, use_mortgage := false)`, `move_out(world)`, `socialize(world, person_id, minutes)`,
+  `start_partnership(world, person_id)`, `have_child(world)`, `see_doctor(world, building_id := -1)`.
+  Tod/Erbe: `die(world, cause)` (emit `player_died`), `heirs(world) -> [{id, name, age, relation}]`,
+  `can_continue_as_heir(world)`, `continue_as(world, person_id)`, `restart_as_new(world, character, start)`.
+  Felder zusätzlich `vehicles: [{good, name, bought_day}]`, `licenses`, `illness`, `partner`, `generation`.
 
 ### Government (scripts/politics/government.gd)
 
@@ -295,8 +361,60 @@ damit Speichern trivial bleibt.
   (`police_effectiveness, education_quality, health_quality, bus_frequency, bus_fare,
   welfare_per_day, unemployment_benefit, rent_subsidy, infrastructure_quality`).
 * Ämter/Wahlen/Präsident werden von Welle 2 ergänzt.
+* Ergänzungen: `rates.pension_contribution`, `budget.administration`, `policies` (frei erweiterbar,
+  `DEFAULT_POLICIES`: Arbeitslosengeld, Grundsicherung, Wohnungslosenhilfe, Kindergeld, Rente,
+  Busfahrpreis, Mindestlohn, Wohngeld, Renteneintrittsalter, Arzt-/Krankenhausgebühr).
+  `set_rate(world, name, value)`, `set_budget(world, name, share)` (normiert die übrigen Anteile),
+  `set_policy(world, name, value)` -> `{ok, reason}`, senden `policy_changed`. `policy(name)`, `rate(name)`,
+  `split_wage(gross, hourly)`, `income_tax_rate(hourly)`, `collect(world, acc, amount, kind)`,
+  `pay_welfare(world, acc, amount, reason)`, `pay_pension(world, acc, amount)`, `cover(world, dept_acc, amount)`,
+  `dept_accounts[ressort]` (öffentliche Arbeitgeber), `pension_account`, `report(world)`.
 
-### CrimeSystem (scripts/crime/crime_system.gd) – Welle 2
+### CrimeSystem (scripts/crime/crime_system.gd)
+
+Regeln und Formeln: `docs/CRIME_POLITICS.md`. Untersysteme `crime.police`
+(PoliceCareer) und `crime.gangs` (Gangs).
+
+* Spieler: `attempt(world, type, ctx) -> {ok, success, loot, goods, witnessed, wanted_delta, reason, text, crime_id, arrested}`
+  (type: `pickpocket, shoplifting, burglary, robbery, car_theft, smuggling, vandalism, extortion`;
+  ctx: `pos, person_id, business_id, building, for_gang`), `risk_preview(world, type, ctx)`,
+  `wanted_level()`, `arrest_chance_per_hour(world)`, `hide(world, hours, advance := true)`,
+  `turn_yourself_in(world)`, `post_bail(world)`, `bail_amount(world)`, `in_jail(world)`,
+  `serve_sentence(world, advance := false) -> {ok, minutes}` (Oberfläche ruft `Game.skip_time(minutes)`),
+  `testify_against_gang(world)`, `fence_goods(world)`, `player_status(world)`,
+  `has_record(kind: "player"|"npc", id, severity := "")`, `record`, `jail_until`.
+* Weltszene meldet `set_player_context(pos: Vector2, indoors, building)`.
+* Polizei: `police_effectiveness(world)`, `strictness(world)`, `open_cases(world)`, `cases`,
+  `pending_dispatches` / `take_dispatches(n) -> [{id, pos: Vector2, kind: crime|pursuit|patrol, label, crime, priority}]`.
+* Statistik: `city_stats()`, `district_stats`, `district_crime_index(world, did)`,
+  `expected_npc_crimes_per_day(world)`, `crimes` (Protokoll).
+* Ereignisse: `crime_committed [crime]`, `wanted_level_changed [lvl]`, News `"Polizei"`.
+* `crime.police`: `join_requirements, join, quit, status, rank_requirements, patrol(world, hours, advance := true, district := -1),
+  take_case, investigate(world, case_id, hours := 2, advance := true), arrest_suspect -> {ok, text}`.
+* `crime.gangs`: `overview, player_overview, join_requirements, contact(world, gang_id, building := -1), leave_gang,
+  available_missions, accept_mission, progress_mission(world, id, event, data := {}), complete_mission -> {ok, reward, rep, text},
+  fail_mission, rank_requirements(world, gang_id), request_promotion, boss_decision(world, "challenge"|"succeed"|"wait"), boss_order`.
+* Gelesen von Partnern: `population.persons/households/get_person/position_of/persons_near`,
+  `person.traits.criminal/lawful, gang, home, location.building, activity, criminal_record`,
+  `housing.get_property(id).building`, `economy.businesses/get_business/business_for_building` (+ `account`, `inventory`),
+  `government.account/budget/policies/modifier("police_effectiveness")`, `player.account/skills/needs/education/
+  relationships/inventory/age()/criminal_record/wanted/gang/police_rank`, optional `jobs.list_openings/apply/job_of/quit`.
+  Schreibt: `person.criminal_record/activity/gang`, `player.wanted/gang/police_rank/criminal_record`.
+
+### Politics (scripts/politics/politics.gd)
+
+* `party_list()`, `join_party(world, id)`, `leave_party`, `campaign(world, hours, money, advance := true)`,
+  `give_speech`, `seek_endorsement(world, person_id)`, `donate(world, amount)`.
+* `offices()`, `player_office()`, `office_requirements(world, office)`, `run_for(world, office, options := {portfolio})`,
+  `resign`, `upcoming_elections(world)`, `last_results`, `satisfaction(world)`, `approval`, `influence`.
+* `available_actions(world) -> [{id, kind, label, description, effect_preview, current, min, max, step, unit}]`,
+  `apply_decision(world, id, value) -> {ok, text, effects: {before, after, derived}}`
+  (ids: Hebel wie `income_tax`, `budget_police`, `police_strictness`, `motion:<hebel>`, `run:<amt>`, `join:<partei>`, `campaign`, `speech`, `donate`).
+* Schreibt in Government: `set_rate(key, v)` / `set_budget(key, v)` / `set_policy(key, v)` falls vorhanden
+  (2 oder 3 Argumente mit `world`), sonst direkt in `rates` / `budget` / `policies`.
+  Policies: `bus_fare, welfare_level, unemployment_benefit_level, rent_cap, police_strictness,
+  infrastructure_program, education_index, infrastructure_index, health_index`.
+* Ereignisse: `election_finished [result]`, `policy_changed [lever, value]`, News `"Politik"`.
 
 ## Darstellung (Verträge)
 
