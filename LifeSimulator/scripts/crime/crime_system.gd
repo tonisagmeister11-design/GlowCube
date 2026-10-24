@@ -304,6 +304,19 @@ func expected_npc_crimes(world, did: int) -> float:
 	return NPC_BASE_RATE * crime_lvl * (1.5 - wealth) * rate * deter * strict_f * welfare_factor(world) * crim_f * gang_f
 
 
+## Erwartete NPC-Taten pro Tag in der ganzen Stadt (Prognose fuer Politik/UI).
+func expected_npc_crimes_per_day(world) -> float:
+	if world.city == null:
+		return 0.0
+	var hours := 0.0
+	for h in 24:
+		hours += _hour_factor(h)
+	var total := 0.0
+	for d in world.city.districts:
+		total += expected_npc_crimes(world, int(d.id))
+	return total * hours
+
+
 func _hour_factor(hour: int) -> float:
 	if hour >= 22 or hour < 5:
 		return 1.5
@@ -576,15 +589,15 @@ func _resident_of(world, bid: int) -> int:
 	var all := A.persons(world)
 	for pid in all:
 		var p = all[pid]
-		var home := int(p.get("home", -1))
-		if home < 0:
+		if typeof(p) != TYPE_DICTIONARY:
 			continue
-		if A.has_m(housing, "get_property"):
+		if int(p.get("home_building", -1)) == bid:
+			return int(pid)
+		var home := int(p.get("home", -1))
+		if home >= 0 and A.has_m(housing, "get_property"):
 			var prop = housing.get_property(home)
 			if typeof(prop) == TYPE_DICTIONARY and int(prop.get("building", -1)) == bid:
 				return int(pid)
-		elif int(p.get("home_building", -1)) == bid:
-			return int(pid)
 	return -1
 
 
@@ -1071,9 +1084,15 @@ func _set_wanted(world, lvl: int) -> void:
 
 ## Wahrscheinlichkeit pro Stunde, bei aktueller Fahndungsstufe festgenommen zu werden.
 func arrest_chance_per_hour(world) -> float:
-	if wanted <= 0:
+	return arrest_chance_for_level(world, wanted)
+
+
+## Festnahmewahrscheinlichkeit pro Stunde fuer eine beliebige Fahndungsstufe
+## (fuer Vorschau und Politik-Auswertung).
+func arrest_chance_for_level(world, lvl: int) -> float:
+	if lvl <= 0:
 		return 0.0
-	var base: float = [0.0, 0.06, 0.14, 0.24, 0.36, 0.5][wanted]
+	var base: float = [0.0, 0.06, 0.14, 0.24, 0.36, 0.5][clampi(lvl, 0, WANTED_MAX)]
 	var p := base * police_effectiveness(world) * (0.4 + 0.6 * strictness(world))
 	if is_hiding(world):
 		p *= 0.15

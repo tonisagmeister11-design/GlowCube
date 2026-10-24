@@ -118,7 +118,7 @@ ruft nach dem Aufbau `Game.world_scene_ready()` auf.
 Felder: `seed, rules: GameRules, city: CityModel, ledger: Ledger,
 time_minutes, play_time_seconds, character, start_config, news, events` und
 die Systeme `government, economy, housing, jobs, education, population,
-crime, player` (in dieser Setup-/Tick-Reihenfolge).
+crime, politics, player` (in dieser Setup-/Tick-Reihenfolge).
 
 * Zeit: `time_minutes` seit Tag 0, 00:00. Start 07:00 an Tag 0 (Montag).
   `get_day(), get_hour(), get_minute(), get_hour_f(), get_weekday(), is_weekend()`,
@@ -296,7 +296,51 @@ damit Speichern trivial bleibt.
   welfare_per_day, unemployment_benefit, rent_subsidy, infrastructure_quality`).
 * Ämter/Wahlen/Präsident werden von Welle 2 ergänzt.
 
-### CrimeSystem (scripts/crime/crime_system.gd) – Welle 2
+### CrimeSystem (scripts/crime/crime_system.gd)
+
+Regeln und Formeln: `docs/CRIME_POLITICS.md`. Untersysteme `crime.police`
+(PoliceCareer) und `crime.gangs` (Gangs).
+
+* Spieler: `attempt(world, type, ctx) -> {ok, success, loot, goods, witnessed, wanted_delta, reason, text, crime_id, arrested}`
+  (type: `pickpocket, shoplifting, burglary, robbery, car_theft, smuggling, vandalism, extortion`;
+  ctx: `pos, person_id, business_id, building, for_gang`), `risk_preview(world, type, ctx)`,
+  `wanted_level()`, `arrest_chance_per_hour(world)`, `hide(world, hours, advance := true)`,
+  `turn_yourself_in(world)`, `post_bail(world)`, `bail_amount(world)`, `in_jail(world)`,
+  `serve_sentence(world, advance := false) -> {ok, minutes}` (Oberfläche ruft `Game.skip_time(minutes)`),
+  `testify_against_gang(world)`, `fence_goods(world)`, `player_status(world)`,
+  `has_record(kind: "player"|"npc", id, severity := "")`, `record`, `jail_until`.
+* Weltszene meldet `set_player_context(pos: Vector2, indoors, building)`.
+* Polizei: `police_effectiveness(world)`, `strictness(world)`, `open_cases(world)`, `cases`,
+  `pending_dispatches` / `take_dispatches(n) -> [{id, pos: Vector2, kind: crime|pursuit|patrol, label, crime, priority}]`.
+* Statistik: `city_stats()`, `district_stats`, `district_crime_index(world, did)`,
+  `expected_npc_crimes_per_day(world)`, `crimes` (Protokoll).
+* Ereignisse: `crime_committed [crime]`, `wanted_level_changed [lvl]`, News `"Polizei"`.
+* `crime.police`: `join_requirements, join, quit, status, rank_requirements, patrol(world, hours, advance := true, district := -1),
+  take_case, investigate(world, case_id, hours := 2, advance := true), arrest_suspect -> {ok, text}`.
+* `crime.gangs`: `overview, player_overview, join_requirements, contact(world, gang_id, building := -1), leave_gang,
+  available_missions, accept_mission, progress_mission(world, id, event, data := {}), complete_mission -> {ok, reward, rep, text},
+  fail_mission, rank_requirements(world, gang_id), request_promotion, boss_decision(world, "challenge"|"succeed"|"wait"), boss_order`.
+* Gelesen von Partnern: `population.persons/households/get_person/position_of/persons_near`,
+  `person.traits.criminal/lawful, gang, home, location.building, activity, criminal_record`,
+  `housing.get_property(id).building`, `economy.businesses/get_business/business_for_building` (+ `account`, `inventory`),
+  `government.account/budget/policies/modifier("police_effectiveness")`, `player.account/skills/needs/education/
+  relationships/inventory/age()/criminal_record/wanted/gang/police_rank`, optional `jobs.list_openings/apply/job_of/quit`.
+  Schreibt: `person.criminal_record/activity/gang`, `player.wanted/gang/police_rank/criminal_record`.
+
+### Politics (scripts/politics/politics.gd)
+
+* `party_list()`, `join_party(world, id)`, `leave_party`, `campaign(world, hours, money, advance := true)`,
+  `give_speech`, `seek_endorsement(world, person_id)`, `donate(world, amount)`.
+* `offices()`, `player_office()`, `office_requirements(world, office)`, `run_for(world, office, options := {portfolio})`,
+  `resign`, `upcoming_elections(world)`, `last_results`, `satisfaction(world)`, `approval`, `influence`.
+* `available_actions(world) -> [{id, kind, label, description, effect_preview, current, min, max, step, unit}]`,
+  `apply_decision(world, id, value) -> {ok, text, effects: {before, after, derived}}`
+  (ids: Hebel wie `income_tax`, `budget_police`, `police_strictness`, `motion:<hebel>`, `run:<amt>`, `join:<partei>`, `campaign`, `speech`, `donate`).
+* Schreibt in Government: `set_rate(key, v)` / `set_budget(key, v)` / `set_policy(key, v)` falls vorhanden
+  (2 oder 3 Argumente mit `world`), sonst direkt in `rates` / `budget` / `policies`.
+  Policies: `bus_fare, welfare_level, unemployment_benefit_level, rent_cap, police_strictness,
+  infrastructure_program, education_index, infrastructure_index, health_index`.
+* Ereignisse: `election_finished [result]`, `policy_changed [lever, value]`, News `"Politik"`.
 
 ## Darstellung (Verträge)
 
