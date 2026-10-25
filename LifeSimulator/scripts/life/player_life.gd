@@ -214,13 +214,17 @@ func step(world, dt: float) -> void:
 	var act: String = activity.get("name", "")
 	var sleeping := act == "sleep"
 	var rates: Dictionary = Needs.ASLEEP if sleeping else Needs.AWAKE
-	var kid_care := household >= 0 and _age_cache < 6.0
+	# Haushalt versorgt Kinder und Jugendliche mit Essen, Trinken und Hygiene,
+	# solange Vorraete da sind. Erwachsene muessen selbst sorgen.
+	var cared := household >= 0 and _age_cache < 18.0
 	for k in rates:
 		var r: float = float(rates[k])
 		if r > 0.0:
 			r *= f
-			if kid_care and k in ["hunger", "thirst", "hygiene"]:
-				r *= 0.25    # Eltern versorgen Kleinkinder
+			if cared and k in ["hunger", "thirst", "hygiene"]:
+				r *= 0.15 if _age_cache < 12.0 else 0.4
+			elif cared and k == "energy" and _age_cache < 16.0:
+				r *= 0.5    # Eltern achten auf Schlafenszeiten
 		elif k == "energy" and sleeping:
 			r *= float(activity.get("data", {}).get("quality", 1.0))
 		needs[k] = clampf(float(needs[k]) - r * h, 0.0, 100.0)
@@ -229,32 +233,101 @@ func step(world, dt: float) -> void:
 		for k in eff:
 			needs[k] = clampf(float(needs[k]) + float(eff[k]) * h, 0.0, 100.0)
 	needs.energy = minf(float(needs.energy), LifeStages.energy_cap(_age_cache))
-	# Gesundheit
+	# Gesundheit: Vernachlaessigung schadet langsam und nur im echten Mangel.
+	# Von voller Gesundheit bis zum Tod vergehen so mehrere Spieltage, und der
+	# Spieler wird vorher mehrfach gewarnt.
 	var harm := 0.0
 	if world.rules.b("needs_can_harm"):
-		if float(needs.hunger) < 5.0:
-			harm += 1.0
-		if float(needs.thirst) < 5.0:
-			harm += 1.5
-		if float(needs.energy) < 3.0:
+		if float(needs.hunger) <= 0.5:
 			harm += 0.5
-		if float(needs.hygiene) < 5.0:
-			harm += 0.2
+		if float(needs.thirst) <= 0.5:
+			harm += 0.7
+		if float(needs.energy) <= 0.5:
+			harm += 0.25
+		if float(needs.hygiene) <= 0.5:
+			harm += 0.1
 	if not illness.is_empty():
-		harm += 0.6 * float(illness.severity)
+		harm += float(illness_info().harm) * float(illness.severity)
+	_tick_illness(world, h)
 	if harm > 0.0:
 		needs.health = maxf(0.0, float(needs.health) - harm * h)
-	elif float(needs.hunger) > 40.0 and float(needs.thirst) > 40.0 and illness.is_empty():
-		needs.health = minf(100.0, float(needs.health) + 0.4 * h)
+	if harm <= 0.0 and float(needs.hunger) > 35.0 and float(needs.thirst) > 35.0:
+		needs.health = minf(100.0, float(needs.health) + 1.2 * h)
+	_warn_needs(world)
 	mood = Needs.mood(needs)
 	if not activity.is_empty() and world.time_minutes >= float(activity.until) - 0.01:
 		_finish_activity(world)
+	# Kinder und Jugendliche im Haushalt der Familie koennen nicht verwahrlosen:
+	# Die Eltern kochen, kaufen ein und achten auf Schlafenszeiten. Das Kindspiel
+	# soll vom Leben erzaehlen, nicht vom Verhungern.
+	if cared:
+		for k in ["hunger", "thirst", "hygiene", "energy"]:
+			needs[k] = maxf(float(needs[k]), 35.0)
+		needs.health = maxf(float(needs.health), 45.0)
 	if float(needs.health) <= 0.0:
-		if world.rules.get_rule("death") == "disabled":
+		var deadly: bool = illness.is_empty() or bool(illness_info().deadly)
+		if world.rules.get_rule("death") == "disabled" or not deadly:
+			# Leichte Krankheiten bringen einen nicht um: Restgesundheit bleibt,
+			# der Spieler wird aber deutlich zum Arzt geschickt.
 			needs.health = 1.0
+			if world.time_minutes - _last_warn >= 120.0:
+				_last_warn = world.time_minutes
+				world.notify("Dir geht es sehr schlecht. Geh zum Arzt oder nimm Medizin.", "danger")
 		else:
 			var c := "Krankheit (%s)" % illness.name if not illness.is_empty() else "Vernachlässigung"
 			die(world, c)
+
+
+## Warnt hoechstens alle zwei Spielstunden vor dem naechsten kritischen
+## Beduerfnis und vor sinkender Gesundheit.
+func _warn_needs(world) -> void:
+	if world.time_minutes - _last_warn < 120.0:
+		return
+	var urgent: Dictionary = Needs.most_urgent(needs)
+	var v: float = float(urgent.get("value", 100.0))
+	var hp: float = float(needs.health)
+	if hp < 35.0 and world.rules.b("needs_can_harm"):
+		_last_warn = world.time_minutes
+		world.notify("Deine Gesundheit sinkt (%d %%). %s" % [int(hp), Needs.advice(str(urgent.get("key", "")))], "danger")
+	elif v < 12.0:
+		_last_warn = world.time_minutes
+		world.notify(Needs.advice(str(urgent.get("key", ""))), "warning")
+	elif v < 25.0:
+		_last_warn = world.time_minutes
+		world.notify(Needs.advice(str(urgent.get("key", ""))), "info")
+
+
+var _last_warn := -1000.0
+
+
+## Krankheiten: harm = Gesundheitsverlust pro Stunde bei voller Schwere,
+## heal = Rueckgang der Schwere pro Stunde (Selbstheilung), deadly = kann
+## toedlich enden, wenn sie unbehandelt bleibt. Leichte Krankheiten klingen
+## von selbst in ein bis zwei Spieltagen ab und sind nie toedlich.
+const ILLNESSES := {
+	"Erkältung":          {"harm": 0.22, "heal": 0.030, "deadly": false, "max": 0.7},
+	"Migräne":            {"harm": 0.12, "heal": 0.055, "deadly": false, "max": 0.6},
+	"Magen-Darm-Infekt":  {"harm": 0.30, "heal": 0.035, "deadly": false, "max": 0.8},
+	"Grippe":             {"harm": 0.45, "heal": 0.022, "deadly": false, "max": 1.0},
+	"Lungenentzündung":   {"harm": 0.85, "heal": 0.012, "deadly": true,  "max": 1.0},
+}
+
+
+func illness_info() -> Dictionary:
+	return ILLNESSES.get(str(illness.get("name", "")), {"harm": 0.3, "heal": 0.03, "deadly": false, "max": 1.0})
+
+
+## Lässt eine Krankheit abklingen. Medizin und Arztbesuch beschleunigen das.
+func _tick_illness(world, h: float) -> void:
+	if illness.is_empty():
+		return
+	var info := illness_info()
+	var heal: float = float(info.heal) * (1.6 if float(needs.energy) > 60.0 else 1.0)
+	illness.severity = float(illness.severity) - heal * h
+	if float(illness.severity) <= 0.0:
+		var was := str(illness.name)
+		illness = {}
+		world.notify("Du bist wieder gesund (%s überstanden)." % was, "success")
 
 
 const ACT_EFFECTS := {
@@ -291,14 +364,17 @@ func on_hour(world, day: int, hour: int) -> void:
 		world.emit_event("player_life_stage_changed", [stg])
 		world.notify("Neue Lebensphase: %s" % LifeStages.label(stg), "info")
 	if world.rules.b("illness") and illness.is_empty():
-		var risk := 0.0015 * (1.0 + (100.0 - float(needs.hygiene)) / 50.0 + maxf(0.0, a - 55.0) / 20.0)
+		var risk := 0.0012 * (1.0 + (100.0 - float(needs.hygiene)) / 60.0 + maxf(0.0, a - 55.0) / 25.0)
 		if rng.randf() < risk:
-			var names := ["Erkältung", "Grippe", "Magen-Darm-Infekt", "Migräne"]
-			illness = {"name": names[rng.randi() % names.size()], "severity": rng.randf_range(0.3, 1.0), "since": day}
-			world.notify("Du bist krank: %s. Apotheke oder Arzt helfen." % illness.name, "warning")
-	elif not illness.is_empty() and rng.randf() < 0.02:
-		illness = {}
-		world.notify("Du bist wieder gesund.", "success")
+			# Leichte Krankheiten sind haeufig, schwere selten und nur bei
+			# geschwaechter Gesundheit oder hohem Alter.
+			var pool := ["Erkältung", "Erkältung", "Migräne", "Magen-Darm-Infekt", "Grippe"]
+			if float(needs.health) < 55.0 or a > 65.0:
+				pool.append("Lungenentzündung")
+			var nm: String = pool[rng.randi() % pool.size()]
+			var mx: float = float(ILLNESSES[nm].max)
+			illness = {"name": nm, "severity": rng.randf_range(0.25, mx), "since": day}
+			world.notify("Du bist krank: %s. Ruhe, Medizin aus der Apotheke oder ein Arztbesuch helfen." % nm, "warning")
 
 
 func on_day(world, day: int) -> void:
