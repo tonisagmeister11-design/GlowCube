@@ -29,6 +29,12 @@ var _door_timer := 0.0
 var _overlay: Control
 var _wanted: HBoxContainer
 var _fps: Label
+var _today_lbl: Label
+var _goal_box: VBoxContainer
+var _goal_panel: PanelContainer
+var _goal_timer := 0.0
+var _goal_state := ""
+var _intro: Control
 
 
 func _ready() -> void:
@@ -44,6 +50,8 @@ func _ready() -> void:
 	EventBus.interaction_cleared.connect(func(): _prompt.visible = false)
 	EventBus.open_panel.connect(_on_open_panel)
 	EventBus.player_died.connect(_on_died)
+	EventBus.goal_completed.connect(_on_goal_completed)
+	EventBus.game_started.connect(_on_game_started)
 	_door_root = Node3D.new()
 	_door_root.name = "BuildingDoors"
 	var scene := get_tree().current_scene
@@ -115,6 +123,12 @@ func _build_hud() -> void:
 	tv.add_child(_date_lbl)
 	_speed_lbl = _label("", "CaptionLabel")
 	tv.add_child(_speed_lbl)
+	tv.add_child(HSeparator.new())
+	tv.add_child(_label("Heute", "SubtitleLabel"))
+	_today_lbl = _label("", "CaptionLabel")
+	_today_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_today_lbl.custom_minimum_size = Vector2(212, 0)
+	tv.add_child(_today_lbl)
 
 	var bl := _glass()
 	bl.set_anchors_preset(PRESET_BOTTOM_LEFT)
@@ -136,8 +150,9 @@ func _build_hud() -> void:
 		row.add_child(bar)
 		bv.add_child(row)
 		_bars[n[0]] = bar
-	var hint := _label("[%s] Inventar   [%s] Pause   [%s/%s] Zeit" % [Settings.binding_label("inventory"),
-		Settings.binding_label("pause"), Settings.binding_label("time_slower"), Settings.binding_label("time_faster")], "CaptionLabel")
+	var hint := _label("[%s] Inventar   [%s] Pause   [%s/%s] Zeit   [%s] Hilfe" % [Settings.binding_label("inventory"),
+		Settings.binding_label("pause"), Settings.binding_label("time_slower"), Settings.binding_label("time_faster"),
+		Settings.binding_label("help")], "CaptionLabel")
 	bv.add_child(hint)
 
 	_prompt = _glass()
@@ -179,6 +194,12 @@ func _process(delta: float) -> void:
 	_date_lbl.text = world.date_string()
 	_speed_lbl.text = "Tempo: %s" % Game.SPEED_LABELS[Game.speed_index]
 	_update_extras()
+	_goal_timer -= delta
+	if _goal_timer <= 0.0:
+		_goal_timer = 2.0
+		_refresh_goals()
+		if _today_lbl:
+			_today_lbl.text = "\n".join(PackedStringArray(_today_list().map(func(x): return str(x))))
 	_door_timer -= delta
 	if _door_timer <= 0.0:
 		_door_timer = 0.7
@@ -279,7 +300,19 @@ func _update_doors() -> void:
 # ============================================================ Fenster
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _intro != null:
+		if event is InputEventKey and event.pressed and not event.echo:
+			_close_intro()
+			get_viewport().set_input_as_handled()
+		return
 	if _overlay:
+		return
+	if InputMap.has_action("help") and event.is_action_pressed("help"):
+		if _panel == null:
+			_open_help()
+		else:
+			_close_panel()
+		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("phone") and _panel == null:
 		open_phone()
@@ -655,10 +688,209 @@ func _build_extras() -> void:
 	keys.alignment = BoxContainer.ALIGNMENT_END
 	keys.add_theme_constant_override("separation", 8)
 	keys.mouse_filter = MOUSE_FILTER_IGNORE
-	for a in [["phone", "Smartphone"], ["map", "Karte"], ["inventory", "Inventar"], ["pause", "Menü"]]:
+	for a in [["phone", "Smartphone"], ["map", "Karte"], ["inventory", "Inventar"], ["help", "Hilfe"], ["pause", "Menü"]]:
 		keys.add_child(UIKit.action_keycap(a[0]))
 		keys.add_child(_label(a[1], "CaptionLabel"))
 	add_child(keys)
+	_build_goal_tracker()
+
+
+# ============================================================ Ziele und Hilfe
+
+## Kompakter Zielverfolger rechts unter der Minikarte: bis zu drei offene
+## Ziele mit kurzem Hinweis; ein Klick markiert den Ort auf der Karte.
+func _build_goal_tracker() -> void:
+	_goal_panel = PanelContainer.new()
+	_goal_panel.theme_type_variation = "GlassPanel"
+	_goal_panel.set_anchors_preset(PRESET_TOP_RIGHT)
+	_goal_panel.position = Vector2(-300, 506)
+	_goal_panel.custom_minimum_size = Vector2(276, 0)
+	_goal_panel.mouse_filter = MOUSE_FILTER_PASS
+	add_child(_goal_panel)
+	_goal_box = VBoxContainer.new()
+	_goal_box.add_theme_constant_override("separation", 6)
+	_goal_panel.add_child(_goal_box)
+	_refresh_goals()
+
+
+func _goals_system():
+	return world.goals if world != null else null
+
+
+func _refresh_goals() -> void:
+	if _goal_box == null:
+		return
+	var goals = _goals_system()
+	var list: Array = goals.active(world) if goals else []
+	var state := "aktiv:" if goals else "keine:"
+	for g in list:
+		state += "%s|%s;" % [str(g.id), str(g.place_label)]
+	if state == _goal_state and _goal_box.get_child_count() > 0:
+		return
+	_goal_state = state
+	for c in _goal_box.get_children():
+		c.queue_free()
+	var head := HBoxContainer.new()
+	head.add_child(_icon("target", 18))
+	var ht := _label("Deine Ziele", "SubtitleLabel")
+	ht.size_flags_horizontal = SIZE_EXPAND_FILL
+	head.add_child(ht)
+	_goal_box.add_child(head)
+	var help := Button.new()
+	help.text = "Was kann ich tun?  [%s]" % Settings.binding_label("help")
+	help.theme_type_variation = "GhostButton"
+	help.pressed.connect(_open_help)
+	_goal_box.add_child(help)
+	if list.is_empty():
+		_goal_box.add_child(_label("Keine offenen Ziele – lebe dein Leben.", "CaptionLabel"))
+		return
+	for g in list:
+		_goal_box.add_child(HSeparator.new())
+		var entry: Dictionary = g
+		var b := Button.new()
+		b.text = str(entry.title)
+		b.theme_type_variation = "GhostButton"
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.tooltip_text = str(entry.desc)
+		b.pressed.connect(func() -> void: _goal_pressed(entry))
+		_goal_box.add_child(b)
+		var sub := str(entry.hint)
+		if str(entry.place_label) != "":
+			sub += "\n%s – auf der Karte markiert" % str(entry.place_label)
+		var sl := _label(sub, "CaptionLabel")
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		sl.custom_minimum_size = Vector2(252, 0)
+		_goal_box.add_child(sl)
+
+
+func _goal_pressed(g: Dictionary) -> void:
+	if not bool(g.get("has_pos", false)):
+		_toast("%s: %s" % [str(g.get("title", "")), str(g.get("hint", ""))], "info")
+		return
+	var p: Vector2 = g.pos
+	EventBus.request_route.emit(CityModel.v3(p), str(g.get("place_label", g.get("title", ""))))
+	_toast("Ziel auf der Karte markiert: %s" % str(g.get("place_label", "")), "info")
+
+
+func _on_goal_completed(goal: Dictionary) -> void:
+	_goal_state = ""
+	_refresh_goals()
+	if Audio and Audio.has_method("play_ui"):
+		Audio.play_ui("levelup")
+
+
+## Kurze Hilfe: Steuerung, Beduerfnisse, Geld und die aktuellen Vorschlaege.
+func _open_help() -> void:
+	var v := _new_panel("Was kann ich tun?", "Kurze Hilfe zu Steuerung, Bedürfnissen und deinen nächsten Schritten")
+	var list := _scroll_list(v, 420)
+	list.add_child(_label("Steuerung", "HeaderLabel"))
+	for e in [["move_forward", "Laufen (mit %s rennen)" % Settings.binding_label("sprint")],
+			["interact", "Gebäude betreten, Menschen ansprechen"], ["phone", "Smartphone: Status, Jobs, Wohnungen, Bank"],
+			["map", "Stadtkarte mit Route"], ["inventory", "Inventar: Essen und Gegenstände benutzen"],
+			["vehicle", "Fahrzeug ein- und aussteigen"], ["time_faster", "Zeit schneller (zurück mit %s)" % Settings.binding_label("time_slower")],
+			["quick_save", "Schnellspeichern"]]:
+		var row := HBoxContainer.new()
+		row.add_child(UIKit.action_keycap(str(e[0])))
+		row.add_child(_label(str(e[1]), "CaptionLabel"))
+		list.add_child(row)
+	list.add_child(HSeparator.new())
+	list.add_child(_label("Bedürfnisse", "HeaderLabel"))
+	var needs_txt := _label("Unten links siehst du Hunger, Durst, Energie, Hygiene, Soziales, Spaß und Gesundheit. "
+		+ "Sinkt ein Wert unter 25, leidet deine Gesundheit. Essen und Trinken kaufst du in Geschäften und "
+		+ "benutzt sie im Inventar; geschlafen und geduscht wird zu Hause oder in der Notunterkunft.", "CaptionLabel")
+	needs_txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	list.add_child(needs_txt)
+	list.add_child(HSeparator.new())
+	list.add_child(_label("Geld", "HeaderLabel"))
+	var money_txt := _label("Lohn gibt es nach jeder Schicht, Miete wird wöchentlich abgebucht. "
+		+ "Stellen findest du im Jobcenter, Wohnungen beim Immobilienmakler, Kredite bei der Bank (Smartphone).", "CaptionLabel")
+	money_txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	list.add_child(money_txt)
+	list.add_child(HSeparator.new())
+	list.add_child(_label("Heute", "HeaderLabel"))
+	for line in _today_list():
+		list.add_child(_label(line, "CaptionLabel"))
+	list.add_child(HSeparator.new())
+	list.add_child(_label("Deine nächsten Schritte", "HeaderLabel"))
+	var goals = _goals_system()
+	var active: Array = goals.active(world) if goals else []
+	if active.is_empty():
+		list.add_child(_label("Zurzeit keine offenen Ziele.", "CaptionLabel"))
+	for g in active:
+		var entry: Dictionary = g
+		var sub := str(entry.hint)
+		if str(entry.place_label) != "":
+			sub += "  ·  %s" % str(entry.place_label)
+		sub += "  ·  %s" % str(entry.reward_text)
+		_row(list, str(entry.title), sub, "Route" if bool(entry.has_pos) else "Hinweis",
+			func() -> void: _close_panel(); _goal_pressed(entry))
+	if goals:
+		var done: Array = goals.done_list()
+		if not done.is_empty():
+			list.add_child(_label("Erreicht", "HeaderLabel"))
+			for d in done:
+				list.add_child(_label("%s (Tag %d)" % [str(d.title), int(d.day) + 1], "CaptionLabel"))
+
+
+func _today_list() -> Array:
+	var goals = _goals_system()
+	return goals.today_lines(world) if goals else []
+
+
+# ============================================================ Einstieg
+
+func _on_game_started(_w) -> void:
+	world = Game.world
+	var goals = _goals_system()
+	if goals == null or bool(goals.intro_shown):
+		return
+	goals.intro_shown = true
+	_show_intro(goals.intro_lines(world))
+
+
+## Startkarte: erklaert Lage und erste Schritte, verschwindet auf jeden
+## Tastendruck oder Mausklick (blockiert das Spiel nicht).
+func _show_intro(lines: Array) -> void:
+	if _intro != null or lines.is_empty():
+		return
+	_intro = Control.new()
+	_intro.set_anchors_preset(PRESET_FULL_RECT)
+	_intro.mouse_filter = MOUSE_FILTER_STOP
+	add_child(_intro)
+	var card := PanelContainer.new()
+	card.theme_type_variation = "CardPanel"
+	card.set_anchors_preset(PRESET_CENTER)
+	card.grow_horizontal = GROW_DIRECTION_BOTH
+	card.grow_vertical = GROW_DIRECTION_BOTH
+	card.custom_minimum_size = Vector2(640, 0)
+	_intro.add_child(card)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	card.add_child(v)
+	var head := HBoxContainer.new()
+	head.add_child(_icon("compass", 24))
+	head.add_child(_label("Willkommen in Havenbrück", "HeaderLabel"))
+	v.add_child(head)
+	for line in lines:
+		var l := _label(str(line), "SubtitleLabel")
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(600, 0)
+		v.add_child(l)
+	var close := Button.new()
+	close.text = "Los geht's  (beliebige Taste)"
+	close.theme_type_variation = "AccentButton"
+	close.pressed.connect(_close_intro)
+	v.add_child(close)
+	_intro.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed:
+			_close_intro())
+
+
+func _close_intro() -> void:
+	if _intro == null:
+		return
+	_intro.queue_free()
+	_intro = null
 
 
 func _update_extras() -> void:

@@ -250,6 +250,24 @@ func _app_status(b: VBoxContainer) -> void:
 		v.add_child(UIKit.pill("Krank: %s" % str(ill.get("name", "")), UITheme.DANGER, "pharmacy"))
 	c.add_child(v)
 	b.add_child(c)
+	if world.goals:
+		_section(b, "Heute")
+		for line in world.goals.today_lines(world):
+			var row := UIKit.hbox(8)
+			row.add_child(UIKit.icon_rect("clock", 16, UITheme.TEXT_MUTED))
+			row.add_child(UIKit.label(str(line), "CaptionLabel", true))
+			b.add_child(row)
+		var active: Array = world.goals.active(world)
+		if not active.is_empty():
+			_section(b, "Ziele")
+			for g in active:
+				var entry: Dictionary = g
+				var sub: String = str(entry.hint)
+				if str(entry.place_label) != "":
+					sub += " (%s)" % str(entry.place_label)
+				_item(b, str(entry.title), sub, "Karte" if bool(entry.has_pos) else "",
+					func() -> void: _route_to(entry.pos, str(entry.place_label)), bool(entry.has_pos),
+					str(entry.icon))
 	_section(b, "Bedürfnisse")
 	for k in ["health", "hunger", "thirst", "energy", "hygiene", "social", "fun"]:
 		var h := UIKit.hbox(8)

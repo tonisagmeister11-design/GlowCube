@@ -17,7 +17,7 @@ const AUTOSAVE := [0, 5, 10, 15, 30]
 const BIND_GROUPS := [
 	["Zu Fuß", "walk", ["move_forward", "move_back", "move_left", "move_right", "sprint", "jump", "interact", "camera_toggle"]],
 	["Fahrzeug", "car", ["vehicle", "handbrake", "horn"]],
-	["Oberfläche", "phone", ["map", "phone", "inventory", "pause"]],
+	["Oberfläche", "phone", ["map", "phone", "inventory", "help", "pause"]],
 	["Zeit und Speichern", "clock", ["time_faster", "time_slower", "quick_save", "quick_load"]],
 	["Maus", "mouse", ["primary", "secondary"]],
 	["Sonstiges", "camera", ["screenshot", "debug_overlay", "debug_city"]],
