@@ -25,6 +25,7 @@ var blur: ColorRect
 var current: MenuScreen
 var _latest: Dictionary = {}
 var _busy := false
+var _intro_tween: Tween
 
 
 func _ready() -> void:
@@ -153,6 +154,7 @@ func _add_item(text: String, icon_name: String, cb: Callable) -> Button:
 	var b := UIKit.button(text, icon_name, "MainMenuButton")
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.custom_minimum_size = Vector2(440, 56)
+	b.add_theme_constant_override("h_separation", 18)
 	b.pressed.connect(cb)
 	var base_x := 0.0
 	b.mouse_entered.connect(func() -> void: b.grab_focus())
@@ -203,7 +205,8 @@ func _intro() -> void:
 			tw.tween_property(c, "modulate:a", 1.0, 0.35)
 			i += 1
 	home.modulate.a = 0.0
-	create_tween().tween_property(home, "modulate:a", 1.0, 0.6)
+	_intro_tween = create_tween()
+	_intro_tween.tween_property(home, "modulate:a", 1.0, 0.6)
 	await get_tree().process_frame
 	if continue_card.visible:
 		continue_card.grab_focus()
@@ -216,6 +219,8 @@ func _intro() -> void:
 func open_screen(name: String, a = null, animate := true) -> MenuScreen:
 	if not SCREENS.has(name) or _busy:
 		return null
+	if _intro_tween and _intro_tween.is_valid():
+		_intro_tween.kill()
 	var scr: MenuScreen = load(SCREENS[name]).new()
 	scr.host = self
 	scr.arg = a
