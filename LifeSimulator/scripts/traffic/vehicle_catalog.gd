@@ -166,3 +166,21 @@ static func paint_for(type_id: String, rng: RandomNumberGenerator) -> Color:
 		"bus":
 			return Color(0.95, 0.95, 0.93)
 	return random_paint(rng)
+
+
+## Bauform fuer Fahrzeugwaren (GoodsCatalog, z.B. "car_suv") bzw. Katalogmodelle.
+const GOOD_TYPES := {
+	"bicycle": "bicycle", "used_bike": "bicycle", "scooter": "motorcycle", "motorcycle": "motorcycle",
+	"car_used": "hatchback", "car_small": "hatchback", "car_compact": "sedan", "car_sedan": "sedan",
+	"car_suv": "suv", "car_sports": "sports", "car_luxury": "luxury",
+}
+
+
+static func type_for_good(good_id: String) -> String:
+	if GOOD_TYPES.has(good_id):
+		return GOOD_TYPES[good_id]
+	if MODELS.has(good_id):
+		return MODELS[good_id].type
+	if TYPES.has(good_id):
+		return good_id
+	return "sedan"

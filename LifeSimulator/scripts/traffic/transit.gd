@@ -12,10 +12,10 @@ extends RefCounted
 ## bei Tempo 1 eine Spielminute pro Echtzeitsekunde. Der Fahrplan rechnet
 ## deshalb mit BUS_SPEED Metern pro Spielminute (entspricht m/s bei Tempo 1).
 
-const BUS_SPEED := 7.5          # Meter je Spielminute (Fahrplan, inkl. Ampeln)
+const BUS_SPEED := 5.0          # Meter je Spielminute (Fahrplan, inkl. Ampeln und Anfahren)
 const DWELL := 0.35             # Haltezeit an Haltestellen (Spielminuten)
 const LAYOVER := 1.0            # Wendezeit an Endhaltestellen
-const BASE_HEADWAY := 30.0      # Takt in Spielminuten bei Standardbudget
+const BASE_HEADWAY := 55.0      # Takt in Spielminuten bei Standardbudget
 const MIN_BUSES := 2
 const DEFAULT_FARE := 2.50
 

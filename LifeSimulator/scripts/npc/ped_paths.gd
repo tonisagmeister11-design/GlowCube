@@ -79,15 +79,18 @@ static func _find_crosswalk(m: CityModel, mid: Vector2) -> int:
 	if mid.distance_to(n.pos) > 60.0:
 		return -1
 	var map := _cw_map(m)
+	var best := -1
+	var best_score := -INF
 	for eid in n.edges:
 		var e: Dictionary = m.edges[eid]
 		var d: Vector2 = (m.nodes[m.edge_other(e, nid)].pos - n.pos).normalized()
 		var rel: Vector2 = mid - n.pos
 		var along := rel.dot(d)
 		var latd := absf(rel.x * d.y - rel.y * d.x)
-		if along > 0.0 and latd < float(e.width) * 0.5 + 2.0:
-			return map.get(nid * 8192 + int(eid), -1)
-	return -1
+		if along > 0.5 and latd < float(e.width) * 0.5 + 2.0 and along - latd > best_score:
+			best_score = along - latd
+			best = map.get(nid * 8192 + int(eid), -1)
+	return best
 
 
 ## Punkte innerhalb eines Kreisverkehrs durch einen Bogen aussen herum ersetzen.

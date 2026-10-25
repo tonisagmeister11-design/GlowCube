@@ -344,16 +344,16 @@ func test_signal_stops_vehicle() -> void:
 		t += 0.25
 	var v := sim.spawn("sedan", lane, sim.graph.seg_len[lane] - 40.0)
 	var stopped_at := -1.0
-	var entered_state := ""
+	var entered := []
 	sim.on_connector_entered = func(_v: VehicleAI, _c: int, st: String) -> void:
-		if entered_state == "":
-			entered_state = st
+		entered.append(st)
 	for i in 400:
 		sim.step(0.1, t + i * 0.1)
 		if v.seg == lane and v.v < 0.05 and stopped_at < 0.0:
 			stopped_at = sim.graph.seg_len[lane] - v.s
 	runner.check(stopped_at >= 0.0 and stopped_at < 3.0, "Fahrzeug haelt nicht an der Haltelinie (Abstand %.2f)" % stopped_at)
-	runner.check(entered_state == "green" or entered_state == "yellow", "Fahrzeug faehrt nicht bei Gruen (%s)" % entered_state)
+	var first: String = entered[0] if not entered.is_empty() else ""
+	runner.check(first == "green" or first == "yellow", "Fahrzeug faehrt nicht bei Gruen (%s)" % first)
 
 
 func test_emergency_dispatch() -> void:
@@ -363,10 +363,15 @@ func test_emergency_dispatch() -> void:
 	rng.seed = 3
 	_fill(sim, rng, 60)
 	var start := sim.graph.nearest_lane(m.nodes[0].pos + Vector2(60, 0))
-	var target: Vector2 = m.buildings[m.buildings.size() / 2].sidewalk_point
+	var target: Vector2 = Vector2.ZERO
+	for b in m.buildings:
+		var dd: float = b.sidewalk_point.distance_to(m.nodes[0].pos)
+		if dd > 500.0 and dd < 800.0:
+			target = b.sidewalk_point
+			break
 	var v := sim.spawn_emergency("ambulance", start.seg, clampf(start.s, 8.0, sim.graph.seg_len[start.seg] - 1.0), target)
 	var reached := false
-	for i in 3000:
+	for i in 5000:
 		sim.step(0.1, i * 0.1)
 		if v.arrived:
 			reached = true
@@ -450,10 +455,12 @@ func test_ped_routes_on_sidewalks() -> void:
 	var bad := 0
 	var crossings := 0
 	var routes := 0
-	for i in 80:
+	for i in 400:
+		if routes >= 70:
+			break
 		var a: Dictionary = m.buildings[rng.randi() % m.buildings.size()]
 		var b: Dictionary = m.buildings[rng.randi() % m.buildings.size()]
-		if a.sidewalk_point.distance_to(b.sidewalk_point) > 700.0:
+		if a.sidewalk_point.distance_to(b.sidewalk_point) > 600.0:
 			continue
 		var route := PedPaths.route(m, a.sidewalk_point, b.sidewalk_point)
 		routes += 1

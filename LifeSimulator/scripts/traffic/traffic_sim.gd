@@ -743,23 +743,22 @@ func cone_check(v: VehicleAI) -> Array:
 
 
 func _cone_vehicle(v: VehicleAI, w: VehicleAI) -> Array:
-	var h := v.heading
 	var rel := w.pos - v.pos
 	if rel.length_squared() > 900.0:
 		return [INF, 0.0]
-	var along := rel.dot(h)
-	if along <= 0.0:
-		return [INF, 0.0]
-	var cr := absf(w.heading.x * h.y - w.heading.y * h.x)
-	var dt_ := absf(w.heading.dot(h))
-	var ext_along := dt_ * w.length * 0.5 + cr * w.width * 0.5
-	var ext_lat := cr * w.length * 0.5 + dt_ * w.width * 0.5
-	var latd := absf(rel.x * h.y - rel.y * h.x)
-	var ahead := _path_ahead(v, maxf(along - v.length * 0.5, 0.0))
-	var lat_path := minf(latd, ahead.distance_to(w.pos) if along < 25.0 else latd)
-	if lat_path > v.width * 0.5 + ext_lat + 0.25:
-		return [INF, 0.0]
-	return [along - v.length * 0.5 - ext_along, maxf(0.0, w.v * w.heading.dot(h))]
+	# Mittellinie des anderen Fahrzeugs
+	var wa := w.pos + w.heading * (w.length * 0.5 - w.width * 0.5)
+	var wb := w.pos - w.heading * (w.length * 0.5 - w.width * 0.5)
+	var clear := v.width * 0.5 + w.width * 0.5 + 0.3
+	var d := 0.0
+	while d <= 22.0:
+		var q := _path_ahead(v, d)
+		var c := Geometry2D.get_closest_point_to_segment(q, wa, wb)
+		if q.distance_to(c) < clear:
+			var proj := maxf(0.0, w.v * w.heading.dot(v.heading))
+			return [maxf(d - w.width * 0.5, 0.0), proj]
+		d += 1.5
+	return [INF, 0.0]
 
 
 ## Punkt auf dem eigenen Pfad d Meter vor der Front.
