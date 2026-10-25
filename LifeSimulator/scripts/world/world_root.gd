@@ -12,6 +12,7 @@ const PLAYER_SCENE := "res://scenes/player/player.tscn"
 const UI_SCENE := "res://scenes/ui/game_ui.tscn"
 const TRAFFIC_SCRIPT := "res://scripts/traffic/traffic_manager.gd"
 const CROWD_SCRIPT := "res://scripts/npc/crowd_manager.gd"
+const CRIME_WORLD_SCRIPT := "res://scripts/crime/crime_world.gd"
 const INITIAL_RADIUS := 260.0
 
 @onready var environment_node: DayNight = $Environment
@@ -49,6 +50,7 @@ func _ready() -> void:
 		player.teleport(spawn_pos, spawn_yaw)
 	_load_ui()
 	_start_actors()
+	_start_crime_world()
 	if game and game.has_method("world_scene_ready") and not _standalone:
 		game.world_scene_ready()
 	elif game and _standalone and game.has_method("world_scene_ready"):
@@ -123,6 +125,20 @@ func _start_actors() -> void:
 			actors.add_child(node)
 			if node.has_method("setup"):
 				node.setup(world, city)
+
+
+## Weltschicht fuer Kriminalitaet, Banden und Polizei (Auftragsziele,
+## Taten vor Ort, Haft, Fahndung).
+func _start_crime_world() -> void:
+	if not ResourceLoader.exists(CRIME_WORLD_SCRIPT):
+		return
+	var scr: Script = load(CRIME_WORLD_SCRIPT)
+	if scr == null or not scr.can_instantiate():
+		return
+	var node = scr.new()
+	if node is Node:
+		actors.add_child(node)
+		node.setup(world, player)
 
 
 func _unhandled_input(event: InputEvent) -> void:

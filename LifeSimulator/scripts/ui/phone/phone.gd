@@ -579,12 +579,24 @@ func _app_gang(b: VBoxContainer) -> void:
 		for m in ms:
 			var mid := int(m.id)
 			var active := str(m.get("status", "")) == "active"
-			var sub := "Risiko %s · %s" % [str(m.get("risk_label", "")), ("Nächster Schritt: " + str(m.get("next_step", ""))) if active else ("Ab Rang " + str(m.get("min_rank_title", "")))]
+			var step_txt := "Nächster Schritt: " + str(m.get("next_step", ""))
+			var cw = get_tree().get_first_node_in_group("crime_world")
+			if active and cw != null and not bool(m.get("ready", false)):
+				var dist: float = cw.step_distance(mid)
+				if dist >= 0.0:
+					step_txt += " (%d m – vor Ort erledigen)" % int(round(dist))
+			elif active and bool(m.get("ready", false)):
+				step_txt = "Alle Schritte erledigt"
+			var sub := "Risiko %s · %s" % [str(m.get("risk_label", "")), step_txt if active else ("Ab Rang " + str(m.get("min_rank_title", "")))]
 			var btn := "Annehmen"
 			var cb := func() -> void: _say(gs.accept_mission(world, mid), "Auftrag angenommen.")
 			if active and bool(m.get("ready", false)):
 				btn = "Abschließen"
-				cb = func() -> void: _say(gs.complete_mission(world, mid), "Auftrag erledigt.")
+				cb = func() -> void:
+					if cw != null:
+						_say(cw.complete_active_mission(mid), "Auftrag erledigt.")
+					else:
+						_say(gs.complete_mission(world, mid), "Auftrag erledigt.")
 			elif active:
 				btn = "Route"
 				var tp: Vector2 = m.get("target_pos", Vector2.ZERO)
