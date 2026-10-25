@@ -56,10 +56,12 @@ func test_adult_job_goal_chain() -> void:
 			break
 	runner.check(pid >= 0, "geeignete Stelle gefunden")
 	runner.check(w.player.apply_job(w, pid).ok, "Stelle angenommen")
+	var skill0: float = float(w.player.skills.get("charisma", 0.0))
 	var money0: float = w.ledger.balance(w.player.account)
 	w.goals.on_hour(w, w.get_day(), w.get_hour())
 	runner.check(w.goals.completed.has("job"), "Ziel 'Finde eine Arbeit' erfuellt")
-	runner.check(w.ledger.balance(w.player.account) > money0, "Geldbelohnung ausgezahlt")
+	runner.check(float(w.player.skills.get("charisma", 0.0)) > skill0, "Erfahrung als Belohnung gutgeschrieben")
+	runner.check_near(w.ledger.balance(w.player.account), money0, 0.01, "Ziele erschaffen kein Geld")
 	var ev := false
 	for e in w.events:
 		if str(e[0]) == "goal_completed" and str(e[1][0].id) == "job":

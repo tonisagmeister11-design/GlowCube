@@ -35,6 +35,8 @@ var _goal_panel: PanelContainer
 var _goal_timer := 0.0
 var _goal_state := ""
 var _intro: Control
+var _status_box: PanelContainer
+var _status_lbl: Label
 
 
 func _ready() -> void:
@@ -344,6 +346,12 @@ func _on_open_panel(kind: String, ctx := {}) -> void:
 		open_phone()
 	elif kind == "map":
 		open_map()
+	elif kind == "jail":
+		_open_jail()
+	elif kind == "crime_car":
+		_open_car_crime(ctx.get("pos", Vector2.ZERO))
+	elif kind == "crime_npc":
+		_open_npc_crime(int(ctx.get("person", -1)))
 	if kind == "building":
 		_open_building(int(ctx.get("building", -1)))
 
@@ -445,8 +453,14 @@ func _result(r: Dictionary, ok_text := "") -> void:
 func _open_building(bid: int) -> void:
 	if bid < 0 or world == null:
 		return
+	if world.crime != null and world.crime.in_jail(world):
+		_open_jail()
+		return
 	var b: Dictionary = world.city.buildings[bid]
 	var title: String = b.name if b.name != "" else b.label
+	if str(b.kind) == "police":
+		_open_police_station(title)
+		return
 	if bid == _home_building():
 		_open_home(b)
 		return
@@ -533,6 +547,12 @@ func _open_shop(biz: int, title: String, hours: String, bid: int) -> void:
 	if bid == _work_building():
 		var wl := _scroll_list(v, 70)
 		_row(wl, "Deine Arbeitsstelle", "Schicht beginnen", "Arbeiten", func(): _close_panel(); _result(world.player.work_shift(world, bid)))
+	var cw = _crime_world()
+	if cw != null and world.crime != null and not world.crime.in_jail(world):
+		var sl := _scroll_list(v, 76)
+		_row(sl, "Stehlen", cw.risk_text("shoplifting", {"business_id": biz}), "Stehlen", func():
+			_close_panel()
+			_crime_result(cw.attempt("shoplifting", {"business_id": biz, "building": bid})))
 	var list := _scroll_list(v, 420)
 	var items: Array = world.economy.shop_items(biz)
 	if items.is_empty():
@@ -678,6 +698,16 @@ func _build_extras() -> void:
 		_wanted.add_child(UIKit.icon_rect("star", 30, UITheme.WARNING))
 	_wanted.visible = false
 	add_child(_wanted)
+	_status_box = _glass()
+	_status_box.set_anchors_preset(PRESET_CENTER_TOP)
+	_status_box.position = Vector2(-330, 66)
+	_status_box.custom_minimum_size = Vector2(660, 0)
+	_status_box.visible = false
+	add_child(_status_box)
+	_status_lbl = _label("", "SubtitleLabel")
+	_status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status_box.add_child(_status_lbl)
 	_fps = _label("", "CaptionLabel")
 	_fps.position = Vector2(24, 4)
 	add_child(_fps)
@@ -857,8 +887,22 @@ func _show_intro(lines: Array) -> void:
 	_intro.set_anchors_preset(PRESET_FULL_RECT)
 	_intro.mouse_filter = MOUSE_FILTER_STOP
 	add_child(_intro)
+	# Abdunkeln, damit der Begruessungstext ueber der Stadt lesbar bleibt
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.04, 0.07, 0.72)
+	dim.set_anchors_preset(PRESET_FULL_RECT)
+	dim.mouse_filter = MOUSE_FILTER_IGNORE
+	_intro.add_child(dim)
 	var card := PanelContainer.new()
-	card.theme_type_variation = "CardPanel"
+	var ib := StyleBoxFlat.new()
+	ib.bg_color = Color(0.07, 0.10, 0.15, 0.98)
+	ib.border_color = Color(0.18, 0.66, 1.0, 0.75)
+	ib.set_border_width_all(1)
+	ib.set_corner_radius_all(16)
+	ib.set_content_margin_all(26)
+	ib.shadow_color = Color(0, 0, 0, 0.55)
+	ib.shadow_size = 22
+	card.add_theme_stylebox_override("panel", ib)
 	card.set_anchors_preset(PRESET_CENTER)
 	card.grow_horizontal = GROW_DIRECTION_BOTH
 	card.grow_vertical = GROW_DIRECTION_BOTH
@@ -900,6 +944,7 @@ func _update_extras() -> void:
 	_wanted.visible = lvl > 0
 	for i in _wanted.get_child_count():
 		(_wanted.get_child(i) as CanvasItem).modulate = Color.WHITE if i < lvl else Color(1, 1, 1, 0.18)
+	_update_status_line()
 	_fps.visible = bool(Settings.get_value("graphics", "show_fps"))
 	if _fps.visible:
 		_fps.text = "%d FPS" % Engine.get_frames_per_second()
@@ -957,3 +1002,167 @@ func _on_request_route(target: Vector3, label: String) -> void:
 	if world == null or t.distance_to(UIMapData.route_target) < 0.5:
 		return
 	UIMapData.set_route(world, UIMapData.player_pos(get_tree()), t, label, false)
+
+
+# ============================================================ Kriminalitaet in der Welt
+
+## Weltschicht (scripts/crime/crime_world.gd) oder null.
+func _crime_world():
+	return get_tree().get_first_node_in_group("crime_world")
+
+
+## Eine kompakte Zeile: Auftrag, Haft, Dienst.
+func _update_status_line() -> void:
+	if _status_box == null:
+		return
+	var cw = _crime_world()
+	if cw == null or world == null:
+		_status_box.visible = false
+		return
+	var parts := []
+	var jail: String = cw.jail_hud_line()
+	if jail != "":
+		parts.append(jail)
+	var mis: String = cw.mission_hud_line()
+	if mis != "":
+		parts.append(mis)
+	var duty: String = cw.duty_hud_line()
+	if duty != "":
+		parts.append(duty)
+	_status_lbl.text = "   ·   ".join(PackedStringArray(parts))
+	_status_box.visible = not parts.is_empty()
+
+
+## Meldung eines Systems, das die Zeit selbst vorspult.
+func _report(r, ok_text := "") -> void:
+	if not (r is Dictionary):
+		return
+	var ok: bool = r.get("ok", false)
+	var txt := str(r.get("text", ""))
+	if txt == "":
+		txt = ok_text if ok else str(r.get("reason", "Nicht möglich."))
+	_toast(txt, "success" if ok else "warning")
+
+
+## Ergebnis einer Straftat: Meldung, bei Festnahme direkt das Haftfenster.
+func _crime_result(r) -> void:
+	if not (r is Dictionary):
+		return
+	var arrested: bool = r.get("arrested", false)
+	var txt := str(r.get("text", r.get("reason", "")))
+	if txt != "":
+		_toast(txt, "danger" if arrested else ("success" if r.get("success", false) else "warning"))
+	if arrested:
+		_open_jail()
+
+
+## Haftfenster: immer erreichbar, damit die Haft nicht blockiert.
+func _open_jail() -> void:
+	var c = world.crime if world != null else null
+	if c == null or not c.in_jail(world):
+		return
+	var cw = _crime_world()
+	var v := _new_panel("In Haft", "%s · noch %.1f Stunden" % [str(c.jail_reason), c.jail_remaining_minutes(world) / 60.0])
+	var list := _scroll_list(v, 230)
+	_row(list, "Strafe absitzen", "Die Zeit läuft bis zur Entlassung.", "Absitzen", func():
+		var r: Dictionary = cw.serve_sentence() if cw != null else c.serve_sentence(world, true)
+		_close_panel()
+		_report(r, "Du bist entlassen."))
+	_row(list, "Kaution zahlen", "%s – du kommst sofort frei." % Economy.fmt_money(c.bail_amount(world)), "Zahlen", func():
+		var r: Dictionary = cw.post_bail() if cw != null else c.post_bail(world)
+		if r.get("ok", false):
+			_close_panel()
+		_report(r))
+	if c.gangs != null and int(c.gangs.player_gang) >= 0:
+		_row(list, "Gegen die Bande aussagen", "Halbiert die Haft, die Bande stößt dich aus.", "Aussagen", func():
+			var r: Dictionary = c.testify_against_gang(world)
+			_close_panel()
+			_report(r))
+	v.add_child(_label("Die Zelle kannst du erst nach der Strafe oder gegen Kaution verlassen.", "CaptionLabel"))
+
+
+## Autodiebstahl an einem geparkten Auto.
+func _open_car_crime(pos) -> void:
+	var cw = _crime_world()
+	if cw == null:
+		return
+	var p: Vector2 = pos if pos is Vector2 else Vector2.ZERO
+	var v := _new_panel("Auto aufbrechen", cw.risk_text("car_theft", {"pos": p}))
+	var list := _scroll_list(v, 110)
+	_row(list, "Schloss knacken", "Autodiebstahl – ein Verbrechen. Danach kannst du einsteigen.", "Aufbrechen", func():
+		_close_panel()
+		_crime_result(cw.steal_parked_car(p)))
+
+
+## Taschendiebstahl bei einer angesprochenen Person.
+func _open_npc_crime(person_id: int) -> void:
+	var cw = _crime_world()
+	if cw == null or person_id < 0:
+		return
+	var who := "diese Person"
+	if world.population != null and world.population.has_method("person_name"):
+		who = str(world.population.person_name(person_id))
+	var ctx := {"person_id": person_id}
+	var v := _new_panel("Taschendiebstahl", cw.risk_text("pickpocket", ctx))
+	var list := _scroll_list(v, 110)
+	_row(list, "Tasche durchsuchen", "Du bestiehlst %s. Ein Vergehen." % who, "Stehlen", func():
+		_close_panel()
+		_crime_result(cw.attempt("pickpocket", ctx)))
+
+
+## Polizeiwache: Dienstaufgaben auch ausserhalb des Telefons.
+func _open_police_station(title: String) -> void:
+	var c = world.crime if world != null else null
+	if c == null:
+		_toast(title, "info")
+		return
+	var pol = c.police
+	var v := _new_panel(title, "Polizeiwache Havenbrück")
+	var list := _scroll_list(v, 420)
+	if c.wanted_level() > 0 or not (c.charges as Array).is_empty():
+		_row(list, "Selbst stellen", "Mildere Strafe als bei einer Festnahme.", "Stellen", func():
+			var r: Dictionary = c.turn_yourself_in(world)
+			_close_panel()
+			_report(r)
+			if c.in_jail(world):
+				_open_jail())
+	if pol == null:
+		return
+	if not bool(pol.member):
+		var reqs: Array = pol.join_requirements(world)
+		var ok := true
+		for rq in reqs:
+			ok = ok and bool(rq.get("met", false))
+		_row(list, "Der Polizei beitreten", "Sicheres Einkommen, Streifen und Ermittlungen.", "Beitreten", func():
+			var r: Dictionary = pol.join(world)
+			_report(r, "Willkommen im Polizeidienst.")
+			if r.get("ok", false):
+				_close_panel(), ok)
+		for rq in reqs:
+			if not bool(rq.get("met", false)):
+				list.add_child(_label("Fehlt: %s" % str(rq.get("label", "")), "CaptionLabel"))
+		return
+	list.add_child(_label("Dienstgrad: %s" % str(pol.title()), "TitleLabel"))
+	_row(list, "Streife fahren", "4 Stunden Streife im Stadtteil mit der höchsten Kriminalität.", "Streife", func():
+		_close_panel()
+		_report(pol.patrol(world, 4.0)))
+	var cases: Array = c.open_cases(world)
+	if cases.is_empty():
+		list.add_child(_label("Zurzeit keine offenen Fälle.", "SubtitleLabel"))
+	for cs in cases.slice(0, 12):
+		var cid := int(cs.id)
+		var assigned := str(cs.get("status", "")) == "assigned"
+		var sub := "Beweislage %d %% · Verdacht: %s" % [int(cs.get("evidence_percent", 0)), str(cs.get("suspect_name", "Unbekannt"))]
+		var ev := int(cs.get("evidence_percent", 0))
+		if assigned and ev >= 60:
+			_row(list, str(cs.get("label", "Fall")), sub, "Festnehmen", func():
+				_report(pol.arrest_suspect(world, cid))
+				_open_police_station(title))
+		elif assigned:
+			_row(list, str(cs.get("label", "Fall")), sub, "Ermitteln", func():
+				_report(pol.investigate(world, cid))
+				_open_police_station(title))
+		else:
+			_row(list, str(cs.get("label", "Fall")), sub, "Übernehmen", func():
+				_report(pol.take_case(world, cid))
+				_open_police_station(title))

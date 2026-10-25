@@ -24,7 +24,7 @@ const MAX_ACTIVE := 3
 ##   place    Ort fuer die Kartenmarkierung (siehe `_find_place`), "" = keiner
 ##   min_age  / max_age  Altersfenster in Jahren
 ##   needs    Liste von Ziel-IDs, die vorher erledigt sein muessen
-##   reward   {"money": float} | {"skill": String, "amount": float} | {} (Anerkennung)
+##   reward   {"skill": String, "amount": float} | {} (reine Anerkennung)
 const DEFS: Array = [
 	{"id": "eat", "title": "Iss etwas", "desc": "Hunger ist das erste Problem jedes Lebens.",
 		"hint": "Kaufe im Supermarkt etwas zu essen und benutze es im Inventar.",
@@ -39,31 +39,31 @@ const DEFS: Array = [
 	{"id": "school_done", "title": "Schließe die Schule ab", "desc": "Ein Abschluss öffnet dir die meisten Berufe.",
 		"hint": "Geh regelmäßig zur Schule, bis du den Abschluss hast.",
 		"icon": "graduation", "place": "school", "min_age": 6.0, "max_age": 30.0, "needs": [],
-		"reward": {"money": 250.0}},
+		"reward": {"skill": "logic", "amount": 4.5}},
 	{"id": "job", "title": "Finde eine Arbeit", "desc": "Ohne Einkommen wird jede Woche teurer.",
 		"hint": "Im Jobcenter kannst du dich auf offene Stellen bewerben.",
 		"icon": "briefcase", "place": "job_center", "min_age": 16.0, "max_age": 999.0, "needs": [],
-		"reward": {"money": 100.0}},
+		"reward": {"skill": "charisma", "amount": 3.0}},
 	{"id": "first_shift", "title": "Arbeite deine erste Schicht", "desc": "Der erste Lohn ist selbst verdient.",
 		"hint": "Geh zur Schichtzeit zu deinem Arbeitsplatz und beginne die Schicht.",
 		"icon": "clock", "place": "work", "min_age": 16.0, "max_age": 999.0, "needs": ["job"],
-		"reward": {"money": 150.0}},
+		"reward": {"skill": "fitness", "amount": 3.5}},
 	{"id": "rent", "title": "Miete eine eigene Wohnung", "desc": "Ein eigenes Zuhause heißt Bett, Dusche und Küche.",
 		"hint": "Beim Immobilienmakler findest du freie Wohnungen zur Miete.",
 		"icon": "home", "place": "real_estate", "min_age": 18.0, "max_age": 999.0, "needs": [],
-		"reward": {"money": 200.0}},
+		"reward": {"skill": "cooking", "amount": 4.0}},
 	{"id": "skill_50", "title": "Lerne eine Fähigkeit auf 50", "desc": "Gute Fähigkeiten bringen bessere Stellen.",
 		"hint": "Arbeite, lerne oder belege einen Kurs – Fähigkeiten siehst du im Smartphone.",
 		"icon": "sparkle", "place": "university", "min_age": 10.0, "max_age": 999.0, "needs": [],
-		"reward": {"money": 200.0}},
+		"reward": {"skill": "driving", "amount": 4.0}},
 	{"id": "save_5000", "title": "Spare 5.000 €", "desc": "Rücklagen machen dich unabhängig.",
 		"hint": "Arbeite regelmäßig und gib weniger aus, als du verdienst.",
 		"icon": "wallet", "place": "", "min_age": 14.0, "max_age": 999.0, "needs": [],
-		"reward": {"money": 500.0}},
+		"reward": {"skill": "negotiation", "amount": 7.0}},
 	{"id": "promotion", "title": "Werde befördert", "desc": "Wer zuverlässig arbeitet, steigt auf.",
 		"hint": "Erscheine pünktlich zu deinen Schichten und halte deine Leistung hoch.",
 		"icon": "chart", "place": "work", "min_age": 16.0, "max_age": 999.0, "needs": ["first_shift"],
-		"reward": {"money": 400.0}},
+		"reward": {"skill": "discipline", "amount": 6.0}},
 	{"id": "car", "title": "Kaufe ein Auto", "desc": "Mit einem eigenen Wagen bist du in der Stadt schneller.",
 		"hint": "Im Autohaus kannst du Fahrzeuge kaufen.",
 		"icon": "car", "place": "car_dealer", "min_age": 18.0, "max_age": 999.0, "needs": [],
@@ -71,27 +71,27 @@ const DEFS: Array = [
 	{"id": "property", "title": "Kaufe eine Immobilie", "desc": "Eigentum statt Miete – ein großer Schritt.",
 		"hint": "Der Immobilienmakler vermittelt auch Kaufobjekte; die Bank gibt Hypotheken.",
 		"icon": "building", "place": "real_estate", "min_age": 18.0, "max_age": 999.0, "needs": [],
-		"reward": {"money": 1000.0}},
+		"reward": {"skill": "logic", "amount": 12.0}},
 	{"id": "family", "title": "Gründe eine Familie", "desc": "Eine feste Beziehung und ein Kind.",
 		"hint": "Lerne jemanden näher kennen, werde ein Paar und gründet eine Familie.",
 		"icon": "heart", "place": "", "min_age": 18.0, "max_age": 50.0, "needs": [],
-		"reward": {"money": 300.0}},
+		"reward": {"skill": "charisma", "amount": 5.0}},
 	{"id": "police", "title": "Werde Polizist", "desc": "Dienst für die Stadt – ein sicherer Beruf.",
 		"hint": "Auf der Polizeiwache kannst du dich für den Polizeidienst bewerben.",
 		"icon": "police", "place": "police", "min_age": 18.0, "max_age": 60.0, "needs": [],
-		"reward": {"money": 300.0}},
+		"reward": {"skill": "fitness", "amount": 5.0}},
 	{"id": "gang_rank", "title": "Steige in einer Organisation auf", "desc": "In den Hinterhöfen zählt nur der Rang.",
 		"hint": "Nimm Aufträge an und erarbeite dir das Vertrauen des Bosses.",
 		"icon": "mask", "place": "", "min_age": 16.0, "max_age": 999.0, "needs": [],
-		"reward": {"money": 500.0}},
+		"reward": {"skill": "cooking", "amount": 7.0}},
 	{"id": "office", "title": "Werde in ein politisches Amt gewählt", "desc": "Wer die Regeln macht, verändert die Stadt.",
 		"hint": "Tritt einer Partei bei und kandidiere bei der nächsten Wahl.",
 		"icon": "vote", "place": "city_hall", "min_age": 18.0, "max_age": 999.0, "needs": [],
-		"reward": {"money": 1000.0}},
+		"reward": {"skill": "driving", "amount": 12.0}},
 	{"id": "millionaire", "title": "Werde Millionär", "desc": "Eine Million Euro auf dem Konto.",
 		"hint": "Karriere, Unternehmen oder Immobilien – viele Wege führen dorthin.",
 		"icon": "trophy", "place": "", "min_age": 18.0, "max_age": 999.0, "needs": ["save_5000"],
-		"reward": {"money": 10000.0}},
+		"reward": {"skill": "negotiation", "amount": 12.0}},
 ]
 
 ## Orte: place -> [Geschaeftsarten, Gebaeudearten]
@@ -208,8 +208,8 @@ func definition(id: String) -> Dictionary:
 
 func reward_text(def: Dictionary) -> String:
 	var r: Dictionary = def.get("reward", {})
-	if r.has("money"):
-		return "Belohnung: %s" % Economy.fmt_money(float(r.money))
+	if r.has("skill"):
+		return "Belohnung: %s +%d" % [Skills.label(str(r.skill)), int(r.amount)]
 	if r.has("skill"):
 		return "Belohnung: +%d %s" % [int(r.amount), Skills.label(str(r.skill))]
 	return "Belohnung: Anerkennung"
@@ -340,13 +340,11 @@ func _complete(world, def: Dictionary, day: int) -> void:
 	world.post_news("leben", "%s: %s" % [str(world.player.name), str(def.title)])
 
 
-## Zahlt die Belohnung aus und beschreibt sie. Geld entsteht ueber das Ledger.
+## Zahlt die Belohnung aus und beschreibt sie. Ziele schaffen bewusst kein
+## Geld aus dem Nichts: Sie belohnen mit Erfahrung, damit die Wirtschaft
+## nachvollziehbar bleibt.
 func _grant(world, def: Dictionary) -> String:
 	var r: Dictionary = def.get("reward", {})
-	if r.has("money"):
-		var amount: float = float(r.money)
-		world.ledger.mint(world.player.account, amount, "Belohnung: %s" % str(def.title))
-		return "%s erhalten" % Economy.fmt_money(amount)
 	if r.has("skill"):
 		var skill: String = str(r.skill)
 		Skills.gain(world.player.skills, skill, float(r.amount))

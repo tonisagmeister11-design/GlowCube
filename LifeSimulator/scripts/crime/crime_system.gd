@@ -1261,13 +1261,18 @@ func post_bail(world) -> Dictionary:
 
 ## Haft absitzen: liefert die verbleibenden Minuten; die Oberflaeche ruft
 ## damit Game.skip_time(minutes) auf. Mit advance = true laeuft die Zeit hier.
+## Strafe absitzen. Spult die Restzeit vor und entlaesst danach verlaesslich,
+## damit kein Rundungsrest (die Simulation laeuft in Fuenf-Minuten-Schritten)
+## den Spieler in der Zelle festhaelt.
 func serve_sentence(world, advance := false) -> Dictionary:
 	if not in_jail(world):
 		return {"ok": false, "minutes": 0.0, "reason": "Du bist nicht in Haft."}
 	var m := jail_remaining_minutes(world)
 	if advance:
 		world.advance(m + WorldState.STEP_MINUTES)
-	return {"ok": true, "minutes": m, "text": "Du sitzt deine Strafe ab (%.1f Stunden)." % (m / 60.0)}
+		_release_player(world)
+	return {"ok": true, "minutes": m, "release": true,
+		"text": "Du sitzt deine Strafe ab (%.1f Stunden)." % (m / 60.0)}
 
 
 func _release_player(world) -> void:

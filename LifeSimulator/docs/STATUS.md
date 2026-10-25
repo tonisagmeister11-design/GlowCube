@@ -19,11 +19,13 @@ Hardware sind nicht gemessen.
 | UI | Hauptmenü, Assistent, Laden/Speichern, Einstellungen inkl. Tastenbelegung, HUD, Smartphone-Apps, Stadtkarte, Minimap, Shop, Dialoge | Tests + Screenshots |
 | Audio | 53 selbst synthetisierte Klänge/Musikstücke, getrennte Lautstärken | technisch geprüft, nicht angehört |
 | Speichern | Versioniert, komprimiert, Sicherungskopie, Autosave | Roundtrip-Test |
+| Spielerführung | Begrüßung je Startsituation, Lebensziele mit Hinweis und Kartenmarkierung, Hilfe auf F1, Tagesübersicht | Tests + Screenshots |
+| Kriminalität in der Welt | Missionsziele vor Ort, Stehlen im Laden, Taschendiebstahl, Autoaufbruch, Haft mit Absitzen und Kaution, Polizeidienst an der Wache | Tests |
 
 ## Bekannte Einschränkungen
-* Gang-Missionsschritte werden über das Smartphone abgeschlossen; eine Prüfung der Schritte am Zielort fehlt noch.
 * Busfahrten dauern Spielstunden (Fahrplan in realer Geschwindigkeit).
 * Fenster sind Shader-Effekte (aus nächster Nähe flach); Haare ohne Strähnen-Geometrie.
 * Kaufpreise für Immobilien sind im Verhältnis zur verdichteten Lebenszeit hoch.
 * Start-Kamera kann ungünstig stehen (mit Maus drehen).
+* Bedürfnisse: Ein voller Vorrat hält rund zwei Spieltage; wer tagelang gar nichts tut, stirbt – vorher warnt das Spiel mehrfach.
 * Die EXE trägt das Standard-Godot-Symbol (Symbolwechsel erfordert rcedit unter Windows).
