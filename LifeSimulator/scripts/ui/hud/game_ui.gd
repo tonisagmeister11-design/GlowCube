@@ -26,13 +26,19 @@ var _panel_kind := ""
 var _doors := {}
 var _door_root: Node3D
 var _door_timer := 0.0
+var _overlay: Control
+var _wanted: HBoxContainer
+var _fps: Label
 
 
 func _ready() -> void:
 	set_anchors_preset(PRESET_FULL_RECT)
 	mouse_filter = MOUSE_FILTER_IGNORE
 	world = Game.world
+	add_to_group("ui_root")
 	_build_hud()
+	_build_extras()
+	EventBus.request_route.connect(_on_request_route)
 	EventBus.notify.connect(_toast)
 	EventBus.interaction_available.connect(func(t): _prompt_lbl.text = "[%s]  %s" % [Settings.binding_label("interact"), t]; _prompt.visible = true)
 	EventBus.interaction_cleared.connect(func(): _prompt.visible = false)
@@ -146,7 +152,7 @@ func _build_hud() -> void:
 
 	_toasts = VBoxContainer.new()
 	_toasts.set_anchors_preset(PRESET_TOP_RIGHT)
-	_toasts.position = Vector2(-440, 170)
+	_toasts.position = Vector2(-700, 24)
 	_toasts.custom_minimum_size = Vector2(416, 0)
 	_toasts.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_toasts)
@@ -172,6 +178,7 @@ func _process(delta: float) -> void:
 	_time_lbl.text = world.time_string()
 	_date_lbl.text = world.date_string()
 	_speed_lbl.text = "Tempo: %s" % Game.SPEED_LABELS[Game.speed_index]
+	_update_extras()
 	_door_timer -= delta
 	if _door_timer <= 0.0:
 		_door_timer = 0.7
@@ -272,6 +279,16 @@ func _update_doors() -> void:
 # ============================================================ Fenster
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _overlay:
+		return
+	if event.is_action_pressed("phone") and _panel == null:
+		open_phone()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("map") and _panel == null:
+		open_map()
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("pause"):
 		if _panel:
 			_close_panel()
@@ -290,6 +307,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_open_panel(kind: String, ctx := {}) -> void:
+	if kind == "phone":
+		open_phone()
+	elif kind == "map":
+		open_map()
 	if kind == "building":
 		_open_building(int(ctx.get("building", -1)))
 
@@ -565,3 +586,102 @@ func _on_died(cause: String) -> void:
 	b.theme_type_variation = "GhostButton"
 	b.pressed.connect(func(): Game.goto_main_menu())
 	v.add_child(b)
+
+
+# ============================================================ Smartphone, Karte, Fahndung
+
+func _build_extras() -> void:
+	var mm := UIMinimap.new()
+	mm.set_anchors_preset(PRESET_TOP_RIGHT)
+	mm.position = Vector2(-300, 196)
+	add_child(mm)
+	_wanted = HBoxContainer.new()
+	_wanted.set_anchors_preset(PRESET_CENTER_TOP)
+	_wanted.position = Vector2(-100, 24)
+	_wanted.custom_minimum_size = Vector2(200, 36)
+	_wanted.alignment = BoxContainer.ALIGNMENT_CENTER
+	_wanted.mouse_filter = MOUSE_FILTER_IGNORE
+	for i in 5:
+		_wanted.add_child(UIKit.icon_rect("star", 30, UITheme.WARNING))
+	_wanted.visible = false
+	add_child(_wanted)
+	_fps = _label("", "CaptionLabel")
+	_fps.position = Vector2(24, 4)
+	add_child(_fps)
+	var keys := HBoxContainer.new()
+	keys.set_anchors_preset(PRESET_BOTTOM_RIGHT)
+	keys.position = Vector2(-560, -56)
+	keys.custom_minimum_size = Vector2(536, 32)
+	keys.alignment = BoxContainer.ALIGNMENT_END
+	keys.add_theme_constant_override("separation", 8)
+	keys.mouse_filter = MOUSE_FILTER_IGNORE
+	for a in [["phone", "Smartphone"], ["map", "Karte"], ["inventory", "Inventar"], ["pause", "Menü"]]:
+		keys.add_child(UIKit.action_keycap(a[0]))
+		keys.add_child(_label(a[1], "CaptionLabel"))
+	add_child(keys)
+
+
+func _update_extras() -> void:
+	var lvl := 0
+	if world.crime != null and world.crime.has_method("wanted_level"):
+		lvl = int(world.crime.wanted_level())
+	_wanted.visible = lvl > 0
+	for i in _wanted.get_child_count():
+		(_wanted.get_child(i) as CanvasItem).modulate = Color.WHITE if i < lvl else Color(1, 1, 1, 0.18)
+	_fps.visible = bool(Settings.get_value("graphics", "show_fps"))
+	if _fps.visible:
+		_fps.text = "%d FPS" % Engine.get_frames_per_second()
+
+
+func _open_overlay(node: Control) -> void:
+	if _overlay:
+		_overlay.queue_free()
+	else:
+		Game.push_ui_pause()
+		node.set_meta("mouse_mode", Input.mouse_mode)
+	_overlay = node
+	add_child(node)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+
+func _close_overlay() -> void:
+	if _overlay == null:
+		return
+	var mode = _overlay.get_meta("mouse_mode", Input.MOUSE_MODE_VISIBLE)
+	_overlay.queue_free()
+	_overlay = null
+	Game.pop_ui_pause()
+	Input.mouse_mode = mode
+	EventBus.close_panels.emit()
+
+
+func open_phone(start_app := "") -> UIPhone:
+	if world == null or world.player == null:
+		return null
+	var ph := UIPhone.new()
+	ph.result_cb = _result
+	ph.closed.connect(_close_overlay)
+	ph.open_map.connect(func() -> void: open_map())
+	_open_overlay(ph)
+	if start_app != "":
+		ph.show_app(start_app)
+	return ph
+
+
+func open_map() -> UICityMap:
+	if world == null:
+		return null
+	var keep_mode = _overlay.get_meta("mouse_mode") if _overlay else null
+	var m := UICityMap.new()
+	m.closed.connect(_close_overlay)
+	_open_overlay(m)
+	if keep_mode != null:
+		m.set_meta("mouse_mode", keep_mode)
+	return m
+
+
+func _on_request_route(target: Vector3, label: String) -> void:
+	var t := Vector2(target.x, target.z)
+	if world == null or t.distance_to(UIMapData.route_target) < 0.5:
+		return
+	UIMapData.set_route(world, UIMapData.player_pos(get_tree()), t, label, false)
