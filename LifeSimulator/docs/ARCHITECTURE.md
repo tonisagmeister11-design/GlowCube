@@ -496,6 +496,29 @@ Eigenschaft `vehicle_id` (int, -1 für fremde Fahrzeuge). Der Spieler-Controller
 deaktiviert sich während der Fahrt; das Fahrzeug verarbeitet die Eingaben
 (`move_forward/back/left/right`, `handbrake`, `horn`, `vehicle` zum Aussteigen).
 
+### Verkehr, Busse, Fußgänger (scripts/traffic, scripts/npc)
+
+* Simulation ohne Szenenbaum: `LaneGraph.build(city)` (Fahrstreifen + Abbieger je Knoten,
+  Kreisel gegen den Uhrzeigersinn, Konflikte je Knoten), `TrafficSim.create(city, world, seed)`
+  (`spawn`, `spawn_bus`, `spawn_emergency`, `step(dt, ampel_uhr)`, `crosswalk_clear`,
+  `set_crosswalk_busy`, `obstacles`), `VehicleAI` (IDM, Reservierungen, Vorfahrt, Stillstandserkennung).
+  Ampeluhr = `Time.get_ticks_msec() / 1000` (wie der CityBuilder).
+* `Transit.new(city)`: Fahrplan (Spielminuten; 5 m je Spielminute, Takt 55 min / `bus_frequency`),
+  `bus_position(world, line, i)`, `next_arrivals(world, stop, n)`, `ride(world, line, from, to)`,
+  `fare(world)` (`bus_fare`, sonst 2,50 €), `destinations_from`, `line_polyline`, `all_bus_positions`.
+* `TrafficManager` (Gruppe `traffic_manager`): `dispatch(kind, target: Vector3) -> VehicleVisual`
+  (Signal `arrived`; `release_vehicle(node)`), `unlock_nearest_parked(pos) -> bool` (Autodiebstahl),
+  `sync_owned_vehicles()`, `deliver_owned(vehicle_id, near: Vector2)`, `get_bus_markers()`,
+  `bus_at_stop(stop)`, `ride_bus(player, bus, from, to)`. Pollt `world.crime.take_dispatches()`
+  (Polizeiwagen in Spielernähe). Eigene Fahrzeuge: `world.player.vehicles[i]` (+ `pos`, `color`).
+* `VehicleCatalog`: `TYPES`, `MODELS` (kaufbar), `type_for_good(good_id)`, `handling(model)`.
+* `PlayerVehicle` (Gruppe `vehicle`, Vertrag oben, `set_locked`), `ParkedCarProxy` (geparkte Autos,
+  abgeschlossen), `BusStopPoint` (Gruppe `interactable`).
+* `CrowdManager` (Gruppe `crowd_manager`): echte Personen aus Population (`persons_near`,
+  `visible_state`), Humanoid-LOD 0/1/2, Routen über `PedPaths.route(city, a, b)` (nur Gehwege und
+  Zebrastreifen), `get_road_obstacles()`. `NpcAgent` ist interagierbar ("Ansprechen: Name" ->
+  `NpcDialogPanel` mit `DialogueSession`).
+
 ### Weltszene: Einhängepunkte
 
 * `scenes/player/player.tscn` (Spieler, Gruppe `player`), Methode
