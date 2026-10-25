@@ -94,9 +94,10 @@ static func font(weight: int, head := false, tabular := false, italic := false) 
 		return _fonts[key]
 	var fv := FontVariation.new()
 	fv.base_font = load(FONT_HEAD if head else FONT_UI)
-	var coords := {"wght": weight}
+	var ts := TextServerManager.get_primary_interface()
+	var coords := {ts.name_to_tag("wght"): weight}
 	if not head:
-		coords["opsz"] = 18
+		coords[ts.name_to_tag("opsz")] = 18
 	fv.variation_opentype = coords
 	if tabular:
 		fv.opentype_features = {"tnum": 1}

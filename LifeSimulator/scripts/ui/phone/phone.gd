@@ -31,7 +31,7 @@ var _housing_mode := "rent"
 
 
 func _ready() -> void:
-	set_anchors_preset(PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	mouse_filter = MOUSE_FILTER_STOP
 	world = Game.world
 	var dim := UIKit.dim(0.35)

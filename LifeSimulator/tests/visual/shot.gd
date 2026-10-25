@@ -8,8 +8,8 @@ extends Control
 const CASES := ["icons", "main_menu", "mode", "sandbox", "city", "character", "start", "summary",
 	"load", "settings_graphics", "settings_audio", "settings_controls", "settings_gameplay", "settings_ai",
 	"controls", "credits", "quit", "loading", "hud", "phone", "phone_status", "phone_inventory", "phone_jobs",
-	"phone_housing", "phone_bank", "phone_bus", "phone_news", "phone_rules", "map", "map_route", "shop",
-	"dialog", "pause", "pause_save", "death", "rebind"]
+	"phone_housing", "phone_bank", "phone_news", "phone_rules", "phone_police", "phone_gang", "phone_politics",
+	"phone_education", "map", "map_route", "shop", "pause", "death", "rebind"]
 
 var out_dir := "/tmp"
 var suffix := ""

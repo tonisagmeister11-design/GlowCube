@@ -54,12 +54,93 @@ static func drive_menu(menu: Control, c: String) -> void:
 
 
 static func make_world() -> WorldState:
-	return null
+	var w := WorldState.create_new({"seed": 5, "mode": "life", "rules": {"city_size": "small", "population": 400},
+		"character": {"name": "Alex Berger", "body": "female", "age": 24.0, "appearance": {}}, "start": {"situation": "auto"}})
+	w.silent = false
+	w.post_news("wirtschaft", "Die Havenbrücker Sparkasse senkt die Zinsen für Baukredite.")
+	w.post_news("politik", "Der Stadtrat berät über günstigere Bustickets für Schüler.")
+	return w
 
 
+## Schlichte 3D-Kulisse (Himmel, Boden, Spieler-Platzhalter) hinter dem HUD.
 static func make_3d_backdrop() -> Node3D:
-	return Node3D.new()
+	var root := Node3D.new()
+	var env := WorldEnvironment.new()
+	var e := Environment.new()
+	e.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var mat := ProceduralSkyMaterial.new()
+	mat.sky_top_color = Color(0.25, 0.45, 0.8)
+	mat.sky_horizon_color = Color(0.95, 0.7, 0.5)
+	mat.ground_horizon_color = Color(0.5, 0.45, 0.4)
+	sky.sky_material = mat
+	e.sky = sky
+	env.environment = e
+	root.add_child(env)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-30, 40, 0)
+	root.add_child(sun)
+	var ground := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(400, 400)
+	ground.mesh = pm
+	root.add_child(ground)
+	for i in 12:
+		var b := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(10, 8 + (i * 7) % 30, 10)
+		b.mesh = bm
+		b.position = Vector3(-60 + i * 11, bm.size.y * 0.5, -40 - (i % 3) * 18)
+		root.add_child(b)
+	var pl := Node3D.new()
+	pl.add_to_group("player")
+	root.add_child(pl)
+	var cam := Camera3D.new()
+	cam.position = Vector3(0, 3, 8)
+	cam.current = true
+	root.add_child(cam)
+	return root
 
 
-static func drive_game_ui(_ui: Control, _c: String, _w: WorldState) -> int:
-	return 30
+static func drive_game_ui(ui: Control, c: String, w: WorldState) -> int:
+	var tree := ui.get_tree()
+	var pl := tree.get_first_node_in_group("player") as Node3D
+	if pl:
+		var sp: Vector2 = w.city.spawn_points[0].pos if not w.city.spawn_points.is_empty() else Vector2.ZERO
+		pl.global_position = CityModel.v3(sp)
+	UIMapData.texture_now(w)
+	match c:
+		"hud":
+			EventBus.notify.emit("Willkommen in Havenbrück!", "info")
+			EventBus.notify.emit("Gehalt erhalten: 412,00 €", "money")
+			EventBus.interaction_available.emit("Betreten: Bäckerei Morgenbrot")
+			if w.crime:
+				w.crime.wanted = 2
+		"phone":
+			ui.open_phone()
+		"phone_status", "phone_jobs", "phone_housing", "phone_bank", "phone_news", "phone_rules", "phone_inventory", \
+				"phone_police", "phone_gang", "phone_politics", "phone_education":
+			ui.open_phone(c.substr(6))
+		"map":
+			ui.open_map()
+		"map_route":
+			var m = ui.open_map()
+			var tree2 := ui.get_tree()
+			await tree2.process_frame
+			for i in m._markers.size():
+				if m._markers[i].cat == "food":
+					UIMapData.set_route(w, UIMapData.player_pos(tree2), m._markers[i].pos, m._markers[i].name, false)
+					m._select(i)
+					break
+		"pause":
+			ui._open_pause()
+		"shop":
+			for b in w.city.buildings:
+				if b.business_type in ["supermarket", "bakery", "grocery"]:
+					var biz: int = w.economy.business_for_building(b.id)
+					if biz >= 0:
+						ui._open_shop(biz, b.name, w.economy.hours_text(w.economy.get_business(biz)), b.id)
+						break
+		"death":
+			ui._on_died("Herzversagen")
+	return 40

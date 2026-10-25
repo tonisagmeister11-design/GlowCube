@@ -44,7 +44,7 @@ static func custom(host: Node, title: String, icon_name := "info", width := 560.
 
 
 func _build(title: String, text: String, icon_name: String, color: Color) -> void:
-	set_anchors_preset(PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	mouse_filter = MOUSE_FILTER_STOP
 	z_index = 50
 	add_child(UIKit.dim(0.62))
