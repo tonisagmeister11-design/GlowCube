@@ -147,7 +147,8 @@ func _collect_obstacles() -> void:
 
 
 func _manage_ambient() -> void:
-	var target := int(round(BASE_COUNT * _density()))
+	var perf := get_node_or_null("/root/Perf")
+	var target: int = perf.max_vehicles() if perf != null else int(round(BASE_COUNT * _density()))
 	var ambient := 0
 	for v in sim.vehicles.duplicate():
 		if v.role != "ambient":
@@ -440,13 +441,28 @@ func _parked_color(key: int) -> Color:
 	return VehicleCatalog.random_paint(r)
 
 
+## Blendet alle geparkten Fahrzeuge aus (Leistungsmodus).
+func _clear_parked_meshes() -> void:
+	for typ in _parked_mm:
+		for mmi in _parked_mm[typ]:
+			mmi.multimesh.instance_count = 0
+
+
 func _rebuild_parked() -> void:
 	_parked_center = _focus
 	_parked_spots.clear()
-	var r2 := PARK_R * PARK_R
+	# Anteil der sichtbaren Parkplaetze nach Leistungsstufe
+	var perf := get_node_or_null("/root/Perf")
+	var keep: float = perf.f("parked_cars") if perf != null else 1.0
+	if keep <= 0.01:
+		_clear_parked_meshes()
+		return
+	var r2: float = PARK_R * PARK_R * clampf(keep, 0.2, 1.0)
 	for i in city.street_parking.size():
 		var sp: Dictionary = city.street_parking[i]
 		if not sim.spot_occupied(i) or _taken_spots.has(i):
+			continue
+		if keep < 1.0 and float(absi(hash("pk:%d" % i)) % 100) >= keep * 100.0:
 			continue
 		var p: Vector2 = sp.pos
 		if p.distance_squared_to(_focus) > r2:

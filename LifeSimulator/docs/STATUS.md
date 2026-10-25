@@ -18,6 +18,7 @@ Hardware sind nicht gemessen.
 | Charaktere | Prozeduraler Humanoid mit Skelett, altersabhängigen Proportionen, Animationen, LOD; Charaktereditor mit 3D-Vorschau | Tests + Screenshots |
 | UI | Hauptmenü, Assistent, Laden/Speichern, Einstellungen inkl. Tastenbelegung, HUD, Smartphone-Apps, Stadtkarte, Minimap, Shop, Dialoge | Tests + Screenshots |
 | Audio | 53 selbst synthetisierte Klänge/Musikstücke, getrennte Lautstärken | technisch geprüft, nicht angehört |
+| Leistung | Fünf Stufen inkl. Leistungsmodus für schwache PCs, automatische Hardware-Einschätzung, Nachregelung bei Bildratenabfall, Kompatibilitäts-Renderer mit Neustart | Tests + Messungen (siehe docs/PERFORMANCE.md) |
 | Speichern | Versioniert, komprimiert, Sicherungskopie, Autosave | Roundtrip-Test |
 | Spielerführung | Begrüßung je Startsituation, Lebensziele mit Hinweis und Kartenmarkierung, Hilfe auf F1, Tagesübersicht | Tests + Screenshots |
 | Kriminalität in der Welt | Missionsziele vor Ort, Stehlen im Laden, Taschendiebstahl, Autoaufbruch, Haft mit Absitzen und Kaution, Polizeidienst an der Wache | Tests |

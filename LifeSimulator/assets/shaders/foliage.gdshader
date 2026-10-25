@@ -2,6 +2,9 @@
 // Vertexfarbe, Windbewegung (COLOR.a = Biegsamkeit), Durchscheinen im
 // Gegenlicht.
 shader_type spatial;
+
+// Windstaerke-Faktor des Leistungsmanagers (0 = kein Wind, spart Vertexarbeit)
+global uniform float perf_wind;
 render_mode cull_back, diffuse_burley, specular_schlick_ggx;
 
 uniform sampler2D leaf_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -22,11 +25,15 @@ void vertex() {
 	vec3 origin = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	inst_var = fract(sin(dot(origin.xz, vec2(12.9898, 78.233))) * 43758.5453);
 	vcol = COLOR;
-	float bend = COLOR.a * wind;
-	float ph = TIME * 1.3 + origin.x * 0.21 + origin.z * 0.17;
-	VERTEX.x += sin(ph) * 0.06 * bend * VERTEX.y * 0.15;
-	VERTEX.z += cos(ph * 0.8) * 0.05 * bend * VERTEX.y * 0.15;
-	VERTEX += NORMAL * sin(ph * 3.1 + VERTEX.y) * 0.02 * bend;
+	// Im Leistungsmodus steht das Laub still: spart die Bewegungsrechnung
+	// an sehr vielen Blattflaechen.
+	if (perf_wind > 0.01) {
+		float bend = COLOR.a * wind * perf_wind;
+		float ph = TIME * 1.3 + origin.x * 0.21 + origin.z * 0.17;
+		VERTEX.x += sin(ph) * 0.06 * bend * VERTEX.y * 0.15;
+		VERTEX.z += cos(ph * 0.8) * 0.05 * bend * VERTEX.y * 0.15;
+		VERTEX += NORMAL * sin(ph * 3.1 + VERTEX.y) * 0.02 * bend;
+	}
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 

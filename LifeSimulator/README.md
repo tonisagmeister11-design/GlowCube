@@ -29,6 +29,21 @@ Musik, Namen) sind selbst erstellt bzw. fiktiv; Schriften: Inter und Montserrat 
 | F5 / F9 | Schnellspeichern / -laden |
 | F3 / F4 | Debug-Anzeige / Stadt-Validierung anzeigen |
 
+## Läuft es auf meinem PC?
+
+Beim ersten Start wählt das Spiel anhand der Grafikkarte eine passende
+Qualitätsstufe. Ruckelt es trotzdem:
+
+1. Einstellungen → Grafik → Qualitätsstufe → **Leistungsmodus**.
+2. Bei älteren Rechnern und Laptops zusätzlich auf den **Kompatibilitäts-Renderer**
+   umstellen (gleicher Bildschirm, Knopf „Auf Kompatibilität umstellen"). Das Spiel
+   startet dann neu. Alternativ **Leistungsmodus.bat** im Spielordner starten –
+   nötig auch dann, wenn das Spiel wegen fehlender Vulkan-Unterstützung gar nicht startet.
+3. Im Leistungsmodus den Knopf **Kleinere Bildfläche** verwenden.
+
+Das Spiel senkt den Detailgrad außerdem selbstständig, wenn die Bildrate
+einbricht. Einzelheiten und Messwerte: `docs/PERFORMANCE.md`.
+
 ## Entwickeln
 * Godot **4.3** öffnen und den Ordner `LifeSimulator/` importieren.
 * Tests: `godot --headless --path . res://tests/test_runner.tscn` (optional `-- --filter=city`).

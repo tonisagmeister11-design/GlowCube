@@ -126,10 +126,20 @@ static func build(city: CityModel, mb: MeshBatch, out: Dictionary) -> void:
 	var trees := []
 	var count := 0
 	var attempts := 0
-	while count < 9000 and attempts < 40000:
+	# Waldmenge nach Leistungsstufe: auf schwachen Rechnern sind viele tausend
+	# Baumflaechen der groesste Posten im Bild.
+	var tree_budget := 9000
+	var tree_reach := 1500.0
+	var loop := Engine.get_main_loop()
+	if loop is SceneTree and loop.root.has_node("Perf"):
+		var perf = loop.root.get_node("Perf")
+		var mult: float = perf.f("prop_density")
+		tree_budget = int(9000 * mult)
+		tree_reach = lerpf(500.0, 1500.0, clampf(mult, 0.0, 1.0))
+	while count < tree_budget and attempts < 40000:
 		attempts += 1
 		var a := rng.randf() * TAU
-		var r := half + 60.0 + pow(rng.randf(), 1.3) * 1500.0
+		var r := half + 60.0 + pow(rng.randf(), 1.3) * tree_reach
 		var x := cos(a) * r
 		var z := sin(a) * r
 		if maxf(absf(x), absf(z)) < half + 45.0:

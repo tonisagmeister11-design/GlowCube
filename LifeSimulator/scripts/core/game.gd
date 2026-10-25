@@ -31,8 +31,12 @@ func _process(delta: float) -> void:
 	world.play_time_seconds += delta
 	if paused_by_ui <= 0 and speed_index > 0:
 		var minutes: float = delta * SPEEDS[speed_index] * float(Settings.get_value("gameplay", "time_scale"))
-		# Hoechstens ~2 Spielstunden pro Frame simulieren, Rest folgt
-		world.advance(minutes, 24)
+		# Hoechstens ~2 Spielstunden pro Frame simulieren, Rest folgt.
+		# Im Leistungsmodus werden weniger, dafuer groessere Schritte gerechnet.
+		var steps := 24
+		if has_node("/root/Perf"):
+			steps = maxi(4, int(24.0 / get_node("/root/Perf").f("sim_step_mult")))
+		world.advance(minutes, steps)
 	var interval := float(Settings.get_value("gameplay", "autosave_minutes")) * 60.0
 	if interval > 0.0:
 		_autosave_timer += delta

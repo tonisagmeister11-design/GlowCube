@@ -8,9 +8,13 @@ const TABS := [["graphics", "Grafik", "display"], ["audio", "Audio", "volume"], 
 	["gameplay", "Gameplay", "sliders"], ["ai", "KI", "sparkle"]]
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1366, 768), Vector2i(1600, 900), Vector2i(1920, 1080),
 	Vector2i(2560, 1440), Vector2i(3440, 1440), Vector2i(3840, 2160)]
-const QUALITY_LABELS := ["Niedrig", "Mittel", "Hoch", "Ultra"]
+const QUALITY_LABELS := ["Leistungsmodus", "Niedrig", "Mittel", "Hoch", "Ultra"]
 ## Werte je Qualitaetsstufe: [Sichtweite, Schatten, MSAA, FXAA, Renderskalierung]
-const QUALITY_PRESETS := [[300.0, 1, 0, true, 0.75], [450.0, 1, 0, true, 0.9], [600.0, 2, 1, true, 1.0], [1000.0, 3, 2, true, 1.0]]
+## Zu jeder Stufe passende Einzelwerte (Sichtweite, Schatten, MSAA, FXAA,
+## Renderauflösung). Der Leistungsmanager setzt zusätzlich Details, Passanten,
+## Verkehr, Lichter und Oberflächen.
+const QUALITY_PRESETS := [[220.0, 0, 0, false, 0.58], [340.0, 1, 0, true, 0.75],
+	[600.0, 2, 1, true, 1.0], [850.0, 2, 1, true, 1.0], [1200.0, 3, 2, true, 1.0]]
 const FPS_CAPS := [0, 30, 60, 120, 144, 240]
 const AUTOSAVE := [0, 5, 10, 15, 30]
 
@@ -219,7 +223,41 @@ func _graphics() -> void:
 		c.pressed.connect(_set_quality.bind(i))
 		qh.add_child(c)
 		_quality_chips.append(c)
-	_body.add_child(_row("Qualitätsstufe", "Setzt Sichtweite, Schatten, Kantenglättung und Renderauflösung auf einmal.", qh))
+	_body.add_child(_row("Qualitätsstufe", "Setzt Sichtweite, Details, Schatten, Passanten, Verkehr und Renderauflösung auf einmal.", qh))
+	var perf := get_node_or_null("/root/Perf")
+	if perf != null:
+		var lvl: int = int(perf.level)
+		var info := UIKit.label(perf.DESCRIPTIONS[clampi(lvl, 0, 4)], "CaptionLabel")
+		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		info.custom_minimum_size = Vector2(520, 0)
+		_body.add_child(info)
+		_body.add_child(_row("Automatisch anpassen",
+			"Senkt Sichtweite und Belebung selbstständig, wenn die Bildrate einbricht, und hebt sie wieder an.",
+			_toggle("graphics", "auto_adjust")))
+		var hw := UIKit.label("Grafikkarte: %s · Renderer: %s%s" % [str(perf.adapter), perf.renderer_label(),
+			("" if perf.measured_fps <= 0.0 else " · gemessen %d Bilder/s" % int(perf.measured_fps))], "CaptionLabel")
+		hw.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hw.custom_minimum_size = Vector2(520, 0)
+		_body.add_child(hw)
+		if lvl <= 1:
+			var rec: Vector2i = perf.recommended_resolution()
+			var rbtn := UIKit.button("Auf %d × %d stellen" % [rec.x, rec.y], "", "GhostButton")
+			rbtn.pressed.connect(func() -> void:
+				Settings.set_value("graphics", "fullscreen", false, false)
+				Settings.set_value("graphics", "resolution", rec)
+				Settings.apply_graphics()
+				show_tab("graphics"))
+			_body.add_child(_row("Kleinere Bildfläche",
+				"Weniger Bildpunkte bringen auf schwacher Grafik am meisten. Empfohlen für den Leistungsmodus.",
+				rbtn))
+		if OS.has_feature("standalone"):
+			var rb := UIKit.button("Auf Kompatibilität umstellen (Neustart)" if not perf.is_compatibility()
+				else "Auf Standard umstellen (Neustart)", "", "GhostButton")
+			rb.pressed.connect(func() -> void:
+				perf.restart_with_renderer("forward_plus" if perf.is_compatibility() else "gl_compatibility"))
+			_body.add_child(_row("Renderer",
+				"Kompatibilität (OpenGL) läuft ohne Vulkan und ist auf älteren Rechnern und Laptops deutlich schneller. Das Spiel startet dafür neu; dein Spielstand wird vorher gesichert.",
+				rb))
 	var vd := _slider("graphics", "view_distance", 200, 1500, 50, func(x: float) -> String: return "%d m" % int(x), _custom_changed)
 	_body.add_child(_row("Sichtweite", "Wie weit Gebäude, Fahrzeuge und Personen dargestellt werden.", vd))
 	_body.add_child(_row("Schattenqualität", "Auflösung der Schatten von Sonne und Lampen.",
@@ -242,6 +280,9 @@ func _matches_preset(i: int) -> bool:
 
 func _set_quality(i: int) -> void:
 	var p: Array = QUALITY_PRESETS[i]
+	var perf := get_node_or_null("/root/Perf")
+	if perf != null:
+		perf.set_level(i, false)
 	Settings.set_value("graphics", "quality", i, false)
 	Settings.set_value("graphics", "view_distance", p[0], false)
 	Settings.set_value("graphics", "shadows", p[1], false)

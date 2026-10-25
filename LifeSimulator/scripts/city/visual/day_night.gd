@@ -18,6 +18,36 @@ var weather := "clear"
 var auto_weather := true
 var shadow_quality := 2
 var quality := 2
+## Nebelverstaerkung bei kurzer Sichtweite (vom Leistungsmanager gesetzt).
+var fog_boost := 1.0
+
+
+## Liest die Stufe aus dem Leistungsmanager und schaltet teure Effekte ab.
+func _read_perf() -> void:
+	var perf := get_node_or_null("/root/Perf")
+	if perf == null:
+		return
+	quality = int(perf.level)
+	shadow_quality = perf.i("shadows")
+	if sun != null:
+		sun.shadow_enabled = perf.shadows_enabled()
+		sun.directional_shadow_max_distance = maxf(40.0, perf.f("shadow_distance"))
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if shadow_quality >= 2 \
+			else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+		sun.directional_shadow_blend_splits = shadow_quality >= 2
+	if environment != null:
+		environment.glow_enabled = perf.b("glow")
+		environment.ssao_enabled = perf.b("ssao")
+		environment.ssr_enabled = perf.b("ssr")
+		environment.sdfgi_enabled = false
+		# Im Leistungsmodus ersetzt dichterer Nebel die fehlende Sichtweite,
+		# damit die Welt am Rand nicht einfach abbricht.
+		environment.fog_enabled = true
+		var vd: float = perf.view_distance()
+		fog_boost = clampf(520.0 / maxf(vd, 120.0), 1.0, 4.5)
+		if perf.i("sky_quality") <= 0 and environment.sky != null:
+			environment.sky.radiance_size = Sky.RADIANCE_SIZE_32
+			environment.sky.process_mode = Sky.PROCESS_MODE_REALTIME
 
 var environment: Environment
 var sun: DirectionalLight3D
@@ -51,6 +81,10 @@ func setup(w: WorldState) -> void:
 	world = w
 	if environment == null:
 		_create()
+	_read_perf()
+	var perf := get_node_or_null("/root/Perf")
+	if perf != null and not perf.applied.is_connected(_read_perf):
+		perf.applied.connect(_read_perf)
 	_update(true)
 
 
@@ -275,7 +309,7 @@ func _update(_force: bool) -> void:
 	environment.ambient_light_energy = lerpf(1.0, 0.1, night) * lerpf(1.0, 0.85, overcast)
 	environment.ambient_light_sky_contribution = 1.0
 	environment.fog_light_color = hor.lerp(Color(0.6, 0.62, 0.65), overcast * 0.5)
-	environment.fog_density = lerpf(0.00045, 0.0016, overcast) + _rain_amt * 0.002 + golden * 0.0002
+	environment.fog_density = (lerpf(0.00045, 0.0016, overcast) + _rain_amt * 0.002 + golden * 0.0002) * fog_boost
 	environment.tonemap_exposure = lerpf(1.0, 1.25, night) * lerpf(1.0, 1.15, overcast)
 	environment.glow_intensity = lerpf(0.45, 0.95, night)
 	# Materialwerte

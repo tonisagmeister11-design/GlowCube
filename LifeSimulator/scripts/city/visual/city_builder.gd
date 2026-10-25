@@ -35,6 +35,11 @@ var detail_range := 220.0
 var quality := 2
 var shadows := 2
 var lights_enabled := true
+## Reichweitenfaktor fuer Requisiten und Reichweite der Kollision (Meter),
+## gesetzt vom Leistungsmanager.
+var prop_range_mult := 1.0
+var collision_range := 170.0
+var max_tasks := 3
 var stream_enabled := true
 
 var _index: Dictionary = {}          # chunk -> {nodes, crosswalks, parking, street_parking, bus_stops}
@@ -97,7 +102,11 @@ func setup(c: CityModel, focus_node: Node3D = null) -> void:
 	_far_root.name = "Far"
 	add_child(_far_root)
 	_build_global()
-	_start_far_layer()
+	# Die Fernschicht zeichnet die ganze Stadt vereinfacht. Im Leistungsmodus
+	# entfaellt sie; der dichtere Nebel verdeckt den Horizont.
+	var perf := get_node_or_null("/root/Perf")
+	if perf == null or perf.b("far_lod"):
+		_start_far_layer()
 	_make_light_pool()
 
 
@@ -106,13 +115,26 @@ func set_focus(node: Node3D) -> void:
 
 
 func _read_settings() -> void:
+	# Alle Grenzwerte kommen aus dem Leistungsmanager, damit eine Stufe
+	# sofort auf Sichtweite, Details, Schatten und Lichter wirkt.
+	var perf := get_node_or_null("/root/Perf")
+	if perf != null:
+		view_distance = perf.view_distance()
+		quality = int(perf.level)
+		shadows = perf.i("shadows")
+		detail_range = perf.f("detail_range") * perf.dynamic_scale
+		prop_range_mult = perf.f("prop_range_mult")
+		collision_range = perf.f("collision_range")
+		max_tasks = perf.i("chunk_budget")
+		lights_enabled = perf.i("street_lights") > 0
+		return
 	if not has_node("/root/Settings"):
 		return
 	var s := get_node("/root/Settings")
 	view_distance = clampf(float(s.get_value("graphics", "view_distance")), 250.0, 3000.0)
 	quality = int(s.get_value("graphics", "quality"))
 	shadows = int(s.get_value("graphics", "shadows"))
-	detail_range = [120.0, 170.0, 230.0, 320.0][clampi(quality, 0, 3)]
+	detail_range = [70.0, 120.0, 170.0, 230.0, 320.0][clampi(quality, 0, 4)]
 
 
 func _on_setting_changed(section: String, key: String, _value) -> void:
@@ -130,7 +152,7 @@ func _apply_quality(chunk: Node3D) -> void:
 			if ch.has_meta("detail"):
 				ch.visibility_range_end = detail_range
 			if ch.has_meta("prop_range"):
-				ch.visibility_range_end = float(ch.get_meta("prop_range")) * [0.6, 0.8, 1.0, 1.3][clampi(quality, 0, 3)]
+				ch.visibility_range_end = float(ch.get_meta("prop_range")) * prop_range_mult
 			if ch.has_meta("small"):
 				ch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows >= 2 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
@@ -427,7 +449,7 @@ func _update_streaming() -> void:
 	_mutex.unlock()
 	want.sort_custom(func(a, b): return a[0] < b[0])
 	for w in want:
-		if _pending.size() >= MAX_TASKS:
+		if _pending.size() >= maxi(1, max_tasks):
 			break
 		_request_chunk(w[1])
 	# Entladen
@@ -683,7 +705,8 @@ func _make_light_pool() -> void:
 	for l in _pool:
 		l.queue_free()
 	_pool.clear()
-	var n = [6, 10, 16, 24][clampi(quality, 0, 3)]
+	var perf := get_node_or_null("/root/Perf")
+	var n: int = perf.i("street_lights") if perf != null else [0, 4, 10, 16, 24][clampi(quality, 0, 4)]
 	if RenderingServer.get_rendering_device() == null:
 		n = mini(n, 8)
 	for i in n:
@@ -725,7 +748,7 @@ func _update_lights() -> void:
 func _update_collision() -> void:
 	var p := focus_position()
 	for k in _chunk_meta:
-		var near := _chunk_dist(k, p) <= COLLISION_RADIUS
+		var near := _chunk_dist(k, p) <= maxf(80.0, collision_range)
 		if near and not _bodies.has(k):
 			var body := StaticBody3D.new()
 			body.name = "Collision_%d_%d" % [k.x, k.y]

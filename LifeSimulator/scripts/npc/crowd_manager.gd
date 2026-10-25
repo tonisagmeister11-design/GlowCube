@@ -12,6 +12,7 @@ extends Node3D
 ## RADIUS keine Figur. Hoechstzahl je nach Settings gameplay/population_density.
 
 const RADIUS := 105.0
+## Wirksamer Radius: der Leistungsmanager darf ihn verkleinern.
 const DESPAWN := 125.0
 const BASE_MAX := 70
 
@@ -46,7 +47,19 @@ func signal_time() -> float:
 	return Time.get_ticks_msec() / 1000.0
 
 
+func _radius() -> float:
+	var perf := get_node_or_null("/root/Perf")
+	return minf(RADIUS, perf.f("npc_detail_radius")) if perf != null else RADIUS
+
+
 func _max_agents() -> int:
+	var perf := get_node_or_null("/root/Perf")
+	if perf != null:
+		return perf.max_peds()
+	return _max_agents_legacy()
+
+
+func _max_agents_legacy() -> int:
 	var d := 1.0
 	var s := get_node_or_null("/root/Settings")
 	if s:
@@ -84,7 +97,7 @@ func _process(delta: float) -> void:
 
 func _scan_population() -> void:
 	var pop = world.population
-	var ids: Array = pop.persons_near(world, _focus, RADIUS, true)
+	var ids: Array = pop.persons_near(world, _focus, _radius(), true)
 	var maxn := _max_agents()
 	var spawned := 0
 	for id in ids:
@@ -162,7 +175,7 @@ func _scan_ambient() -> void:
 	var spawned := 0
 	while agents.size() < maxn and spawned < 4:
 		spawned += 1
-		var near := _buildings_near(_focus, RADIUS * 0.9)
+		var near := _buildings_near(_focus, _radius() * 0.9)
 		if near.size() < 2:
 			return
 		var a_b: Dictionary = near[rng.randi() % near.size()]

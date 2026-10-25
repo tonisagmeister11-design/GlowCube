@@ -30,6 +30,9 @@ uniform float night = 0.0;
 uniform float lit_fraction = 0.5;
 uniform float shop_lit = 1.0;
 uniform float wet = 0.0;
+// Leistungsstufe: 0 = flache Fenster ohne Innenraum (spart viel Rechenzeit),
+// 1 = Innenraum nur nachts, ab 2 = voller Effekt.
+global uniform int perf_facade_detail;
 uniform float day_seed = 0.0;
 
 varying vec4 P;
@@ -268,7 +271,16 @@ void fragment() {
 					rbay = bay * 3.0;
 					rloc.x = loc.x + mod(cellv.x, 3.0) * bay;
 				}
-				vec3 room = interior(rloc, d, rbay, fh, depth, cell_i, hb);
+				vec3 room;
+				float hb_tmp = 0.0;
+				if (perf_facade_detail >= 2 || (perf_facade_detail == 1 && night > 0.35)) {
+					room = interior(rloc, d, rbay, fh, depth, cell_i, hb_tmp);
+					hb = hb_tmp;
+				} else {
+					// Flache Ersatzfarbe statt Strahlverfolgung im Raum
+					room = texture(interior_tex, vec2(0.12 + h1 * 0.6, 0.3)).rgb * 0.7;
+					hb = 1.0;
+				}
 				// Vorhaenge / Jalousien
 				float blind = (ikind == 0) ? h1 * 0.45 : ((ikind == 1) ? (h2 > 0.7 ? 0.35 : 0.0) : 0.0);
 				bool in_blind = (mode == 1) && loc.y > wr.w - (wr.w - wr.y) * blind;

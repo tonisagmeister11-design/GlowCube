@@ -30,6 +30,10 @@ var _update_acc := 0.0
 
 func setup(p_crowd, appearance: Dictionary, age: float, body_kind: String, level: int) -> void:
 	crowd = p_crowd
+	# Der Leistungsmanager darf die Figuren pauschal vereinfachen
+	var perf := get_node_or_null("/root/Perf")
+	if perf != null:
+		level = clampi(level + perf.i("ped_lod_bias"), 0, 2)
 	lod = level
 	if ResourceLoader.exists("res://scripts/character/humanoid.gd"):
 		var hs: Script = load("res://scripts/character/humanoid.gd")

@@ -16,7 +16,10 @@ const DEFAULTS := {
 		"fullscreen": false,
 		"resolution": Vector2i(1600, 900),
 		"vsync": true,
-		"quality": 2,            # 0 niedrig, 1 mittel, 2 hoch, 3 ultra
+		"quality": 2,            # 0 Leistungsmodus, 1 niedrig, 2 mittel, 3 hoch, 4 ultra
+		"auto_adjust": true,     # Detailgrad bei Bildratenabfall automatisch senken
+		"detected": false,       # Hardware beim ersten Start eingeschaetzt
+		"renderer": "",          # "" = wie gestartet, sonst forward_plus | gl_compatibility
 		"view_distance": 600.0,  # Meter
 		"shadows": 2,            # 0 aus, 1 niedrig, 2 mittel, 3 hoch
 		"msaa": 1,               # 0 aus, 1 2x, 2 4x
