@@ -117,12 +117,17 @@ static func price_of(model_id: String) -> float:
 ## Fahrdynamik eines Modells fuer das Spielerfahrzeug (m/s, m/s^2).
 static func handling(model_id: String) -> Dictionary:
 	var m: Dictionary = MODELS.get(model_id, {})
-	var t: Dictionary = type_info(m.get("type", model_id if TYPES.has(model_id) else "sedan"))
+	var type_id: String = m.get("type", type_for_good(model_id))
+	var t: Dictionary = type_info(type_id)
 	var top_kmh: float = m.get("top_speed", t.vmax * 3.6)
-	var accel_s: float = m.get("accel", 10.0)
+	var accel_s: float = m.get("accel", {"sports": 4.5, "luxury": 6.0, "suv": 8.5, "motorcycle": 4.0, "bicycle": 8.0}.get(type_id, 9.5))
+	if m.is_empty() and GOOD_TYPES.has(model_id):
+		var spec: Dictionary = GoodsCatalog.VEHICLE_SPECS.get(model_id, {})
+		top_kmh = float(spec.get("top_speed", t.vmax)) * 3.6
+	# Arcade: etwas kraeftiger als die Katalogwerte
 	return {
 		"top_speed": top_kmh / 3.6,
-		"accel": clampf(27.8 / maxf(accel_s, 2.5), 1.5, 9.0),
+		"accel": clampf(27.8 / maxf(accel_s, 2.5) * 1.6, 2.5, 11.0),
 		"brake": 9.0 if t.kind != "bike" else 4.0,
 		"length": t.length, "width": t.width, "height": t.height,
 	}

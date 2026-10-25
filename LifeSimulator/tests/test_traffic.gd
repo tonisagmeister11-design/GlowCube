@@ -482,3 +482,58 @@ func test_ped_routes_on_sidewalks() -> void:
 	runner.check(routes > 40, "Zu wenige Routen geprueft")
 	runner.check(crossings > 20, "Kaum Strassenquerungen")
 	runner.check_eq(bad, 0, "Fussgaengerwege neben Gehweg/Zebrastreifen")
+
+
+# ============================================================ Szene (ohne Rendering)
+
+func test_managers_in_scene() -> void:
+	var Fix = load("res://tests/sim_fixture.gd")
+	var w: WorldState = Fix.medium()
+	var root := Node3D.new()
+	runner.add_child(root)
+	var focus := Node3D.new()
+	focus.add_to_group("player")
+	root.add_child(focus)
+	var sp: Vector2 = w.city.spawn_points[0].pos
+	focus.position = Vector3(sp.x, 0, sp.y)
+	var tm := TrafficManager.new()
+	root.add_child(tm)
+	tm.setup(w, null)
+	var cm := CrowdManager.new()
+	root.add_child(cm)
+	cm.setup(w, null)
+	for i in 120:
+		tm._process(0.05)
+		cm._process(0.05 if i % 10 else 0.7)
+	runner.check(tm.sim.vehicles.size() >= 30, "Zu wenig Verkehr um den Spieler (%d)" % tm.sim.vehicles.size())
+	runner.check(tm._parked_spots.size() > 10, "Keine geparkten Autos")
+	runner.check(cm.visible_count() > 0, "Keine Fussgaenger sichtbar")
+	print("    Szene: %d Fahrzeuge, %d Parkende, %d Fussgaenger, Schritt %.2f ms" % [tm.sim.vehicles.size(), tm._parked_spots.size(), cm.visible_count(), tm.stats.step_ms])
+	for v in tm.sim.vehicles:
+		runner.check(tm.visuals.has(v), "Fahrzeug ohne Darstellung")
+		break
+	var stop: BusStopPoint = tm.stops[0]
+	runner.check(stop.get_prompt(null) != "", "Haltestelle ohne Hinweis")
+	var target := Vector3(sp.x + 60.0, 0, sp.y)
+	var police := tm.dispatch("police", target)
+	runner.check(police != null, "Polizeiwagen konnte nicht entsendet werden")
+	var vs: Array = w.player.vehicles
+	vs.append({"good": "car_compact", "name": "Kompaktwagen", "bought_day": 0})
+	tm.sync_owned_vehicles()
+	var pv: PlayerVehicle = tm.owned.get(vs.size() - 1)
+	runner.check(pv != null, "Eigenes Fahrzeug nicht erzeugt")
+	if pv:
+		runner.check(pv.can_enter(focus), "Eigenes Fahrzeug nicht zugaenglich")
+		pv.enter(focus)
+		for i in 60:
+			pv.drive(1.0 / 60.0, 1.0, 0.0, false)
+		runner.check(pv.speed > 3.0, "Spielerfahrzeug beschleunigt nicht (%.1f)" % pv.speed)
+		var ex := pv.exit()
+		runner.check(ex.distance_to(pv.global_position) < 15.0, "Ausstiegspunkt zu weit entfernt")
+		runner.check(vs[vs.size() - 1].has("pos"), "Parkposition nicht gespeichert")
+		vs.pop_back()
+	for px in tm._proxies:
+		if not px.spot.is_empty():
+			runner.check(not px.can_enter(focus), "Geparktes Auto nicht abgeschlossen")
+			break
+	root.queue_free()

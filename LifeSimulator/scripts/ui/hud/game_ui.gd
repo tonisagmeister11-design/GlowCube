@@ -430,7 +430,47 @@ func _open_building(bid: int) -> void:
 	if not world.economy.is_open(world, biz):
 		_toast("%s hat geschlossen. Öffnungszeiten: %s" % [title, hours], "warning")
 		return
+	if b.business_type == "car_dealer":
+		_open_car_dealer(biz, title, hours, bid)
+		return
 	_open_shop(biz, title, hours, bid)
+
+
+## Autohaus: Fahrzeuge (Waren des Geschaefts) mit Fahrdaten aus VehicleCatalog;
+## nach dem Kauf steht das Fahrzeug vor dem Autohaus (TrafficManager).
+func _open_car_dealer(biz: int, title: String, hours: String, bid: int) -> void:
+	var v := _new_panel(title, "Autohaus · %s · Guthaben %s" % [hours, Economy.fmt_money(world.ledger.balance(world.ledger.player_account))])
+	var owned: Array = world.player.vehicles if world.player.get("vehicles") != null else []
+	if not owned.is_empty():
+		var ol := _scroll_list(v, 110)
+		for i in owned.size():
+			var e: Dictionary = owned[i]
+			var vid := i
+			_row(ol, "Dein Fahrzeug: %s" % str(e.get("name", "Fahrzeug")), "Gekauft an Tag %d" % (int(e.get("bought_day", 0)) + 1), "Herbringen", func():
+				var tm := get_tree().get_first_node_in_group("traffic_manager")
+				if tm and tm.has_method("deliver_owned"):
+					tm.deliver_owned(vid, world.city.buildings[bid].sidewalk_point)
+					_toast("Dein Fahrzeug steht vor dem Autohaus.", "success"))
+	var list := _scroll_list(v, 380)
+	for it in world.economy.shop_items(biz):
+		if not it.get("vehicle", false):
+			continue
+		var gid: String = it.good
+		var typ := VehicleCatalog.type_for_good(gid)
+		var spec: Dictionary = GoodsCatalog.VEHICLE_SPECS.get(gid, {})
+		var tinfo := VehicleCatalog.type_info(typ)
+		var sub := "%s · %s · bis %d km/h · %d Sitze · Bestand %d" % [Economy.fmt_money(float(it.price)), tinfo.label,
+			int(float(spec.get("top_speed", tinfo.vmax)) * 3.6), int(spec.get("seats", 4)), int(it.stock)]
+		_row(list, str(it.name), sub, "Kaufen", func():
+			var r: Dictionary = world.player.buy(world, biz, gid, 1)
+			if r.get("ok", false):
+				var tm := get_tree().get_first_node_in_group("traffic_manager")
+				if tm and tm.has_method("deliver_owned"):
+					tm.deliver_owned(world.player.vehicles.size() - 1, world.city.buildings[bid].sidewalk_point)
+				_toast("%s gekauft – es steht vor dem Autohaus bereit." % it.name, "money")
+				_open_car_dealer(biz, title, hours, bid)
+			else:
+				_toast(str(r.get("reason", "Kauf nicht möglich.")), "warning"), int(it.stock) > 0)
 
 
 func _open_shop(biz: int, title: String, hours: String, bid: int) -> void:

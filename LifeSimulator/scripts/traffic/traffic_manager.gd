@@ -673,3 +673,22 @@ func _notify(text: String, kind := "info") -> void:
 
 static func _money(v: float) -> String:
 	return ("%.2f €" % v).replace(".", ",")
+
+
+## Autodiebstahl (Kriminalitaetssystem): naechstes geparktes Auto im Umkreis
+## entriegeln. Liefert true, wenn eines gefunden wurde.
+func unlock_nearest_parked(pos: Vector3, radius := 6.0) -> bool:
+	var p := Vector2(pos.x, pos.z)
+	var best: ParkedCarProxy = null
+	var bd := radius
+	for px in _proxies:
+		if px.spot.is_empty():
+			continue
+		var d: float = px.spot.pos.distance_to(p)
+		if d < bd:
+			bd = d
+			best = px
+	if best:
+		best.set_locked(false)
+		return true
+	return false

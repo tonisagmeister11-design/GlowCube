@@ -105,7 +105,7 @@ func exit() -> Vector3:
 
 func exit_point() -> Vector3:
 	var left := -global_transform.basis.x.normalized()
-	var base := global_position + left * (VehicleCatalog.type_info(type_id).width * 0.5 + 0.9)
+	var base: Vector3 = global_position + left * (VehicleCatalog.type_info(type_id).width * 0.5 + 0.9)
 	var city: CityModel = world.city if world != null else null
 	if city:
 		var p2 := Vector2(global_position.x, global_position.z)
