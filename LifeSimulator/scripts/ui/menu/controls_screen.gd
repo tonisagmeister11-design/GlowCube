@@ -5,7 +5,7 @@ extends MenuScreen
 const GROUPS := [
 	["Zu Fuß unterwegs", "walk", ["move_forward", "move_back", "move_left", "move_right", "sprint", "jump", "interact"]],
 	["Fahrzeuge", "car", ["vehicle", "move_forward", "move_back", "move_left", "move_right", "handbrake", "horn"]],
-	["Menüs und Informationen", "phone", ["phone", "map", "inventory", "pause"]],
+	["Menüs und Informationen", "phone", ["phone", "map", "inventory", "help", "pause"]],
 	["Zeit und Spielstand", "clock", ["time_faster", "time_slower", "quick_save", "quick_load"]],
 	["Kamera", "camera", ["camera_toggle", "screenshot"]],
 	["Maus", "mouse", ["primary", "secondary"]],

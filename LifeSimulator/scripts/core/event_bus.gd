@@ -23,6 +23,7 @@ signal player_died(cause: String)
 signal player_job_changed(job_id: String)
 signal player_home_changed(property_id: int)
 signal player_skill_changed(skill: String, value: float)
+signal goal_completed(goal: Dictionary)    # Lebensziel erreicht, siehe Goals.info()
 
 # Welt / Simulation
 signal notify(text: String, kind: String)  # kind: info|success|warning|danger|money
