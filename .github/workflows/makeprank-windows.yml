@@ -1,0 +1,41 @@
+name: MakePrank Windows Build
+
+on:
+  push:
+    branches: ["claude/makeprank-windows-build-*"]
+    paths: ["MakePrank/**", ".github/workflows/makeprank-windows.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: MakePrank
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e ".[dev,build]"
+      - name: Tests (Windows, real Tk)
+        run: python -m pytest -q --timeout=120
+      - name: PyInstaller (Creator)
+        run: python -m PyInstaller --noconfirm --clean --windowed --onedir --name MakePrank-Creator run_creator.py
+      - name: PyInstaller (Client)
+        run: python -m PyInstaller --noconfirm --clean --windowed --onedir --name MakePrank-Client run_client.py
+      - name: Smoke test (start both programs)
+        run: |
+          python tools/smoke_test.py dist/MakePrank-Creator/MakePrank-Creator.exe 4
+          python tools/smoke_test.py dist/MakePrank-Client/MakePrank-Client.exe 4
+      - name: Release folder + ZIP + SHA-256
+        run: python tools/make_release.py "pytest auf windows-latest bestanden" "Creator und Client starteten und liefen je 4 s"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MakePrank-Windows
+          path: MakePrank/release/*.zip
+          if-no-files-found: error

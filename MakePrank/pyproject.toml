@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "makeprank"
+version = "0.3.0"
+description = "Consent-based, visible prank simulations for Windows (Creator + Receiver)"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "MakePrank contributors"}]
+# Only the TLS certificate generator needs a third-party package; the GUI is plain Tkinter.
+dependencies = ["cryptography>=42.0,<60"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-timeout>=2.3,<3"]
+build = ["pyinstaller>=6.6,<7"]
+
+[project.scripts]
+makeprank = "makeprank.creator_app:main"
+makeprank-client = "makeprank.client_app:main"
+
+[tool.setuptools.packages.find]
+include = ["makeprank*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
