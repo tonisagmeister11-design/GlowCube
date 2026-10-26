@@ -6,8 +6,8 @@ Stand dieser Datei = Stand der tatsächlich ausgeführten Prüfungen unten. Nich
 
 | Kommando | Ergebnis |
 |---|---|
-| `xvfb-run -a python -m pytest -q --timeout=60` | **238 passed** (≈ 39 s) |
-| `python -m pytest -q` (ohne Display) | 143 passed, **95 übersprungen** (GUI-/Effekt-/Startup-Tests brauchen Anzeige) |
+| `xvfb-run -a python -m pytest -q --timeout=60` | **243 passed** (≈ 39 s) |
+| `python -m pytest -q` (ohne Display) | GUI-/Effekt-/Startup-Tests werden ohne Anzeige übersprungen |
 | `python -m compileall -q makeprank tests tools run_*.py` | fehlerfrei |
 | PyInstaller-Build unter **Linux** (`--onedir --windowed`) für Creator und Client + `tools/smoke_test.py` unter Xvfb | beide Programme starteten und liefen 4 s – **das ist keine Windows-Prüfung** |
 | Screenshots aller 16 Effekte und der 9 Creator-Seiten unter Xvfb | visuell geprüft |

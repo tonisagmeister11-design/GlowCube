@@ -11,12 +11,17 @@ Zwei Programme:
 
 ## Was es kann (alles in eigenen, schließbaren MakePrank-Fenstern)
 
-17 Effekte: Fehlerdialog, MsgBox (6 Varianten), Toast, Browser-/Editor-Attrappe, Herunterfahren/Neustart-**Simulation**,
-Farbbalken (7 Presets), Screamer-Bild (eingebaut oder eigenes PNG/GIF), Soundeffekt (synthetischer Ton),
-**eigener Sound-Clip** (importierte WAV-Datei, bis 10 s – echte Wiedergabe auf Windows), Fensterwackeln (nur eigenes Fenster),
-Text-Overlay, Konsolen-Attrappe, Invertieren/Spiegeln (nur eigene Zeichenfläche), Minimieren/Einfrieren-Simulation,
-Wallpaper-Vorschau, Chat-Anzeige. Dazu: Sitzungen mit Pause/Stopp/Restdauer, Paketformat v2 mit Hash, Bild- und
-Audio-Ressourcen samt Limits, optionales **TLS-Pairing** (lokales Netz / Loopback) mit fester Whitelist.
+18 Effekte: Fehlerdialog, MsgBox (6 Varianten), Toast, Browser-/Editor-Attrappe, Herunterfahren/Neustart-**Simulation**,
+**„Apps löschen"-Attrappe** (überzeugende Animation – es wird nichts gelöscht), Farbbalken (7 Presets),
+Screamer-Bild (eingebaut oder eigenes PNG/GIF), Soundeffekt (synthetischer Ton), **eigener Sound-Clip** (importierte WAV-Datei,
+bis 10 s – echte Wiedergabe auf Windows), Fensterwackeln (nur eigenes Fenster), Text-Overlay, Konsolen-Attrappe,
+Invertieren/Spiegeln (nur eigene Zeichenfläche), Minimieren/Einfrieren-Simulation, Wallpaper-Vorschau, Chat-Anzeige.
+Dazu: Sitzungen mit Pause/Stopp/Restdauer, Paketformat v2 mit Hash, Bild- und Audio-Ressourcen samt Limits,
+optionales **TLS-Pairing** (lokales Netz / Loopback) mit fester Whitelist.
+
+Jeder Effekt läuft in einem **schließbaren** MakePrank-Fenster mit sichtbarem **STOPP**-Knopf und endet von selbst – auch die
+Attrappen „löschen", „frieren ein" oder „fahren herunter" nichts wirklich, und nichts lässt sich zu einem unverschließbaren
+Vollbild machen.
 
 Sounds sind **echt**, keine Simulation: Auf Windows spielt MakePrank den Ton über `winsound` wirklich ab. Nur optische
 Dinge wie Wallpaper oder Herunterfahren sind Attrappen. Jeder Sound wird vor dem Start als „Audio: JA" ausgewiesen,

@@ -47,6 +47,13 @@ Die ZIP wurde geöffnet, die JAR-Inhaltsliste erfasst und folgende Komponenten d
 
 Die Bytecode-Konstanten enthalten unter anderem: `error`, `shutdown`, `reboot`, `txt`, `web`, `windowshake`, `minimize`, `errorspam`, `overlaytext`, `overlayspam`, `console`, `screamer`, `chat`, `perspective`, `disclaimer`, `toast`, `msgbox`, `colorbars`, `syssound`, `chat_from`, `ypmutil`, `stop`, `wallpaper`, `freeze`, `invert`, `flip`. Das Vorhandensein eines Strings allein belegt nicht sämtliche Syntaxvarianten; die Zuordnung oben stützt sich ergänzend auf Klassen und Methoden.
 
+## Zusätzliche MakePrank-Effekte (nicht aus der Mod)
+
+* **`sound_clip`** – spielt eine selbst importierte WAV-Datei ab (echte Wiedergabe auf Windows), vorher als Audio ausgewiesen, stummschaltbar, stoppbar.
+* **`fake_delete`** – „Apps/Dateien löschen"-Attrappe: überzeugende Lösch-Animation, die **nichts** löscht. Das Effekt-Modul importiert kein `os`/`shutil`/`pathlib`, kann also gar keine Datei anfassen (per Test geprüft). Läuft in einem schließbaren Fenster mit STOPP und endet von selbst.
+
+Beide behalten die Grundregeln: sichtbar, vorher in den Nutzungsbedingungen genannt, jederzeit per STOPP/Esc/Schließen beendbar, nichts Verstecktes, nichts Unverschließbares.
+
 ## Statuslegende
 
 `implemented` = umgesetzt und getestet · `partial` = teilweise · `simulated` = nur als Attrappe in der App · `not implemented` = fehlt · `not applicable` = nicht übertragbar · `blocked by design` = absichtlich nie vorhanden (Sicherheitsgrenze).

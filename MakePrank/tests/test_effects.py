@@ -12,19 +12,43 @@ from makeprank.session import SessionManager, StopReason
 from helpers import FakeHost, make_png, run_for
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def root():
+    # A fresh Tk root per test: Windows does not always remove destroyed Toplevels
+    # synchronously, so a shared root let windows leak across tests there.
     try:
         tk_root = tk.Tk()
     except tk.TclError as exc:
         pytest.skip(f"keine Anzeige verfügbar: {exc}")
     tk_root.withdraw()
     yield tk_root
-    tk_root.destroy()
+    for win in list(tk_root.winfo_children()):
+        if isinstance(win, tk.Toplevel):
+            try:
+                win.destroy()
+            except tk.TclError:
+                pass
+    try:
+        tk_root.update()
+        tk_root.destroy()
+    except tk.TclError:
+        pass
 
 
 def toplevels(root):
     return [w for w in root.winfo_children() if isinstance(w, tk.Toplevel)]
+
+
+def focus_toplevel(win):
+    """Make a Toplevel visible and focused so key events reach it (needed on Windows)."""
+    try:
+        win.deiconify()
+        win.lift()
+        win.focus_force()
+        win.update_idletasks()
+        win.update()
+    except tk.TclError:
+        pass
 
 
 def build(root, kinds, duration=3, resources=None, params=None, muted=False):
@@ -150,6 +174,7 @@ def test_escape_in_effect_window_stops_everything(root):
     session.start(config)
     root.update()
     win = toplevels(root)[0]
+    focus_toplevel(win)
     win.event_generate("<Escape>")
     root.update()
     assert session.last_stop_reason is StopReason.BUTTON
@@ -202,12 +227,15 @@ def test_window_shake_moves_only_its_own_window_and_restores_it(root):
     session.start(config)
     root.update()
     win = toplevels(root)[0]
+    focus_toplevel(win)
+    root_origin = (root.winfo_x(), root.winfo_y())
     positions = set()
     for _ in range(12):
         session.tick(0.05)
         root.update()
         positions.add((win.winfo_x(), win.winfo_y()))
-    assert len(positions) > 1
+    assert len(positions) > 1  # its own window moved
+    assert (root.winfo_x(), root.winfo_y()) == root_origin  # the main window did not move
     session.stop(StopReason.BUTTON)
     root.update()
     assert toplevels(root) == []
@@ -288,3 +316,49 @@ def test_muted_sound_clip_plays_nothing(root):
     run_for(session, 0.3)
     assert backend.played == []
     session.stop(StopReason.BUTTON)
+
+
+def test_fake_delete_opens_window_and_is_stoppable(root):
+    config, session, runner, _ = build(root, ["fake_delete"], duration=4, params={"fake_delete": {"target": "apps"}})
+    session.start(config)
+    run_for(session, 0.5)
+    root.update()
+    assert toplevels(root)  # the convincing scene is shown
+    session.stop(StopReason.BUTTON)
+    root.update()
+    assert toplevels(root) == [] and session.last_stop_reason is StopReason.BUTTON
+
+
+def test_fake_delete_deletes_nothing_on_disk(root, tmp_path):
+    victim = tmp_path / "wichtig.txt"
+    victim.write_text("bitte nicht löschen")
+    subdir = tmp_path / "ordner"
+    subdir.mkdir()
+    (subdir / "foto.png").write_bytes(make_png(4, 4))
+    for target in ("apps", "files"):
+        config, session, runner, _ = build(root, ["fake_delete"], duration=3, params={"fake_delete": {"target": target}})
+        session.start(config)
+        run_for(session, 4)
+        root.update()
+    # nothing the effect "removed" is actually gone
+    assert victim.exists() and (subdir / "foto.png").exists()
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["ordner", "wichtig.txt"]
+
+
+def test_effects_module_cannot_touch_filesystem_or_processes():
+    """The whole effects module must not import os/shutil/pathlib/subprocess/ctypes.
+
+    This is what guarantees that 'deleting apps', 'fake shutdown' etc. are pure
+    drawing and can never remove a file or launch a program.
+    """
+    import ast
+    from pathlib import Path
+    import makeprank.effects as effects
+
+    tree = ast.parse(Path(effects.__file__).read_text(encoding="utf-8"))
+    forbidden = {"os", "shutil", "pathlib", "subprocess", "ctypes", "winreg", "webbrowser"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            assert not {a.name.split(".")[0] for a in node.names} & forbidden
+        elif isinstance(node, ast.ImportFrom):
+            assert (node.module or "").split(".")[0] not in forbidden

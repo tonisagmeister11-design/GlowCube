@@ -215,6 +215,16 @@ _EFFECTS: tuple[EffectSpec, ...] = (
         ),
     ),
     EffectSpec(
+        "fake_delete", "Apps löschen (Attrappe)", "Attrappen",
+        "Zeigt eine überzeugende Lösch-Animation für Programme/Dateien. Es wird NICHTS gelöscht – reine Grafik.",
+        "mittel", "Attrappe: keine Datei und kein Programm wird angefasst. Schließbar, STOPP beendet sofort, endet von selbst.",
+        "Systembereinigung", "Entferne Anwendungen …",
+        params=(
+            ParamSpec("target", "choice", "apps", "Was scheinbar gelöscht wird", choices=("apps", "files")),
+        ),
+        default_duration=6,
+    ),
+    EffectSpec(
         "color_bars", "Farbbalken / Testbild", "Visuelle Effekte",
         "Testbild im eigenen Fenster (SMPTE, HD, EBU, PLUGE, Mono, RGB, Rauschen).",
         "niedrig", "Ohne Ton und ohne schnelles Flackern (max. 3 Bildwechsel pro Sekunde).",

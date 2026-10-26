@@ -75,6 +75,7 @@ class TkEffectRunner:
             "fake_browser": self._fake_browser,
             "fake_notepad": self._fake_notepad,
             "fake_shutdown": self._fake_shutdown,
+            "fake_delete": self._fake_delete,
             "color_bars": self._color_bars,
             "screamer": self._screamer,
             "sound_effect": self._sound_effect,
@@ -300,6 +301,51 @@ class TkEffectRunner:
         scope.every(0.15, self._alive(win, spin))
         scope.every(1.0, self._alive(win, tick))
 
+    def _fake_delete(self, scope: Scope, action: dict[str, Any]) -> None:
+        # Nothing is ever deleted: this effect only draws. There is no filesystem
+        # call anywhere in it (enforced by tests/test_effects.py).
+        target = action["params"]["target"]
+        items = (["Chrome", "Steam", "Discord", "Spotify", "Word", "Excel", "Photos", "Minecraft", "VLC", "Edge"]
+                 if target == "apps" else
+                 ["Dokumente", "Bilder", "Downloads", "Musik", "Videos", "Desktop", "Projekte", "Backup", "Urlaub.zip", "Zeugnis.pdf"])
+        noun = "Anwendungen" if target == "apps" else "Dateien"
+        win = self._window(scope, action["title"], 640, 440, bg="#0a0a0a")
+        self._label(win, action["title"] or "Systembereinigung", 16, True, bg="#0a0a0a").pack(anchor="w", padx=18, pady=(14, 2))
+        head = self._label(win, action["text"] or f"Entferne {noun} …", 11, fg="#d1d5db", bg="#0a0a0a")
+        head.pack(anchor="w", padx=18)
+        listing = tk.Text(win, height=10, bg="#050505", fg="#f3f4f6", insertbackground="#f3f4f6", font=(MONO, 10), relief="flat")
+        listing.pack(fill="both", expand=True, padx=16, pady=10)
+        listing.configure(state="disabled")
+        bar_bg = tk.Frame(win, bg="#1f2937", height=16)
+        bar_bg.pack(fill="x", padx=18, pady=(0, 4))
+        bar = tk.Frame(bar_bg, bg="#dc2626", height=16, width=0)
+        bar.place(x=0, y=0, relheight=1.0)
+        percent = self._label(win, "0 %", 10, fg=MUTED, bg="#0a0a0a")
+        percent.pack(anchor="w", padx=18, pady=(0, 6))
+        state = {"i": 0}
+        total = len(items)
+        step_interval = max(0.25, min(float(action["duration_seconds"]) * 0.8 / total, 1.0))
+
+        def remove_next() -> None:
+            if state["i"] >= total:
+                head.configure(text=f"{total} {noun} entfernt.")
+                return
+            name = items[state["i"]]
+            listing.configure(state="normal")
+            listing.insert("end", f"  Entferne  {name} …  OK\n")
+            listing.see("end")
+            listing.configure(state="disabled")
+            state["i"] += 1
+            frac = state["i"] / total
+            try:
+                bar.place_configure(relwidth=frac)
+            except tk.TclError:
+                pass
+            percent.configure(text=f"{int(frac * 100)} %")
+
+        remove_next()
+        scope.every(step_interval, self._alive(win, remove_next))
+
     def _freeze_simulation(self, scope: Scope, action: dict[str, Any]) -> None:
         mode = action["params"]["mode"]
         win = self._window(scope, "Simulation", 660, 500, bg="#0f172a")
@@ -495,10 +541,14 @@ class TkEffectRunner:
     # ------------------------------------------------------------------ motion & text
     def _window_shake(self, scope: Scope, action: dict[str, Any]) -> None:
         amplitude = min(12, max(1, round(action["params"]["intensity"] * 1.2)))
-        win = self._window(scope, action["title"], 520, 260, x=120, y=120)
+        origin_x, origin_y = 120, 120
+        win = self._window(scope, action["title"], 520, 260, x=origin_x, y=origin_y)
         self._label(win, action["text"] or "Das Fenster wackelt …", 16, True, wrap=460).pack(expand=True)
         win.update_idletasks()
-        origin = (win.winfo_x(), win.winfo_y())
+        # Use the geometry we asked for as the origin. Reading winfo_x/y here is
+        # unreliable before the window is mapped (0/1 on Windows), which would make
+        # the shake offsets negative and the geometry string invalid.
+        origin = (origin_x, origin_y)
         offsets = [(1, 0), (-1, 1), (0, -1), (1, 1), (-1, -1), (0, 0)]
         state = {"i": 0}
         shake_until = min(float(action["duration_seconds"]), 3.0)
