@@ -251,3 +251,40 @@ def test_simultaneous_windows_stay_bounded(root):
         most = max(most, len(toplevels(root)))
     assert most <= 1
     assert toplevels(root) == []
+
+
+def test_sound_clip_plays_imported_wav(root):
+    from helpers import make_wav
+    resources = {"ton.wav": make_wav(0.5)}
+    config, session, runner, backend = build(root, ["sound_clip"], resources=resources, duration=3,
+                                             params={"sound_clip": {"clip": "resource:ton.wav"}})
+    session.start(config)
+    run_for(session, 0.4)
+    root.update()
+    assert backend.played == [make_wav(0.5)]  # the exact imported bytes were played
+    assert toplevels(root)  # the info window is shown
+    session.stop(StopReason.BUTTON)
+    root.update()
+    assert backend.stops == 1 and toplevels(root) == []
+
+
+def test_sound_clip_without_window_still_plays(root):
+    from helpers import make_wav
+    resources = {"ton.wav": make_wav(0.4)}
+    config, session, runner, backend = build(root, ["sound_clip"], resources=resources, duration=3,
+                                             params={"sound_clip": {"clip": "resource:ton.wav", "show_window": False}})
+    session.start(config)
+    run_for(session, 0.3)
+    root.update()
+    assert len(backend.played) == 1 and toplevels(root) == []
+    session.stop(StopReason.BUTTON)
+
+
+def test_muted_sound_clip_plays_nothing(root):
+    from helpers import make_wav
+    config, session, runner, backend = build(root, ["sound_clip"], resources={"ton.wav": make_wav(0.3)}, duration=3,
+                                             muted=True, params={"sound_clip": {"clip": "resource:ton.wav"}})
+    session.start(config)
+    run_for(session, 0.3)
+    assert backend.played == []
+    session.stop(StopReason.BUTTON)

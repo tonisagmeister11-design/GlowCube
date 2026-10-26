@@ -69,6 +69,39 @@ def make_tone_wav(tone: str, milliseconds: int, volume_percent: int) -> bytes:
     return buffer.getvalue()
 
 
+MAX_CLIP_SECONDS = 10.0
+MIN_FRAMERATE = 8000
+MAX_FRAMERATE = 48000
+
+
+def inspect_wav(name: str, data: bytes) -> tuple[float, int, int]:
+    """Validate an imported WAV clip and return ``(seconds, channels, framerate)``.
+
+    Accepts only uncompressed PCM (8/16-bit, mono/stereo) within a sane sample-rate
+    and length range. Raises :class:`ValueError` otherwise. No decoding library is
+    used; Python's own ``wave`` reader parses the header.
+    """
+    try:
+        with wave.open(io.BytesIO(data), "rb") as handle:
+            channels = handle.getnchannels()
+            width = handle.getsampwidth()
+            framerate = handle.getframerate()
+            frames = handle.getnframes()
+            compression = handle.getcomptype()
+    except (wave.Error, EOFError, OSError, struct.error) as exc:
+        raise ValueError(f"{name}: keine gültige WAV-Datei ({exc}).") from exc
+    if compression != "NONE":
+        raise ValueError(f"{name}: nur unkomprimiertes PCM-WAV ist erlaubt.")
+    if channels not in (1, 2) or width not in (1, 2):
+        raise ValueError(f"{name}: nur 8/16-Bit Mono oder Stereo.")
+    if not MIN_FRAMERATE <= framerate <= MAX_FRAMERATE:
+        raise ValueError(f"{name}: Abtastrate {framerate} Hz außerhalb von {MIN_FRAMERATE}–{MAX_FRAMERATE}.")
+    seconds = frames / framerate if framerate else 0.0
+    if not 0 < seconds <= MAX_CLIP_SECONDS:
+        raise ValueError(f"{name}: Länge {seconds:.1f} s außerhalb von 0–{MAX_CLIP_SECONDS:.0f} s.")
+    return seconds, channels, framerate
+
+
 class AudioBackend(Protocol):
     def play(self, wav: bytes) -> None: ...
     def stop(self) -> None: ...
@@ -122,6 +155,14 @@ class AudioPlayer:
         if self.muted:
             return False
         self.backend.play(make_tone_wav(tone, milliseconds, volume_percent))
+        self.playing = True
+        return True
+
+    def play_clip(self, wav: bytes) -> bool:
+        """Play an imported WAV clip once (no looping). Returns False when muted."""
+        if self.muted:
+            return False
+        self.backend.play(wav)
         self.playing = True
         return True
 

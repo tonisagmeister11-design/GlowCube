@@ -22,6 +22,7 @@ MAX_CHAT_LINES = 12
 
 COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 RESOURCE_REF_RE = re.compile(r"^resource:[a-z0-9_\-]{1,40}\.(png|gif)$")
+AUDIO_REF_RE = re.compile(r"^resource:[a-z0-9_\-]{1,40}\.wav$")
 
 CATEGORIES = (
     "Dialoge",
@@ -75,6 +76,12 @@ class ParamSpec:
             if value in BUILTIN_IMAGES or RESOURCE_REF_RE.fullmatch(value):
                 return value
             raise ParamError(f"{self.label}: unbekannte Bildquelle {value!r}.")
+        if self.kind == "audio":
+            if not isinstance(value, str):
+                raise ParamError(f"{self.label}: ungültige Tonangabe.")
+            if value == "none" or AUDIO_REF_RE.fullmatch(value):
+                return value
+            raise ParamError(f"{self.label}: unbekannte Tonquelle {value!r} (erwartet resource:<name>.wav).")
         if self.kind == "str":
             if not isinstance(value, str) or len(value) > self.max_len:
                 raise ParamError(f"{self.label}: Text fehlt oder ist länger als {self.max_len} Zeichen.")
@@ -243,6 +250,18 @@ _EFFECTS: tuple[EffectSpec, ...] = (
         default_duration=4,
     ),
     EffectSpec(
+        "sound_clip", "Eigener Sound-Clip", "Bild & Ton",
+        "Spielt einen selbst importierten WAV-Clip ab (max. 10 s), optional mit einem Fenster, das anzeigt, was läuft.",
+        "mittel", "Audio. Der Clip wird vor dem Start als Audio ausgewiesen; Empfänger kann stummschalten und sofort stoppen.",
+        "Überraschung", "🔊 Ein Sound wird abgespielt …",
+        params=(
+            ParamSpec("clip", "audio", "none", "Sound-Clip (WAV)"),
+            ParamSpec("show_window", "bool", True, "Fenster mit Hinweis anzeigen"),
+        ),
+        always_audio=True,
+        default_duration=6,
+    ),
+    EffectSpec(
         "window_shake", "Fensterwackeln", "Visuelle Effekte",
         "Das MakePrank-eigene Fenster wackelt kurz. Kein anderes Fenster und nicht der Desktop.",
         "niedrig", "Kleine Bewegung, höchstens 12 Pixel.",
@@ -345,6 +364,8 @@ def default_action(kind: str = "error_dialog") -> dict[str, Any]:
 def action_has_audio(action: dict[str, Any]) -> bool:
     spec = EFFECTS[action["type"]]
     params = action.get("params", {})
+    if action["type"] == "sound_clip":
+        return params.get("clip", "none") != "none"
     if spec.always_audio:
         return True
     if action["type"] == "color_bars":
@@ -358,6 +379,13 @@ def action_resource_name(action: dict[str, Any]) -> str | None:
     image = action.get("params", {}).get("image")
     if isinstance(image, str) and image.startswith("resource:"):
         return image.split(":", 1)[1]
+    return None
+
+
+def action_audio_name(action: dict[str, Any]) -> str | None:
+    clip = action.get("params", {}).get("clip")
+    if isinstance(clip, str) and clip.startswith("resource:"):
+        return clip.split(":", 1)[1]
     return None
 
 

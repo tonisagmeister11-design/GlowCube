@@ -17,7 +17,7 @@ from .catalog import BUILTIN_IMAGES, CATEGORIES, EFFECTS, ParamSpec, action_has_
 from .creator_client import ConnectionFailed, CreatorConnection
 from .effects import TkEffectRunner
 from .package_format import (
-    NETWORK_MODES, PackageError, clean_action, file_sha256, inspect_image, load_package_full, new_config,
+    NETWORK_MODES, PackageError, clean_action, file_sha256, inspect_image, inspect_resource, load_package_full, new_config,
     save_package, summarize_config, validate_config,
 )
 from .session import SessionManager, StopReason
@@ -352,6 +352,13 @@ class CreatorApp:
                 cell.grid(row=row, column=1, sticky="w")
                 ttk.Combobox(cell, textvariable=var, values=choices, state="readonly", width=24).pack(side="left")
                 ttk.Button(cell, text="Bild importieren …", command=lambda v=var: self.import_image(v)).pack(side="left", padx=4)
+            elif p.kind == "audio":
+                var = tk.StringVar(master=self.root, value=value)
+                choices = ["none"] + [f"resource:{name}" for name in sorted(self.resources) if name.endswith(".wav")]
+                cell = ttk.Frame(self.param_frame, style="Card.TFrame")
+                cell.grid(row=row, column=1, sticky="w")
+                ttk.Combobox(cell, textvariable=var, values=choices, state="readonly", width=24).pack(side="left")
+                ttk.Button(cell, text="Sound importieren …", command=lambda v=var: self.import_audio(v)).pack(side="left", padx=4)
             elif p.kind == "int":
                 var = tk.StringVar(master=self.root, value=str(value))
                 ttk.Spinbox(self.param_frame, from_=p.minimum, to=p.maximum, textvariable=var, width=8).grid(row=row, column=1, sticky="w")
@@ -429,6 +436,30 @@ class CreatorApp:
             validate_config({k: v for k, v in self.config.items() if k not in ("content_sha256", "audio", "estimated_duration_seconds", "resources")}, candidate)
         except (OSError, PackageError) as exc:
             messagebox.showerror("Bild abgelehnt", str(exc), parent=self.root)
+            return None
+        self.resources[name] = data
+        self.runner.resources = self.resources
+        ref = f"resource:{name}"
+        if var is not None:
+            var.set(ref)
+        return ref
+
+    def import_audio(self, var: tk.StringVar | None = None, path: str | None = None) -> str | None:
+        path = path or filedialog.askopenfilename(parent=self.root, title="Sound importieren (WAV)",
+                                                  filetypes=[("WAV-Audio", "*.wav")])
+        if not path:
+            return None
+        source = Path(path)
+        name = "".join(ch for ch in source.stem.lower().replace(" ", "_") if ch.isalnum() or ch in "_-")[:36] or "sound"
+        name = f"{name}.wav"
+        try:
+            data = source.read_bytes()
+            inspect_resource(name, data)
+            candidate = dict(self.resources)
+            candidate[name] = data
+            validate_config({k: v for k, v in self.config.items() if k not in ("content_sha256", "audio", "estimated_duration_seconds", "resources")}, candidate)
+        except (OSError, PackageError) as exc:
+            messagebox.showerror("Sound abgelehnt", str(exc), parent=self.root)
             return None
         self.resources[name] = data
         self.runner.resources = self.resources

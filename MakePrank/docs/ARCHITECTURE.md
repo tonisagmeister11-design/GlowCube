@@ -20,14 +20,14 @@ UI, Paketschema, Effekt-Engine, Sitzungsmanager und Netzwerktransport sind getre
 
 ## Paketformat `.mpk` (Version 2)
 
-ZIP mit `manifest.json`, `NOTICE.txt` und optional `resources/<name>.png|gif`. Das Manifest enthält Format/Version, Name, Beschreibung,
+ZIP mit `manifest.json`, `NOTICE.txt` und optional `resources/<name>.png|gif|wav`. Das Manifest enthält Format/Version, Name, Beschreibung,
 Absender, `network` (`none`|`pairing`), `max_duration_seconds`, abgeleitete Felder `audio`, `estimated_duration_seconds`, `resources[]`
-(Name, MIME, Größe, Maße, SHA-256) und `content_sha256`, dazu die Aktionen (`type`, `title`, `text`, `duration_seconds`, `params`).
+(je nach `kind`: Bild mit Maßen oder Audio mit Länge/Kanälen/Abtastrate, plus Name, MIME, Größe, SHA-256) und `content_sha256`, dazu die Aktionen (`type`, `title`, `text`, `duration_seconds`, `params`).
 
 * Strikte Allowlist: unbekannte Felder/Effekte/Parameter, falsche Typen, Bereichs-/Längenverletzungen und Steuerzeichen werden abgelehnt.
-* Limits: Datei ≤ 8 MiB, Manifest ≤ 256 KB, ≤ 4 Ressourcen, je ≤ 1 MiB, gesamt ≤ 3 MiB, Bild ≤ 1920×1080, ≤ 30 Aktionen, Aktion ≤ 120 s, Sitzung ≤ 1800 s.
-* Archiv: nur `manifest.json`, `NOTICE.txt`, `resources/<a-z0-9_->.(png|gif)`; keine Verzeichnisse, Symlinks, Verschlüsselung, doppelte Namen, `..`, absolute/Laufwerkspfade; Größenangaben werden beim Lesen gegengeprüft (Zip-Bomb).
-* `content_sha256` erkennt Veränderungen am Manifest; Ressourcen-Hashes erkennen Austausch von Bildern. **Das ist keine Signatur** – wer ein Paket erstellt hat, beweist es nicht.
+* Limits: Datei ≤ 12 MiB, Manifest ≤ 256 KB, ≤ 6 Ressourcen, Bild ≤ 1 MiB/1920×1080, WAV ≤ 2 MiB/10 s (8/16-Bit PCM, 8–48 kHz), Ressourcen gesamt ≤ 6 MiB, ≤ 30 Aktionen, Aktion ≤ 120 s, Sitzung ≤ 1800 s.
+* Archiv: nur `manifest.json`, `NOTICE.txt`, `resources/<a-z0-9_->.(png|gif|wav)`; keine Verzeichnisse, Symlinks, Verschlüsselung, doppelte Namen, `..`, absolute/Laufwerkspfade; Größenangaben werden beim Lesen gegengeprüft (Zip-Bomb). WAV wird nur als unkomprimiertes PCM akzeptiert (Pythons `wave`-Leser); keine Dekodier-Bibliothek.
+* `content_sha256` erkennt Veränderungen am Manifest; Ressourcen-Hashes erkennen Austausch von Bildern und Sounds. **Das ist keine Signatur** – wer ein Paket erstellt hat, beweist es nicht.
 * Version 1 (MakePrank 0.1/0.2) wird beim Laden migriert; höhere Versionen werden mit verständlicher Meldung abgelehnt.
 * Nie: `pickle`, `eval`/`exec`, dynamische Imports, Subprozesse, `webbrowser`, ausführbare Inhalte (ein Test scannt alle Module per AST darauf).
 

@@ -11,11 +11,16 @@ Zwei Programme:
 
 ## Was es kann (alles in eigenen, schließbaren MakePrank-Fenstern)
 
-16 Effekte: Fehlerdialog, MsgBox (6 Varianten), Toast, Browser-/Editor-Attrappe, Herunterfahren/Neustart-**Simulation**,
-Farbbalken (7 Presets), Screamer-Bild (eingebaut oder eigenes PNG/GIF), Soundeffekt (kurz, leise, stummschaltbar),
-Fensterwackeln (nur eigenes Fenster), Text-Overlay, Konsolen-Attrappe, Invertieren/Spiegeln (nur eigene Zeichenfläche),
-Minimieren/Einfrieren-Simulation, Wallpaper-Vorschau, Chat-Anzeige. Dazu: Sitzungen mit Pause/Stopp/Restdauer,
-Paketformat v2 mit Hash und Ressourcenlimits, optionales **TLS-Pairing** (lokales Netz / Loopback) mit fester Whitelist.
+17 Effekte: Fehlerdialog, MsgBox (6 Varianten), Toast, Browser-/Editor-Attrappe, Herunterfahren/Neustart-**Simulation**,
+Farbbalken (7 Presets), Screamer-Bild (eingebaut oder eigenes PNG/GIF), Soundeffekt (synthetischer Ton),
+**eigener Sound-Clip** (importierte WAV-Datei, bis 10 s – echte Wiedergabe auf Windows), Fensterwackeln (nur eigenes Fenster),
+Text-Overlay, Konsolen-Attrappe, Invertieren/Spiegeln (nur eigene Zeichenfläche), Minimieren/Einfrieren-Simulation,
+Wallpaper-Vorschau, Chat-Anzeige. Dazu: Sitzungen mit Pause/Stopp/Restdauer, Paketformat v2 mit Hash, Bild- und
+Audio-Ressourcen samt Limits, optionales **TLS-Pairing** (lokales Netz / Loopback) mit fester Whitelist.
+
+Sounds sind **echt**, keine Simulation: Auf Windows spielt MakePrank den Ton über `winsound` wirklich ab. Nur optische
+Dinge wie Wallpaper oder Herunterfahren sind Attrappen. Jeder Sound wird vor dem Start als „Audio: JA" ausgewiesen,
+ist stummschaltbar und sofort stoppbar.
 
 ## Was es bewusst **nie** tut
 
@@ -34,7 +39,7 @@ run_windows.bat            :: Creator
 run_client_windows.bat     :: Empfänger (optional: Pfad zu einer .mpk)
 ```
 
-Beispielpakete: [`examples/`](examples) (`WelcomeDemo.mpk`, `AlleEffekte.mpk`). Anleitung: [`docs/USER_GUIDE_DE.md`](docs/USER_GUIDE_DE.md).
+Beispielpakete: [`examples/`](examples) (`WelcomeDemo.mpk`, `SoundPrank.mpk` mit echtem Hupton, `AlleEffekte.mpk`). Anleitung: [`docs/USER_GUIDE_DE.md`](docs/USER_GUIDE_DE.md).
 
 ## Tests
 

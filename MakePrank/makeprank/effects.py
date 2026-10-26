@@ -78,6 +78,7 @@ class TkEffectRunner:
             "color_bars": self._color_bars,
             "screamer": self._screamer,
             "sound_effect": self._sound_effect,
+            "sound_clip": self._sound_clip,
             "window_shake": self._window_shake,
             "text_overlay": self._text_overlay,
             "console_overlay": self._console_overlay,
@@ -468,6 +469,27 @@ class TkEffectRunner:
         self._label(win, info, 10, fg=ACCENT).pack()
         if played:
             scope.add_cleanup(self.audio.stop)
+            tk.Button(win, text="Ton stoppen", command=self.audio.stop, relief="flat").pack(pady=6)
+
+    def _sound_clip(self, scope: Scope, action: dict[str, Any]) -> None:
+        p = action["params"]
+        ref = p["clip"]
+        data = self.resources.get(ref.split(":", 1)[1]) if ref.startswith("resource:") else None
+        played = self.audio.play_clip(data) if data else False
+        if played:
+            scope.add_cleanup(self.audio.stop)
+        if not p.get("show_window", True):
+            return
+        win = self._window(scope, action["title"], 440, 220)
+        self._label(win, action["text"] or "🔊 Ein Sound wird abgespielt …", 14, True, wrap=400).pack(padx=18, pady=(22, 8))
+        if data is None:
+            info = "Kein Sound-Clip im Paket hinterlegt."
+        elif played:
+            info = "Audio: eigener Sound-Clip wird abgespielt."
+        else:
+            info = "Audio ist stummgeschaltet – es wird nichts abgespielt."
+        self._label(win, info, 10, fg=ACCENT).pack()
+        if played:
             tk.Button(win, text="Ton stoppen", command=self.audio.stop, relief="flat").pack(pady=6)
 
     # ------------------------------------------------------------------ motion & text

@@ -197,7 +197,7 @@ def test_resource_limits(tmp_path):
     with pytest.raises(PackageError, match="Bildgröße"):
         save_package(tmp_path / "b.mpk", cfg(), {"a.png": make_png(4000, 10)})
     with pytest.raises(PackageError):
-        save_package(tmp_path / "c.mpk", cfg(), {f"r{i}.png": make_png() for i in range(5)})
+        save_package(tmp_path / "c.mpk", cfg(), {f"r{i}.png": make_png() for i in range(7)})
     with pytest.raises(PackageError):
         save_package(tmp_path / "d.mpk", cfg(), {"x.png": b"MZ\x90\x00 not a png"})
     with pytest.raises(PackageError):
@@ -222,7 +222,7 @@ def test_declared_size_lie_is_detected(tmp_path):
 
 def test_oversized_package_file_rejected(tmp_path):
     path = tmp_path / "big.mpk"
-    path.write_bytes(b"\0" * (8 * 1024 * 1024 + 1))
+    path.write_bytes(b"\0" * (12 * 1024 * 1024 + 1))
     with pytest.raises(PackageError, match="zu groß"):
         load_package(path)
 

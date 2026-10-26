@@ -23,10 +23,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .audio import MAX_CLIP_SECONDS, inspect_wav
 from .catalog import (
     EFFECTS, MAX_ACTION_DURATION_SECONDS, MAX_ACTIONS, MAX_SESSION_DURATION_SECONDS,
-    MAX_TEXT_LENGTH, MAX_TITLE_LENGTH, V1_ALIASES, ParamError, action_has_audio,
-    action_resource_name, clean_text, default_action, get_effect,
+    MAX_TEXT_LENGTH, MAX_TITLE_LENGTH, V1_ALIASES, ParamError, action_audio_name,
+    action_has_audio, action_resource_name, clean_text, default_action, get_effect,
 )
 
 FORMAT_ID = "makeprank-package"
@@ -36,18 +37,20 @@ PACKAGE_MANIFEST = "manifest.json"
 PACKAGE_README = "NOTICE.txt"
 RESOURCE_DIR = "resources/"
 
-MAX_PACKAGE_FILE_BYTES = 8 * 1024 * 1024
+MAX_PACKAGE_FILE_BYTES = 12 * 1024 * 1024
 MAX_MANIFEST_BYTES = 256_000
-MAX_RESOURCES = 4
-MAX_RESOURCE_BYTES = 1024 * 1024
-MAX_TOTAL_RESOURCE_BYTES = 3 * 1024 * 1024
+MAX_RESOURCES = 6
+MAX_IMAGE_BYTES = 1024 * 1024
+MAX_AUDIO_BYTES = 2 * 1024 * 1024
+MAX_RESOURCE_BYTES = MAX_AUDIO_BYTES  # overall per-file read cap
+MAX_TOTAL_RESOURCE_BYTES = 6 * 1024 * 1024
 MAX_IMAGE_WIDTH = 1920
 MAX_IMAGE_HEIGHT = 1080
 MAX_ZIP_ENTRIES = 2 + MAX_RESOURCES
 
 ALLOWED_NAME = re.compile(r"^[\w .()\-]{1,80}$", re.UNICODE)
-RESOURCE_NAME = re.compile(r"^[a-z0-9_\-]{1,40}\.(png|gif)$")
-ALLOWED_MIME = {"png": "image/png", "gif": "image/gif"}
+RESOURCE_NAME = re.compile(r"^[a-z0-9_\-]{1,40}\.(png|gif|wav)$")
+ALLOWED_MIME = {"png": "image/png", "gif": "image/gif", "wav": "audio/wav"}
 NETWORK_MODES = ("none", "pairing")
 
 
@@ -87,11 +90,11 @@ def new_config(name: str = "Mein Prank") -> dict[str, Any]:
 def inspect_image(name: str, data: bytes) -> tuple[str, int, int]:
     """Return ``(mime, width, height)`` for a PNG/GIF or raise :class:`PackageError`."""
     match = RESOURCE_NAME.fullmatch(name)
-    if not match:
-        raise PackageError(f"Ressourcenname {name!r} ist nicht erlaubt (nur a-z, 0-9, _, - und .png/.gif).")
+    if not match or match.group(1) == "wav":
+        raise PackageError(f"Ressourcenname {name!r} ist kein Bild (nur a-z, 0-9, _, - und .png/.gif).")
     ext = match.group(1)
-    if len(data) > MAX_RESOURCE_BYTES:
-        raise PackageError(f"Ressource {name} ist größer als {MAX_RESOURCE_BYTES // 1024} KB.")
+    if len(data) > MAX_IMAGE_BYTES:
+        raise PackageError(f"Bild {name} ist größer als {MAX_IMAGE_BYTES // 1024} KB.")
     if ext == "png":
         if len(data) < 33 or data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
             raise PackageError(f"Ressource {name} ist kein gültiges PNG.")
@@ -105,6 +108,27 @@ def inspect_image(name: str, data: bytes) -> tuple[str, int, int]:
     return ALLOWED_MIME[ext], width, height
 
 
+def inspect_resource(name: str, data: bytes) -> dict[str, Any]:
+    """Validate one resource (image or WAV audio) and return its manifest entry."""
+    match = RESOURCE_NAME.fullmatch(name)
+    if not match:
+        raise PackageError(f"Ressourcenname {name!r} ist nicht erlaubt (nur a-z, 0-9, _, - und .png/.gif/.wav).")
+    ext = match.group(1)
+    base = {"name": name, "mime": ALLOWED_MIME[ext], "size": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+    if ext == "wav":
+        if len(data) > MAX_AUDIO_BYTES:
+            raise PackageError(f"Sound {name} ist größer als {MAX_AUDIO_BYTES // 1024} KB.")
+        try:
+            seconds, channels, framerate = inspect_wav(name, data)
+        except ValueError as exc:
+            raise PackageError(str(exc)) from exc
+        base.update(kind="audio", seconds=round(seconds, 3), channels=channels, framerate=framerate)
+        return base
+    mime, width, height = inspect_image(name, data)
+    base.update(kind="image", width=width, height=height)
+    return base
+
+
 def _resource_entries(resources: dict[str, bytes]) -> list[dict[str, Any]]:
     if len(resources) > MAX_RESOURCES:
         raise PackageError(f"Höchstens {MAX_RESOURCES} Ressourcen erlaubt.")
@@ -114,12 +138,8 @@ def _resource_entries(resources: dict[str, bytes]) -> list[dict[str, Any]]:
         data = resources[name]
         if not isinstance(data, (bytes, bytearray)):
             raise PackageError(f"Ressource {name}: ungültiger Datentyp.")
-        mime, width, height = inspect_image(name, bytes(data))
+        entries.append(inspect_resource(name, bytes(data)))
         total += len(data)
-        entries.append({
-            "name": name, "mime": mime, "size": len(data), "width": width, "height": height,
-            "sha256": hashlib.sha256(data).hexdigest(),
-        })
     if total > MAX_TOTAL_RESOURCE_BYTES:
         raise PackageError(f"Ressourcen insgesamt größer als {MAX_TOTAL_RESOURCE_BYTES // 1024} KB.")
     return entries
@@ -235,10 +255,15 @@ def validate_config(config: Any, resources: dict[str, bytes] | None = None) -> d
     else:
         entries = _validate_resource_entries(config.get("resources", []))
     available = {entry["name"] for entry in entries}
+    audio_names = {entry["name"] for entry in entries if entry.get("kind") == "audio"}
+    image_names = {entry["name"] for entry in entries if entry.get("kind") == "image"}
     for index, action in enumerate(actions, 1):
         ref = action_resource_name(action)
-        if ref is not None and ref not in available:
+        if ref is not None and ref not in image_names:
             raise PackageError(f"Aktion {index}: Bildressource {ref!r} ist im Paket nicht vorhanden.")
+        clip = action_audio_name(action)
+        if clip is not None and clip not in audio_names:
+            raise PackageError(f"Aktion {index}: Sound-Ressource {clip!r} ist im Paket nicht vorhanden.")
 
     clean = {
         "format": FORMAT_ID,
@@ -274,20 +299,36 @@ def _validate_resource_entries(raw: Any) -> list[dict[str, Any]]:
         raise PackageError("Ungültige Ressourcenliste.")
     entries = []
     for entry in raw:
-        if not isinstance(entry, dict) or set(entry) != {"name", "mime", "size", "width", "height", "sha256"}:
+        if not isinstance(entry, dict):
             raise PackageError("Ungültiger Ressourceneintrag.")
-        name = entry["name"]
+        name = entry.get("name")
         if not isinstance(name, str) or not RESOURCE_NAME.fullmatch(name):
             raise PackageError("Ungültiger Ressourcenname.")
-        if entry["mime"] != ALLOWED_MIME[name.rsplit(".", 1)[1]]:
-            raise PackageError(f"Ressource {name}: MIME-Typ nicht erlaubt.")
-        for key in ("size", "width", "height"):
-            if not isinstance(entry[key], int) or isinstance(entry[key], bool) or entry[key] < 1:
-                raise PackageError(f"Ressource {name}: ungültiges Feld {key}.")
-        if entry["size"] > MAX_RESOURCE_BYTES or entry["width"] > MAX_IMAGE_WIDTH or entry["height"] > MAX_IMAGE_HEIGHT:
-            raise PackageError(f"Ressource {name} überschreitet die Limits.")
+        ext = name.rsplit(".", 1)[1]
+        expected = ({"name", "kind", "mime", "size", "seconds", "channels", "framerate", "sha256"} if ext == "wav"
+                    else {"name", "kind", "mime", "size", "width", "height", "sha256"})
+        if set(entry) != expected:
+            raise PackageError(f"Ressource {name}: Felder passen nicht zum Typ.")
+        if entry["kind"] != ("audio" if ext == "wav" else "image") or entry["mime"] != ALLOWED_MIME[ext]:
+            raise PackageError(f"Ressource {name}: Typ/MIME nicht erlaubt.")
+        if not isinstance(entry["size"], int) or isinstance(entry["size"], bool) or entry["size"] < 1:
+            raise PackageError(f"Ressource {name}: ungültige Größe.")
         if not isinstance(entry["sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", entry["sha256"]):
             raise PackageError(f"Ressource {name}: ungültiger Hash.")
+        if ext == "wav":
+            if entry["size"] > MAX_AUDIO_BYTES:
+                raise PackageError(f"Sound {name} überschreitet die Größe.")
+            for key in ("channels", "framerate"):
+                if not isinstance(entry[key], int) or isinstance(entry[key], bool) or entry[key] < 1:
+                    raise PackageError(f"Ressource {name}: ungültiges Feld {key}.")
+            if not isinstance(entry["seconds"], (int, float)) or isinstance(entry["seconds"], bool) or not 0 < entry["seconds"] <= MAX_CLIP_SECONDS:
+                raise PackageError(f"Sound {name}: Länge außerhalb von 0–{MAX_CLIP_SECONDS:.0f} s.")
+        else:
+            for key in ("width", "height"):
+                if not isinstance(entry[key], int) or isinstance(entry[key], bool) or entry[key] < 1:
+                    raise PackageError(f"Ressource {name}: ungültiges Feld {key}.")
+            if entry["size"] > MAX_IMAGE_BYTES or entry["width"] > MAX_IMAGE_WIDTH or entry["height"] > MAX_IMAGE_HEIGHT:
+                raise PackageError(f"Ressource {name} überschreitet die Limits.")
         entries.append(dict(entry))
     if sum(e["size"] for e in entries) > MAX_TOTAL_RESOURCE_BYTES:
         raise PackageError("Ressourcen insgesamt zu groß.")
@@ -339,8 +380,9 @@ def summarize_config(config: dict[str, Any]) -> str:
         f"Beschreibung: {config.get('description') or '-'}",
         f"Effekte: {len(config['actions'])}",
         f"Geschätzte Dauer: {config['estimated_duration_seconds']} s (Maximum {config['max_duration_seconds']} s)",
-        f"Audio: {'JA – es werden Töne abgespielt' if config['audio'] else 'nein'}",
-        f"Bilder im Paket: {len(config['resources'])}",
+        f"Audio: {'JA – es werden Töne/Sounds abgespielt' if config['audio'] else 'nein'}",
+        f"Bilder im Paket: {sum(1 for r in config['resources'] if r.get('kind') == 'image')}",
+        f"Sound-Clips im Paket: {sum(1 for r in config['resources'] if r.get('kind') == 'audio')}",
         "Netzwerk: " + ("Fernsteuerung über gekoppeltes Pairing ist erlaubt (nur diese Effekte, jederzeit trennbar)"
                         if config["network"] == "pairing" else "kein Netzwerk"),
         "",
@@ -352,6 +394,8 @@ def summarize_config(config: dict[str, Any]) -> str:
             flags.append("AUDIO")
         if action_resource_name(action):
             flags.append("eigenes Bild")
+        if action_audio_name(action):
+            flags.append(f"Sound-Clip: {action_audio_name(action)}")
         suffix = f"  [{', '.join(flags)}]" if flags else ""
         lines.append(f"{index}. {spec.label} – „{action['title']}“ ({action['duration_seconds']} s){suffix}")
         if action["text"]:

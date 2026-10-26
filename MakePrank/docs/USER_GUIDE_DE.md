@@ -5,7 +5,9 @@
 1. **Effektkatalog** – suchen/filtern, Effekt wählen, Risikohinweis und Parameter lesen, **Zum Paket hinzufügen** oder **Beispielvorschau**.
 2. **Paket-Editor** – Name, Beschreibung, Absender, maximale Sitzungsdauer (1–1800 s). Aktionen verschieben (↑↓) oder entfernen.
    Pro Aktion: Effekt, Titel, Dauer (1–120 s), Text und Parameter (Farben `#RRGGBB`, Auswahllisten, Zahlen mit Grenzen). **Aktion übernehmen** nicht vergessen.
-   Für das Screamer-Bild: *Bild importieren …* (PNG/GIF, ≤ 1 MB, ≤ 1920×1080, höchstens 4 Bilder pro Paket).
+   Für das Screamer-Bild: *Bild importieren …* (PNG/GIF, ≤ 1 MB, ≤ 1920×1080).
+   Für einen eigenen Sound: Effekt **Eigener Sound-Clip** wählen, dann *Sound importieren …* (WAV, ≤ 10 s, ≤ 2 MB, 8/16-Bit Mono/Stereo).
+   Der Clip wird mit ins Paket gepackt und spielt beim Empfänger **echt** ab (auf Windows über die Lautsprecher). Insgesamt höchstens 6 Bilder/Sounds pro Paket.
    Haken *Fernsteuerung per Pairing erlauben* nur setzen, wenn der Empfänger später Effekte aus der Ferne auslösen lassen soll.
 3. **Vorschau** – spielt das Paket mit derselben Engine wie beim Empfänger, stumm, solange du den Ton nicht ausdrücklich einschaltest. Pause/Fortsetzen/Stopp.
 4. **Export** – zeigt exakt die Zusammenfassung, die der Empfänger sieht (Effekte, Dauer, Audio, Bilder, Netzwerk). **Als .mpk exportieren** schreibt die Datei und zeigt ihren SHA-256.

@@ -6,8 +6,8 @@ Stand dieser Datei = Stand der tatsächlich ausgeführten Prüfungen unten. Nich
 
 | Kommando | Ergebnis |
 |---|---|
-| `xvfb-run -a python -m pytest -q --timeout=60` | **219 passed** (≈ 37 s) |
-| `python -m pytest -q` (ohne Display) | 129 passed, **90 übersprungen** (GUI-/Effekt-/Startup-Tests brauchen Anzeige) |
+| `xvfb-run -a python -m pytest -q --timeout=60` | **238 passed** (≈ 39 s) |
+| `python -m pytest -q` (ohne Display) | 143 passed, **95 übersprungen** (GUI-/Effekt-/Startup-Tests brauchen Anzeige) |
 | `python -m compileall -q makeprank tests tools run_*.py` | fehlerfrei |
 | PyInstaller-Build unter **Linux** (`--onedir --windowed`) für Creator und Client + `tools/smoke_test.py` unter Xvfb | beide Programme starteten und liefen 4 s – **das ist keine Windows-Prüfung** |
 | Screenshots aller 16 Effekte und der 9 Creator-Seiten unter Xvfb | visuell geprüft |
@@ -19,7 +19,7 @@ Netzwerk mit echtem TLS auf Loopback (falscher/abgelaufener/wiederverwendeter Co
 ## Windows
 
 * **Nicht auf Windows ausgeführt** in dieser Arbeitsumgebung (Linux-Container). `build_windows.bat` und der Workflow `.github/workflows/makeprank-windows.yml` sind geschrieben, aber ein Windows-Lauf liegt hier nicht vor, bis der Workflow auf GitHub (`windows-latest`) gelaufen ist. Erst dessen Ergebnis (Tests, Build, Smoke-Test, Artefakt `MakePrank-Windows`) belegt einen Windows-Build.
-* Windows-spezifisch ungeprüft: `winsound`-Wiedergabe (Hörtest), DPI/Schriftdarstellung (Segoe UI), Verhalten von `focus_set`/Esc mit Windows-Fenstermanager, SmartScreen.
+* Windows-spezifisch ungeprüft: `winsound`-Wiedergabe von Tönen **und importierten WAV-Clips** (Hörtest auf echtem Windows), DPI/Schriftdarstellung (Segoe UI), Verhalten von `focus_set`/Esc mit Windows-Fenstermanager, SmartScreen. Die Tests prüfen, dass die exakten Clip-Bytes an das Audio-Backend übergeben werden; ob der Lautsprecher sie hörbar abspielt, muss auf Windows geprüft werden.
 * Programme sind **nicht signiert**.
 
 ## Bekannte Grenzen / nicht implementiert

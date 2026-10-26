@@ -55,6 +55,26 @@ def make_png(width: int = 8, height: int = 8, color: tuple[int, int, int] = (200
             + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 
 
+def make_wav(seconds: float = 0.5, framerate: int = 22050, channels: int = 1) -> bytes:
+    """Build a small valid 16-bit PCM WAV (a quiet sine) without any audio library."""
+    import io
+    import math
+    import wave
+
+    frames = int(seconds * framerate)
+    samples = bytearray()
+    for n in range(frames):
+        value = int(8000 * math.sin(2 * math.pi * 440 * n / framerate))
+        samples += struct.pack("<h", value) * channels
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as handle:
+        handle.setnchannels(channels)
+        handle.setsampwidth(2)
+        handle.setframerate(framerate)
+        handle.writeframes(bytes(samples))
+    return buffer.getvalue()
+
+
 def run_for(session: Any, seconds: float, step: float = 0.04) -> None:
     """Advance a session on virtual time."""
     elapsed = 0.0
