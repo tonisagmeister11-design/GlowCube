@@ -22,7 +22,7 @@ button{font-family:inherit;cursor:pointer}
 body.fs #top,body.fs #chips,body.fs #sheet,body.fs #gpswarn,body.fs #results,body.fs #climbBox,body.fs #btnZoomIn,body.fs #btnZoomOut,body.fs #btnIsland,body.fs #btnLayers{display:none!important}
 #btnLayers{display:none!important}
 body.fs #btnCompass{top:20px!important}
-body.fs.navmode #btnCompass{top:150px!important}
+body.fs.navmode #btnCompass{top:58px!important}
 #speedo .sp3{font-size:12px;color:var(--text);border-top:1px solid var(--line);padding-top:4px;width:100%;text-align:center;font-variant-numeric:tabular-nums;display:none}
 body.navmode #speedo .sp3{display:block}
 #top{position:absolute;top:10px;left:10px;right:10px;z-index:1000;display:flex;gap:8px}
@@ -111,6 +111,15 @@ input[type=range]{width:100%;accent-color:var(--lime);height:28px}
 #nav .w{font-size:16px;font-weight:600;opacity:.85;line-height:1.2;margin-top:2px}
 #nav .then{font-size:13px;opacity:.7;margin-top:3px}
 #navMute{margin-left:auto;width:42px;height:42px;border-radius:12px;border:2px solid rgba(20,24,29,.3);background:none;flex:none;display:flex;align-items:center;justify-content:center}
+/* Vollbild: Abbiege-Hinweis als schmale Leiste ganz oben */
+body.fs #nav{top:6px;left:8px;right:8px;padding:5px 8px 5px 10px;border-radius:12px;gap:8px;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+body.fs #nav .arrow{width:28px;height:28px}
+body.fs #nav .grow{display:flex;align-items:baseline;gap:8px;min-width:0}
+body.fs #nav .d{font-size:19px;flex:none}
+body.fs #nav .w{font-size:13.5px;margin:0;flex:1;min-width:0}
+body.fs #nav .then{display:none}
+body.fs #navMute{width:30px;height:30px;border-radius:9px;border-width:1.5px}
+body.fs #navMute svg{width:18px;height:18px}
 #climbBox{position:absolute;top:96px;left:10px;right:10px;z-index:1001;background:rgba(28,34,41,.96);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:none;font-size:14px;align-items:center;gap:10px}
 #speedo{position:absolute;left:10px;z-index:999;background:rgba(28,34,41,.95);border:1px solid var(--line);border-radius:14px;width:96px;padding:8px 6px 7px;display:none;flex-direction:column;align-items:center;gap:4px;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 #speedo .sp1{display:flex;flex-direction:column;align-items:center}
