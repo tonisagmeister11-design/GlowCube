@@ -34,9 +34,12 @@
   // =====================================================================
   // Daten
   // =====================================================================
-  var N = D.nodes.length / 3;
-  var LAT = new Float64Array(N), LON = new Float64Array(N), ELE = new Float32Array(N);
-  for (var i = 0; i < N; i++) { LAT[i] = D.nodes[3 * i] / 1e5; LON[i] = D.nodes[3 * i + 1] / 1e5; ELE[i] = D.nodes[3 * i + 2] / 10; }
+  var N = D.nodes.length / 4;
+  var LAT = new Float64Array(N), LON = new Float64Array(N), ELE = new Float32Array(N), SC = new Float32Array(N), COAST = new Uint8Array(N);
+  for (var i = 0; i < N; i++) {
+    LAT[i] = D.nodes[4 * i] / 1e5; LON[i] = D.nodes[4 * i + 1] / 1e5; ELE[i] = D.nodes[4 * i + 2] / 10;
+    var sv = D.nodes[4 * i + 3]; SC[i] = (sv % 10) / 9; COAST[i] = sv >= 10 ? 1 : 0;
+  }
   var DEM = D.dem;
   function demEle(lat, lon) {
     var y = (lat - DEM.s) / DEM.dlat, x = (lon - DEM.w) / DEM.dlon;
@@ -72,14 +75,14 @@
   };
   var FIT = { easy: { n: 'Gemütlich', f: 0.72 }, normal: { n: 'Normal', f: 1 }, sport: { n: 'Sportlich', f: 1.35 } };
   var STYLES = {
-    calm: { n: 'Ruhig', d: 'Radwege, ruhige Straßen, wenig Verkehr', cls: [0.72, 1, 1, 1.25, 2.1, 1.55, 3.2, 4.2, 1.2], route: 0.85, climb: 0 },
-    flat: { n: 'Flach', d: 'Möglichst wenig Höhenmeter', cls: [0.75, 1, 1, 1.25, 2.1, 1.4, 2.6, 3.5, 1.2], route: 0.9, climb: 9 },
-    fast: { n: 'Schnell', d: 'Kürzeste Fahrzeit, auch Hauptstraße', cls: [1, 1, 1, 1.1, 1.6, 1, 1.03, 1.12, 1.05], route: 1, climb: 0 }
+    scenic: { n: 'Schön', d: 'Die schönste Strecke: am Meer entlang, durch Wald und Olivenhaine, vorbei an Aussichtspunkten und Stränden, auf Radrouten statt Hauptstraße. Umwege werden in Kauf genommen.', cls: [0.75, 1, 1, 1.2, 2, 1.8, 4.5, 5.5, 1.15], route: 0.8, climb: 1.5, sc: 1.0 },
+    calm: { n: 'Ruhig', d: 'Möglichst wenig Verkehr: Radwege und ruhige Nebenstraßen, trotzdem eher schöne Wege.', cls: [0.72, 1, 1, 1.25, 2.1, 1.9, 4.5, 5.5, 1.2], route: 0.85, climb: 0, sc: 0.25 },
+    flat: { n: 'Flach', d: 'Schön, aber mit möglichst wenig Höhenmetern. Gut für Familien und schwere Räder.', cls: [0.75, 1, 1, 1.25, 2.1, 1.8, 4, 5, 1.2], route: 0.9, climb: 9, sc: 0.4 }
   };
   var CLS_CAP = [40, 35, 99, 99, 12, 99, 99, 99, 99];
   var S = load('settings', {});
   S = {
-    bike: BIKES[S.bike] ? S.bike : 'city', fit: FIT[S.fit] ? S.fit : 'normal', style: STYLES[S.style] ? S.style : 'calm',
+    bike: BIKES[S.bike] ? S.bike : 'city', fit: FIT[S.fit] ? S.fit : 'normal', style: STYLES[S.style] ? S.style : 'scenic', headUp: !!S.headUp,
     voice: S.voice !== false, wind: S.wind !== false, relief: S.relief !== false, contours: S.contours !== false,
     routes: S.routes !== false, labels: S.labels !== false
   };
@@ -177,7 +180,8 @@
       if (v === undefined) { v = rideSpeed(B, P, g, s, cls, hw); cache.set(key, v); }
       var t = L / v;
       eTime[e] = t;
-      var c = t * st.cls[cls] * B.pref[s] * ((w[2] & 2) ? st.route : 1);
+      var scE = (SC[eFrom[e]] + SC[eTo[e]]) / 2;
+      var c = t * st.cls[cls] * B.pref[s] * ((w[2] & 2) ? st.route : 1) * (1 - st.sc * (scE - 0.35));
       if (st.climb && eRise[e] > 0) c += eRise[e] * st.climb * (g > 0.06 ? 2 : 1);
       eCost[e] = c;
       var cpm = c / L; if (cpm < mn) mn = cpm;
@@ -246,7 +250,7 @@
     return r;
   }
   function analyze(src, edges) {
-    var nodes = [src], cum = [0], ele = [ELE[src]], secs = 0, mixC = {}, mixS = {}, walk = 0, L = 0;
+    var nodes = [src], cum = [0], ele = [ELE[src]], secs = 0, mixC = {}, mixS = {}, walk = 0, L = 0, coastLen = 0, beauty = 0;
     var B = BIKES[S.bike];
     for (var k = 0; k < edges.length; k++) {
       var e = edges[k], w = W[eWay[e]];
@@ -254,6 +258,8 @@
       var c = w[0] === 7 ? 6 : w[0];
       mixC[c] = (mixC[c] || 0) + eLen[e]; mixS[w[3]] = (mixS[w[3]] || 0) + eLen[e];
       if (eTime[e] / eLen[e] > 0.85) walk += eLen[e];
+      if (COAST[eFrom[e]] && COAST[eTo[e]]) coastLen += eLen[e];
+      beauty += eLen[e] * (SC[eFrom[e]] + SC[eTo[e]]) / 2;
     }
     // Höhenmeter mit Hysterese
     var asc = 0, desc = 0, ref = ele[0];
@@ -265,7 +271,7 @@
       if (j >= cum.length) break;
       var gg = (ele[j] - ele[k]) / (cum[j] - cum[k]); if (gg > maxG) maxG = gg;
     }
-    var r = { src: src, edges: edges, nodes: nodes, cum: cum, ele: ele, len: L, secs: secs, asc: asc, desc: desc, maxG: maxG, mixC: mixC, mixS: mixS, walk: walk };
+    var r = { src: src, edges: edges, nodes: nodes, cum: cum, ele: ele, len: L, secs: secs, asc: asc, desc: desc, maxG: maxG, mixC: mixC, mixS: mixS, walk: walk, coast: coastLen, beauty: L > 0 ? Math.round(beauty / L * 10) : 0 };
     r.climbs = findClimbs(r);
     r.steps = buildSteps(r);
     r.minEle = Math.min.apply(null, ele); r.maxEle = Math.max.apply(null, ele);
@@ -312,7 +318,8 @@
   // Karte
   // =====================================================================
   var bb = D.bbox, bounds = L.latLngBounds([bb[0], bb[1]], [bb[2], bb[3]]);
-  var map = L.map('map', { zoomControl: false, attributionControl: true, maxBounds: bounds.pad(3), minZoom: 10.5, maxZoom: 19, zoomSnap: 0.25, wheelPxPerZoomLevel: 90 });
+  var map = L.map('map', { zoomControl: false, attributionControl: true, maxBounds: bounds.pad(3), minZoom: 10.5, maxZoom: 19, zoomSnap: 0.25, wheelPxPerZoomLevel: 90,
+    rotate: true, bearing: 0, touchRotate: true, rotateControl: false, shiftKeyRotate: true });
   map.attributionControl.setPrefix('').addAttribution('Daten &copy; OpenStreetMap-Mitwirkende, Höhen: Copernicus DEM');
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
   [['land', 200], ['relief', 250], ['contour', 260], ['roads', 400], ['route', 450]].forEach(function (p) { map.createPane(p[0]).style.zIndex = p[1]; });
@@ -498,15 +505,18 @@
     me = { lat: lat, lon: lon, acc: acc, brg: brg >= 0 ? brg : (me ? me.brg : -1) };
     lastFix = now;
     lastSpeed = speed >= 0 ? speed * 3.6 : -1;
-    var html = '<div class="me">' + (me.brg >= 0 && lastSpeed > 3 ? '<svg width="34" height="34" viewBox="0 0 34 34" style="transform:rotate(' + me.brg + 'deg)"><path d="M17 0 24 10H10z" fill="#c8f53c" stroke="#14181d" stroke-width="2"/></svg>' : '') + '<div class="dot"></div></div>';
     if (!meMarker) {
-      meMarker = L.marker([lat, lon], { interactive: false, zIndexOffset: 1000, icon: L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17], html: html }) }).addTo(map);
+      meMarker = L.marker([lat, lon], { interactive: false, zIndexOffset: 1000, icon: L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17], html: '<div class="me"><svg id="meArrow" width="34" height="34" viewBox="0 0 34 34" style="display:none"><path d="M17 0 24 10H10z" fill="#c8f53c" stroke="#14181d" stroke-width="2"/></svg><div class="dot"></div></div>' }) }).addTo(map);
       accCircle = L.circle([lat, lon], { radius: acc, renderer: rRoute, color: '#c8f53c', weight: 1, opacity: 0.4, fillOpacity: 0.07, interactive: false }).addTo(map);
     } else {
-      meMarker.setLatLng([lat, lon]); meMarker.setIcon(L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17], html: html }));
+      meMarker.setLatLng([lat, lon]);
       accCircle.setLatLng([lat, lon]).setRadius(acc);
     }
+    sessPoint(lat, lon, acc, speed);
+    if (follow && nav && S.headUp && me.brg >= 0 && lastSpeed > 4) smoothBearing(-me.brg, 400);
+    updArrow();
     if (follow) map.panTo([lat, lon], { animate: true, duration: 0.5 });
+    updSpeedo();
     if (rec) recPoint(lat, lon, acc, speed);
     if (nav) navUpdate();
     else if (state === 'home' && !homeDrawnWithGps && myRef()) drawHome();
@@ -532,6 +542,82 @@
     follow = true; $('btnLoc').classList.add('on'); map.setView([me.lat, me.lon], Math.max(map.getZoom(), 16));
   };
   map.on('dragstart', function () { follow = false; $('btnLoc').classList.remove('on'); });
+
+  // ---------- Drehen, Zoomen, Kompass, automatisch zurueck zur Position ----------
+  var lastTouch = Date.now(), bearAnim = null;
+  ['touchstart', 'touchmove', 'mousedown', 'wheel'].forEach(function (ev) { $('map').addEventListener(ev, function () { lastTouch = Date.now(); }, { passive: true }); });
+  function updArrow() {
+    var el = document.getElementById('meArrow'); if (!el || !me) return;
+    var show = me.brg >= 0 && lastSpeed > 3;
+    el.style.display = show ? 'block' : 'none';
+    if (show) el.style.transform = 'rotate(' + (me.brg + map.getBearing()) + 'deg)';
+  }
+  function updCompass() {
+    var b = map.getBearing();
+    $('compassNeedle').style.transform = 'rotate(' + b + 'deg)';
+    $('btnCompass').classList.toggle('hide', Math.abs(((b + 540) % 360) - 180) < 0.5 && !(nav && !nav.free));
+    $('btnCompass').classList.toggle('on', !!(nav && S.headUp));
+  }
+  function smoothBearing(target, ms) {
+    if (bearAnim) cancelAnimationFrame(bearAnim);
+    var from = map.getBearing(), diff = ((target - from + 540) % 360) - 180, t0 = performance.now();
+    if (Math.abs(diff) < 0.5) return;
+    (function step(now) {
+      var f = Math.min(1, (now - t0) / (ms || 500)), e = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+      map.setBearing(from + diff * e);
+      if (f < 1) bearAnim = requestAnimationFrame(step); else bearAnim = null;
+    })(t0);
+  }
+  map.on('rotate', function () { updArrow(); updCompass(); });
+  $('btnZoomIn').onclick = function () { lastTouch = Date.now(); map.zoomIn(1); };
+  $('btnZoomOut').onclick = function () { lastTouch = Date.now(); map.zoomOut(1); };
+  $('btnCompass').onclick = function () {
+    lastTouch = Date.now();
+    if (nav && !nav.free) {
+      S.headUp = !S.headUp; saveS();
+      toast(S.headUp ? 'Karte dreht sich mit der Fahrtrichtung' : 'Norden ist oben');
+      if (!S.headUp) smoothBearing(0); else if (me && me.brg >= 0) smoothBearing(-me.brg);
+      updCompass();
+    } else smoothBearing(0);
+  };
+  // Nach einer Weile ohne Beruehrung zurueck zur eigenen Position (und Norden oben bzw. Fahrtrichtung)
+  setInterval(function () {
+    var idle = Date.now() - lastTouch, ref = myRef();
+    if (nav && idle > 8000) {
+      if (ref && !follow) { follow = true; $('btnLoc').classList.add('on'); map.setView([ref.lat, ref.lon], Math.max(map.getZoom(), 16), { animate: true }); }
+      if (!S.headUp || nav.free) { if (Math.abs(map.getBearing()) > 0.5 && Math.abs(map.getBearing() - 360) > 0.5) smoothBearing(0, 800); }
+    } else if (!nav && idle > 20000) {
+      if (Math.abs(map.getBearing()) > 0.5 && Math.abs(map.getBearing() - 360) > 0.5) smoothBearing(0, 800);
+      if (ref && !follow && (state === 'home' || state === 'near')) { follow = true; $('btnLoc').classList.add('on'); map.setView([ref.lat, ref.lon], Math.max(map.getZoom(), 15), { animate: true }); }
+    }
+  }, 1000);
+
+  // ---------- Tempo und Durchschnitt (auch ohne Navigation) ----------
+  var sess = { dist: 0, mv: 0, last: null, lastT: 0 }, speedHist = [];
+  function sessPoint(lat, lon, acc, speed) {
+    var now = Date.now();
+    if (speed >= 0) { speedHist.push(speed * 3.6); if (speedHist.length > 3) speedHist.shift(); }
+    if (acc > 35 || !onIsland(lat, lon)) return;
+    if (sess.last) {
+      var d = dist(sess.last[0], sess.last[1], lat, lon), dt = (now - sess.lastT) / 1000;
+      if (d < 4) return;
+      if (dt > 0 && dt < 15 && d / dt < 25) { sess.dist += d; if (speed > 0.8 || d / dt > 0.8) sess.mv += dt; }
+    }
+    sess.last = [lat, lon]; sess.lastT = now;
+  }
+  function curSpeed() {
+    if (!myRef() || Date.now() - lastFix > 6000 || !speedHist.length) return null;
+    var v = speedHist.reduce(function (a, b) { return a + b; }, 0) / speedHist.length;
+    return v < 2 ? 0 : v;
+  }
+  function avgSpeed() { var o = rec || sess; return o.mv > 20 ? o.dist / o.mv * 3.6 : null; }
+  function updSpeedo() {
+    var v = curSpeed(), a = avgSpeed(), show = !!nav || (v !== null && (v > 0 || sess.mv > 20));
+    $('speedo').style.display = show ? 'flex' : 'none';
+    $('spd').textContent = v === null ? '-' : Math.round(v);
+    $('avg').textContent = a === null ? '-' : a.toFixed(1).replace('.', ',');
+  }
+  setInterval(updSpeedo, 2000);
   $('btnIsland').onclick = function () { follow = false; $('btnLoc').classList.remove('on'); fitIsland(); };
   $('btnLayers').onclick = function () { if (!nav) showMenu('map'); };
 
@@ -777,11 +863,13 @@
   var DIFF = [['Leicht', 'lime'], ['Mittel', 'orange'], ['Schwer', 'red']];
   function routeStatsHtml(r) {
     return '<div class="stats"><div class="stat"><b>' + fmtDist(r.len) + '</b><span>Strecke</span></div><div class="stat"><b>' + fmtTime(r.secs) + '</b><span>Fahrzeit</span></div><div class="stat"><b>' + clock(r.secs) + '</b><span>Ankunft</span></div></div>' +
-      '<div class="stats"><div class="stat w"><b>' + Math.round(r.asc) + ' m</b><span>Bergauf</span></div><div class="stat w"><b>' + Math.round(r.desc) + ' m</b><span>Bergab</span></div><div class="stat w"><b>' + pct(r.maxG) + '</b><span>Max. Steigung</span></div></div>';
+      '<div class="stats"><div class="stat w"><b>' + Math.round(r.asc) + ' m</b><span>Bergauf</span></div><div class="stat w"><b>' + Math.round(r.desc) + ' m</b><span>Bergab</span></div><div class="stat w"><b>' + pct(r.maxG) + '</b><span>Max. Steigung</span></div></div>' +
+      '<div class="stats two"><div class="stat"><b style="color:#4fc3f7">' + fmtDist(r.coast) + '</b><span>Direkt am Meer</span></div><div class="stat"><b>' + r.beauty + ' / 10</b><span>Schönheit</span></div></div>';
   }
   function settingsChips() {
     return '<div class="hscroll">' + Object.keys(BIKES).map(function (k) { return '<button class="chip sm' + (k === S.bike ? ' on' : '') + '" data-bike="' + k + '">' + BIKES[k].n + '</button>'; }).join('') + '</div>' +
-      '<div class="seg">' + Object.keys(STYLES).map(function (k) { return '<button class="' + (k === S.style ? 'on' : '') + '" data-style="' + k + '">' + STYLES[k].n + '</button>'; }).join('') + '</div>';
+      '<div class="seg">' + Object.keys(STYLES).map(function (k) { return '<button class="' + (k === S.style ? 'on' : '') + '" data-style="' + k + '">' + STYLES[k].n + '</button>'; }).join('') + '</div>' +
+      '<div class="sub" style="font-size:12.5px;margin:-4px 0 4px">' + STYLES[S.style].d + '</div>';
   }
   function bindSettingsChips(after) {
     sheetEl.querySelectorAll('[data-bike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-bike'); saveS(); computeCosts(); after(); }; });
@@ -913,7 +1001,7 @@
   function tourCard(attr, title, r, sub) {
     var d = DIFF[r.diff];
     return '<div class="card" ' + attr + '><div class="top"><div class="grow"><div class="nm">' + esc(title) + '</div>' + (sub ? '<div class="sub" style="font-size:13px;margin-top:2px">' + esc(sub) + '</div>' : '') + '</div><span class="tag ' + d[1] + '">' + d[0] + '</span></div>' +
-      '<div class="meta"><span><b>' + fmtDist(r.len) + '</b></span><span><b>' + fmtTime(r.secs) + '</b></span><span>bergauf <b>' + Math.round(r.asc) + ' m</b></span><span>max. <b>' + pct(r.maxG) + '</b></span></div>' +
+      '<div class="meta"><span><b>' + fmtDist(r.len) + '</b></span><span><b>' + fmtTime(r.secs) + '</b></span><span>bergauf <b>' + Math.round(r.asc) + ' m</b></span><span>max. <b>' + pct(r.maxG) + '</b></span><span>am Meer <b>' + fmtDist(r.coast) + '</b></span><span>schön <b>' + r.beauty + '/10</b></span></div>' +
       '<div class="mix" style="height:6px;margin:4px 0 0">' + ['0', '1', '2', '3', '4', '5'].map(function (k) { var v = r.mixS[k] || 0; return v ? '<div style="width:' + v / r.len * 100 + '%;background:' + SURF[k].c + '"></div>' : ''; }).join('') + '</div>' + sparkSvg(r) + '</div>';
   }
   var tourTab = 'official', loopKm = load('loopKm', 20), loopRes = null, ideaCache = null;
@@ -978,7 +1066,7 @@
       // doppelt gefahrene Anteile
       var seen = {}, dup = 0;
       r.edges.forEach(function (e) { var k = Math.min(eFrom[e], eTo[e]) + '_' + Math.max(eFrom[e], eTo[e]); if (seen[k]) dup += eLen[e]; seen[k] = 1; });
-      var score = Math.abs(r.len - target) / target + dup / r.len * 1.2;
+      var score = Math.abs(r.len - target) / target + dup / r.len * 1.2 - r.beauty / 10 * 0.5;
       res.push({ r: r, pts: pts, score: score, h: h });
     }
     res.sort(function (a, b) { return a.score - b.score; });
@@ -1036,7 +1124,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Ugljan Rad 2.0. Funktioniert komplett offline. Karte: OpenStreetMap (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Ugljan Rad 2.1. Funktioniert komplett offline. Karte: OpenStreetMap (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1110,14 +1198,14 @@
   function enterNavUi() {
     if (A) A.keepScreenOn(true);
     $('top').classList.add('hide'); $('chips').classList.add('hide'); $('results').style.display = 'none'; $('gpswarn').style.display = 'none';
-    $('speedo').style.display = 'flex'; $('btnLayers').classList.add('hide');
+    $('btnLayers').classList.add('hide'); document.body.classList.add('navmode'); updSpeedo(); updCompass();
     follow = true; $('btnLoc').classList.add('on');
     updMute();
   }
   function leaveNavUi() {
     if (A) A.keepScreenOn(false);
     $('top').classList.remove('hide'); $('chips').classList.remove('hide'); $('nav').style.display = 'none'; $('climbBox').style.display = 'none';
-    $('speedo').style.display = 'none'; $('btnLayers').classList.remove('hide');
+    $('btnLayers').classList.remove('hide'); document.body.classList.remove('navmode'); updSpeedo(); smoothBearing(0); setTimeout(updCompass, 600);
   }
   function updMute() { $('navMute').innerHTML = svg(S.voice ? 'vol' : 'mute', '#14181d', 24, 2.4); }
   $('navMute').onclick = function () { S.voice = !S.voice; saveS(); updMute(); if (S.voice) say('Ansagen an'); };
@@ -1188,7 +1276,7 @@
   function navUpdate() {
     if (!nav) return;
     var ref = myRef();
-    $('spd').textContent = lastSpeed >= 0 && ref ? Math.round(lastSpeed) : '-';
+    updSpeedo();
     if (nav.free) { freeSheet(ref); return; }
     var r = cur, along = nav.lastAlong;
     if (ref) {
@@ -1371,5 +1459,5 @@
 
   drawChips(); updLayers(); drawHome();
   setTimeout(fitIsland, 50);
-  window.__ugljan = { routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };
+  window.__ugljan = { map: map, STYLES: STYLES, routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };
 })();

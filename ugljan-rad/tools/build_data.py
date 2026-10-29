@@ -208,9 +208,57 @@ for w in way_out:
         for k in range(1, len(seq) - 1):
             coords_out[seq[k]][2] = z0 + (z1 - z0) * k / (len(seq) - 1)
 
+# ---------- Schoenheit je Wegpunkt (0-9, +10 = direkt am Meer) ----------
+import shapely
+from shapely import affinity
+def to_m(g):
+    return affinity.affine_transform(g, [80100, 0, 0, 110540, -15.15 * 80100, -44.08 * 110540])
+coast_m = to_m(island.boundary)
+nat = []
+for wid, (nd, t) in ways.items():
+    if (t.get("landuse") in ("forest", "orchard", "meadow", "vineyard") or t.get("natural") in ("wood", "scrub", "heath")) and nd and nd[0] == nd[-1]:
+        c = way_coords(wid)
+        if len(c) >= 4:
+            p_ = Polygon(c).buffer(0)
+            if p_.area > 5e-8 and island.intersects(p_):
+                nat.append(p_)
+nat_m = to_m(unary_union(nat)) if nat else None
+attr = []
+for i, (lat, lon, t) in nodes.items():
+    c_ = None
+    if t.get("tourism") == "viewpoint" or (t.get("natural") == "peak" and t.get("name")): c_ = 1.0
+    elif t.get("natural") == "beach" or t.get("leisure") == "beach_resort": c_ = 0.8
+    elif t.get("historic") or t.get("tourism") in ("attraction", "artwork"): c_ = 0.6
+    if c_ and inside(lat, lon):
+        attr.append(((lon - 15.15) * 80100, (lat - 44.08) * 110540, c_))
+for wid, (nd, t) in ways.items():
+    if t.get("natural") == "beach" or t.get("leisure") == "beach_resort":
+        cc = way_coords(wid)
+        if cc:
+            attr.append(((cc[0][0] - 15.15) * 80100, (cc[0][1] - 44.08) * 110540, 0.8))
+pts_m = shapely.points([((lo - 15.15) * 80100, (la - 44.08) * 110540) for la, lo, zz in coords_out])
+dcoast = shapely.distance(pts_m, coast_m)
+in_nat = shapely.contains_xy(nat_m, [p.x for p in pts_m], [p.y for p in pts_m]) if nat_m is not None else np.zeros(len(coords_out), bool)
+XY = np.array([[p.x, p.y] for p in pts_m])
+A_ = np.array(attr) if attr else np.zeros((0, 3))
+scenic = []
+for k, (la, lo, zz) in enumerate(coords_out):
+    d = dcoast[k]
+    coast = 1.0 if d < 70 else max(0.0, 1 - (d - 70) / 330)
+    nat_v = 0.45 if in_nat[k] else 0.0
+    poi = 0.0
+    if len(A_):
+        dd = np.hypot(A_[:, 0] - XY[k, 0], A_[:, 1] - XY[k, 1])
+        poi = float(np.max(A_[:, 2] * np.clip(1 - dd / 250, 0, 1)))
+    view = min(1.0, max(0.0, (zz - 60) / 160)) * 0.7 if d < 1500 else 0.0
+    sc = 1 - (1 - coast * 0.9) * (1 - nat_v) * (1 - poi * 0.6) * (1 - view)
+    scenic.append(min(9, int(round(sc * 9))) + (10 if d < 150 else 0))
+
 flat = []
-for la, lo, zz in coords_out:
-    flat += [round(la * 1e5), round(lo * 1e5), round(zz * 10)]
+for (la, lo, zz), sc in zip(coords_out, scenic):
+    flat += [round(la * 1e5), round(lo * 1e5), round(zz * 10), sc]
+from collections import Counter as _C
+print("scenic", sorted(_C(x % 10 for x in scenic).items()), "coast", sum(1 for x in scenic if x >= 10))
 
 wid_to_idx = {w[5]: k for k, w in enumerate(way_out)}
 route_out = []
