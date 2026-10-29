@@ -644,8 +644,11 @@
   }
   function placeSide() {
     var h = sheetH();
-    $('side').style.bottom = (h + 10) + 'px';
-    $('speedo').style.bottom = (h + 10) + 'px';
+    $('side').style.bottom = (h + 22) + 'px';
+    $('speedo').style.bottom = (h + 34) + 'px';
+    var lb = document.querySelector('.leaflet-bottom.leaflet-left'), rb = document.querySelector('.leaflet-bottom.leaflet-right');
+    if (lb) lb.style.bottom = h + 'px';
+    if (rb) rb.style.bottom = h + 'px';
   }
   if (window.ResizeObserver) new ResizeObserver(placeSide).observe(sheetEl);
   sheetEl.addEventListener('click', function (e) {
@@ -690,6 +693,8 @@
     return '<div class="legend">' + items.map(function (x) { var col = x[0] < 0 ? '#ffb020' : CLASS[x[0]].c; return '<span><i style="background:' + col + '"></i>' + x[1] + '</span>'; }).join('') + '</div>';
   }
   sheetEl.addEventListener('click', function (e) {
+    var h = e.target.closest('[data-href]');
+    if (h) { location.href = h.getAttribute('data-href'); return; }
     var a = e.target.closest('[data-act]');
     if (a) {
       var act = a.getAttribute('data-act');
@@ -780,8 +785,8 @@
     if (e.desc) kv += '<div class="sub" style="margin:8px 0">' + esc(e.desc) + '</div>';
     var btn = '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button></div>';
     var extra = '';
-    if (e.ph) extra += '<button class="go sec" onclick="location.href=\'tel:' + esc(e.ph.split(/[;,]/)[0].replace(/[^\d+]/g, '')) + '\'">Anrufen</button>';
-    if (e.web) extra += '<button class="go sec" onclick="location.href=\'' + esc(/^http/.test(e.web) ? e.web : 'https://' + e.web) + '\'">Website</button>';
+    if (e.ph) extra += '<button class="go sec" data-href="tel:' + esc(e.ph.split(/[;,]/)[0].replace(/[^\d+]/g, '')) + '">Anrufen</button>';
+    if (e.web) extra += '<button class="go sec" data-href="' + esc(/^https?:\/\//.test(e.web) ? e.web : 'https://' + e.web) + '">Website</button>';
     sheet('<div style="display:flex;gap:12px;align-items:center"><div class="ico" style="width:46px;height:46px">' + svg(p[0], c.c, 24) + '</div><div class="grow"><h2>' + esc(p.label) + '</h2><div class="sub">' + esc(e.sub || c.n) + ' &middot; ' + esc(p.village) + '</div></div></div>' +
       '<div style="margin-top:10px">' + info + '</div>' + quickRouteInfo(p[1], p[2]) + kv + btn + (extra ? '<div class="btns">' + extra + '</div>' : ''));
     $('goRoute').onclick = function () { planRoute([startRef(), dest], dest.name); };
@@ -1124,7 +1129,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Ugljan Rad 2.1. Funktioniert komplett offline. Karte: OpenStreetMap (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Ugljan Rad 2.2. Funktioniert komplett offline. Karte: OpenStreetMap (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1182,13 +1187,26 @@
     rec.trk.push([Math.round(lat * 1e5) / 1e5, Math.round(lon * 1e5) / 1e5]);
     trackLayer.addLatLng([lat, lon]);
   }
+  function saveRide(r) {
+    var l = load('rides', []);
+    var trk = r.trk, stp = Math.max(1, Math.ceil(trk.length / 1500));
+    l.unshift({ t: r.t, title: r.title, dist: r.dist, mv: r.mv, asc: r.asc, max: r.max, tot: ((r.lastT || Date.now()) - r.t) / 1000, trk: trk.filter(function (_, k) { return k % stp === 0; }) });
+    store('rides', l.slice(0, 30));
+  }
+  // Zwischenstand sichern, falls Android die App waehrend der Fahrt beendet
+  setInterval(function () {
+    if (rec && rec.dist > 0) { var c = {}; for (var k in rec) c[k] = rec[k]; var stp = Math.max(1, Math.ceil(rec.trk.length / 1500)); c.trk = rec.trk.filter(function (_, i) { return i % stp === 0; }); store('recDraft', c); }
+  }, 20000);
+  (function () {
+    var d = load('recDraft', null);
+    if (d && d.dist > 300) { saveRide(d); setTimeout(function () { toast('Die letzte Fahrt wurde unterbrochen und gespeichert.'); }, 1500); }
+    store('recDraft', null);
+  })();
   function recStop() {
     if (!rec) return;
+    store('recDraft', null);
     if (rec.dist > 300) {
-      var l = load('rides', []);
-      var trk = rec.trk, stp = Math.max(1, Math.ceil(trk.length / 1500));
-      l.unshift({ t: rec.t, title: rec.title, dist: rec.dist, mv: rec.mv, asc: rec.asc, max: rec.max, tot: (Date.now() - rec.t) / 1000, trk: trk.filter(function (_, k) { return k % stp === 0; }) });
-      store('rides', l.slice(0, 30));
+      rec.lastT = Date.now(); saveRide(rec);
       toast('Fahrt gespeichert: ' + fmtDist(rec.dist));
     }
     rec = null;
@@ -1196,14 +1214,14 @@
   }
 
   function enterNavUi() {
-    if (A) A.keepScreenOn(true);
+    if (A) { A.keepScreenOn(true); try { A.setNavActive(true, nav && nav.free ? 'Freie Fahrt wird aufgezeichnet' : 'Navigation läuft'); } catch (e) {} }
     $('top').classList.add('hide'); $('chips').classList.add('hide'); $('results').style.display = 'none'; $('gpswarn').style.display = 'none';
     $('btnLayers').classList.add('hide'); document.body.classList.add('navmode'); updSpeedo(); updCompass();
     follow = true; $('btnLoc').classList.add('on');
     updMute();
   }
   function leaveNavUi() {
-    if (A) A.keepScreenOn(false);
+    if (A) { A.keepScreenOn(false); try { A.setNavActive(false, ''); } catch (e) {} }
     $('top').classList.remove('hide'); $('chips').classList.remove('hide'); $('nav').style.display = 'none'; $('climbBox').style.display = 'none';
     $('btnLayers').classList.remove('hide'); document.body.classList.remove('navmode'); updSpeedo(); smoothBearing(0); setTimeout(updCompass, 600);
   }
@@ -1336,7 +1354,7 @@
     sheet('<div class="stats" style="margin-top:0"><div class="stat"><b>' + fmtDist(remain) + '</b><span>Noch</span></div><div class="stat"><b>' + fmtTime(secs) + '</b><span>Restzeit</span></div><div class="stat"><b>' + clock(secs) + '</b><span>Ankunft</span></div></div>' +
       '<div class="prof" id="prof">' + profileSvg(r, 340, 64, false, along) + '</div>' +
       '<div class="stats four"><div class="stat w"><b>' + Math.round(r.ele[k]) + ' m</b><span>Höhe</span></div><div class="stat w"><b>' + Math.round(ascLeft) + ' m</b><span>Noch hoch</span></div><div class="stat w"><b>' + (rec ? fmtKm(rec.dist) : '0,0') + '</b><span>km gefahren</span></div><div class="stat w"><b>' + (rec ? Math.round(rec.asc) : 0) + ' m</b><span>Geklettert</span></div></div>' +
-      '<button class="go sec" id="stopNav">Navigation beenden</button>', true);
+      (nav.arrived ? '<button class="go" id="stopNav">Fahrt beenden und speichern</button>' : '<button class="go sec" id="stopNav">Navigation beenden</button>'), true);
     $('stopNav').onclick = stopNav;
   }
   function freeSheet(ref) {
@@ -1449,7 +1467,11 @@
   // =====================================================================
   window.goBack = function () {
     if ($('results').style.display === 'block') { $('results').style.display = 'none'; return true; }
-    if (nav) { stopNav(); return true; }
+    if (nav) {
+      // versehentliches Beenden verhindern: zweimal druecken
+      if (Date.now() - (window.__backT || 0) < 2500) { stopNav(); return true; }
+      window.__backT = Date.now(); toast('Nochmal Zurück drücken, um die Fahrt zu beenden'); return true;
+    }
     if (state === 'pickVia') { drawRouteSheet(); state = 'route'; return true; }
     if (state === 'route' && plan && plan.opt.tour) { var t = tourTab; clearRoute(true); showTours(t); return true; }
     if (state === 'ride') { clearRoute(true); showMenu(); return true; }
@@ -1459,5 +1481,6 @@
 
   drawChips(); updLayers(); drawHome();
   setTimeout(fitIsland, 50);
+  window.__show = showPoi;
   window.__ugljan = { map: map, STYLES: STYLES, routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };
 })();

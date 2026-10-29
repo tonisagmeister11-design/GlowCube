@@ -34,6 +34,7 @@ public class MainActivity extends Activity implements LocationListener {
     private LocationManager lm;
     private TextToSpeech tts;
     private boolean ttsReady;
+    private boolean navActive;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -106,10 +107,12 @@ public class MainActivity extends Activity implements LocationListener {
     private void startGps() {
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return;
         try {
-            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this);
+            lm.removeUpdates(this);
+            // Waehrend der Fahrt jede Sekunde, sonst sparsamer (Akku)
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, navActive ? 1000 : 3000, navActive ? 0 : 5, this);
         } catch (Exception ignored) { }
         try {
-            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 3000, 5, this);
+            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, navActive ? 3000 : 10000, 10, this);
         } catch (Exception ignored) { }
         try {
             Location last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
@@ -132,12 +135,17 @@ public class MainActivity extends Activity implements LocationListener {
     @Override
     protected void onPause() {
         super.onPause();
-        lm.removeUpdates(this);
+        // Bei laufender Fahrt GPS weiterlaufen lassen (Vordergrund-Dienst haelt die App aktiv)
+        if (!navActive) lm.removeUpdates(this);
     }
 
     @Override
     protected void onDestroy() {
         if (tts != null) tts.shutdown();
+        try {
+            stopService(new Intent(this, NavService.class));
+        } catch (Exception ignored) { }
+        lm.removeUpdates(this);
         super.onDestroy();
     }
 
@@ -159,6 +167,29 @@ public class MainActivity extends Activity implements LocationListener {
             runOnUiThread(() -> {
                 if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            });
+        }
+
+        @JavascriptInterface
+        public void setNavActive(final boolean on, final String text) {
+            runOnUiThread(() -> {
+                navActive = on;
+                Intent i = new Intent(MainActivity.this, NavService.class).putExtra("text", text);
+                try {
+                    if (on) {
+                        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 2);
+                        }
+                        boolean loc = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                        if (loc) {
+                            if (Build.VERSION.SDK_INT >= 26) startForegroundService(i); else startService(i);
+                        }
+                    } else {
+                        stopService(i);
+                    }
+                } catch (Exception ignored) { }
+                startGps();
             });
         }
 

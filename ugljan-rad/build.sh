@@ -1,14 +1,15 @@
 #!/bin/bash
 # Baut die APK ohne Gradle direkt mit den Android-SDK-Werkzeugen.
-set -e
+set -e -o pipefail
 SDK=${ANDROID_HOME:-/opt/android-sdk}
 BT=$SDK/build-tools/36.1.0
 JAR=$SDK/platforms/android-36/android.jar
 cd "$(dirname "$0")"
 rm -rf build && mkdir -p build/classes build/dex
 $BT/aapt2 compile --dir app/res -o build/res.zip
-$BT/aapt2 link -o build/base.apk -I $JAR --manifest app/AndroidManifest.xml -A app/assets build/res.zip
-javac -source 11 -target 11 -nowarn -cp $JAR -d build/classes $(find app/java -name '*.java') 2>&1 | grep -v "bootstrap class path" || true
+mkdir -p build/gen
+$BT/aapt2 link -o build/base.apk -I $JAR --manifest app/AndroidManifest.xml -A app/assets build/res.zip --java build/gen
+javac -source 11 -target 11 -nowarn -cp $JAR -d build/classes $(find app/java build/gen -name '*.java') 2>&1 | { grep -v "bootstrap class path\|JAVA_TOOL_OPTIONS" || true; }
 $BT/d8 --release --min-api 24 --lib $JAR --output build/dex $(find build/classes -name '*.class')
 cp build/base.apk build/unsigned.apk
 (cd build/dex && zip -q -j ../unsigned.apk classes.dex)
