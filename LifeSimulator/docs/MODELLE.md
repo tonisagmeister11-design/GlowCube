@@ -114,3 +114,72 @@ Stadtverkehr auftauchen — aber nur, wenn er wirklich leicht ist; ein Test
 (`tests/test_imported_vehicles.gd`) besteht auf hoechstens 12.000 Dreiecken.
 Der Verkehr setzt solche Modelle ab Leistungsstufe 2 und nur bei jedem dritten
 Fahrzeug ein, damit nicht die ganze Stadt dasselbe Auto faehrt.
+
+---
+
+# Personenmodelle einbauen
+
+Für Figuren gilt ein anderer Weg als für Fahrzeuge: Die Meshes hängen über
+Knochengewichte am Skelett. Würde man sie wie eine Karosserie zusammenführen
+oder vereinfachen, gingen Skelett und Gewichte verloren und die Figur bliebe
+starr. Das Werkzeug `tools/prepare_person.gd` lässt die Geometrie deshalb in
+Ruhe und repariert stattdessen, was beim Import schiefgeht.
+
+```
+godot --headless --path . --script tools/prepare_person.gd -- \
+    --in=res://assets/models/people/<datei>.fbx \
+    --out=res://assets/models/people/<name>.scn \
+    --name="Bruno" --height=1.82
+```
+
+Es tut vier Dinge:
+
+1. **Unsichtbares wegwerfen** – Zähne, Zunge, Tränenkanal und Augenschatten
+   sieht man bei geschlossenem Mund nie. Beim Beispielmodell waren das 5.994
+   Dreiecke von 73.016.
+2. **Aufrichten und skalieren** – Modelle kommen oft mit Z nach oben und
+   liegen dann auf dem Rücken; `--height` setzt die Körpergröße in Metern.
+3. **Materialien reparieren.** Zwei Schalter macht der FBX-Import falsch:
+   * `vertex_color_use_as_albedo` ist an, die Eckpunktfarben sind aber
+     schwarz – **die Haut wird dadurch komplett schwarz.**
+   * `emission_enabled` ist mit weißer Farbe an, die Figur würde leuchten.
+   Zusätzlich bekommen Haare, Wimpern und Hornhaut eine Alphaschwelle;
+   ohne sie legen sich die Haarbüschel als dunkle Fläche über das Gesicht.
+4. **Knochen zuordnen** – 18 Rollen (Becken, Ober-/Unterschenkel, Fuß,
+   Wirbelsäule, Brust, Hals, Kopf, Ober-/Unterarm, Hand) werden gegen die
+   üblichen Benennungen geprüft: Unreal/Rigify (`thigh_l`), Mixamo
+   (`LeftUpLeg`), Character Creator (`CC_Base_L_Thigh`), Blender (`thigh.l`).
+   Die Zuordnung steht danach in der Szene, es wird nichts geraten.
+
+## Bewegung ohne mitgelieferte Animationen
+
+Zugelieferte Figuren kommen fast immer in T-Haltung und ohne Bewegungsablauf.
+`scripts/people/body_animator.gd` dreht die Knochen selbst: erst in eine
+Grundhaltung mit herabhängenden Armen, dann im Gehtakt (Schrittweite und
+Takt hängen an der Geschwindigkeit), dazu Atmen im Stand und eine Sitzhaltung.
+
+Die Drehachse eines Knochens ist in jedem Modell anders. Deshalb wird aus der
+Ruhelage ausgerechnet, welche Achse im Knochenraum der Weltachse entspricht –
+"Oberschenkel nach vorn" dreht dadurch auch wirklich nach vorn.
+
+## Wo die Figuren im Spiel auftauchen
+
+Sie **ersetzen die prozeduralen Figuren nicht.** Der Charaktereditor braucht
+Alter von 0 bis 100 mit passenden Proportionen; ein fertiges
+Erwachsenenmodell kann ein Kind nicht darstellen. Die zugelieferten Modelle
+kommen dort zum Einsatz, wo Nähe zählt:
+
+* als Passanten in unmittelbarer Spielernähe (Entfernungsstufe 0, ab 18
+  Jahren, passendes Geschlecht),
+* begrenzt durch `PersonModels.MAX_BY_LEVEL` – in den unteren
+  Leistungsstufen gar keine, sonst 3 bis 10 gleichzeitig. Eine Figur kostet
+  mit 67.000 Dreiecken so viel wie ein halbes Spielerfahrzeug.
+
+Ab Entfernungsstufe 2 wird der Bewegungsablauf nicht mehr gerechnet; das
+Verformen des Skeletts ist der teuerste Teil.
+
+## Modelle ohne Skelett
+
+Eine Figur ohne Skelett kann nicht gehen. `animated: false` in
+`PersonModels.MODELS` hält sie aus dem Passantenverkehr heraus; sie bleibt für
+stehende Rollen brauchbar.

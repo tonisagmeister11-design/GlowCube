@@ -35,6 +35,24 @@ func setup(p_crowd, appearance: Dictionary, age: float, body_kind: String, level
 	if perf != null:
 		level = clampi(level + perf.i("ped_lod_bias"), 0, 2)
 	lod = level
+	# Zugeliefertes Personenmodell, wenn eines passt und die Leistungsstufe es
+	# zulaesst: nur in Spielernaehe (level 0), nur fuer Erwachsene, und nur so
+	# viele gleichzeitig, wie PersonModels erlaubt. Sonst wie bisher die
+	# prozedurale Figur - nur die kann jedes Alter darstellen.
+	if level == 0 and age >= 18.0 and PersonModels.budget_left() > 0:
+		var fitting: Array = []
+		for id in PersonModels.for_role("passant"):
+			if str(PersonModels.info(str(id)).get("sex", "")) == body_kind:
+				fitting.append(id)
+		if not fitting.is_empty():
+			var pick := str(fitting[randi() % fitting.size()])
+			var detailed := PersonModels.build(pick)
+			if detailed != null:
+				body = detailed
+				add_child(body)
+				add_to_group("interactable")
+				add_to_group("npc")
+				return
 	if ResourceLoader.exists("res://scripts/character/humanoid.gd"):
 		var hs: Script = load("res://scripts/character/humanoid.gd")
 		if hs.has_method("create_lod"):
