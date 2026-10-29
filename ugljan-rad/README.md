@@ -13,5 +13,9 @@ Signiert wird mit dem Schlüssel aus `$KEYSTORE` (Standard `~/.ugljan-rad.keysto
 Updates müssen mit demselben Schlüssel signiert sein, sonst lässt Android sie nicht über die installierte App installieren.
 Der Schlüssel liegt bewusst nicht im Repository.
 
-Aufbau: eine WebView-App (`app/java`) mit Leaflet. Karte, Routing (A* mit Fahrphysik), Höhenprofile,
+Aufbau: eine WebView-App (`app/java`) mit MapLibre GL. Karte, Routing (A* mit Fahrphysik), Höhenprofile,
 Touren und Navigation laufen in `app/assets/app.js`, die Inseldaten liegen in `app/assets/data.js`.
+
+Ugljan ist komplett offline. Außerhalb der Insel kommen Karte und Routen online:
+Karte OpenFreeMap (OpenMapTiles), Relief AWS Terrain Tiles, beschilderte Radrouten waymarkedtrails.org,
+Fahrrad-Routing BRouter (brouter.de), Ortssuche Photon mit Nominatim als Ersatz.

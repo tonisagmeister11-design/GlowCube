@@ -165,7 +165,7 @@ public class MainActivity extends Activity implements LocationListener {
         float sacc = Build.VERSION.SDK_INT >= 26 && l.hasSpeedAccuracy() ? l.getSpeedAccuracyMetersPerSecond() : -1;
         final String js = "window.onGps&&onGps(" + l.getLatitude() + "," + l.getLongitude() + "," + l.getAccuracy() + ","
                 + (gps && l.hasSpeed() ? l.getSpeed() : -1) + "," + (gps && l.hasBearing() ? l.getBearing() : -1) + ","
-                + sacc + "," + (gps ? 1 : 0) + ")";
+                + sacc + "," + (gps ? 1 : 0) + "," + (l.hasAltitude() ? l.getAltitude() : "null") + ")";
         web.post(() -> web.evaluateJavascript(js, null));
     }
 

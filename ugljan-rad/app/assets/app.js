@@ -76,7 +76,7 @@
   var FIT = { easy: { n: 'Gemütlich', f: 0.72 }, normal: { n: 'Normal', f: 1 }, sport: { n: 'Sportlich', f: 1.35 } };
   var STYLES = {
     fast: { n: 'Schnell & leicht', d: 'Kürzeste Fahrzeit mit möglichst wenig Anstrengung: steile Anstiege und grobe Wege werden gemieden, auch die Hauptstraße ist erlaubt.', cls: [0.92, 1, 1.05, 1.3, 1.7, 1, 1.05, 1.15, 1.25], route: 1, climb: 4, sc: 0 },
-    scenic: { n: 'Am schönsten', d: 'Die schönste Strecke: am Meer entlang, durch Wald und Olivenhaine, vorbei an Aussichtspunkten und Stränden, auf Radrouten statt Hauptstraße. Egal ob anstrengend oder leicht.', cls: [0.75, 1, 1, 1.2, 2, 1.8, 4.5, 5.5, 1.15], route: 0.8, climb: 0, sc: 1.0 }
+    scenic: { n: 'Am schönsten', d: 'Die schönste Strecke: Radwege, beschilderte Radrouten und ruhige Wege statt Hauptstraße, auf Ugljan zusätzlich am Meer entlang, durch Wald und vorbei an Aussichtspunkten. Egal ob anstrengend oder leicht.', cls: [0.75, 1, 1, 1.2, 2, 1.8, 4.5, 5.5, 1.15], route: 0.8, climb: 0, sc: 1.0 }
   };
   var CLS_CAP = [40, 35, 99, 99, 12, 99, 99, 99, 99];
   var S = load('settings', {});
@@ -257,33 +257,129 @@
   }
   function analyze(src, edges) {
     var nodes = [src], cum = [0], ele = [ELE[src]], secs = 0, mixC = {}, mixS = {}, walk = 0, L = 0, coastLen = 0, beauty = 0;
-    var B = BIKES[S.bike];
+    var la = [LAT[src]], lo = [LON[src]], tc = [0], sc = [0], ss = [0], rlen = 0;
     for (var k = 0; k < edges.length; k++) {
       var e = edges[k], w = W[eWay[e]];
       nodes.push(eTo[e]); L += eLen[e]; cum.push(L); ele.push(ELE[eTo[e]]); secs += eTime[e];
+      la.push(LAT[eTo[e]]); lo.push(LON[eTo[e]]); tc.push(secs); sc.push(w[0]); ss.push(w[3]);
+      if (w[2] & 2) rlen += eLen[e];
       var c = w[0] === 7 ? 6 : w[0];
       mixC[c] = (mixC[c] || 0) + eLen[e]; mixS[w[3]] = (mixS[w[3]] || 0) + eLen[e];
       if (eTime[e] / eLen[e] > 0.85) walk += eLen[e];
       if (COAST[eFrom[e]] && COAST[eTo[e]]) coastLen += eLen[e];
       beauty += eLen[e] * (SC[eFrom[e]] + SC[eTo[e]]) / 2;
     }
+    var r = { src: src, edges: edges, nodes: nodes, la: la, lo: lo, tc: tc, sc: sc, ss: ss, cum: cum, ele: ele, len: L, secs: secs, mixC: mixC, mixS: mixS, walk: walk, rlen: rlen, coast: coastLen, beauty: L > 0 ? Math.round(beauty / L * 10) : 0 };
+    finishRoute(r);
+    r.steps = buildSteps(r);
+    return r;
+  }
+  // gemeinsame Auswertung fuer Ugljan- und Online-Routen
+  function finishRoute(r) {
+    var ele = r.ele, cum = r.cum, k;
     // Höhenmeter mit Hysterese
     var asc = 0, desc = 0, ref = ele[0];
     for (k = 1; k < ele.length; k++) { var d = ele[k] - ref; if (d > 3) { asc += d; ref = ele[k]; } else if (d < -3) { desc -= d; ref = ele[k]; } }
-    // max. Steigung über 60 m
+    // max. Steigung ueber 100 m
     var maxG = 0, j = 0;
     for (k = 0; k < cum.length; k++) {
       while (j < cum.length && cum[j] - cum[k] < 100) j++;
       if (j >= cum.length) break;
       var gg = (ele[j] - ele[k]) / (cum[j] - cum[k]); if (gg > maxG) maxG = gg;
     }
-    var r = { src: src, edges: edges, nodes: nodes, cum: cum, ele: ele, len: L, secs: secs, asc: asc, desc: desc, maxG: maxG, mixC: mixC, mixS: mixS, walk: walk, coast: coastLen, beauty: L > 0 ? Math.round(beauty / L * 10) : 0 };
+    r.asc = asc; r.desc = desc; r.maxG = maxG;
     r.climbs = findClimbs(r);
-    r.steps = buildSteps(r);
     r.minEle = Math.min.apply(null, ele); r.maxEle = Math.max.apply(null, ele);
+    var L = r.len, mixS = r.mixS;
     var rough = ((mixS[3] || 0) + (mixS[4] || 0) * 1.5 + (mixS[5] || 0) * 3) / Math.max(1, L);
-    var score = asc / Math.max(0.5, L / 1000) + maxG * 60 + rough * 15 + L / 4000;
+    var score = asc / Math.max(0.5, L / 1000) + maxG * 60 + rough * 15 + Math.min(L, 40000) / 4000;
     r.diff = score < 12 ? 0 : score < 24 ? 1 : 2;
+    r.quiet = Math.round(((r.mixC[0] || 0) + (r.mixC[1] || 0) + (r.mixC[2] || 0) + (r.mixC[8] || 0)) / Math.max(1, L) * 100);
+  }
+  function routeLL(r) { return r.la.map(function (a, i) { return [a, r.lo[i]]; }); }
+  function sameRoute(a, b) {
+    if (!a || !b || a.la.length !== b.la.length) return false;
+    for (var i = 0; i < a.la.length; i += 7) if (a.la[i] !== b.la[i] || a.lo[i] !== b.lo[i]) return false;
+    return true;
+  }
+
+  // =====================================================================
+  // Online-Routing ausserhalb von Ugljan (BRouter, weltweit, mit Hoehendaten)
+  // =====================================================================
+  function isLocal(pts) { return pts.every(function (p) { return onIsland(p.lat, p.lon); }); }
+  function brProfile(style) {
+    if (style === 'fast') return S.bike === 'road' ? 'fastbike' : S.bike === 'mtb' ? 'mtb' : 'trekking';
+    return S.bike === 'road' ? 'fastbike-lowtraffic' : 'safety';
+  }
+  var HW = { cycleway: 0, living_street: 1, residential: 1, unclassified: 1, service: 1, road: 1, track: 2, path: 3, bridleway: 3,
+    footway: 4, pedestrian: 4, steps: 4, tertiary: 5, tertiary_link: 5, secondary: 6, secondary_link: 6, primary: 7, primary_link: 7, trunk: 7, trunk_link: 7, motorway: 7 };
+  var SFC = { asphalt: 0, paved: 0, concrete: 0, 'concrete:plates': 1, paving_stones: 1, sett: 1, cobblestone: 1, compacted: 2, fine_gravel: 2,
+    gravel: 3, unpaved: 3, pebblestone: 3, dirt: 4, ground: 4, earth: 4, grass: 4, mud: 4, sand: 4, rock: 5, stone: 5 };
+  var DEFS = { 0: 0, 1: 0, 2: 3, 3: 4, 4: 1, 5: 0, 6: 0, 7: 0, 8: 4 };
+  var VH = { 1: ['Geradeaus', 'geradeaus weiterfahren', 0], 2: ['Links abbiegen', 'links abbiegen', -90], 3: ['Leicht links', 'leicht links halten', -40],
+    4: ['Scharf links', 'scharf links abbiegen', -140], 5: ['Rechts abbiegen', 'rechts abbiegen', 90], 6: ['Leicht rechts', 'leicht rechts halten', 40],
+    7: ['Scharf rechts', 'scharf rechts abbiegen', 140], 8: ['Links halten', 'links halten', -30], 9: ['Rechts halten', 'rechts halten', 30],
+    10: ['Wenden', 'wenden', -170], 11: ['Wenden', 'wenden', -170], 12: ['Wenden', 'wenden', 170] };
+  function fetchExt(pts, style) {
+    var url = 'https://brouter.de/brouter?lonlats=' + pts.map(function (p) { return p.lon.toFixed(6) + ',' + p.lat.toFixed(6); }).join('|') +
+      '&profile=' + brProfile(style) + '&alternativeidx=0&format=geojson&timode=2';
+    return fetch(url).then(function (res) {
+      return res.text().then(function (t) { if (!res.ok) throw new Error(t || res.status); return buildExt(JSON.parse(t), pts); });
+    });
+  }
+  function buildExt(j, pts) {
+    var f = j.features[0], co = f.geometry.coordinates, p = f.properties;
+    var rows = p.messages || [], vh = p.voicehints || [];
+    if (typeof rows === 'string') rows = JSON.parse(rows); if (typeof vh === 'string') vh = JSON.parse(vh);
+    var B = BIKES[S.bike], P = B.P * FIT[S.fit].f;
+    var n = co.length, la = [], lo = [], ele = [], cum = [0], tc = [0], sc = [0], ss = [0], mixC = {}, mixS = {}, walk = 0, L = 0, secs = 0, rlen = 0;
+    for (var i = 0; i < n; i++) { lo.push(co[i][0]); la.push(co[i][1]); ele.push(co[i][2] || 0); }
+    // SRTM-Hoehen leicht glaetten
+    var es = ele.slice();
+    for (i = 1; i < n - 1; i++) es[i] = (ele[i - 1] + 2 * ele[i] + ele[i + 1]) / 4;
+    ele = es;
+    var ri = 1, tags = {};
+    function parseTags(str) { var t = {}; (str || '').split(' ').forEach(function (kv) { var q = kv.indexOf('='); if (q > 0) t[kv.slice(0, q)] = kv.slice(q + 1); }); return t; }
+    for (i = 1; i < n; i++) {
+      var row = rows[ri];
+      if (row) tags = parseTags(row[9]);
+      var hw = tags.highway, c = HW[hw] != null ? HW[hw] : 1;
+      if (c === 2 && (tags.tracktype === 'grade4' || tags.tracktype === 'grade5')) c = 8;
+      if (hw === 'path' && (tags.bicycle === 'designated' || tags.bicycle === 'yes') && tags.surface && SFC[tags.surface] <= 2) c = 0;
+      var sf = SFC[tags.surface] != null ? SFC[tags.surface] : DEFS[c];
+      var d = dist(la[i - 1], lo[i - 1], la[i], lo[i]);
+      var g = d > 4 ? Math.max(-0.35, Math.min(0.35, (ele[i] - ele[i - 1]) / d)) : 0;
+      var v = rideSpeed(B, P, g, sf, c, 0), t = d / v;
+      L += d; secs += t; cum.push(L); tc.push(secs); sc.push(c); ss.push(sf);
+      var cc = c === 7 ? 6 : c; mixC[cc] = (mixC[cc] || 0) + d; mixS[sf] = (mixS[sf] || 0) + d;
+      if (t / Math.max(0.1, d) > 0.85) walk += d;
+      if (Object.keys(tags).some(function (k) { return k.indexOf('route_bicycle_') === 0; })) rlen += d;
+      if (row && Math.abs(row[0] / 1e6 - lo[i]) < 2e-6 && Math.abs(row[1] / 1e6 - la[i]) < 2e-6) ri++;
+    }
+    var r = { ext: true, la: la, lo: lo, ele: ele, cum: cum, tc: tc, sc: sc, ss: ss, len: L, secs: secs, mixC: mixC, mixS: mixS, walk: walk, rlen: rlen, coast: null, beauty: null, pts: pts };
+    finishRoute(r);
+    // Abbiegehinweise vom Routenplaner
+    var steps = [];
+    vh.forEach(function (h) {
+      var idx = h[0], cmd = h[1], ex = h[2], ang = h[4] || 0;
+      if (idx >= n) return;
+      if (cmd === 14 || cmd === 15) {
+        steps.push({ at: cum[idx], turn: ang || 45, text: 'Kreisverkehr, ' + ex + '. Ausfahrt', say: 'im Kreisverkehr die ' + ex + '. Ausfahrt nehmen', name: '', cls: sc[Math.min(n - 1, idx + 1)], surf: ss[Math.min(n - 1, idx + 1)] });
+        return;
+      }
+      var m = VH[cmd]; if (!m || cmd === 1) return;
+      steps.push({ at: cum[idx], turn: m[2] || ang, text: m[0], say: m[1], name: '', cls: sc[Math.min(n - 1, idx + 1)], surf: ss[Math.min(n - 1, idx + 1)] });
+    });
+    steps.push({ at: L, turn: 0, text: 'Ziel erreicht', say: 'Du hast dein Ziel erreicht', name: '', end: true });
+    r.steps = steps;
+    // Zwischenziele: Position entlang der Route
+    var ends = [], from = 0;
+    pts.slice(1).forEach(function (q) {
+      var best = from, bd = 1e18;
+      for (var k = from; k < n; k++) { var dd = dist(q.lat, q.lon, la[k], lo[k]); if (dd < bd) { bd = dd; best = k; } }
+      ends.push(cum[best]); from = best;
+    });
+    r.legEnds = ends;
     return r;
   }
   function findClimbs(r) {
@@ -384,10 +480,38 @@
       places: { type: 'geojson', data: fc(placeF) }, peaks: { type: 'geojson', data: fc(peakF) },
       pois: { type: 'geojson', data: fc(poiF) },
       acc: { type: 'geojson', data: fc() }, tour: { type: 'geojson', data: fc() }, track: { type: 'geojson', data: fc() },
+      // online: Weltkarte, Relief, beschilderte Radrouten
+      ofm: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
+      terrain: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 14, encoding: 'terrarium' },
+      wmt: { type: 'raster', tiles: ['https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 17 },
       route: { type: 'geojson', data: fc() }, cand: { type: 'geojson', data: fc() }, hover: { type: 'geojson', data: fc() }
     },
     layers: [
       { id: 'bg', type: 'background', paint: { 'background-color': '#0d1b26' } },
+      { id: 'o-landuse', type: 'fill', source: 'ofm', 'source-layer': 'landuse', filter: ['in', ['get', 'class'], ['literal', ['residential', 'suburb', 'neighbourhood', 'commercial', 'retail', 'industrial', 'village']]], paint: { 'fill-color': '#272f2a' } },
+      { id: 'o-grass', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', ['grass', 'farmland', 'wetland']]], paint: { 'fill-color': '#202b21', 'fill-opacity': 0.7 } },
+      { id: 'o-wood', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest']]], paint: { 'fill-color': '#21382a' } },
+      { id: 'o-park', type: 'fill', source: 'ofm', 'source-layer': 'park', paint: { 'fill-color': '#21382a', 'fill-opacity': 0.5 } },
+      { id: 'o-water', type: 'fill', source: 'ofm', 'source-layer': 'water', paint: { 'fill-color': '#0d1b26' } },
+      { id: 'o-waterway', type: 'line', source: 'ofm', 'source-layer': 'waterway', minzoom: 8, paint: { 'line-color': '#1a3a52', 'line-width': 1.2 } },
+      { id: 'o-hillshade', type: 'hillshade', source: 'terrain', paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#000a10', 'hillshade-highlight-color': 'rgba(230,245,200,0.16)', 'hillshade-accent-color': '#000000' } },
+      { id: 'o-boundary', type: 'line', source: 'ofm', 'source-layer': 'boundary', filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': '#93a0ad', 'line-width': 1.2, 'line-dasharray': [3, 2], 'line-opacity': 0.6 } },
+      { id: 'o-ferry', type: 'line', source: 'ofm', 'source-layer': 'transportation', filter: ['==', ['get', 'class'], 'ferry'], paint: { 'line-color': '#4fc3f7', 'line-width': 1.2, 'line-dasharray': [2, 2], 'line-opacity': 0.6 } },
+      { id: 'o-path', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 13, filter: ['all', ['==', ['get', 'class'], 'path'], ['!=', ['get', 'subclass'], 'cycleway']], paint: { 'line-color': '#b09572', 'line-width': wz(1.7), 'line-dasharray': [1, 2.5] } },
+      { id: 'o-track', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12, filter: ['==', ['get', 'class'], 'track'], paint: { 'line-color': '#c49a6c', 'line-width': wz(2.3), 'line-dasharray': [2.7, 1.9] } },
+      { id: 'o-minor', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['minor', 'service']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8e9aa6', 'line-width': wz(2.3) } },
+      { id: 'o-mid', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 7, filter: ['in', ['get', 'class'], ['literal', ['tertiary', 'secondary']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#dde3e8', 'line-width': wz(3.2) } },
+      { id: 'o-main-casing', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-join': 'round' }, paint: { 'line-color': '#14181d', 'line-width': wz(6.5), 'line-opacity': 0.7 } },
+      { id: 'o-main', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'class'], 'motorway', '#b23a33', '#ff5a4e'], 'line-width': wz(4) } },
+      { id: 'o-cycleway', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 10, filter: ['all', ['==', ['get', 'class'], 'path'], ['==', ['get', 'subclass'], 'cycleway']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#c8f53c', 'line-width': wz(3.4) } },
+      { id: 'o-routes', type: 'raster', source: 'wmt', minzoom: 6, paint: { 'raster-opacity': 0.85, 'raster-fade-duration': 0 } },
+      { id: 'o-poi', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['restaurant', 'fast_food', 'cafe', 'ice_cream', 'bakery', 'bar', 'beer', 'drinking_water', 'toilets', 'bicycle', 'attraction', 'castle', 'monument', 'museum', 'grocery', 'pharmacy', 'hospital', 'ferry_terminal', 'lodging', 'campsite']]], layout: { 'icon-image': ['match', ['get', 'class'], 'restaurant', 'poi-food', 'fast_food', 'poi-snack', 'cafe', 'poi-cafe', 'ice_cream', 'poi-cafe', 'bakery', 'poi-cafe', 'bar', 'poi-bar', 'beer', 'poi-bar', 'drinking_water', 'poi-water', 'toilets', 'poi-wc', 'bicycle', 'poi-bike', 'grocery', 'poi-shop', 'pharmacy', 'poi-health', 'hospital', 'poi-health', 'ferry_terminal', 'poi-ferry', 'lodging', 'poi-stay', 'campsite', 'poi-stay', 'poi-sight'], 'icon-allow-overlap': false } },
+      { id: 'o-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11, layout: { 'text-field': ['concat', ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], ['case', ['has', 'ele'], ['concat', ' ', ['to-string', ['get', 'ele']], ' m'], '']], 'text-font': ['NotoSansMedium'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#e9d8b4' }) },
+      { id: 'o-water-name', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 4, layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansItalic'], 'text-size': 12, 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#5f93b3' }) },
+      { id: 'o-place-small', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['village', 'hamlet', 'suburb', 'neighbourhood', 'isolated_dwelling', 'quarter']]], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 11.5, 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#c4cdd5' }) },
+      { id: 'o-place-town', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 7.5, filter: ['==', ['get', 'class'], 'town'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 13, 'text-transform': 'uppercase', 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#e3e9ee' }) },
+      { id: 'o-place-city', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 4, filter: ['==', ['get', 'class'], 'city'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 10, 17], 'text-transform': 'uppercase', 'text-letter-spacing': 0.12 }, paint: L_({ 'text-color': '#ffffff' }) },
+      { id: 'o-country', type: 'symbol', source: 'ofm', 'source-layer': 'place', maxzoom: 7, filter: ['==', ['get', 'class'], 'country'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 14, 'text-letter-spacing': 0.2, 'text-transform': 'uppercase' }, paint: L_({ 'text-color': '#93a0ad' }) },
       { id: 'others', type: 'fill', source: 'others', paint: { 'fill-color': '#1a241f' } },
       { id: 'coast', type: 'line', source: 'land', paint: { 'line-color': '#28485c', 'line-width': wz(7), 'line-opacity': 0.55 } },
       { id: 'land', type: 'fill', source: 'land', paint: { 'fill-color': '#1f2b24' } },
@@ -428,11 +552,21 @@
     if (!(c.getContext('webgl2') || c.getContext('webgl'))) setTimeout(function () { toast('Dieses Handy unterstützt keine 3D-Grafik (WebGL). Die Karte kann nicht gezeichnet werden.'); }, 500);
   })();
   var map = new maplibregl.Map({
-    container: 'map', style: style, center: [15.17, 44.075], zoom: 11.5, minZoom: 9, maxZoom: 19.5,
-    maxBounds: bounds.pad(1.2).ml(), attributionControl: false, pitchWithRotate: false, dragRotate: true,
+    container: 'map', style: style, center: [15.17, 44.075], zoom: 11.5, minZoom: 2, maxZoom: 19.5,
+    attributionControl: false, pitchWithRotate: false, dragRotate: true,
     touchPitch: false, maxPitch: 60, fadeDuration: 0, localIdeographFontFamily: false
   });
-  map.addControl(new maplibregl.AttributionControl({ compact: false, customAttribution: 'Daten &copy; OpenStreetMap-Mitwirkende, Höhen: Copernicus DEM' }), 'bottom-right');
+  map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Daten &copy; OpenStreetMap-Mitwirkende, Höhen: Copernicus DEM / AWS Terrain Tiles, Karte: OpenFreeMap &copy; OpenMapTiles, Radrouten: waymarkedtrails.org, Routing: BRouter' }), 'bottom-right');
+  // Online-Karte: sobald Kacheln ankommen, Hintergrund auf Land umstellen (Meer kommt dann aus den Kacheln)
+  var online = false;
+  map.on('error', function () {}); // fehlende Kacheln ohne Internet nicht als Fehler melden
+  map.on('sourcedata', function (e) {
+    if (!online && e.sourceId === 'ofm' && e.tile && e.tile.state === 'loaded') {
+      online = true;
+      map.setPaintProperty('bg', 'background-color', '#1d2722');
+      setVis('others', false);
+    }
+  });
   map.addControl(new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }), 'bottom-left');
   // Symbole fuer Orte werden beim ersten Bedarf aus den SVG-Zeichnungen erzeugt
   map.on('styleimagemissing', function (e) {
@@ -462,6 +596,8 @@
   function setVis(id, on) { if (mapReady && map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); }
   map.on('load', function () {
     mapReady = true;
+    // Quellenangaben zugeklappt starten (kleines i-Symbol)
+    var at = document.querySelector('.maplibregl-ctrl-attrib'); if (at) at.classList.remove('maplibregl-compact-show');
     Object.keys(pendingSrc).forEach(function (k) { map.getSource(k).setData(pendingSrc[k]); });
     pendingSrc = {};
     updLayers(); updPois();
@@ -618,9 +754,29 @@
     var f = D.pois.filter(function (p) { return p[0] === 'ferry' && /Preko/i.test(p[3]); })[0] || D.pois.filter(function (p) { return p[0] === 'ferry'; })[0];
     return f ? { lat: f[1], lon: f[2], name: 'Fähre Preko' } : { lat: 44.0764, lon: 15.1944, name: 'Preko' };
   })();
-  function onIsland(lat, lon) { return bounds.pad(0.03).contains([lat, lon]); }
-  function myRef() { return me && onIsland(me.lat, me.lon) && Date.now() - lastFix < 120000 ? me : null; }
-  function startRef() { var r = myRef(); return r ? { lat: r.lat, lon: r.lon, name: 'Mein Standort' } : PREKO; }
+  // Auf Ugljan? Echter Inselumriss (nicht nur das Rechteck, darin liegt auch ein Teil von Zadar)
+  // plus 250 m Uferzone fuer Molen und Faehranleger. Ergebnis wird je ca. 100 m gemerkt.
+  var islandMemo = {};
+  function inRing(lat, lon, ring) {
+    var c = false;
+    for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      var yi = ring[i][0], xi = ring[i][1], yj = ring[j][0], xj = ring[j][1];
+      if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  }
+  function onIsland(lat, lon) {
+    if (!bounds.pad(0.03).contains([lat, lon])) return false;
+    var key = Math.round(lat * 1000) + '_' + Math.round(lon * 1000);
+    if (islandMemo[key] !== undefined) return islandMemo[key];
+    var res = D.land.some(function (ring) { return inRing(lat, lon, ring); });
+    if (!res) { var n = nearestNode(lat, lon); res = n >= 0 && dist(lat, lon, LAT[n], LON[n]) < 250; }
+    islandMemo[key] = res;
+    return res;
+  }
+  function myRef() { return me && onIsland(me.lat, me.lon) && Date.now() - lastFix < 120000 ? me : null; } // auf Ugljan
+  function meRef() { return me && Date.now() - lastFix < 120000 ? me : null; } // irgendwo
+  function startRef() { var r = meRef(); return r ? { lat: r.lat, lon: r.lon, name: 'Mein Standort' } : PREKO; }
 
   // Tempo zuverlaessig bestimmen: GPS-Messwert bevorzugen, sonst nur aus genauen Punkten rechnen,
   // Stillstand erkennen, unmoegliche Werte (Ortungsspruenge) verwerfen
@@ -654,7 +810,9 @@
     if (v > 22) v = -1; // ueber 80 km/h ist auf dem Rad unmoeglich
     return v;
   }
-  window.onGps = function (lat, lon, acc, speed, brg, sacc, isGps) {
+  // Hoehe: auf Ugljan aus dem Hoehenmodell, sonst vom GPS des Handys
+  function eleAt(lat, lon) { return onIsland(lat, lon) ? demEle(lat, lon) : (me && me.alt != null ? me.alt : null); }
+  window.onGps = function (lat, lon, acc, speed, brg, sacc, isGps, alt) {
     var now = Date.now();
     if (isGps === undefined) isGps = acc <= 100 ? 1 : 0;
     if (sacc === undefined) sacc = -1;
@@ -662,7 +820,8 @@
     if (!isGps && me && me.gps && now - lastFix < 15000) return;
     speed = cleanSpeed(lat, lon, acc, speed, sacc, isGps, now);
     if (me && (brg < 0 || speed < 1.5) && dist(me.lat, me.lon, lat, lon) > Math.max(4, acc)) brg = bearing(me.lat, me.lon, lat, lon);
-    me = { lat: lat, lon: lon, acc: acc, gps: !!isGps, brg: brg >= 0 ? brg : (me ? me.brg : -1) };
+    var altS = alt == null ? null : (me && me.alt != null ? me.alt * 0.7 + alt * 0.3 : alt);
+    me = { lat: lat, lon: lon, acc: acc, gps: !!isGps, alt: altS, brg: brg >= 0 ? brg : (me ? me.brg : -1) };
     lastFix = now;
     if (speed >= 0) { lastSpeed = speed * 3.6; lastGoodSpeedT = now; } else if (now - lastGoodSpeedT > 5000) lastSpeed = -1;
     if (!meMarker) {
@@ -697,7 +856,6 @@
   setInterval(checkGps, 5000); setTimeout(checkGps, 1500);
   $('btnLoc').onclick = function () {
     if (!me) { toast('Noch kein GPS-Signal. Kurz warten oder GPS einschalten.'); return; }
-    if (!onIsland(me.lat, me.lon)) { toast('Du bist gerade nicht auf Ugljan.'); map.easeTo({ center: [me.lon, me.lat], zoom: 12 }); return; }
     setFollow(true); lastTouch = Date.now();
     var o = { center: [me.lon, me.lat], zoom: Math.max(map.getZoom(), 16), padding: padding(), duration: 700 };
     var b = camBearing(); if (b !== null) { o.bearing = b; o.pitch = 45; }
@@ -741,7 +899,7 @@
   };
   // Nach einer Weile ohne Beruehrung zurueck zur eigenen Position (und Norden oben bzw. Fahrtrichtung)
   setInterval(function () {
-    var idle = Date.now() - lastTouch, ref = myRef();
+    var idle = Date.now() - lastTouch, ref = meRef();
     if (map.isMoving()) return;
     var bTarget = camBearing() !== null ? camBearing() : 0, off = Math.abs(((map.getBearing() - bTarget + 540) % 360) - 180) > 0.5 || (bTarget === 0 && map.getPitch() > 1);
     if (nav && idle > 8000) {
@@ -758,7 +916,7 @@
   function sessPoint(lat, lon, acc, speed) {
     var now = Date.now();
     if (speed >= 0) { speedHist.push({ v: speed * 3.6, t: now }); if (speedHist.length > 3) speedHist.shift(); }
-    if (acc > 35 || !onIsland(lat, lon)) return;
+    if (acc > 35) return;
     if (sess.last) {
       var d = dist(sess.last[0], sess.last[1], lat, lon), dt = (now - sess.lastT) / 1000;
       if (speed < 0.8) { if (speed >= 0) { sess.last = [lat, lon]; sess.lastT = now; } return; }
@@ -769,7 +927,7 @@
   }
   function curSpeed() {
     var now = Date.now();
-    if (!myRef() || now - lastFix > 6000) return null;
+    if (!meRef() || now - lastFix > 6000) return null;
     var h = speedHist.filter(function (x) { return now - x.t < 6000; }).map(function (x) { return x.v; }).sort(function (a, b) { return a - b; });
     if (!h.length) return null;
     var v = h[Math.floor(h.length / 2)]; // Median: einzelne Ausreisser schlagen nicht durch
@@ -856,7 +1014,7 @@
     var base = ref || PREKO;
     var html = '<h2>Ugljan mit dem Rad</h2><div class="sub">' +
       (ref ? 'GPS aktiv &middot; ' + esc(nearestPlace(ref.lat, ref.lon, true)[0]) + ' &middot; ' + Math.round(demEle(ref.lat, ref.lon)) + ' m über dem Meer' :
-        me ? 'Du bist nicht auf der Insel. Routen starten an der Fähre Preko.' : 'Warte auf GPS. Tippe auf die Karte, um ein Ziel zu setzen.') + '</div>' +
+        me ? 'Du bist außerhalb von Ugljan. Suche einen Ort oder tippe auf die Karte: Karte und Route kommen dann online.' : 'Warte auf GPS. Tippe auf die Karte, um ein Ziel zu setzen.') + '</div>' +
       wxHtml() +
       '<div class="quick">' +
       '<button data-act="tours">' + svg('bike', '#c8f53c', 24, 2) + 'Touren</button>' +
@@ -943,7 +1101,9 @@
   // ---------- Detail: Ort von Interesse ----------
   var dest = null;
   function quickRouteInfo(lat, lon) {
-    var s = startRef(), a = nearestNode(s.lat, s.lon), b = nearestNode(lat, lon);
+    var s = startRef();
+    if (!onIsland(s.lat, s.lon)) return ''; // von ausserhalb wird die Route online berechnet
+    var a = nearestNode(s.lat, s.lon), b = nearestNode(lat, lon);
     var ed = astar(a, b); if (!ed) return '';
     var r = analyze(a, ed);
     return '<div class="stats"><div class="stat"><b>' + fmtDist(r.len) + '</b><span>' + (s === PREKO ? 'ab Fähre' : 'Strecke') + '</span></div><div class="stat"><b>' + fmtTime(r.secs) + '</b><span>Fahrzeit</span></div><div class="stat"><b>' + Math.round(r.asc) + ' m</b><span>Bergauf</span></div></div>';
@@ -991,6 +1151,17 @@
       (near.length ? '<h3>In der Nähe</h3><div class="list">' + near.map(poiRow).join('') + '</div>' : ''));
     $('goRoute').onclick = function () { planRoute([startRef(), dest], dest.name); };
   }
+  function showExtPoint(lat, lon, name, sub) {
+    state = 'point'; clearRoute(true);
+    dest = { lat: lat, lon: lon, name: name || 'Ausgewählter Punkt' };
+    setDestMarker(lat, lon);
+    var s = startRef(), d = dist(s.lat, s.lon, lat, lon);
+    sheet('<h2>' + esc(dest.name) + '</h2><div class="sub">' + (sub ? esc(sub) + ' &middot; ' : '') + fmtDist(d) + ' Luftlinie ' + (s === PREKO ? 'von Preko' : 'von dir') + '</div>' +
+      (navigator.onLine === false ? '<div class="sub bad" style="margin-top:8px">Kein Internet: Routen außerhalb von Ugljan gehen nur online.</div>' : '') +
+      '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button></div>' +
+      '<div class="sub" style="font-size:12px;margin-top:10px">Außerhalb von Ugljan wird die Route online berechnet, mit Höhen, Radwegen und Radrouten. Fahrzeit für ' + BIKES[S.bike].n + ', ' + FIT[S.fit].n + '.</div>');
+    $('goRoute').onclick = function () { planRoute([startRef(), dest], dest.name); };
+  }
   map.on('click', function (e) {
     if (nav || fs) return;
     $('results').style.display = 'none';
@@ -1017,7 +1188,14 @@
       var lab = map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 10], [e.point.x + 14, e.point.y + 10]], { layers: ['pl-village', 'pl-small', 'pl-island', 'pl-bay', 'pl-loc'] });
       if (lab.length) { var g = lab[0].geometry.coordinates; showPoint(g[1], g[0], lab[0].properties.t); return; }
     }
-    if (!bounds.pad(0.02).contains(ll)) return;
+    if (state !== 'pickVia' && !onIsland(ll.lat, ll.lng)) {
+      // Weltkarte: angetippten Ort oder Punkt online anfahren
+      var oh = map.queryRenderedFeatures([[e.point.x - 12, e.point.y - 12], [e.point.x + 12, e.point.y + 12]], { layers: ['o-poi', 'o-place-small', 'o-place-town', 'o-place-city', 'o-peak'] });
+      var op = oh[0] && oh[0].properties, nm = op ? (op['name:de'] || op['name:latin'] || op.name) : null;
+      var gc = oh[0] && oh[0].geometry.type === 'Point' ? oh[0].geometry.coordinates : [ll.lng, ll.lat];
+      showExtPoint(gc[1], gc[0], nm, null);
+      return;
+    }
     if (state === 'pickVia' && plan) {
       var pts = plan.pts.slice(); pts.splice(pts.length - 1, 0, { lat: ll.lat, lon: ll.lng, name: 'Zwischenziel' });
       planRoute(pts, plan.title, L2(plan.opt, { picked: true })); return;
@@ -1028,11 +1206,19 @@
   // ---------- Route planen und anzeigen ----------
   var plan = null, cur = null, routeLayer = null, hoverMarker = null;
   // Vor jeder Route: schnell & leicht oder am schoensten? Beide werden gerechnet und verglichen.
+  var NET_MSG = 'Für Ziele außerhalb von Ugljan braucht die App Internet. Bitte mobile Daten einschalten.';
+  function loadingSheet(t) { state = 'loading'; sheet('<h2>' + esc(t) + '</h2><div class="sub" style="margin:10px 0 6px">Route wird online berechnet ...</div><div class="mix"><div style="width:35%;background:var(--lime);animation:none"></div></div>'); }
   function planRoute(pts, title, opt) {
     opt = opt || {};
     if (!opt.picked) { chooseRoute(pts, title, opt); return; }
     setSrc('cand', fc());
-    var r = routeVia(pts, opt);
+    var pre = opt.pre; opt = L2(opt, {}); delete opt.pre;
+    if (pre) { showRoute(pts, title, opt, pre); return; }
+    if (isLocal(pts)) { showRoute(pts, title, opt, routeVia(pts, opt)); return; }
+    loadingSheet(title);
+    fetchExt(pts, opt.style || S.style).then(function (r) { showRoute(pts, title, opt, r); }, function () { toast(NET_MSG); clearRoute(); });
+  }
+  function showRoute(pts, title, opt, r) {
     if (!r) { toast('Keine Route gefunden.'); return; }
     plan = { pts: pts, title: title, opt: opt, desc: opt.desc || '' };
     cur = r; state = 'route';
@@ -1045,13 +1231,30 @@
       viaMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([p.lon, p.lat]).addTo(map));
     });
     drawRouteSheet();
-    setFollow(false); fitTo(boundsOf(r.nodes.map(function (n) { return [LAT[n], LON[n]]; })));
+    setFollow(false); fitTo(boundsOf(routeLL(r)));
   }
   var CAND_COL = { fast: '#4fc3f7', scenic: '#c8f53c' };
   function chooseRoute(pts, title, opt) {
-    var res = {}, ok = false;
-    Object.keys(STYLES).forEach(function (k) { res[k] = routeVia(pts, L2(opt, { style: k })); if (res[k]) ok = true; });
-    if (!ok) { toast('Keine Route gefunden.'); return; }
+    var res = {};
+    if (isLocal(pts)) {
+      Object.keys(STYLES).forEach(function (k) { res[k] = routeVia(pts, L2(opt, { style: k })); });
+      showChoice(pts, title, opt, res);
+      return;
+    }
+    // Online: beide Varianten gleichzeitig anfragen
+    loadingSheet(title);
+    var token = {}; chooseRoute.token = token;
+    var keys = Object.keys(STYLES), left = keys.length, failed = 0;
+    keys.forEach(function (k) {
+      fetchExt(pts, k).then(function (r) { res[k] = r; }, function () { failed++; }).then(function () {
+        if (--left || chooseRoute.token !== token || state !== 'loading') return;
+        if (failed === keys.length) { toast(NET_MSG); clearRoute(); return; }
+        showChoice(pts, title, opt, res);
+      });
+    });
+  }
+  function showChoice(pts, title, opt, res) {
+    if (!res.fast && !res.scenic) { toast('Keine Route gefunden.'); return; }
     state = 'choose'; cur = null;
     if (routeLayer) { setSrc('route', fc()); routeLayer = null; }
     plan = { pts: pts, title: title, opt: opt, desc: opt.desc || '' };
@@ -1061,11 +1264,11 @@
     var feats = [], allPts = [];
     ['fast', 'scenic'].forEach(function (k) {
       var r = res[k]; if (!r) return;
-      var ll = r.nodes.map(function (n) { return [LAT[n], LON[n]]; });
+      var ll = routeLL(r);
       feats.push(lineF(ll, { col: CAND_COL[k], k: k })); allPts = allPts.concat(ll);
     });
     setSrc('cand', fc(feats));
-    var f = res.fast, sc = res.scenic, same = f && sc && f.edges.length === sc.edges.length && f.edges.every(function (e, i) { return e === sc.edges[i]; });
+    var f = res.fast, sc = res.scenic, same = sameRoute(f, sc);
     function card(k) {
       var r = res[k]; if (!r) return '';
       var other = res[k === 'fast' ? 'scenic' : 'fast'], hint = '';
@@ -1077,6 +1280,11 @@
           if (da >= 5) parts.push(da + ' m weniger bergauf');
           if (other.len - r.len >= 200) parts.push(fmtDist(other.len - r.len) + ' kürzer');
           hint = parts.length ? parts.join(', ') : 'Kaum schneller, aber direkter';
+        } else if (r.ext) {
+          if (r.rlen - other.rlen >= 200) parts.push(fmtDist(r.rlen - other.rlen) + ' mehr auf Radrouten');
+          if (r.quiet > other.quiet) parts.push(r.quiet + ' % Radwege und ruhige Wege');
+          if ((other.mixC[6] || 0) - (r.mixC[6] || 0) >= 200) parts.push(fmtDist((other.mixC[6] || 0) - (r.mixC[6] || 0)) + ' weniger Hauptstraße');
+          hint = parts.length ? parts.join(', ') : 'Ähnlich ruhig, über andere Wege';
         } else {
           var dc = r.coast - other.coast;
           if (dc >= 100) parts.push(fmtDist(dc) + ' mehr direkt am Meer');
@@ -1086,16 +1294,17 @@
         }
       }
       return '<div class="card pick" data-pick="' + k + '" style="border-color:' + (S.style === k ? CAND_COL[k] : 'transparent') + '"><div class="top"><i style="width:14px;height:14px;border-radius:7px;background:' + CAND_COL[k] + ';flex:none;margin-top:4px"></i><div class="grow"><div class="nm">' + STYLES[k].n + '</div>' + (hint ? '<div class="sub" style="font-size:13px">' + hint + '</div>' : '') + '</div><span class="tag ' + DIFF[r.diff][1] + '">' + DIFF[r.diff][0] + '</span></div>' +
-        '<div class="meta"><span><b>' + fmtDist(r.len) + '</b></span><span><b>' + fmtTime(r.secs) + '</b></span><span>bergauf <b>' + Math.round(r.asc) + ' m</b></span><span>am Meer <b>' + fmtDist(r.coast) + '</b></span><span>schön <b>' + r.beauty + '/10</b></span></div></div>';
+        '<div class="meta"><span><b>' + fmtDist(r.len) + '</b></span><span><b>' + fmtTime(r.secs) + '</b></span><span>bergauf <b>' + Math.round(r.asc) + ' m</b></span>' + (r.ext ? '<span>Radrouten <b>' + fmtDist(r.rlen) + '</b></span><span>ruhig <b>' + r.quiet + ' %</b></span>' : '<span>am Meer <b>' + fmtDist(r.coast) + '</b></span><span>schön <b>' + r.beauty + '/10</b></span>') + '</div></div>';
     }
     sheet('<h2>Wie willst du fahren?</h2><div class="sub">Nach ' + esc(title) + ' &middot; Start: ' + esc(pts[0].name || 'Start') + '</div>' +
-      (same ? '<div class="sub" style="margin-top:6px">Hier ist die schnellste auch die schönste Strecke.</div>' : '') +
+        (same ? '<div class="sub" style="margin-top:6px">Hier ist die schnellste auch die schönste Strecke.</div>' : '') +
+      (res.fast && res.fast.ext ? '<div class="sub" style="margin-top:4px;font-size:12px">Online berechnet (außerhalb von Ugljan)</div>' : '') +
       '<div style="margin-top:12px">' + card('fast') + card('scenic') + '</div>' +
       '<div class="btns"><button class="go sec" id="cancel">Abbrechen</button></div>');
     sheetEl.querySelectorAll('[data-pick]').forEach(function (c) {
       c.onclick = function () {
         var k = c.getAttribute('data-pick'); S.style = k; saveS(); computeCosts();
-        planRoute(pts, title, L2(opt, { style: k, picked: true }));
+        planRoute(pts, title, L2(opt, { style: k, picked: true, pre: res[k] }));
       };
     });
     $('cancel').onclick = function () { clearRoute(); };
@@ -1104,11 +1313,11 @@
   function L2(a, b) { var o = {}; for (var k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
   function gradeColor(g) { return g > 0.10 ? '#ff5a4e' : g > 0.06 ? '#ff922b' : g > 0.03 ? '#ffd43b' : g < -0.04 ? '#4fc3f7' : '#c8f53c'; }
   function drawRoute(r) {
-    var ll = r.nodes.map(function (n) { return [LAT[n], LON[n]]; }), f = [];
+    var ll = routeLL(r), f = [], n = ll.length;
     // nach Steigung eingefaerbt, in 80-m-Abschnitten
     var k = 0;
-    while (k < r.nodes.length - 1) {
-      var j = k; while (j < r.nodes.length - 1 && r.cum[j] - r.cum[k] < 80) j++;
+    while (k < n - 1) {
+      var j = k; while (j < n - 1 && r.cum[j] - r.cum[k] < 80) j++;
       var gr = (r.ele[j] - r.ele[k]) / Math.max(1, r.cum[j] - r.cum[k]);
       f.push(lineF(ll.slice(k, j + 1), { col: gradeColor(gr) }));
       k = j;
@@ -1136,7 +1345,8 @@
   function routeStatsHtml(r) {
     return '<div class="stats"><div class="stat"><b>' + fmtDist(r.len) + '</b><span>Strecke</span></div><div class="stat"><b>' + fmtTime(r.secs) + '</b><span>Fahrzeit</span></div><div class="stat"><b>' + clock(r.secs) + '</b><span>Ankunft</span></div></div>' +
       '<div class="stats"><div class="stat w"><b>' + Math.round(r.asc) + ' m</b><span>Bergauf</span></div><div class="stat w"><b>' + Math.round(r.desc) + ' m</b><span>Bergab</span></div><div class="stat w"><b>' + pct(r.maxG) + '</b><span>Max. Steigung</span></div></div>' +
-      '<div class="stats two"><div class="stat"><b style="color:#4fc3f7">' + fmtDist(r.coast) + '</b><span>Direkt am Meer</span></div><div class="stat"><b>' + r.beauty + ' / 10</b><span>Schönheit</span></div></div>';
+      (r.ext ? '<div class="stats two"><div class="stat"><b style="color:#ffb020">' + fmtDist(r.rlen) + '</b><span>Auf Radrouten</span></div><div class="stat"><b>' + r.quiet + ' %</b><span>Radwege und ruhig</span></div></div>'
+        : '<div class="stats two"><div class="stat"><b style="color:#4fc3f7">' + fmtDist(r.coast) + '</b><span>Direkt am Meer</span></div><div class="stat"><b>' + r.beauty + ' / 10</b><span>Schönheit</span></div></div>');
   }
   function settingsChips() {
     return '<div class="hscroll">' + Object.keys(BIKES).map(function (k) { return '<button class="chip sm' + (k === S.bike ? ' on' : '') + '" data-bike="' + k + '">' + BIKES[k].n + '</button>'; }).join('') + '</div>' +
@@ -1190,8 +1400,8 @@
     }
     // gefuellte Flaechen je Steigungsabschnitt
     var k = 0, step = Math.max(40, r.len / 160);
-    while (k < r.nodes.length - 1) {
-      var j = k; while (j < r.nodes.length - 1 && r.cum[j] - r.cum[k] < step) j++;
+    while (k < r.cum.length - 1) {
+      var j = k; while (j < r.cum.length - 1 && r.cum[j] - r.cum[k] < step) j++;
       var gr = (r.ele[j] - r.ele[k]) / Math.max(1, r.cum[j] - r.cum[k]);
       var pts = X(r.cum[k]) + ',' + (4 + ih) + ' ';
       for (var q = k; q <= j; q++) pts += X(r.cum[q]).toFixed(1) + ',' + Y(r.ele[q]).toFixed(1) + ' ';
@@ -1205,8 +1415,8 @@
   }
   function sparkSvg(r) {
     var w = 300, h = 36, lo = r.minEle, hi = Math.max(lo + 30, r.maxEle), pts = '0,' + h + ' ';
-    var stp = Math.max(1, Math.floor(r.nodes.length / 120));
-    for (var k = 0; k < r.nodes.length; k += stp) pts += (r.cum[k] / r.len * w).toFixed(1) + ',' + (h - 2 - (r.ele[k] - lo) / (hi - lo) * (h - 4)).toFixed(1) + ' ';
+    var stp = Math.max(1, Math.floor(r.cum.length / 120));
+    for (var k = 0; k < r.cum.length; k += stp) pts += (r.cum[k] / r.len * w).toFixed(1) + ',' + (h - 2 - (r.ele[k] - lo) / (hi - lo) * (h - 4)).toFixed(1) + ' ';
     pts += w + ',' + h;
     return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><polygon points="' + pts + '" fill="#c8f53c" fill-opacity="0.25" stroke="#c8f53c" stroke-width="1.2"/></svg>';
   }
@@ -1215,13 +1425,13 @@
     if (!el) return;
     function at(ev) {
       var t = ev.touches ? ev.touches[0] : ev, rc = el.getBoundingClientRect(), pl = 30 / 340 * rc.width;
-      var f = Math.max(0, Math.min(1, (t.clientX - rc.left - pl) / (rc.width - pl))), d = f * r.len, k = idxAt(r, d), n = r.nodes[k];
+      var f = Math.max(0, Math.min(1, (t.clientX - rc.left - pl) / (rc.width - pl))), d = f * r.len, k = idxAt(r, d);
       var k2 = idxAt(r, Math.min(r.len, d + 50)), k1 = idxAt(r, Math.max(0, d - 50));
       var g = (r.ele[k2] - r.ele[k1]) / Math.max(1, r.cum[k2] - r.cum[k1]);
       var cur_ = el.querySelector('#profCursor'), x = 30 + f * 310; cur_.setAttribute('x1', x); cur_.setAttribute('x2', x);
-      setSrc('hover', fc([ptF(LAT[n], LON[n])])); hoverMarker = true;
-      var w = W[eWay[r.edges[Math.max(0, k - 1)]]];
-      info.innerHTML = 'km ' + fmtKm(d) + ' &middot; ' + Math.round(r.ele[k]) + ' m &middot; ' + (g >= 0 ? '+' : '') + Math.round(g * 100) + ' % &middot; ' + CLASS[w[0]].n + ', ' + SURF[w[3]].n;
+      setSrc('hover', fc([ptF(r.la[k], r.lo[k])])); hoverMarker = true;
+      var kk = Math.max(1, k);
+      info.innerHTML = 'km ' + fmtKm(d) + ' &middot; ' + Math.round(r.ele[k]) + ' m &middot; ' + (g >= 0 ? '+' : '') + Math.round(g * 100) + ' % &middot; ' + CLASS[r.sc[kk]].n + ', ' + SURF[r.ss[kk]].n;
       if (ev.cancelable) ev.preventDefault();
     }
     el.addEventListener('touchstart', at, { passive: false }); el.addEventListener('touchmove', at, { passive: false });
@@ -1395,7 +1605,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Ugljan Rad 3.4. Funktioniert komplett offline. Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Ugljan Rad 4.0. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1448,8 +1658,8 @@
       if (dt < 15) rec.mv += dt;
       var cs = curSpeed(); if (cs && cs > rec.max && cs < 80) rec.max = cs;
     }
-    var z = demEle(lat, lon);
-    if (rec.eref == null) rec.eref = z; else if (z - rec.eref > 3) { rec.asc += z - rec.eref; rec.eref = z; } else if (z < rec.eref - 3) rec.eref = z;
+    var z = eleAt(lat, lon), hy = onIsland(lat, lon) ? 3 : 6;
+    if (z != null) { if (rec.eref == null) rec.eref = z; else if (z - rec.eref > hy) { rec.asc += z - rec.eref; rec.eref = z; } else if (z < rec.eref - hy) rec.eref = z; }
     rec.last = [lat, lon]; rec.lastT = now;
     rec.trk.push([Math.round(lat * 1e5) / 1e5, Math.round(lon * 1e5) / 1e5]);
     trackLayer.push([lat, lon]); if (trackLayer.length > 1) setSrc('track', fc([lineF(trackLayer)]));
@@ -1496,9 +1706,14 @@
   $('navMute').onclick = function () { S.voice = !S.voice; saveS(); updMute(); if (S.voice) say('Ansagen an'); };
 
   function startNav() {
-    var ref = myRef();
+    var ref = meRef();
+    // Online-Route: bei Abstand zum Start neu ab Standort berechnen (im Hintergrund)
+    if (ref && plan && cur && cur.ext && dist(ref.lat, ref.lon, cur.la[0], cur.lo[0]) > 150) {
+      var ptsE = [{ lat: ref.lat, lon: ref.lon, name: 'Mein Standort' }].concat(plan.opt.loop || plan.opt.tour ? plan.pts : plan.pts.slice(1));
+      fetchExt(ptsE, plan.opt.style || S.style).then(function (nr) { if (nav && !nav.free) { cur = nr; plan.pts = ptsE; drawRoute(nr); nav.said = {}; nav.climbSaid = {}; navUpdate(); } }, function () {});
+    }
     // Wenn GPS auf der Insel: von hier zur Route bzw. zum Ziel
-    if (ref && plan) {
+    if (ref && plan && cur && !cur.ext && onIsland(ref.lat, ref.lon)) {
       var p0 = plan.pts[0];
       if (dist(ref.lat, ref.lon, p0.lat, p0.lon) > 60 || p0.name !== 'Mein Standort') {
         var pts = [{ lat: ref.lat, lon: ref.lon, name: 'Mein Standort' }].concat(plan.opt.loop || plan.opt.tour ? plan.pts : plan.pts.slice(1));
@@ -1511,7 +1726,7 @@
     $('nav').style.display = 'flex';
     enterNavUi();
     recStart(plan ? plan.title : '');
-    if (ref) { setFollow(true); var o = { center: [ref.lon, ref.lat], zoom: 16.3, padding: padding(), duration: 800 }; if (camBearing() !== null) { o.bearing = camBearing(); o.pitch = 45; } map.easeTo(o); } else { view(LAT[cur.nodes[0]], LON[cur.nodes[0]], 16); toast('Kein GPS auf der Insel: Vorschau ab Start.'); }
+    if (ref) { setFollow(true); var o = { center: [ref.lon, ref.lat], zoom: 16.3, padding: padding(), duration: 800 }; if (camBearing() !== null) { o.bearing = camBearing(); o.pitch = 45; } map.easeTo(o); } else { view(cur.la[0], cur.lo[0], 16); toast('Noch kein GPS: Vorschau ab Start.'); }
     var first = cur.steps[0];
     say('Los gehts. ' + fmtSay(cur.len) + ' bis zum Ziel, etwa ' + Math.round(cur.secs / 60) + ' Minuten' + (cur.asc > 30 ? ', ' + Math.round(cur.asc) + ' Höhenmeter.' : '.'));
     navUpdate();
@@ -1521,7 +1736,7 @@
     nav = { free: true }; state = 'nav';
     enterNavUi();
     recStart('Freie Fahrt');
-    var ref = myRef(); if (ref) { setFollow(true); view(ref.lat, ref.lon, 16); }
+    var ref = meRef(); if (ref) { setFollow(true); view(ref.lat, ref.lon, 16); }
     say('Aufzeichnung gestartet');
     navUpdate();
   }
@@ -1535,15 +1750,14 @@
   function project(r, lat, lon, from) {
     var best = { d: 1e18, along: 0, i: 0 }, kx = 111320 * Math.cos(lat * RAD), ky = 110540;
     function seg(i) {
-      var a = r.nodes[i], b = r.nodes[i + 1];
-      var ax = (LON[a] - lon) * kx, ay = (LAT[a] - lat) * ky, bx = (LON[b] - lon) * kx, by = (LAT[b] - lat) * ky;
+      var ax = (r.lo[i] - lon) * kx, ay = (r.la[i] - lat) * ky, bx = (r.lo[i + 1] - lon) * kx, by = (r.la[i + 1] - lat) * ky;
       var dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy, t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
       var px = ax + t * dx, py = ay + t * dy, d = Math.sqrt(px * px + py * py);
       if (d < best.d) best = { d: d, along: r.cum[i] + t * (r.cum[i + 1] - r.cum[i]), i: i };
     }
     // bevorzugt vorwaerts suchen (wichtig bei Rundtouren, die sich kreuzen)
-    for (var i = 0; i + 1 < r.nodes.length; i++) if (r.cum[i + 1] >= from - 150 && r.cum[i] <= from + 1500) seg(i);
-    if (best.d > 40) for (i = 0; i + 1 < r.nodes.length; i++) seg(i);
+    for (var i = 0; i + 1 < r.la.length; i++) if (r.cum[i + 1] >= from - 150 && r.cum[i] <= from + 1500) seg(i);
+    if (best.d > 40) for (i = 0; i + 1 < r.la.length; i++) seg(i);
     return best;
   }
   function arrowFor(turn) {
@@ -1554,13 +1768,12 @@
     return right ? 'M14 42 L14 20 L38 20 M30 12 L38 20 L30 28' : 'M34 42 L34 20 L10 20 M18 12 L10 20 L18 28';
   }
   function remainingTime(r, along) {
-    var k = idxAt(r, along), t = 0;
-    for (var j = k; j < r.edges.length; j++) t += eTime[r.edges[j]];
-    return t;
+    var k = idxAt(r, along);
+    return Math.max(0, r.secs - (r.tc[k] || 0));
   }
   function navUpdate() {
     if (!nav) return;
-    var ref = myRef();
+    var ref = meRef();
     updSpeedo();
     if (nav.free) { freeSheet(ref); return; }
     var r = cur, along = nav.lastAlong;
@@ -1574,8 +1787,19 @@
           var rest = plan.pts.filter(function (p, k) { return k > 0 && r.legEnds[k - 1] > nav.lastAlong + 30; });
           if (!rest.length) rest = [plan.pts[plan.pts.length - 1]];
           var pts = [{ lat: ref.lat, lon: ref.lon, name: 'Mein Standort' }].concat(rest);
-          var nr = routeVia(pts, { style: plan.opt.style });
-          if (nr) { cur = r = nr; plan.pts = pts; drawRoute(r); nav.said = {}; nav.climbSaid = {}; say('Route wird neu berechnet'); toast('Neue Route'); pr = project(r, ref.lat, ref.lon, 0); }
+          if (!isLocal(pts)) {
+            // online neu berechnen, waehrenddessen weiter auf der alten Route anzeigen
+            if (!nav.fetching) {
+              nav.fetching = true; say('Route wird neu berechnet');
+              fetchExt(pts, plan.opt.style || S.style).then(function (nr2) {
+                nav.fetching = false; if (!nav || nav.free) return;
+                cur = nr2; plan.pts = pts; drawRoute(nr2); nav.said = {}; nav.climbSaid = {}; nav.lastAlong = 0; toast('Neue Route');
+              }, function () { if (nav) nav.fetching = false; });
+            }
+          } else {
+            var nr = routeVia(pts, { style: plan.opt.style });
+            if (nr) { cur = r = nr; plan.pts = pts; drawRoute(r); nav.said = {}; nav.climbSaid = {}; say('Route wird neu berechnet'); toast('Neue Route'); pr = project(r, ref.lat, ref.lon, 0); }
+          }
         }
       } else nav.off = 0;
       along = pr.along; nav.lastAlong = along;
@@ -1627,9 +1851,9 @@
   }
   function freeSheet(ref) {
     $('climbBox').style.display = 'none';
-    var z = ref ? Math.round(demEle(ref.lat, ref.lon)) : '-';
+    var z0 = ref ? eleAt(ref.lat, ref.lon) : null, z = z0 == null ? '-' : Math.round(z0);
     var avg = rec && rec.mv > 0 ? (rec.dist / rec.mv * 3.6).toFixed(1).replace('.', ',') : '0';
-    sheet('<h2>Freie Fahrt</h2><div class="sub">' + (ref ? 'Bei ' + esc(nearestPlace(ref.lat, ref.lon, true)[0]) : 'Warte auf GPS auf der Insel') + '</div>' +
+    sheet('<h2>Freie Fahrt</h2><div class="sub">' + (ref ? (onIsland(ref.lat, ref.lon) ? 'Bei ' + esc(nearestPlace(ref.lat, ref.lon, true)[0]) : 'Unterwegs außerhalb von Ugljan') : 'Warte auf GPS') + '</div>' +
       '<div class="stats"><div class="stat"><b>' + (rec ? fmtKm(rec.dist) : '0') + '</b><span>km</span></div><div class="stat"><b>' + (rec ? fmtTime(rec.mv) : '-') + '</b><span>In Bewegung</span></div><div class="stat"><b>' + avg + '</b><span>km/h Schnitt</span></div></div>' +
       '<div class="stats"><div class="stat w"><b>' + z + ' m</b><span>Höhe</span></div><div class="stat w"><b>' + (rec ? Math.round(rec.asc) : 0) + ' m</b><span>Geklettert</span></div><div class="stat w"><b>' + (rec ? Math.round(rec.max) : 0) + '</b><span>km/h Max</span></div></div>' +
       '<button class="go red" id="stopNav">Fahrt beenden und speichern</button>', true);
@@ -1663,7 +1887,7 @@
   }
   function loadWeather() {
     if (!window.fetch) return;
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=44.08&longitude=15.17&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code&hourly=precipitation_probability&forecast_days=1&timezone=auto')
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=' + (meRef() ? meRef().lat.toFixed(3) : '44.08') + '&longitude=' + (meRef() ? meRef().lon.toFixed(3) : '15.17') + '&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code&hourly=precipitation_probability&forecast_days=1&timezone=auto')
       .then(function (r) { return r.json(); })
       .then(function (j) {
         var c = j.current, h = new Date().getHours();
@@ -1716,8 +1940,49 @@
       if (x.place != null) { var p = D.places[x.place]; return '<div class="row" data-place="' + x.place + '"><div class="ico">' + svg('pin', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + esc(p[0]) + '</div><div class="s">' + ({ village: 'Dorf', town: 'Ort', hamlet: 'Weiler', bay: 'Bucht', cape: 'Kap', peninsula: 'Halbinsel', locality: 'Flurname', island: 'Insel', islet: 'Inselchen', isolated_dwelling: 'Einzelgehöft' }[p[3]] || 'Ortsteil') + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
       if (x.street != null) { var s = STREETS[x.street]; return '<div class="row" data-street="' + x.street + '"><div class="ico">' + svg('road', '#9fb3c4', 18) + '</div><div class="grow"><div class="t">' + esc(s.name) + '</div><div class="s">Straße/Weg &middot; ' + esc(nearestPlace(s.lat, s.lon, true)[0]) + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
       return poiRow(x);
-    }).join('') : '<div class="row"><div class="s">Nichts gefunden. Tipp: auch "Strand", "Eis", "Wasser" oder "Pizza" geht.</div></div>';
+    }).join('') : '<div class="row" id="noLocal"><div class="s">Auf Ugljan nichts gefunden. Tipp: auch "Strand", "Eis", "Wasser" oder "Pizza" geht.</div></div>';
+    box.innerHTML += '<div id="extRes"></div>';
     box.style.display = 'block';
+    extSearch(raw);
+  }
+  // Orte in ganz Europa (und weltweit) ueber Photon/OpenStreetMap suchen
+  var extT = null, extSeq = 0, extList = [];
+  var OSMV = { city: 'Stadt', town: 'Stadt', village: 'Dorf', hamlet: 'Weiler', suburb: 'Stadtteil', island: 'Insel', islet: 'Insel', peak: 'Gipfel',
+    beach: 'Strand', restaurant: 'Restaurant', cafe: 'Cafe', bar: 'Bar', camp_site: 'Campingplatz', hotel: 'Hotel', museum: 'Museum', viewpoint: 'Aussicht',
+    ferry_terminal: 'Fähre', bicycle: 'Fahrradladen', supermarket: 'Supermarkt', attraction: 'Sehenswürdigkeit', castle: 'Burg', bay: 'Bucht', lake: 'See' };
+  function extSearch(raw) {
+    clearTimeout(extT);
+    if (raw.length < 3 || navigator.onLine === false) return;
+    var seq = ++extSeq;
+    extT = setTimeout(function () {
+      var c = map.getCenter();
+      fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(raw) + '&limit=8&lang=de&lat=' + c.lat.toFixed(3) + '&lon=' + c.lng.toFixed(3))
+        .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+        .catch(function () {
+          // Ersatz-Suche ueber Nominatim, falls Photon nicht erreichbar ist
+          return fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&accept-language=de&q=' + encodeURIComponent(raw))
+            .then(function (r) { return r.json(); })
+            .then(function (l) {
+              return { features: l.map(function (x) {
+                var ad = x.address || {};
+                return { geometry: { coordinates: [+x.lon, +x.lat] }, properties: { name: x.name || (x.display_name || '').split(',')[0], osm_value: x.type, city: ad.city || ad.town || ad.village || '', state: ad.state || '', country: ad.country || '' } };
+              }) };
+            });
+        })
+        .then(function (j) {
+          if (seq !== extSeq || !$('extRes')) return;
+          extList = (j.features || []).filter(function (f) { return !onIsland(f.geometry.coordinates[1], f.geometry.coordinates[0]); });
+          if (!extList.length) return;
+          var ref = meRef() || PREKO;
+          $('extRes').innerHTML = '<div class="row" style="padding:8px 14px"><div class="s" style="text-transform:uppercase;letter-spacing:1px;font-size:11px">Europa und weltweit (online)</div></div>' +
+            extList.map(function (f, i) {
+              var p = f.properties, g = f.geometry.coordinates;
+              var sub = [OSMV[p.osm_value] || '', p.city && p.city !== p.name ? p.city : '', p.state || '', p.country || ''].filter(Boolean).join(' · ');
+              return '<div class="row" data-ext="' + i + '"><div class="ico">' + svg('pin', '#4fc3f7', 18) + '</div><div class="grow"><div class="t ell">' + esc(p.name || p.street || 'Ort') + '</div><div class="s ell">' + esc(sub) + '</div></div><div class="s">' + fmtDist(dist(ref.lat, ref.lon, g[1], g[0])) + '</div></div>';
+            }).join('');
+          var nl = $('noLocal'); if (nl) nl.remove();
+        }).catch(function () {});
+    }, 350);
   }
   $('search').addEventListener('input', doSearch);
   $('search').addEventListener('focus', function () { if (this.value) doSearch(); });
@@ -1729,6 +1994,11 @@
     if (r.hasAttribute('data-place')) { var p = D.places[+r.getAttribute('data-place')]; showPoint(p[1], p[2], p[0]); view(p[1], p[2], 15); }
     else if (r.hasAttribute('data-street')) { var s = STREETS[+r.getAttribute('data-street')]; showPoint(s.lat, s.lon, s.name); view(s.lat, s.lon, 16); }
     else if (r.hasAttribute('data-poi')) { var i = +r.getAttribute('data-poi'); showPoi(i); view(D.pois[i][1], D.pois[i][2], 16); }
+    else if (r.hasAttribute('data-ext')) {
+      var f = extList[+r.getAttribute('data-ext')], g = f.geometry.coordinates, pp = f.properties;
+      showExtPoint(g[1], g[0], pp.name || pp.street || 'Ort', [OSMV[pp.osm_value] || '', pp.city !== pp.name ? pp.city : '', pp.country].filter(Boolean).join(' · '));
+      view(g[1], g[0], pp.osm_value === 'city' || pp.osm_value === 'town' ? 12 : 15);
+    }
   });
 
   // =====================================================================
@@ -1752,5 +2022,5 @@
   drawChips(); updLayers(); drawHome();
   setTimeout(fitIsland, 50);
   window.__show = showPoi;
-  window.__ugljan = { map: map, STYLES: STYLES, routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };
+  window.__ugljan = { getCur: function () { return cur; }, map: map, STYLES: STYLES, routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };
 })();
