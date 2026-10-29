@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""Baut aus OSM-Rohdaten (API-Kacheln) die Datendatei der App fuer die Insel Ugljan.
-Aufruf: build_data.py <ordner-mit-osm-dateien> <ausgabe.js>
-Im Ordner: t_*.osm (Kacheln von api.openstreetmap.org/api/0.6/map) und island.osm (relation/6756342/full).
+"""Baut aus OSM-Rohdaten und dem Höhenraster die Daten der App für die Insel Ugljan.
+
+Aufruf: build_data.py <ordner-mit-osm-dateien> <dem.json> <assets-ordner>
+Im OSM-Ordner: t_*.osm (Kacheln von api.openstreetmap.org/api/0.6/map) und island.osm
+(relation/6756342/full). dem.json kommt von fetch_dem.py.
+Schreibt data.js und relief.png in den Assets-Ordner.
 """
-import glob, json, math, os, sys, time
+import glob, json, math, os, sys
 import xml.etree.ElementTree as ET
-from shapely.geometry import Polygon, Point, LineString
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+from shapely.geometry import Polygon, Point, LineString, MultiLineString
 from shapely.ops import unary_union, linemerge, polygonize
 from shapely.prepared import prep
 
-src, out = sys.argv[1], sys.argv[2]
+src, dem_path, outdir = sys.argv[1], sys.argv[2], sys.argv[3]
 nodes, ways, rels = {}, {}, {}
 
 def tags(el):
@@ -36,12 +41,29 @@ island = relation_polygon("6756342")
 island_buf = prep(island.buffer(0.0006))
 inside = lambda lat, lon: island_buf.contains(Point(lon, lat))
 
+# ---------- Höhenraster ----------
+dem = json.load(open(dem_path))
+Z = np.array(dem["z"], dtype=float)
+DS, DW, DLAT, DLON = dem["s"], dem["w"], dem["dlat"], dem["dlon"]
+
+def elev(lat, lon):
+    y = (lat - DS) / DLAT; x = (lon - DW) / DLON
+    r0 = int(math.floor(y)); c0 = int(math.floor(x))
+    r0 = max(0, min(Z.shape[0] - 2, r0)); c0 = max(0, min(Z.shape[1] - 2, c0))
+    fy = min(1, max(0, y - r0)); fx = min(1, max(0, x - c0))
+    z = (Z[r0, c0] * (1 - fx) * (1 - fy) + Z[r0, c0 + 1] * fx * (1 - fy) +
+         Z[r0 + 1, c0] * (1 - fx) * fy + Z[r0 + 1, c0 + 1] * fx * fy)
+    return max(0.0, z)
+
+def mdist(la1, lo1, la2, lo2):
+    return math.hypot((lo2 - lo1) * 111320 * math.cos(math.radians(la1)), (la2 - la1) * 110540)
+
 def rings_of(geom, tol):
     g = geom.simplify(tol, preserve_topology=True)
     polys = [g] if g.geom_type == "Polygon" else list(g.geoms)
     return [[[round(y, 5), round(x, 5)] for x, y in p.exterior.coords] for p in polys if not p.is_empty]
 
-land = rings_of(island, 0.00004)
+land = rings_of(island, 0.00003)
 others = []
 for wid, (nd, t) in ways.items():
     if t.get("place") in ("island", "islet") and nd and nd[0] == nd[-1]:
@@ -60,6 +82,19 @@ for wid, (nd, t) in ways.items():
                     if len(r) >= 4:
                         green.append(r)
 
+# Siedlungsflaechen (für die Ortsdarstellung)
+built = []
+for wid, (nd, t) in ways.items():
+    if t.get("landuse") in ("residential", "retail", "commercial") and nd and nd[0] == nd[-1]:
+        c = way_coords(wid)
+        if len(c) >= 4:
+            p = Polygon(c).buffer(0)
+            if p.area > 1e-7 and island.intersects(p):
+                for r in rings_of(p.intersection(island), 0.00004):
+                    if len(r) >= 4:
+                        built.append(r)
+
+# ---------- Radrouten ----------
 route_ways, routes = {}, []
 for rid, (m, t) in rels.items():
     if t.get("route") not in ("bicycle", "mtb"):
@@ -67,23 +102,38 @@ for rid, (m, t) in rels.items():
     wl = [r for ty, r, role in m if ty == "way" and r in ways and any(i in nodes and inside(nodes[i][0], nodes[i][1]) for i in ways[r][0])]
     if not wl:
         continue
-    label = t.get("name") or ("Radroute " + t.get("ref", "")).strip()
-    if t.get("ref") and t.get("name") and t.get("network") != "icn":
-        label = t["ref"] + " - " + t["name"]
-    routes.append({"ref": t.get("ref", ""), "name": label, "w": wl})
+    label = t.get("name") or ""
+    routes.append({"ref": t.get("ref", ""), "name": label, "net": t.get("network", ""), "w": wl})
     for w in wl:
         route_ways[w] = 1
 
+# ---------- Wegenetz ----------
 CLS = {"cycleway": 0, "living_street": 1, "residential": 1, "unclassified": 1, "service": 1, "road": 1,
        "track": 2, "path": 3, "bridleway": 3, "footway": 4, "pedestrian": 4,
        "tertiary": 5, "tertiary_link": 5, "secondary": 6, "secondary_link": 6, "primary": 7, "primary_link": 7, "trunk": 7}
-used, node_list, way_out, names, name_idx = {}, [], [], [], {}
+# Belag: 0 glatt, 1 Pflaster, 2 verdichtet, 3 Schotter, 4 Erde/Gras, 5 Fels/grob
+SURF = {"asphalt": 0, "paved": 0, "concrete": 0, "concrete:plates": 1, "paving_stones": 1, "sett": 1,
+        "cobblestone": 1, "unhewn_cobblestone": 4, "compacted": 2, "fine_gravel": 2, "gravel": 3, "unpaved": 3,
+        "pebblestone": 3, "dirt": 4, "ground": 4, "earth": 4, "grass": 4, "mud": 4, "sand": 4, "rock": 5, "stone": 5}
+DEF_SURF = {0: 0, 1: 0, 2: 3, 3: 4, 4: 1, 5: 0, 6: 0, 7: 0, 8: 4}
+TRACK_SURF = {"grade1": 0, "grade2": 2, "grade3": 3, "grade4": 4, "grade5": 4}
+
+coords_out = []  # [lat, lon, ele]
+osm_to_idx = {}
+way_out, names, name_idx = [], [], {}
 
 def nid(i):
-    if i not in used:
-        used[i] = len(node_list); node_list.append(i)
-    return used[i]
+    if i not in osm_to_idx:
+        osm_to_idx[i] = len(coords_out)
+        la, lo = nodes[i][0], nodes[i][1]
+        coords_out.append([la, lo, elev(la, lo)])
+    return osm_to_idx[i]
 
+def new_pt(la, lo):
+    coords_out.append([la, lo, elev(la, lo)])
+    return len(coords_out) - 1
+
+STEP = 25.0
 for wid, (nd, t) in ways.items():
     hw = t.get("highway")
     if hw not in CLS or t.get("bicycle") == "no" or t.get("area") == "yes":
@@ -100,91 +150,240 @@ for wid, (nd, t) in ways.items():
         c = 0
     if c == 2 and t.get("tracktype") in ("grade4", "grade5"):
         c = 8
+    s = SURF.get(t.get("surface", ""), TRACK_SURF.get(t.get("tracktype", ""), DEF_SURF[c]))
+    if t.get("smoothness") in ("bad", "very_bad"):
+        s = max(s, 3)
+    if t.get("smoothness") in ("horrible", "very_horrible", "impassable"):
+        s = 5
+    try:
+        if float((t.get("mtb:scale") or "0").rstrip("+-")) >= 2:
+            s = 5
+    except ValueError:
+        pass
     flags = 0
-    if t.get("oneway") in ("yes", "1", "-1") and t.get("oneway:bicycle") != "no":
+    if t.get("oneway") in ("yes", "1", "-1") and t.get("oneway:bicycle") != "no" and t.get("cycleway") != "opposite":
         flags |= 1
         if t.get("oneway") == "-1":
             pts = pts[::-1]
     if wid in route_ways:
         flags |= 2
+    if t.get("bridge") == "yes":
+        flags |= 4
+    if t.get("lit") == "yes":
+        flags |= 8
     nm = t.get("name") or t.get("ref") or ""
     if nm not in name_idx:
         name_idx[nm] = len(names); names.append(nm)
-    way_out.append([c, name_idx[nm], flags, [nid(i) for i in pts], wid])
+    seq = [nid(pts[0])]
+    for a, b in zip(pts, pts[1:]):
+        la1, lo1, la2, lo2 = nodes[a][0], nodes[a][1], nodes[b][0], nodes[b][1]
+        d = mdist(la1, lo1, la2, lo2)
+        k = int(d // STEP)
+        for j in range(1, k + 1):
+            f = j / (k + 1)
+            seq.append(new_pt(la1 + (la2 - la1) * f, lo1 + (lo2 - lo1) * f))
+        seq.append(nid(b))
+    way_out.append([c, name_idx[nm], flags, s, seq, wid])
+
+# Höhen glaetten: das 90-m-Raster liefert quer am Hang falsche Steigungen. Laplace-Glaettung über das
+# Wegenetz (Nachbarn im Abstand von ca. 25 m), entspricht etwa +-75 m Fenster.
+nbr = [[] for _ in coords_out]
+for w in way_out:
+    seq = w[4]
+    for a_, b_ in zip(seq, seq[1:]):
+        nbr[a_].append(b_); nbr[b_].append(a_)
+z = np.array([p[2] for p in coords_out])
+for _ in range(8):
+    nz = z.copy()
+    for k, nb in enumerate(nbr):
+        if nb:
+            nz[k] = 0.5 * z[k] + 0.5 * sum(z[j] for j in nb) / len(nb)
+    z = nz
+for k in range(len(coords_out)):
+    coords_out[k][2] = max(0.0, float(z[k]))
+# Bruecken: Höhe linear zwischen den Enden
+for w in way_out:
+    if w[2] & 4:
+        seq = w[4]; z0 = coords_out[seq[0]][2]; z1 = coords_out[seq[-1]][2]
+        for k in range(1, len(seq) - 1):
+            coords_out[seq[k]][2] = z0 + (z1 - z0) * k / (len(seq) - 1)
 
 flat = []
-for i in node_list:
-    flat += [round(nodes[i][0] * 1e5), round(nodes[i][1] * 1e5)]
-wid_to_idx = {w[4]: k for k, w in enumerate(way_out)}
+for la, lo, zz in coords_out:
+    flat += [round(la * 1e5), round(lo * 1e5), round(zz * 10)]
+
+wid_to_idx = {w[5]: k for k, w in enumerate(way_out)}
 route_out = []
 for r in routes:
     idx = [wid_to_idx[w] for w in r["w"] if w in wid_to_idx]
-    L = 0.0
-    for k in idx:
-        p = way_out[k][3]
-        for a, b in zip(p, p[1:]):
-            la1, lo1, la2, lo2 = flat[a*2]/1e5, flat[a*2+1]/1e5, flat[b*2]/1e5, flat[b*2+1]/1e5
-            L += math.hypot((lo2-lo1)*111320*math.cos(math.radians(la1)), (la2-la1)*110540)
     if idx:
-        route_out.append({"ref": r["ref"], "name": r["name"], "w": idx, "len": round(L)})
-route_out.sort(key=lambda r: int(r["ref"]) if r["ref"].isdigit() else 999)
+        route_out.append({"ref": r["ref"], "name": r["name"], "net": r["net"], "w": idx})
+route_out.sort(key=lambda r: (r["net"] == "icn", int(r["ref"]) if r["ref"].isdigit() else 999))
 
+# ---------- Orte von Interesse ----------
 def poi_cat(t):
-    a, s, tu, h = t.get("amenity"), t.get("shop"), t.get("tourism"), t.get("historic")
+    a, s, tu, h, n, l = t.get("amenity"), t.get("shop"), t.get("tourism"), t.get("historic"), t.get("natural"), t.get("leisure")
     if a == "restaurant": return "food"
     if a == "fast_food": return "snack"
-    if a in ("cafe", "ice_cream") or s == "bakery": return "cafe"
-    if a in ("bar", "pub"): return "bar"
-    if a == "drinking_water": return "water"
-    if a == "toilets": return "wc"
-    if s == "bicycle" or a in ("bicycle_rental", "bicycle_repair_station"): return "bike"
-    if s in ("supermarket", "convenience"): return "shop"
-    if a == "pharmacy": return "pharmacy"
-    if a == "ferry_terminal": return "ferry"
-    if t.get("natural") == "beach" or t.get("leisure") == "beach_resort": return "beach"
+    if a in ("cafe", "ice_cream") or s in ("bakery", "pastry", "ice_cream"): return "cafe"
+    if a in ("bar", "pub", "biergarten", "nightclub"): return "bar"
+    if a in ("drinking_water", "water_point") or n == "spring" or (a == "fountain" and t.get("drinking_water") == "yes"): return "water"
+    if a in ("toilets", "shower"): return "wc"
+    if s == "bicycle" or a in ("bicycle_rental", "bicycle_repair_station", "compressed_air"): return "bike"
+    if s in ("supermarket", "convenience", "greengrocer", "butcher", "deli", "farm", "wine", "alcohol", "general", "kiosk", "seafood"): return "shop"
+    if a in ("pharmacy", "doctors", "clinic", "hospital", "dentist") or t.get("emergency") == "defibrillator": return "health"
+    if a in ("ferry_terminal",): return "ferry"
+    if n == "beach" or l in ("beach_resort", "bathing_place"): return "beach"
     if tu == "viewpoint": return "view"
-    if tu in ("attraction", "museum") or h in ("castle", "fort", "ruins", "archaeological_site", "church", "monastery"): return "sight"
+    if n == "peak" and (t.get("name") or t.get("ele")): return "peak"
+    if tu in ("attraction", "museum", "artwork", "gallery") or h or a == "place_of_worship" or (a == "monastery"): return "sight"
+    if tu in ("hotel", "guest_house", "hostel", "apartment", "camp_site", "motel", "chalet"): return "stay"
+    if a in ("atm", "bank", "bureau_de_change", "post_office"): return "money"
+    if a == "fuel": return "fuel"
+    if l == "marina" or t.get("harbour") == "yes" or l == "slipway": return "port"
+    if a == "bus_station" or t.get("highway") == "bus_stop": return "bus"
+    if a == "parking" and t.get("access") not in ("private", "customers"): return "parking"
     return None
 
-pois, seen = [], set()
+CUISINE = {"seafood": "Fisch und Meeresfrüchte", "pizza": "Pizza", "regional": "Regional", "italian": "Italienisch",
+           "croatian": "Kroatisch", "mediterranean": "Mediterran", "burger": "Burger", "ice_cream": "Eis", "grill": "Grill",
+           "coffee_shop": "Kaffee", "fish": "Fisch", "international": "International", "sandwich": "Sandwiches",
+           "local": "Regional", "steak_house": "Steak", "barbecue": "Grill", "cake": "Kuchen", "crepe": "Crepes"}
+pois = []
+by_name = {}
+
 def add_poi(t, lat, lon):
     cat = poi_cat(t)
     if not cat or not inside(lat, lon):
         return
-    name = t.get("name") or ""
-    if cat == "sight" and not name:
+    name = t.get("name") or t.get("name:hr") or ""
+    if cat in ("sight", "port") and not name:
         return
-    key = (cat, name, round(lat, 4), round(lon, 4))
-    if key in seen:
+    if cat == "sight" and t.get("tourism") == "attraction" and t.get("building"):
         return
-    seen.add(key)
+    if name:
+        for q in by_name.get((cat, name), []):
+            if mdist(lat, lon, q[1], q[2]) < 300:
+                return
+    else:
+        for q in pois[-400:]:
+            if q[0] == cat and not q[3] and mdist(lat, lon, q[1], q[2]) < 15:
+                return
     ex = {}
-    for ki, ko in (("opening_hours", "oh"), ("cuisine", "cu"), ("phone", "ph"), ("contact:phone", "ph"), ("website", "web"), ("addr:city", "city")):
+    for ki, ko in (("opening_hours", "oh"), ("phone", "ph"), ("contact:phone", "ph"), ("mobile", "ph"),
+                   ("website", "web"), ("contact:website", "web"), ("addr:street", "st"), ("addr:housenumber", "hn"),
+                   ("ele", "ele"), ("description", "desc"), ("stars", "stars"), ("outdoor_seating", "out"),
+                   ("internet_access", "wifi"), ("fee", "fee"), ("wheelchair", "wc")):
         if t.get(ki) and ko not in ex:
             ex[ko] = t[ki]
-    pois.append([cat, round(lat, 5), round(lon, 5), name, ex])
+    sub = {"ice_cream": "Eis", "bakery": "Bäckerei", "pub": "Pub", "nightclub": "Club", "bicycle_rental": "Fahrradverleih",
+           "bicycle_repair_station": "Reparaturstation", "compressed_air": "Luftpumpe", "spring": "Quelle", "shower": "Dusche",
+           "doctors": "Arzt", "clinic": "Ambulanz", "dentist": "Zahnarzt", "defibrillator": "Defibrillator", "camp_site": "Campingplatz",
+           "hotel": "Hotel", "guest_house": "Pension", "apartment": "Apartment", "hostel": "Hostel", "atm": "Geldautomat",
+           "bank": "Bank", "post_office": "Post", "place_of_worship": "Kirche", "museum": "Museum", "castle": "Festung",
+           "fort": "Festung", "ruins": "Ruine", "archaeological_site": "Ausgrabung", "supermarket": "Supermarkt",
+           "convenience": "Lebensmittel", "greengrocer": "Obst und Gemüse", "butcher": "Metzger", "wine": "Wein",
+           "kiosk": "Kiosk", "bus_stop": "Bushaltestelle", "slipway": "Slipanlage", "marina": "Marina", "seafood": "Fischladen"}
+    for k in ("amenity", "shop", "tourism", "historic", "natural", "leisure", "emergency", "highway"):
+        if t.get(k) in sub:
+            ex["sub"] = sub[t[k]]; break
+    cu = [CUISINE.get(x.strip(), x.strip().replace("_", " ").capitalize()) for x in (t.get("cuisine") or "").split(";") if x.strip()]
+    if cu:
+        ex["cu"] = ", ".join(cu[:3])
+    p = [cat, round(lat, 5), round(lon, 5), name, ex]
+    pois.append(p)
+    if name:
+        by_name.setdefault((cat, name), []).append(p)
 
 for i, (lat, lon, t) in nodes.items():
     if t:
         add_poi(t, lat, lon)
 for wid, (nd, t) in ways.items():
-    if poi_cat(t):
+    if poi_cat(t) and not t.get("highway"):
         c = way_coords(wid)
         if c:
-            add_poi(t, sum(p[1] for p in c)/len(c), sum(p[0] for p in c)/len(c))
+            add_poi(t, sum(p[1] for p in c) / len(c), sum(p[0] for p in c) / len(c))
+for rid, (m, t) in rels.items():
+    if poi_cat(t):
+        pts = [nodes[i] for ty, w, role in m if ty == "way" and w in ways for i in ways[w][0] if i in nodes]
+        if pts:
+            add_poi(t, sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+for p in pois:
+    if p[0] in ("peak", "view") and "ele" not in p[4]:
+        p[4]["ele"] = str(round(elev(p[1], p[2])))
 
 places = [[t["name"], round(lat, 5), round(lon, 5), t["place"]] for i, (lat, lon, t) in nodes.items()
-          if t.get("place") in ("village", "town", "hamlet", "suburb") and t.get("name") and inside(lat, lon)]
+          if t.get("place") in ("village", "town", "hamlet", "suburb", "neighbourhood", "locality", "isolated_dwelling") and t.get("name") and inside(lat, lon)]
+# Buchten und Kaps als Ortsnamen
+for i, (lat, lon, t) in nodes.items():
+    if t.get("natural") in ("bay", "cape") and t.get("name") and inside(lat, lon):
+        places.append([t["name"], round(lat, 5), round(lon, 5), t["natural"]])
+
+# ---------- Höhenlinien ----------
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+ys = DS + np.arange(Z.shape[0]) * DLAT
+xs = DW + np.arange(Z.shape[1]) * DLON
+cs = plt.contour(xs, ys, Z, levels=list(range(25, 400, 25)))
+contours = []
+isl_s = island.buffer(-0.0002)
+for lvl, segs in zip(cs.levels, cs.allsegs):
+    lines = [LineString(s) for s in segs if len(s) >= 3]
+    if not lines:
+        continue
+    g = MultiLineString(lines).intersection(isl_s).simplify(0.00008)
+    geoms = [g] if g.geom_type == "LineString" else list(getattr(g, "geoms", []))
+    for ln in geoms:
+        if ln.geom_type == "LineString" and ln.length > 0.0015:
+            contours.append([int(lvl), [[round(y, 5), round(x, 5)] for x, y in ln.coords]])
+
+# ---------- Relief (Schummerung) als Bild ----------
+up = 6
+H, Wd = Z.shape
+img = Image.fromarray(Z.astype(np.float32), mode="F").resize((Wd * up, H * up), Image.BICUBIC)
+z = np.array(img, dtype=float)
+cy = DLAT * 110540 / up; cx = DLON * 111320 * math.cos(math.radians(44.08)) / up
+gy, gx = np.gradient(z, cy, cx)
+slope = np.arctan(np.hypot(gx, gy) * 1.6)
+aspect = np.arctan2(-gx, gy)
+az, alt = math.radians(315), math.radians(40)
+# Bildzeilen laufen von Sued nach Nord -> Lichtrichtung entsprechend
+shade = np.sin(alt) * np.cos(slope) + np.cos(alt) * np.sin(slope) * np.cos(az - aspect + math.pi)
+shade = np.clip(shade, 0, 1)
+flatv = np.sin(alt)
+dark = np.clip((flatv - shade) / flatv, 0, 1)
+light = np.clip((shade - flatv) / (1 - flatv), 0, 1)
+rgba = np.zeros((H * up, Wd * up, 4), dtype=np.uint8)
+alpha = np.clip(dark * 200 + light * 70, 0, 255)
+rgba[..., 0] = np.where(dark > 0, 0, 230)
+rgba[..., 1] = np.where(dark > 0, 6, 245)
+rgba[..., 2] = np.where(dark > 0, 12, 200)
+rgba[..., 3] = alpha.astype(np.uint8)
+mask = Image.new("L", (Wd * up, H * up), 0)
+md = ImageDraw.Draw(mask)
+geoms = [island] if island.geom_type == "Polygon" else list(island.geoms)
+for g in geoms:
+    md.polygon([((x - DW) / DLON * up, (y - DS) / DLAT * up) for x, y in g.exterior.coords], fill=255)
+mask = mask.filter(ImageFilter.GaussianBlur(1.5))
+rgba[..., 3] = (rgba[..., 3].astype(float) * np.array(mask) / 255).astype(np.uint8)
+im = Image.fromarray(rgba, "RGBA").transpose(Image.FLIP_TOP_BOTTOM)
+im.save(os.path.join(outdir, "relief.png"), optimize=True)
+relief_bounds = [[DS - DLAT / 2, DW - DLON / 2], [DS + (H - 0.5) * DLAT, DW + (Wd - 0.5) * DLON]]
 
 b = island.bounds
-data = {"bbox": [b[1], b[0], b[3], b[2]], "land": land, "others": others, "green": green,
-        "nodes": flat, "ways": [w[:4] for w in way_out], "names": names,
-        "routes": route_out, "pois": pois, "places": places}
-with open(out, "w") as fh:
+data = {"bbox": [b[1], b[0], b[3], b[2]], "land": land, "others": others, "green": green, "built": built,
+        "nodes": flat, "ways": [w[:5] for w in way_out], "names": names, "routes": route_out,
+        "pois": pois, "places": places, "contours": contours, "relief": relief_bounds,
+        "maxEle": round(float(Z.max())),
+        "dem": {"s": DS, "w": DW, "dlat": DLAT, "dlon": DLON, "rows": int(Z.shape[0]), "cols": int(Z.shape[1]),
+                "z": [int(round(v)) for v in Z.flatten()]}}
+with open(os.path.join(outdir, "data.js"), "w") as fh:
     fh.write("window.UGLJAN=")
     json.dump(data, fh, separators=(",", ":"), ensure_ascii=False)
     fh.write(";\n")
 from collections import Counter
-print("ways", len(way_out), "nodes", len(node_list), "pois", len(pois), "places", [p[0] for p in places], "green", len(green), "size", os.path.getsize(out))
-print(Counter(p[0] for p in pois)); print(Counter(w[0] for w in way_out))
-for r in route_out: print(r["ref"], r["name"], r["len"])
+print("ways", len(way_out), "nodes", len(coords_out), "pois", len(pois), "places", len(places), "contours", len(contours),
+      "size", os.path.getsize(os.path.join(outdir, "data.js")), "relief", im.size, "maxEle", Z.max())
+print(Counter(p[0] for p in pois))
+print(Counter(w[3] for w in way_out))
