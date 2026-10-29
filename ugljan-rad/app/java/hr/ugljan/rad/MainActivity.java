@@ -36,6 +36,7 @@ public class MainActivity extends Activity implements LocationListener {
     private TextToSpeech tts;
     private boolean ttsReady;
     private boolean navActive;
+    private long lastGpsTime;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -154,9 +155,17 @@ public class MainActivity extends Activity implements LocationListener {
 
     @Override
     public void onLocationChanged(Location l) {
-        if (LocationManager.NETWORK_PROVIDER.equals(l.getProvider()) && l.getAccuracy() > 200) return;
+        boolean gps = LocationManager.GPS_PROVIDER.equals(l.getProvider());
+        if (gps) {
+            lastGpsTime = System.currentTimeMillis();
+        } else {
+            // Grobe Mobilfunk-/WLAN-Ortung nur, wenn gerade kein GPS da ist: sonst springt der Punkt und das Tempo
+            if (l.getAccuracy() > 200 || System.currentTimeMillis() - lastGpsTime < 15000) return;
+        }
+        float sacc = Build.VERSION.SDK_INT >= 26 && l.hasSpeedAccuracy() ? l.getSpeedAccuracyMetersPerSecond() : -1;
         final String js = "window.onGps&&onGps(" + l.getLatitude() + "," + l.getLongitude() + "," + l.getAccuracy() + ","
-                + (l.hasSpeed() ? l.getSpeed() : -1) + "," + (l.hasBearing() ? l.getBearing() : -1) + ")";
+                + (gps && l.hasSpeed() ? l.getSpeed() : -1) + "," + (gps && l.hasBearing() ? l.getBearing() : -1) + ","
+                + sacc + "," + (gps ? 1 : 0) + ")";
         web.post(() -> web.evaluateJavascript(js, null));
     }
 

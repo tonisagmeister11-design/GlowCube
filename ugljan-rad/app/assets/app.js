@@ -622,13 +622,49 @@
   function myRef() { return me && onIsland(me.lat, me.lon) && Date.now() - lastFix < 120000 ? me : null; }
   function startRef() { var r = myRef(); return r ? { lat: r.lat, lon: r.lon, name: 'Mein Standort' } : PREKO; }
 
-  window.onGps = function (lat, lon, acc, speed, brg) {
+  // Tempo zuverlaessig bestimmen: GPS-Messwert bevorzugen, sonst nur aus genauen Punkten rechnen,
+  // Stillstand erkennen, unmoegliche Werte (Ortungsspruenge) verwerfen
+  var posHist = [], lastGoodSpeedT = 0;
+  function cleanSpeed(lat, lon, acc, speed, sacc, isGps, now) {
+    var v = -1;
+    if (!isGps || acc > 30) return -1;
+    // Punkte, die unmoeglich schnell vom letzten entfernt sind, sind Ortungsspruenge
+    var prev = posHist[posHist.length - 1];
+    if (prev && now - prev.t > 0 && dist(prev.lat, prev.lon, lat, lon) / ((now - prev.t) / 1000) > 22 && now - prev.t < 10000) return -1;
+    if (prev && now - prev.t < 500) return -1; // doppelte Meldung
+    if (speed >= 0 && !(sacc > 2.5)) v = speed;
+    else {
+      // ohne GPS-Messwert: Tempo ueber ca. 3 s Fenster, Bewegung muss groesser als die Ungenauigkeit sein
+      var old = null;
+      for (var i = 0; i < posHist.length; i++) if (now - posHist[i].t >= 2500) old = posHist[i];
+      if (old) {
+        var D = dist(old.lat, old.lon, lat, lon), T = (now - old.t) / 1000;
+        v = D > Math.max(4, (acc + old.acc) / 2) ? D / T : 0;
+      }
+    }
+    posHist.push({ t: now, lat: lat, lon: lon, acc: acc });
+    while (posHist.length && now - posHist[0].t > 8000) posHist.shift();
+    // Stillstand: seit 4 s nicht weiter bewegt als die Messungenauigkeit
+    var first = posHist[0];
+    if (posHist.length >= 3 && now - first.t >= 4000) {
+      var far = 0;
+      posHist.forEach(function (q) { if (now - q.t <= 4500) far = Math.max(far, dist(q.lat, q.lon, lat, lon)); });
+      if (far < Math.max(6, acc * 0.8)) v = 0;
+    }
+    if (v > 22) v = -1; // ueber 80 km/h ist auf dem Rad unmoeglich
+    return v;
+  }
+  window.onGps = function (lat, lon, acc, speed, brg, sacc, isGps) {
     var now = Date.now();
-    if (me && speed < 0) { var dt = (now - lastFix) / 1000; if (dt > 0 && dt < 10) speed = dist(me.lat, me.lon, lat, lon) / dt; }
-    if (me && brg < 0 && dist(me.lat, me.lon, lat, lon) > 4) brg = bearing(me.lat, me.lon, lat, lon);
-    me = { lat: lat, lon: lon, acc: acc, brg: brg >= 0 ? brg : (me ? me.brg : -1) };
+    if (isGps === undefined) isGps = acc <= 100 ? 1 : 0;
+    if (sacc === undefined) sacc = -1;
+    // Ein grober Punkt kurz nach einem guten GPS-Punkt wird ignoriert (sonst springt der Punkt)
+    if (!isGps && me && me.gps && now - lastFix < 15000) return;
+    speed = cleanSpeed(lat, lon, acc, speed, sacc, isGps, now);
+    if (me && (brg < 0 || speed < 1.5) && dist(me.lat, me.lon, lat, lon) > Math.max(4, acc)) brg = bearing(me.lat, me.lon, lat, lon);
+    me = { lat: lat, lon: lon, acc: acc, gps: !!isGps, brg: brg >= 0 ? brg : (me ? me.brg : -1) };
     lastFix = now;
-    lastSpeed = speed >= 0 ? speed * 3.6 : -1;
+    if (speed >= 0) { lastSpeed = speed * 3.6; lastGoodSpeedT = now; } else if (now - lastGoodSpeedT > 5000) lastSpeed = -1;
     if (!meMarker) {
       var el = document.createElement('div');
       el.className = 'me';
@@ -721,19 +757,23 @@
   var sess = { dist: 0, mv: 0, last: null, lastT: 0 }, speedHist = [];
   function sessPoint(lat, lon, acc, speed) {
     var now = Date.now();
-    if (speed >= 0) { speedHist.push(speed * 3.6); if (speedHist.length > 3) speedHist.shift(); }
+    if (speed >= 0) { speedHist.push({ v: speed * 3.6, t: now }); if (speedHist.length > 3) speedHist.shift(); }
     if (acc > 35 || !onIsland(lat, lon)) return;
     if (sess.last) {
       var d = dist(sess.last[0], sess.last[1], lat, lon), dt = (now - sess.lastT) / 1000;
-      if (d < 4) return;
-      if (dt > 0 && dt < 15 && d / dt < 25) { sess.dist += d; if (speed > 0.8 || d / dt > 0.8) sess.mv += dt; }
+      if (speed < 0.8) { if (speed >= 0) { sess.last = [lat, lon]; sess.lastT = now; } return; }
+      if (d < Math.max(4, acc * 0.5)) return;
+      if (dt > 0 && dt < 15 && d / dt < 22) { sess.dist += d; sess.mv += dt; }
     }
     sess.last = [lat, lon]; sess.lastT = now;
   }
   function curSpeed() {
-    if (!myRef() || Date.now() - lastFix > 6000 || !speedHist.length) return null;
-    var v = speedHist.reduce(function (a, b) { return a + b; }, 0) / speedHist.length;
-    return v < 2 ? 0 : v;
+    var now = Date.now();
+    if (!myRef() || now - lastFix > 6000) return null;
+    var h = speedHist.filter(function (x) { return now - x.t < 6000; }).map(function (x) { return x.v; }).sort(function (a, b) { return a - b; });
+    if (!h.length) return null;
+    var v = h[Math.floor(h.length / 2)]; // Median: einzelne Ausreisser schlagen nicht durch
+    return v < 2.5 ? 0 : v;
   }
   function avgSpeed() { var o = rec || sess; return o.mv > 20 ? o.dist / o.mv * 3.6 : null; }
   function updSpeedo() {
@@ -1355,7 +1395,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Ugljan Rad 3.3. Funktioniert komplett offline. Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Ugljan Rad 3.4. Funktioniert komplett offline. Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1400,11 +1440,13 @@
     var now = Date.now();
     if (rec.last) {
       var d = dist(rec.last[0], rec.last[1], lat, lon), dt = (now - rec.lastT) / 1000;
-      if (d < 4) return;
-      if (dt > 0 && d / dt > 25) return; // Sprung
+      // Strecke nur, wenn man sich nachweislich bewegt (Stillstand und GPS-Zittern zaehlen nicht)
+      if (speed < 0.8) { if (speed >= 0) { rec.last = [lat, lon]; rec.lastT = now; } return; }
+      if (d < Math.max(4, acc * 0.5)) return;
+      if (dt <= 0 || d / dt > 22) return; // Sprung
       rec.dist += d;
-      if (dt < 15 && (speed > 0.8 || d / dt > 0.8)) rec.mv += dt;
-      var v = speed > 0 ? speed * 3.6 : d / dt * 3.6; if (v > rec.max && v < 80) rec.max = v;
+      if (dt < 15) rec.mv += dt;
+      var cs = curSpeed(); if (cs && cs > rec.max && cs < 80) rec.max = cs;
     }
     var z = demEle(lat, lon);
     if (rec.eref == null) rec.eref = z; else if (z - rec.eref > 3) { rec.asc += z - rec.eref; rec.eref = z; } else if (z < rec.eref - 3) rec.eref = z;
