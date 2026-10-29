@@ -33,6 +33,7 @@ const SYSTEM_ORDER := [
 	["politics", "res://scripts/politics/politics.gd"],
 	["player", "res://scripts/life/player_life.gd"],
 	["goals", "res://scripts/life/goals.gd"],
+	["story", "res://scripts/story/story_system.gd"],
 ]
 
 var seed: int = 0
@@ -55,6 +56,7 @@ var crime
 var politics
 var player
 var goals
+var story
 
 var systems: Array = []              # [[name, obj], ...] in Tick-Reihenfolge
 var news: Array = []                 # {day, hour, category, text}

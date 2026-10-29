@@ -16,6 +16,7 @@ const APPS := [
 	["map", "Karte", "map", Color("#4cc9f0")], ["news", "Nachrichten", "news", Color("#ffd166")],
 	["contacts", "Kontakte", "contacts", Color("#f78fb3")], ["police", "Polizei", "police", Color("#5c8dff")],
 	["gang", "Gang", "mask", Color("#a0a8b8")], ["politics", "Politik", "capitol", Color("#ff7a45")],
+	["story", "Geschichte", "star", Color("#ffb347")],
 	["rules", "Regeln", "book", Color("#c9d3e3")],
 ]
 const KIND_LABELS := {"room": "Zimmer", "apartment": "Wohnung", "house": "Haus", "villa": "Villa", "estate": "Anwesen", "shelter_bed": "Schlafplatz"}
@@ -720,3 +721,65 @@ func _ask_amount(pol, aid: String, label: String) -> void:
 		m.dismiss()
 		_say(pol.apply_decision(world, aid, sp.value)))
 	m.buttons.add_child(ok)
+
+
+# ================================================================ Geschichte
+
+func _app_story(b: VBoxContainer) -> void:
+	var st = world.get("story")
+	if st == null:
+		_empty(b, "warning", "Nicht verfügbar", "Der Story-Modus fehlt in diesem Spielstand.")
+		return
+	var prog: Dictionary = st.chapter_progress()
+	_section(b, "Dein Weg")
+	_item(b, "Erledigte Aufträge", "%d von %d" % [int(prog.done), int(prog.total)], "", Callable(), true, "star", UITheme.ACCENT)
+	if not st.in_gang():
+		_item(b, "Noch kein Anschluss", "Die Geschichte beginnt, sobald du dich einer Organisation anschließt. Suche in der App „Gang“ einen Kontakt.",
+			"", Callable(), true, "mask", Color("#a0a8b8"))
+	if st.is_active():
+		var d: Dictionary = st.mission_def()
+		var cur: Dictionary = st.current_step()
+		_section(b, "Laufender Auftrag")
+		_item(b, str(d.get("title", "")), "Schritt %d von %d · %s" % [int(st.step) + 1, st.steps_total(), str(cur.get("text", ""))],
+			"Aufgeben", func() -> void:
+				st.fail()
+				show_app("story"), true, "briefcase", UITheme.ACCENT)
+		if str(cur.get("place", "")) != "":
+			var runner := get_tree().get_first_node_in_group("story_runner")
+			if runner != null and runner.target_pos != Vector2.INF:
+				_item(b, "Ziel anzeigen", str(runner.target_label), "Route", func() -> void:
+					_route_to(runner.target_pos, runner.target_label), true, "route", Color("#4cc9f0"))
+	else:
+		var off: Dictionary = st.offer_next()
+		if off.is_empty():
+			_item(b, "Kein Auftrag", "Zurzeit wartet nichts auf dich.", "", Callable(), false, "clock", Color("#8892a6"))
+		else:
+			var sp: Dictionary = StoryCatalog.speaker(str(off.get("giver", "pate")))
+			var rew: Dictionary = off.get("reward", {})
+			var rtxt := []
+			if float(rew.get("money", 0.0)) > 0.0:
+				rtxt.append(Economy.fmt_money(float(rew.money)))
+			if float(rew.get("rep", 0.0)) > 0.0:
+				rtxt.append("+%d Ansehen" % int(rew.rep))
+			_section(b, "Angebot von %s" % str(sp.get("name", "")))
+			_item(b, str(off.get("title", "")), "%s\n%s" % [str(off.get("brief", "")),
+				("Belohnung: " + ", ".join(PackedStringArray(rtxt))) if not rtxt.is_empty() else ""],
+				"Annehmen", func() -> void:
+					_say(st.accept(), "Auftrag angenommen.")
+					show_app("story"), true, "star", UITheme.ACCENT)
+	_section(b, "Kapitel")
+	for c in StoryCatalog.CHAPTERS:
+		var open: bool = st.unlocked.has(str(c.id))
+		var done := 0
+		for m in c.missions:
+			if st.completed.has(str(m)):
+				done += 1
+		var sub := str(c.desc) if open else "Noch gesperrt."
+		_item(b, "%s  (%d/%d)" % [str(c.title), done, (c.missions as Array).size()], sub, "", Callable(), open,
+			"book", UITheme.ACCENT if open else Color("#55607a"))
+		if open:
+			for mid in c.missions:
+				var md: Dictionary = StoryCatalog.mission(str(mid))
+				var mark := "erledigt" if st.completed.has(str(mid)) else ("läuft gerade" if st.active == str(mid) else "offen")
+				_item(b, str(md.get("title", mid)), mark, "", Callable(), true, "check" if st.completed.has(str(mid)) else "clock",
+					Color("#3ddc97") if st.completed.has(str(mid)) else Color("#8892a6"))

@@ -23,7 +23,19 @@ signal player_died(cause: String)
 signal player_job_changed(job_id: String)
 signal player_home_changed(property_id: int)
 signal player_skill_changed(skill: String, value: float)
-signal goal_completed(goal: Dictionary)    # Lebensziel erreicht, siehe Goals.info()
+signal goal_completed(goal: Dictionary)
+
+# Story-Modus
+signal story_chapter_unlocked(chapter: Dictionary)
+signal story_mission_started(mission_id: String)
+signal story_step_changed(mission_id: String, step: int)
+signal story_mission_completed(mission_id: String, money: float)
+signal story_mission_failed(mission_id: String, text: String)
+signal story_line(speaker: String, line: String, radio: bool)
+signal story_scripted_started(kind: String)
+signal story_scripted_finished(kind: String, survived: bool)
+signal story_prompt(label: String, hint: String)
+signal story_prompt_cleared()    # Lebensziel erreicht, siehe Goals.info()
 
 # Welt / Simulation
 signal notify(text: String, kind: String)  # kind: info|success|warning|danger|money

@@ -13,6 +13,7 @@ const UI_SCENE := "res://scenes/ui/game_ui.tscn"
 const TRAFFIC_SCRIPT := "res://scripts/traffic/traffic_manager.gd"
 const CROWD_SCRIPT := "res://scripts/npc/crowd_manager.gd"
 const CRIME_WORLD_SCRIPT := "res://scripts/crime/crime_world.gd"
+const STORY_RUNNER_SCRIPT := "res://scripts/story/story_runner.gd"
 const INITIAL_RADIUS := 260.0
 
 @onready var environment_node: DayNight = $Environment
@@ -51,6 +52,7 @@ func _ready() -> void:
 	_load_ui()
 	_start_actors()
 	_start_crime_world()
+	_start_story_runner()
 	if game and game.has_method("world_scene_ready") and not _standalone:
 		game.world_scene_ready()
 	elif game and _standalone and game.has_method("world_scene_ready"):
@@ -137,6 +139,21 @@ func _start_crime_world() -> void:
 		return
 	var node = scr.new()
 	if node is Node:
+		actors.add_child(node)
+		node.setup(world, player)
+
+
+## Fuehrt die laufende Story-Mission in der Welt aus (Ziele, Dialoge,
+## inszenierte Abschnitte wie der Hinterhalt).
+func _start_story_runner() -> void:
+	if not ResourceLoader.exists(STORY_RUNNER_SCRIPT) or world.get("story") == null:
+		return
+	var scr: Script = load(STORY_RUNNER_SCRIPT)
+	if scr == null or not scr.can_instantiate():
+		return
+	var node = scr.new()
+	if node is Node:
+		node.name = "StoryRunner"
 		actors.add_child(node)
 		node.setup(world, player)
 

@@ -54,6 +54,15 @@ func _ready() -> void:
 	EventBus.player_died.connect(_on_died)
 	EventBus.goal_completed.connect(_on_goal_completed)
 	EventBus.game_started.connect(_on_game_started)
+	# Story-Anzeige (Untertitel, Auftrag, Handlungsaufforderung)
+	if ResourceLoader.exists("res://scripts/ui/hud/story_overlay.gd"):
+		var so := Control.new()
+		so.set_script(load("res://scripts/ui/hud/story_overlay.gd"))
+		so.name = "StoryOverlay"
+		add_child(so)
+	EventBus.open_panel.connect(func(kind: String, ctx := {}):
+		if kind == "story_choice":
+			_open_story_choice(ctx))
 	_door_root = Node3D.new()
 	_door_root.name = "BuildingDoors"
 	var scene := get_tree().current_scene
@@ -249,8 +258,20 @@ func _work_building() -> int:
 	return int(world.jobs.positions[pid].building) if pid >= 0 else -1
 
 
+## Gebaeude, das der Story-Runner als Unterschlupf gewaehlt hat.
+func _hideout_building() -> int:
+	if world == null or world.get("story") == null:
+		return -1
+	var runner := get_tree().get_first_node_in_group("story_runner")
+	if runner == null or not runner.has_method("hideout_building"):
+		return -1
+	return int(runner.hideout_building())
+
+
 func _door_label(b: Dictionary) -> String:
 	var bid: int = b.id
+	if bid == _hideout_building():
+		return "Unterschlupf betreten"
 	if bid == _home_building():
 		return "Nach Hause gehen"
 	if bid == _work_building():
@@ -649,6 +670,104 @@ func _open_inventory() -> void:
 		_row(list, "%s  ×%d" % [g.name, int(inv[gid])], str(g.get("category", "")), "Benutzen", func():
 			_result(world.player.use_item(world, id))
 			_open_inventory(), bool(g.get("consumable", false)))
+
+
+## Unterschlupf: Auftraggeber ansprechen, Ziel abgeben, Bandengeschaefte.
+func _open_hideout(b: Dictionary) -> void:
+	var st_sys = world.get("story")
+	var gang_name := ""
+	if world.crime != null and world.crime.gangs != null and world.crime.gangs.has_method("player_overview"):
+		var ov = world.crime.gangs.player_overview(world)
+		if typeof(ov) == TYPE_DICTIONARY:
+			gang_name = str(ov.get("gang_name", ov.get("name", "")))
+	var v := _new_panel("Unterschlupf", gang_name if gang_name != "" else str(b.address))
+	var list := _scroll_list(v, 320)
+	# Laufender Story-Schritt, der hier abzugeben ist
+	var runner := get_tree().get_first_node_in_group("story_runner")
+	if st_sys != null and st_sys.is_active() and runner != null:
+		var cur: Dictionary = st_sys.current_step()
+		if int(runner.target_building()) == int(b.id):
+			_row(list, str(cur.get("text", "Auftrag fortsetzen")), "Hier geht es weiter.", "Erledigen", func():
+				_close_panel()
+				var r: Dictionary = runner.interact_objective()
+				if not r.get("ok", false) and str(r.get("reason", "")) != "":
+					_toast(str(r.reason), "warning"))
+	if st_sys != null:
+		var label := "Laufenden Auftrag ansehen" if st_sys.is_active() else "Nach Arbeit fragen"
+		_row(list, "Mit dem Auftraggeber sprechen", label, "Sprechen", func():
+			_close_panel()
+			_open_story_offer())
+	_row(list, "Ausruhen", "Ein paar Stunden schlafen", "Schlafen", func():
+		_close_panel()
+		_result(world.player.sleep(world, 5.0)))
+
+
+## Entscheidung einer Story-Mission (verzweigt die Geschichte).
+func _open_story_choice(ctx: Dictionary) -> void:
+	var st: Dictionary = ctx.get("step", {})
+	var v := _new_panel("Entscheidung", str(st.get("text", "")))
+	var list := _scroll_list(v, 360)
+	for opt in st.get("options", []):
+		var o: Dictionary = opt
+		_row(list, str(o.get("label", "")), str(o.get("text", "")), "Wählen", func():
+			_close_panel()
+			_apply_story_choice(o))
+	if (st.get("options", []) as Array).is_empty():
+		list.add_child(_label("Keine Auswahl möglich.", "SubtitleLabel"))
+
+
+func _apply_story_choice(o: Dictionary) -> void:
+	var st_sys = world.get("story")
+	if st_sys == null:
+		return
+	st_sys.set_choice(str(o.get("id", "")))
+	if float(o.get("rep", 0.0)) != 0.0:
+		st_sys._add_rep(float(o.rep))
+	if int(o.get("heat", 0)) > 0 and world.crime != null and world.crime.has_method("_set_wanted"):
+		world.crime._set_wanted(world, int(o.heat))
+	if bool(o.get("leave_gang", false)) and world.crime != null and world.crime.gangs != null \
+			and world.crime.gangs.has_method("leave_gang"):
+		world.crime.gangs.leave_gang(world)
+	_toast(str(o.get("text", "")), "info")
+	var runner := get_tree().get_first_node_in_group("story_runner")
+	if runner != null:
+		runner._auto_complete_step(st_sys.current_step())
+
+
+## Auftragsgespräch: bietet die nächste Story-Mission an.
+func _open_story_offer() -> void:
+	var st_sys = world.get("story")
+	if st_sys == null:
+		return
+	if st_sys.is_active():
+		var d: Dictionary = st_sys.mission_def()
+		var cur := _new_panel(str(d.get("title", "Auftrag")), "Laufender Auftrag")
+		var cl := _scroll_list(cur, 200)
+		cl.add_child(_label(str(d.get("brief", "")), "SubtitleLabel"))
+		_row(cl, "Abbrechen", "Der Auftrag gilt als gescheitert.", "Aufgeben", func():
+			st_sys.fail()
+			_close_panel())
+		return
+	var off: Dictionary = st_sys.offer_next()
+	if off.is_empty():
+		_toast("Im Moment gibt es nichts für dich zu tun.", "info")
+		return
+	var sp: Dictionary = StoryCatalog.speaker(str(off.get("giver", "pate")))
+	var v := _new_panel(str(off.get("title", "")), "%s hat einen Auftrag" % str(sp.get("name", "")))
+	var list := _scroll_list(v, 260)
+	list.add_child(_label(str(off.get("brief", "")), "SubtitleLabel"))
+	var rew: Dictionary = off.get("reward", {})
+	var rtxt := []
+	if float(rew.get("money", 0.0)) > 0.0:
+		rtxt.append(Economy.fmt_money(float(rew.money)))
+	if float(rew.get("rep", 0.0)) > 0.0:
+		rtxt.append("+%d Ansehen" % int(rew.rep))
+	if not rtxt.is_empty():
+		list.add_child(_label("Belohnung: " + ", ".join(PackedStringArray(rtxt)), "CaptionLabel"))
+	_row(list, "Auftrag annehmen", "", "Annehmen", func():
+		var r: Dictionary = st_sys.accept()
+		_result(r, "Auftrag angenommen.")
+		_close_panel())
 
 
 func _open_pause() -> void:

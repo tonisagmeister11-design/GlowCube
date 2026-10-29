@@ -86,6 +86,21 @@ const MUSIC := {
 
 ## Gewuenschte, aber noch fehlende Inhalte. Aufrufe dieser Namen warnen einmal
 ## und bleiben stumm. Siehe docs/AUDIO.md, Abschnitt "Fehlende Inhalte".
+## Sprachaufnahmen der Geschichte. Die Dateien sind bewusst NICHT mitgeliefert:
+## Es wird keine kuenstliche Stimme erzeugt. Legst du unter assets/audio/voice/
+## eine eigene Aufnahme ab, spielt das Spiel sie zur passenden Zeile ab;
+## fehlt sie, erscheint nur der Untertitel. Siehe docs/VOICE.md.
+const VOICE := {
+	"voice_luca": {"files": ["voice/voice_luca.wav"], "vol": 0.0},
+	"voice_ramirez": {"files": ["voice/voice_ramirez.wav"], "vol": 0.0},
+	"voice_bruno": {"files": ["voice/voice_bruno.wav"], "vol": 0.0},
+	"voice_pate": {"files": ["voice/voice_pate.wav"], "vol": 0.0},
+	"voice_nadia": {"files": ["voice/voice_nadia.wav"], "vol": 0.0},
+	"voice_radio": {"files": ["voice/voice_radio.wav"], "vol": -2.0},
+	"voice_player": {"files": ["voice/voice_player.wav"], "vol": 0.0},
+}
+
+
 const PLANNED := {
 	"voice_greeting": "Kurze NPC-Stimmen (Begruessung, Reaktion) - echte Sprachaufnahmen noetig",
 	"footstep_snow": "Schritte auf Schnee (es gibt noch kein Wetter mit Schnee)",
@@ -101,6 +116,9 @@ const PLANNED := {
 
 
 static func sfx(sound: String) -> Dictionary:
+	# Sprachaufnahmen verhalten sich wie Effekte, duerfen aber fehlen
+	if sound.begins_with("voice_"):
+		return VOICE.get(sound, {})
 	return SFX.get(sound, {})
 
 
