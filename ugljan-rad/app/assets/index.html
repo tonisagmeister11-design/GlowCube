@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ugljan Rad</title>
+<link rel="stylesheet" href="leaflet.css">
+<style>
+:root{--bg:#14181d;--panel:#1c2229;--panel2:#252d36;--line:#323c47;--text:#eef2f5;--mute:#93a0ad;--lime:#c8f53c;--orange:#ffb020;--red:#ff5a4e;--sea:#0d1b26}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Roboto Condensed","Roboto",sans-serif;overflow:hidden}
+#map{position:absolute;inset:0;background:var(--sea)}
+.leaflet-container{background:var(--sea);font-family:inherit}
+.leaflet-control-attribution{background:rgba(20,24,29,.7)!important;color:#6b7782!important;font-size:9px}
+.leaflet-control-attribution a{color:#8a96a2!important}
+/* Kopfzeile */
+#top{position:absolute;top:10px;left:10px;right:10px;z-index:1000;display:flex;gap:8px}
+#search{flex:1;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:0 14px 0 44px;font-size:16px;outline:none;font-family:inherit}
+#search:focus{border-color:var(--lime)}
+#top .si{position:absolute;left:14px;top:14px;pointer-events:none}
+.btn{height:48px;min-width:48px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:15px;font-family:inherit;padding:0 12px}
+.btn:active{background:var(--panel2)}
+.btn.on{border-color:var(--lime);color:var(--lime)}
+#results{position:absolute;top:66px;left:10px;right:10px;max-height:55%;overflow:auto;z-index:1001;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:none}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .t{font-size:16px}.row .s{font-size:13px;color:var(--mute)}
+.ico{width:34px;height:34px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--panel2)}
+/* Filterleiste */
+#chips{position:absolute;top:66px;left:0;right:0;z-index:999;display:flex;gap:6px;overflow-x:auto;padding:0 10px 4px;scrollbar-width:none}
+#chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:34px;padding:0 12px;border-radius:17px;border:1px solid var(--line);background:rgba(28,34,41,.92);color:var(--mute);font-size:14px;display:flex;align-items:center;gap:6px;font-family:inherit}
+.chip.on{color:#14181d;background:var(--lime);border-color:var(--lime)}
+/* rechte Knoepfe */
+#side{position:absolute;right:10px;bottom:200px;z-index:999;display:flex;flex-direction:column;gap:8px}
+/* untere Karte */
+#sheet{position:absolute;left:0;right:0;bottom:0;z-index:1000;background:var(--panel);border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:10px 16px 18px;max-height:62%;overflow:auto;transition:transform .2s}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 10px}
+h2{margin:0 0 4px;font-size:21px;font-weight:700;letter-spacing:.2px}
+.sub{color:var(--mute);font-size:14px}
+.stats{display:flex;gap:8px;margin:12px 0}
+.stat{flex:1;background:var(--panel2);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:24px;font-weight:700;color:var(--lime);font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.8px}
+.go{width:100%;height:52px;border-radius:14px;border:0;background:var(--lime);color:#14181d;font-size:18px;font-weight:700;font-family:inherit;letter-spacing:.5px}
+.go.sec{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btns{display:flex;gap:8px;margin-top:8px}
+.btns .go{flex:1}
+.mix{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:6px 0 4px;background:var(--panel2)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--mute)}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.modes{display:flex;gap:6px;margin:10px 0}
+.modes .chip{flex:1;justify-content:center}
+.list .row{padding:10px 2px}
+.tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;background:var(--panel2);color:var(--mute);margin-right:4px}
+/* Navigation */
+#nav{position:absolute;top:10px;left:10px;right:10px;z-index:1002;background:var(--lime);color:#14181d;border-radius:16px;padding:12px 16px;display:none;align-items:center;gap:14px}
+#nav .arrow{width:52px;height:52px;flex:none}
+#nav .d{font-size:30px;font-weight:800;line-height:1}
+#nav .w{font-size:16px;font-weight:600;opacity:.85}
+.hide{display:none!important}
+.toast{position:absolute;left:50%;transform:translateX(-50%);bottom:52%;z-index:1500;background:#000c;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;max-width:85%;text-align:center}
+.youarehere{width:22px;height:22px;border-radius:50%;background:var(--lime);border:4px solid #14181d;box-shadow:0 0 0 6px rgba(200,245,60,.25)}
+.pin{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #14181d;display:flex;align-items:center;justify-content:center}
+.pin svg{transform:rotate(45deg)}
+.poi{width:26px;height:26px;border-radius:9px;border:2px solid #14181d;display:flex;align-items:center;justify-content:center}
+.lbl{color:#dfe6ec;font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-shadow:0 0 4px #000,0 0 8px #000;white-space:nowrap;pointer-events:none}
+.lbl.small{font-size:10px;letter-spacing:1px;color:#aab4be;font-weight:600}
+a{color:var(--lime)}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="top">
+  <svg class="si" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#93a0ad" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+  <input id="search" placeholder="Ziel auf Ugljan suchen" autocomplete="off">
+  <button class="btn" id="btnTours" title="Radrouten">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="3.5"/><circle cx="18" cy="17" r="3.5"/><path d="M6 17l4-8h6l2 8M10 9l3 8 3-8M9 6h3"/></svg>
+  </button>
+</div>
+<div id="results"></div>
+<div id="chips"></div>
+
+<div id="nav">
+  <svg class="arrow" id="navArrow" viewBox="0 0 48 48"><path id="navPath" d="M24 6 L24 42 M12 18 L24 6 L36 18" fill="none" stroke="#14181d" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div><div class="d" id="navDist">-</div><div class="w" id="navText">-</div></div>
+</div>
+
+<div id="side">
+  <button class="btn" id="btnLoc" title="Mein Standort">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </button>
+  <button class="btn" id="btnIsland" title="Ganze Insel">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  </button>
+</div>
+
+<div id="sheet"></div>
+
+<script src="leaflet.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
