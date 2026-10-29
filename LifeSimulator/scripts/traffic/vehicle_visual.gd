@@ -27,9 +27,42 @@ var _display_side: Label3D
 var color := Color.WHITE
 
 
+## Baut ein aufbereitetes Fremdmodell ein: Karosserie als fertige Szene,
+## Raeder als drehbare Knoten. Gibt false zurueck, wenn die Szene fehlt.
+func _build_imported(model_id: String, p_color: Color) -> bool:
+	var node := ImportedVehicles.build(model_id, p_color)
+	if node == null:
+		return false
+	var info := ImportedVehicles.info(model_id)
+	var t := VehicleCatalog.type_info(str(info.get("type", "sports")))
+	model = {"length": float(t.length), "width": float(t.width), "height": float(t.height),
+		"wheels": [], "lights": {"head": [], "tail": []}, "doors": [], "labels": [], "beacons": false,
+		"surf": {}, "mesh": null, "imported": true}
+	_surf = {}
+	add_child(node)
+	node.name = "ImportedBody"
+	# Raeder der Szene uebernehmen, damit sie sich drehen
+	for slot in ["WheelFL", "WheelFR", "WheelRL", "WheelRR"]:
+		var w := node.get_node_or_null(slot)
+		if w == null:
+			continue
+		var is_front: bool = slot in ["WheelFL", "WheelFR"]
+		var r := 0.34
+		var mi := w.get_node_or_null("Mesh")
+		if mi is MeshInstance3D and (mi as MeshInstance3D).mesh != null:
+			r = maxf(0.2, (mi as MeshInstance3D).mesh.get_aabb().size.y * 0.5)
+		wheels.append({"node": w, "spin": mi if mi != null else w, "r": r, "steer": is_front})
+	return true
+
+
 func build(p_type: String, p_color: Color, variant := 0, opts := {}) -> void:
 	type_id = p_type
 	color = p_color
+	# Zugeliefertes Modell, falls fuer dieses Fahrzeug eines hinterlegt ist
+	var imported_id := str(opts.get("model_id", ""))
+	if imported_id != "" and ImportedVehicles.has_model(imported_id):
+		if _build_imported(imported_id, p_color):
+			return
 	model = VehicleMeshBuilder.get_model(p_type)
 	_surf = model.surf
 	body = MeshInstance3D.new()

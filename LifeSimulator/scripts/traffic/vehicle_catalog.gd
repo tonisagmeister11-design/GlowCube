@@ -74,6 +74,9 @@ const MODELS := {
 		"price": 9800.0, "top_speed": 210.0, "accel": 3.9, "seats": 2, "fuel": 4.6},
 	"falkner_city":   {"name": "Falkner Stadtrad", "brand": "Falkner", "type": "bicycle", "category": "Fahrrad",
 		"price": 690.0, "top_speed": 28.0, "accel": 8.0, "seats": 1, "fuel": 0.0},
+	# Fahrzeuge aus zugelieferten 3D-Modellen (siehe ImportedVehicles)
+	"vanari_furio":   {"name": "Vanari Furio", "brand": "Vanari", "type": "sports", "category": "Sportwagen",
+		"price": 398000.0, "top_speed": 345.0, "accel": 2.6, "seats": 2, "fuel": 15.2, "imported": true},
 }
 
 const CATEGORIES := ["Fahrrad", "Motorrad", "Kleinwagen", "Limousine", "SUV", "Sportwagen", "Oberklasse", "Transporter"]
@@ -178,7 +181,18 @@ const GOOD_TYPES := {
 	"bicycle": "bicycle", "used_bike": "bicycle", "scooter": "motorcycle", "motorcycle": "motorcycle",
 	"car_used": "hatchback", "car_small": "hatchback", "car_compact": "sedan", "car_sedan": "sedan",
 	"car_suv": "suv", "car_sports": "sports", "car_luxury": "luxury",
+	"car_hyper": "sports",
 }
+
+
+## Ware -> aufbereitetes Fremdmodell (leer, wenn es keines gibt).
+const GOOD_IMPORTED := {
+	"car_hyper": "vanari_furio",
+}
+
+
+static func imported_for_good(good_id: String) -> String:
+	return str(GOOD_IMPORTED.get(good_id, ""))
 
 
 static func type_for_good(good_id: String) -> String:

@@ -47,7 +47,11 @@ func setup(p_type: String, p_color: Color, p_model := "", p_world = null) -> voi
 	brake_decel = h.brake
 	wheelbase = t.length * 0.6
 	visual = VehicleVisual.new()
-	visual.build(p_type, p_color, randi())
+	# Wenn fuer diese Ware ein aufbereitetes Fremdmodell vorliegt, wird es genutzt
+	var imported := VehicleCatalog.imported_for_good(p_model)
+	if imported == "" and ImportedVehicles.has_model(p_model):
+		imported = p_model
+	visual.build(p_type, p_color, randi(), {"model_id": imported} if imported != "" else {})
 	add_child(visual)
 	var cs := CollisionShape3D.new()
 	var bs := BoxShape3D.new()

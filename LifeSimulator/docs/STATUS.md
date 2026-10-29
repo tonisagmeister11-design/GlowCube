@@ -19,6 +19,8 @@ Hardware sind nicht gemessen.
 | UI | Hauptmenü, Assistent, Laden/Speichern, Einstellungen inkl. Tastenbelegung, HUD, Smartphone-Apps, Stadtkarte, Minimap, Shop, Dialoge | Tests + Screenshots |
 | Audio | 53 selbst synthetisierte Klänge/Musikstücke, getrennte Lautstärken | technisch geprüft, nicht angehört |
 | Leistung | Fünf Stufen inkl. Leistungsmodus für schwache PCs, automatische Hardware-Einschätzung, Nachregelung bei Bildratenabfall, Kompatibilitäts-Renderer mit Neustart | Tests + Messungen (siehe docs/PERFORMANCE.md) |
+| Story-Modus | 7 Missionen in 4 Kapiteln, darunter der Hinterhalt an der Hafenstraße mit Absprung aus dem fahrenden Wagen; Untertitel, Kinobalken, Zeitlupe; Vorbereitung für eigene Sprachaufnahmen | Tests + Bilder |
+| Zugelieferte Modelle | Werkzeug `tools/prepare_vehicle.gd` bereitet FBX/GLB auf (Räder trennen, nach Material zusammenführen, eigene Materialien, einfache Fernfassung); ein Supersportwagen ist als kaufbares Fahrzeug eingebaut | Tests + Bilder |
 | Speichern | Versioniert, komprimiert, Sicherungskopie, Autosave | Roundtrip-Test |
 | Spielerführung | Begrüßung je Startsituation, Lebensziele mit Hinweis und Kartenmarkierung, Hilfe auf F1, Tagesübersicht | Tests + Screenshots |
 | Kriminalität in der Welt | Missionsziele vor Ort, Stehlen im Laden, Taschendiebstahl, Autoaufbruch, Haft mit Absitzen und Kaution, Polizeidienst an der Wache | Tests |
@@ -28,5 +30,6 @@ Hardware sind nicht gemessen.
 * Fenster sind Shader-Effekte (aus nächster Nähe flach); Haare ohne Strähnen-Geometrie.
 * Kaufpreise für Immobilien sind im Verhältnis zur verdichteten Lebenszeit hoch.
 * Start-Kamera kann ungünstig stehen (mit Maus drehen).
+* Beim eingebauten Supersportwagen ist die Lizenz des zugelieferten Modells ungeklärt; vor einer Weitergabe des Spiels prüfen (siehe docs/MODELLE.md).
 * Bedürfnisse: Ein voller Vorrat hält rund zwei Spieltage; wer tagelang gar nichts tut, stirbt – vorher warnt das Spiel mehrfach.
 * Die EXE trägt das Standard-Godot-Symbol (Symbolwechsel erfordert rcedit unter Windows).

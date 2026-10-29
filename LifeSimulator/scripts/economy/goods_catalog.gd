@@ -197,6 +197,7 @@ const _ROWS := [
 	["car_suv", "SUV „Terrano X“", "vehicle", 54900.00, "Fahrzeug", {"fun": 18}, "v", 0.0, 2],
 	["car_sports", "Sportwagen „Furia GT“", "vehicle", 119000.00, "Fahrzeug", {"fun": 35}, "v", 0.0, 3],
 	["car_luxury", "Luxuslimousine „Imperator“", "vehicle", 189000.00, "Fahrzeug", {"fun": 30}, "v", 0.0, 3],
+	["car_hyper", "Supersportwagen „Vanari Furio“", "vehicle", 398000.00, "Fahrzeug", {"fun": 45}, "v", 0.0, 3],
 	["scooter", "Motorroller „Vespina“", "vehicle", 2900.00, "Fahrzeug", {"fun": 10}, "v", 0.0, 1],
 	["motorcycle", "Motorrad „Donner 700“", "vehicle", 8900.00, "Fahrzeug", {"fun": 20}, "v", 0.0, 2],
 	# --- Marktwaren
