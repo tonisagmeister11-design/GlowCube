@@ -357,7 +357,7 @@
     });
   })();
   var placeF = D.places.map(function (p) {
-    var t = p[3], k = (t === 'village' || t === 'town') ? 'v' : (t === 'bay' || t === 'cape') ? 'b' : 's';
+    var t = p[3], k = (t === 'village' || t === 'town') ? 'v' : (t === 'bay' || t === 'cape' || t === 'peninsula') ? 'b' : (t === 'island' || t === 'islet') ? 'i' : t === 'locality' ? 'l' : 's';
     return ptF(p[1], p[2], { t: p[0], k: k });
   });
   var peakF = D.pois.filter(function (p) { return p[0] === 'peak' && p[3]; }).map(function (p) { return ptF(p[1], p[2], { t: p[3] + (p[4].ele ? ' ' + p[4].ele + ' m' : '') }); });
@@ -407,8 +407,10 @@
       { id: 'peaks', type: 'symbol', source: 'peaks', minzoom: 13.5, layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': 11, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, paint: L_({ 'text-color': '#e9d8b4' }) },
       { id: 'pois', type: 'symbol', source: 'pois', minzoom: 12, filter: ['!', ['in', ['get', 'cat'], ['literal', ['bus', 'parking']]]], layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-ignore-placement': true } },
       { id: 'pois-minor', type: 'symbol', source: 'pois', minzoom: 15, filter: ['in', ['get', 'cat'], ['literal', ['bus', 'parking']]], layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-ignore-placement': true } },
-      { id: 'pl-bay', type: 'symbol', source: 'places', minzoom: 14.5, filter: ['==', ['get', 'k'], 'b'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': 11.5 }, paint: L_({ 'text-color': '#7fb6d6' }) },
-      { id: 'pl-small', type: 'symbol', source: 'places', minzoom: 14, filter: ['==', ['get', 'k'], 's'], layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': 11, 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#b4bec7' }) },
+      { id: 'pl-loc', type: 'symbol', source: 'places', minzoom: 14, filter: ['==', ['get', 'k'], 'l'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#a9b39f' }) },
+      { id: 'pl-bay', type: 'symbol', source: 'places', minzoom: 13.2, filter: ['==', ['get', 'k'], 'b'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 12.5], 'text-max-width': 7 }, paint: L_({ 'text-color': '#7fb6d6' }) },
+      { id: 'pl-island', type: 'symbol', source: 'places', minzoom: 11, filter: ['==', ['get', 'k'], 'i'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 10.5, 15, 13], 'text-letter-spacing': 0.06 }, paint: L_({ 'text-color': '#cfe3ef' }) },
+      { id: 'pl-small', type: 'symbol', source: 'places', minzoom: 11.8, filter: ['==', ['get', 'k'], 's'], layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': ['interpolate', ['linear'], ['zoom'], 12, 9.5, 15, 12], 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#c4cdd5' }) },
       { id: 'pl-village', type: 'symbol', source: 'places', minzoom: 9.8, filter: ['==', ['get', 'k'], 'v'], layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 15], 'text-transform': 'uppercase', 'text-letter-spacing': 0.14 }, paint: L_({ 'text-color': '#e8edf1' }) }
     ]
   };
@@ -470,7 +472,7 @@
     setVis('relief', S.relief);
     setVis('contours', S.contours); setVis('cont-lbl', S.contours && S.labels);
     setVis('routeglow', S.routes);
-    ['pl-village', 'pl-small', 'pl-bay', 'peaks'].forEach(function (id) { setVis(id, S.labels); });
+    ['pl-village', 'pl-small', 'pl-bay', 'pl-island', 'pl-loc', 'peaks'].forEach(function (id) { setVis(id, S.labels); });
   }
 
   // =====================================================================
@@ -916,6 +918,10 @@
       '<div style="margin-top:10px">' + info + '</div>' + quickRouteInfo(p[1], p[2]) + kv + btn + (extra ? '<div class="btns">' + extra + '</div>' : ''));
     $('goRoute').onclick = function () { planRoute([startRef(), dest], dest.name); };
   }
+  function placeKindName(name) {
+    var p = D.places.filter(function (x) { return x[0] === name; })[0];
+    return p ? ({ village: 'Dorf auf Ugljan', town: 'Ort auf Ugljan', hamlet: 'Weiler auf Ugljan', bay: 'Bucht', cape: 'Kap', peninsula: 'Halbinsel', locality: 'Flurname', island: 'Insel', islet: 'Inselchen', isolated_dwelling: 'Einzelgehöft' }[p[3]] || 'Ortsteil') : null;
+  }
   function showPoint(lat, lon, name) {
     state = 'point'; clearRoute(true);
     var n = nearestNode(lat, lon), nm = '';
@@ -924,7 +930,7 @@
     dest = { lat: lat, lon: lon, name: name || nm || ('Bei ' + place[0]) };
     setDestMarker(lat, lon);
     var near = nearby(lat, lon, null, 3, 500);
-    sheet('<h2>' + esc(dest.name) + '</h2><div class="sub">' + (name ? 'Ort auf Ugljan' : 'Punkt bei ' + esc(place[0])) + ' &middot; ' + z + ' m über dem Meer' + (dist(lat, lon, LAT[n], LON[n]) > 80 ? ' &middot; ' + fmtDist(dist(lat, lon, LAT[n], LON[n])) + ' abseits vom Weg' : '') + '</div>' +
+    sheet('<h2>' + esc(dest.name) + '</h2><div class="sub">' + (name ? (placeKindName(name) || 'Ort auf Ugljan') : 'Punkt bei ' + esc(place[0])) + ' &middot; ' + z + ' m über dem Meer' + (dist(lat, lon, LAT[n], LON[n]) > 80 ? ' &middot; ' + fmtDist(dist(lat, lon, LAT[n], LON[n])) + ' abseits vom Weg' : '') + '</div>' +
       quickRouteInfo(lat, lon) +
       '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button></div>' +
       (near.length ? '<h3>In der Nähe</h3><div class="list">' + near.map(poiRow).join('') + '</div>' : ''));
@@ -946,6 +952,9 @@
         if (dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; best = i; }
       });
       if (best >= 0) { showPoi(best); return; }
+      // Ortsname angetippt -> Ort oeffnen
+      var lab = map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 10], [e.point.x + 14, e.point.y + 10]], { layers: ['pl-village', 'pl-small', 'pl-island', 'pl-bay', 'pl-loc'] });
+      if (lab.length) { var g = lab[0].geometry.coordinates; showPoint(g[1], g[0], lab[0].properties.t); return; }
     }
     if (!bounds.pad(0.02).contains(ll)) return;
     if (state === 'pickVia' && plan) {
@@ -1266,7 +1275,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Ugljan Rad 3.0. Funktioniert komplett offline. Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Ugljan Rad 3.1. Funktioniert komplett offline. Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1582,7 +1591,7 @@
     res.sort(function (a, b) { return a.k - b.k || a.d - b.d; });
     res = res.slice(0, 40);
     box.innerHTML = res.length ? res.map(function (x) {
-      if (x.place != null) { var p = D.places[x.place]; return '<div class="row" data-place="' + x.place + '"><div class="ico">' + svg('pin', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + esc(p[0]) + '</div><div class="s">' + ({ village: 'Dorf', town: 'Ort', hamlet: 'Weiler', bay: 'Bucht', cape: 'Kap', locality: 'Flurname' }[p[3]] || 'Ortsteil') + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
+      if (x.place != null) { var p = D.places[x.place]; return '<div class="row" data-place="' + x.place + '"><div class="ico">' + svg('pin', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + esc(p[0]) + '</div><div class="s">' + ({ village: 'Dorf', town: 'Ort', hamlet: 'Weiler', bay: 'Bucht', cape: 'Kap', peninsula: 'Halbinsel', locality: 'Flurname', island: 'Insel', islet: 'Inselchen', isolated_dwelling: 'Einzelgehöft' }[p[3]] || 'Ortsteil') + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
       if (x.street != null) { var s = STREETS[x.street]; return '<div class="row" data-street="' + x.street + '"><div class="ico">' + svg('road', '#9fb3c4', 18) + '</div><div class="grow"><div class="t">' + esc(s.name) + '</div><div class="s">Straße/Weg &middot; ' + esc(nearestPlace(s.lat, s.lon, true)[0]) + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
       return poiRow(x);
     }).join('') : '<div class="row"><div class="s">Nichts gefunden. Tipp: auch "Strand", "Eis", "Wasser" oder "Pizza" geht.</div></div>';

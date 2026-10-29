@@ -360,12 +360,49 @@ for p in pois:
     if p[0] in ("peak", "view") and "ele" not in p[4]:
         p[4]["ele"] = str(round(elev(p[1], p[2])))
 
-places = [[t["name"], round(lat, 5), round(lon, 5), t["place"]] for i, (lat, lon, t) in nodes.items()
-          if t.get("place") in ("village", "town", "hamlet", "suburb", "neighbourhood", "locality", "isolated_dwelling") and t.get("name") and inside(lat, lon)]
-# Buchten und Kaps als Ortsnamen
+# ---------- Ortsnamen: Doerfer, Weiler, Ortsteile, Flurnamen, Buchten, Kaps, Inselchen ----------
+# Punkte, Flaechen und Relationen; Buchten liegen mit ihrem Namenspunkt oft im Wasser,
+# deshalb je nach Art ein groesserer Abstand zur Kueste.
+SETTLE = ("village", "town", "hamlet", "suburb", "quarter", "neighbourhood", "isolated_dwelling", "locality")
+def place_kind(t):
+    if t.get("place") in SETTLE + ("island", "islet"):
+        return t["place"]
+    if t.get("natural") in ("bay", "cape", "peninsula", "island", "islet"):
+        return t["natural"]
+    return None
+MAXD = {"bay": 900, "cape": 400, "peninsula": 400, "island": 1500, "islet": 1500}
+cands = []
+def add_place(t, lat, lon):
+    k = place_kind(t)
+    nm = t.get("name")
+    if not k or not nm or (nm == "Ugljan" and k in ("island", "islet")):
+        return
+    if island.distance(Point(lon, lat)) * 80000 > MAXD.get(k, 300):
+        return
+    cands.append([nm, round(lat, 5), round(lon, 5), k])
 for i, (lat, lon, t) in nodes.items():
-    if t.get("natural") in ("bay", "cape") and t.get("name") and inside(lat, lon):
-        places.append([t["name"], round(lat, 5), round(lon, 5), t["natural"]])
+    if t:
+        add_place(t, lat, lon)
+for wid, (nd, t) in ways.items():
+    if place_kind(t) and t.get("name"):
+        c = way_coords(wid)
+        if c:
+            g = Polygon(c).buffer(0) if len(c) >= 4 and nd[0] == nd[-1] else LineString(c)
+            pp = g.representative_point() if g.geom_type in ("Polygon", "MultiPolygon") else g.interpolate(0.5, normalized=True)
+            add_place(t, pp.y, pp.x)
+for rid, (m, t) in rels.items():
+    if place_kind(t) and t.get("name") and rid != "6756342":
+        pts = [nodes[i] for ty, w, role in m if ty == "way" and w in ways for i in ways[w][0] if i in nodes]
+        if pts:
+            add_place(t, sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+# doppelte Namen (Punkt und Flaeche desselben Ortes) zusammenfassen, Siedlungen bevorzugen
+PRIO = {k: i for i, k in enumerate(("town", "village", "hamlet", "suburb", "quarter", "neighbourhood", "isolated_dwelling", "locality", "island", "islet", "bay", "cape", "peninsula"))}
+cands.sort(key=lambda c: PRIO[c[3]])
+places = []
+for c in cands:
+    if any(c[0] == q[0] and mdist(c[1], c[2], q[1], q[2]) < 600 for q in places):
+        continue
+    places.append(c)
 
 # ---------- Höhenlinien ----------
 import matplotlib
