@@ -25,10 +25,15 @@ func _ready() -> void:
 	var t0 := Time.get_ticks_msec()
 	for f in files:
 		var script: GDScript = load("res://tests/" + f)
-		if script == null:
-			_fail("%s: Skript konnte nicht geladen werden" % f)
+		if script == null or not script.can_instantiate():
+			# Bei einem Syntaxfehler gibt load() ein unbrauchbares Skript
+			# zurueck. Ohne diese Pruefung bliebe der Testlauf stehen.
+			_fail("%s: Skript konnte nicht geladen werden (Syntaxfehler?)" % f)
 			continue
 		var inst = script.new()
+		if inst == null:
+			_fail("%s: Skript liess sich nicht erzeugen" % f)
+			continue
 		if inst is Node:
 			add_child(inst)
 		inst.set("runner", self)

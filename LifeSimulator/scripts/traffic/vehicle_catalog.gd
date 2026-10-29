@@ -77,9 +77,17 @@ const MODELS := {
 	# Fahrzeuge aus zugelieferten 3D-Modellen (siehe ImportedVehicles)
 	"vanari_furio":   {"name": "Vanari Furio", "brand": "Vanari", "type": "sports", "category": "Sportwagen",
 		"price": 398000.0, "top_speed": 345.0, "accel": 2.6, "seats": 2, "fuel": 15.2, "imported": true},
+	"vanari_lucente": {"name": "Vanari Lucente", "brand": "Vanari", "type": "sports", "category": "Sportwagen",
+		"price": 212000.0, "top_speed": 305.0, "accel": 3.4, "seats": 4, "fuel": 12.6, "imported": true},
+	"aurel_saluto":   {"name": "Aurel Saluto", "brand": "Aurel", "type": "sedan", "category": "Oldtimer",
+		"price": 64000.0, "top_speed": 150.0, "accel": 12.8, "seats": 4, "fuel": 11.4, "imported": true},
+	"kastor_vento":   {"name": "Kastor Vento", "brand": "Kastor", "type": "sports", "category": "Sportwagen",
+		"price": 58000.0, "top_speed": 255.0, "accel": 4.6, "seats": 4, "fuel": 13.8, "imported": true},
+	"borek_trail":    {"name": "Borek Trail", "brand": "Borek", "type": "suv", "category": "SUV",
+		"price": 29500.0, "top_speed": 185.0, "accel": 9.8, "seats": 5, "fuel": 7.6, "imported": true},
 }
 
-const CATEGORIES := ["Fahrrad", "Motorrad", "Kleinwagen", "Limousine", "SUV", "Sportwagen", "Oberklasse", "Transporter"]
+const CATEGORIES := ["Fahrrad", "Motorrad", "Kleinwagen", "Limousine", "SUV", "Sportwagen", "Oldtimer", "Oberklasse", "Transporter"]
 
 ## Firmenaufschriften (fiktiv) fuer Lieferwagen und Lkw.
 const LIVERIES := [
@@ -181,13 +189,18 @@ const GOOD_TYPES := {
 	"bicycle": "bicycle", "used_bike": "bicycle", "scooter": "motorcycle", "motorcycle": "motorcycle",
 	"car_used": "hatchback", "car_small": "hatchback", "car_compact": "sedan", "car_sedan": "sedan",
 	"car_suv": "suv", "car_sports": "sports", "car_luxury": "luxury",
-	"car_hyper": "sports",
+	"car_hyper": "sports", "car_coupe": "sports", "car_muscle": "sports",
+	"car_classic": "sedan", "car_crossover": "suv",
 }
 
 
 ## Ware -> aufbereitetes Fremdmodell (leer, wenn es keines gibt).
 const GOOD_IMPORTED := {
 	"car_hyper": "vanari_furio",
+	"car_coupe": "vanari_lucente",
+	"car_classic": "aurel_saluto",
+	"car_muscle": "kastor_vento",
+	"car_crossover": "borek_trail",
 }
 
 

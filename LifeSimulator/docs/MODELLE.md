@@ -75,3 +75,42 @@ Die FBX/GLB-Quelldatei wird **nicht** mit eingecheckt (`.gitignore`) – sie ist
 Im Projekt liegt nur die fertige `.scn` (binär, deutlich kleiner als die Textfassung).
 Willst du ein Modell erneut aufbereiten, lege die Quelldatei wieder in
 `assets/models/vehicles/` und starte Schritt 1 und 2.
+
+
+## Was das Werkzeug im Einzelnen tut
+
+| Schritt | Warum |
+|---|---|
+| Zerlegen in Teil **und Oberflaeche** | Manche Modelle bestehen aus einem einzigen Netz mit zwanzig Materialien. Erst getrennt lassen sich Lack, Glas und Reifen auseinanderhalten. |
+| Maßstab und Ausrichtung (`--length`) | Modelle kommen in Zentimetern, Zoll oder Einheiten und zeigen in beliebige Richtung. Das Werkzeug dreht die laengste waagerechte Achse nach vorn und skaliert auf die angegebene Laenge. |
+| Raeder abtrennen | Ueber die Teilenamen (`Wheel_FL`, `Tire_RR` …), sonst ueber die Geometrie: unten, seitlich aussen, in der Seitenansicht rund. Bei Modellen aus einem einzigen Netz werden die Raddreiecke einzeln herausgeschnitten. |
+| Nach Materialgruppe zusammenfuehren | Aus hunderten Zeichenaufrufen werden zehn. |
+| Vereinfachen (`--budget`) | Erst meshoptimizer (den Godot mitbringt), bei Netzen, die der verweigert — typisch Glasscheiben — eine Rasterung. An Lack und Carbon geht die Rasterung nie ran, sonst knittert die Karosserie. |
+| Materialien | Eigene PBR-Materialien je Gruppe, oder mit `--textures` bzw. `--albedo=` die mitgelieferte Textur. Rueck- und Frontleuchten leuchten selbst. |
+| Fernfassung | Ein zusaetzliches, hart reduziertes Mesh fuer grosse Entfernungen und den Leistungsmodus. |
+
+### Wie viel Budget?
+
+Die Stufenleiter von meshoptimizer springt um etwa das Vierfache, und das
+Werkzeug naehert sich dem Budget von **oben** an — lieber ein paar Dreiecke zu
+viel als eine aufgerissene Karosserie. Anhaltspunkte:
+
+| Verwendung | Budget | Beispiel aus diesem Projekt |
+|---|---|---|
+| Stadtverkehr (viele gleichzeitig) | 6.000–12.000 | Borek Trail: 4.734 Dreiecke |
+| Normales Kauffahrzeug | 18.000–30.000 | Kastor Vento 16.564, Aurel Saluto 26.030 |
+| Spitzenfahrzeug (eines zur Zeit) | 60.000–120.000 | Vanari Furio 96.155 |
+
+Modelle, die als Standbild gerechnet wurden, vertragen manchmal fast keine
+Reduktion: der Vanari Lucente kommt aus 2,53 Millionen Dreiecken und sieht
+erst ab etwa 230.000 wieder sauber aus. Solche Fahrzeuge bleiben dem Spieler
+vorbehalten; im Verkehr und im Leistungsmodus greift die Fernfassung mit
+14.000 Dreiecken.
+
+## Als Verkehrsfahrzeug freigeben
+
+Ein Eintrag in `ImportedVehicles.VEHICLES` mit `"traffic": true` darf auch im
+Stadtverkehr auftauchen — aber nur, wenn er wirklich leicht ist; ein Test
+(`tests/test_imported_vehicles.gd`) besteht auf hoechstens 12.000 Dreiecken.
+Der Verkehr setzt solche Modelle ab Leistungsstufe 2 und nur bei jedem dritten
+Fahrzeug ein, damit nicht die ganze Stadt dasselbe Auto faehrt.

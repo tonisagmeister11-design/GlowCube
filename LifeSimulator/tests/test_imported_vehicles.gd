@@ -68,3 +68,34 @@ func test_fallback_without_model() -> void:
 	runner.check(v.get_node_or_null("ImportedBody") == null, "Kein Fremdmodell")
 	runner.check(v.get_node_or_null("Body") != null, "Einfaches Modell gebaut")
 	v.free()
+
+
+func test_all_goods_linked() -> void:
+	# Jede Fahrzeugware mit Fremdmodell muss auf ein vorhandenes Modell zeigen
+	# und im Autohaus zu kaufen sein.
+	var sold: Array = GoodsCatalog.SHOP_ASSORTMENT.get("car_dealer", [])
+	for good in VehicleCatalog.GOOD_IMPORTED.keys():
+		var model := VehicleCatalog.imported_for_good(str(good))
+		runner.check(ImportedVehicles.has_model(model), "Ware '%s' zeigt auf Modell '%s'" % [good, model])
+		var g: Dictionary = GoodsCatalog.get_good(str(good))
+		runner.check(not g.is_empty(), "Ware '%s' steht im Warenkatalog" % good)
+		runner.check(sold.has(str(good)), "Ware '%s' wird im Autohaus angeboten" % good)
+		var m: Dictionary = VehicleCatalog.get_model(model)
+		runner.check(not m.is_empty(), "Modell '%s' im Fahrzeugkatalog" % model)
+		runner.check_eq(float(m.get("price", 0.0)), float(g.get("base_price", -1.0)),
+			"Preis in Ware und Katalog gleich (%s)" % good)
+		runner.check(VehicleCatalog.CATEGORIES.has(str(m.get("category", ""))),
+			"Kategorie '%s' ist bekannt" % str(m.get("category", "")))
+
+
+func test_traffic_models_are_light() -> void:
+	# Im Stadtverkehr stehen viele Fahrzeuge gleichzeitig. Dort darf nur ein
+	# Modell auftauchen, das wenige Dreiecke hat.
+	for type_id in ["suv", "sedan", "sports", "hatchback"]:
+		var id := ImportedVehicles.traffic_model_for(type_id)
+		if id == "":
+			continue
+		var tris: int = ImportedVehicles.triangles(id)
+		runner.check(tris <= 12000, "Verkehrsmodell '%s' ist leicht: %d Dreiecke" % [id, tris])
+		runner.check_eq(str(ImportedVehicles.info(id).get("type", "")), type_id, "Bauform passt")
+	runner.check_eq(ImportedVehicles.traffic_model_for("bus"), "", "Kein Bus aus Fremdmodellen")

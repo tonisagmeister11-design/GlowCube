@@ -185,6 +185,12 @@ func _manage_ambient() -> void:
 func _make_visual(v: VehicleAI) -> VehicleVisual:
 	var vis := VehicleVisual.new()
 	var opts := {"collider": true}
+	# Fuer den Stadtverkehr kommen nur zugelieferte Modelle in Frage, die
+	# wenige Dreiecke haben - sonst stehen zwanzig davon gleichzeitig da.
+	if Perf.level >= 2:
+		var tm := ImportedVehicles.traffic_model_for(v.type)
+		if tm != "" and (v.variant % 3) == 0:
+			opts["model_id"] = tm
 	vis.build(v.type, v.color, v.variant, opts)
 	vis.ai = v
 	add_child(vis)

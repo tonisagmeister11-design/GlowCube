@@ -22,7 +22,55 @@ const VEHICLES := {
 		"far_only_above": 70.0,
 		"paint_group": "Body_paint",
 	},
+	"vanari_lucente": {
+		"name": "Vanari Lucente", "brand": "Vanari", "type": "sports", "category": "Sportwagen",
+		"price": 212000.0, "top_speed": 305.0, "accel": 3.4, "seats": 4, "fuel": 12.6,
+		"scene": "res://assets/models/vehicles/coupe.scn",
+		"source": "Vom Spieler beigesteuertes Modell (FBX)",
+		"license": "ungeklärt – vor einer Veröffentlichung prüfen",
+		"far_only_above": 55.0,
+		"paint_group": "Body_paint",
+	},
+	"aurel_saluto": {
+		"name": "Aurel Saluto", "brand": "Aurel", "type": "sedan", "category": "Oldtimer",
+		"price": 64000.0, "top_speed": 150.0, "accel": 12.8, "seats": 4, "fuel": 11.4,
+		"scene": "res://assets/models/vehicles/limousine.scn",
+		"source": "Vom Spieler beigesteuertes Modell (FBX)",
+		"license": "ungeklärt – vor einer Veröffentlichung prüfen",
+		"far_only_above": 80.0,
+		"paint_group": "Body_paint",
+	},
+	"kastor_vento": {
+		"name": "Kastor Vento", "brand": "Kastor", "type": "sports", "category": "Sportwagen",
+		"price": 58000.0, "top_speed": 255.0, "accel": 4.6, "seats": 4, "fuel": 13.8,
+		"scene": "res://assets/models/vehicles/kombi.scn",
+		"source": "Vom Spieler beigesteuertes Modell (FBX)",
+		"license": "ungeklärt – vor einer Veröffentlichung prüfen",
+		"far_only_above": 90.0,
+		"paint_group": "Body_paint",
+	},
+	"borek_trail": {
+		"name": "Borek Trail", "brand": "Borek", "type": "suv", "category": "SUV",
+		"price": 29500.0, "top_speed": 185.0, "accel": 9.8, "seats": 5, "fuel": 7.6,
+		"scene": "res://assets/models/vehicles/gelaendewagen.scn",
+		"source": "Vom Spieler beigesteuertes Modell (FBX, mit Farbtextur)",
+		"license": "ungeklärt – vor einer Veröffentlichung prüfen",
+		"far_only_above": 140.0,
+		"paint_group": "",
+		"traffic": true,
+	},
 }
+
+## Modelle, die leicht genug fuer den Stadtverkehr sind (nach Bauform).
+## Nur Modelle mit "traffic": true kommen hierher - ein Fahrzeug mit
+## hunderttausend Dreiecken darf nicht zwanzigmal gleichzeitig dastehen.
+static func traffic_model_for(type_id: String) -> String:
+	for id in VEHICLES:
+		var d: Dictionary = VEHICLES[id]
+		if bool(d.get("traffic", false)) and str(d.get("type", "")) == type_id:
+			if ResourceLoader.exists(str(d.scene)):
+				return id
+	return ""
 
 
 static func has_model(model_id: String) -> bool:
