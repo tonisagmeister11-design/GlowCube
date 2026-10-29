@@ -18,6 +18,7 @@ import android.speech.tts.TextToSpeech;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
@@ -62,6 +63,8 @@ public class MainActivity extends Activity implements LocationListener {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setAllowFileAccess(true);
+        // MapLibre laedt Schriften und Reliefbild per XHR aus den App-Dateien
+        s.setAllowFileAccessFromFileURLs(true);
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
@@ -190,6 +193,26 @@ public class MainActivity extends Activity implements LocationListener {
                     }
                 } catch (Exception ignored) { }
                 startGps();
+            });
+        }
+
+        @JavascriptInterface
+        public void setFullscreen(final boolean on) {
+            runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    WindowInsetsController c = getWindow().getInsetsController();
+                    if (c == null) return;
+                    if (on) {
+                        c.hide(WindowInsets.Type.systemBars());
+                        c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                    } else {
+                        c.show(WindowInsets.Type.systemBars());
+                    }
+                } else {
+                    getWindow().getDecorView().setSystemUiVisibility(on
+                            ? View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            : 0);
+                }
             });
         }
 

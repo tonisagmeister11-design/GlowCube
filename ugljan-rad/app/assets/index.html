@@ -4,18 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Ugljan Rad</title>
-<link rel="stylesheet" href="leaflet.css">
+<link rel="stylesheet" href="maplibre-gl.css">
 <style>
 :root{--bg:#14181d;--panel:#1c2229;--panel2:#252d36;--panel3:#2e3843;--line:#323c47;--text:#eef2f5;--mute:#93a0ad;--lime:#c8f53c;--orange:#ffb020;--red:#ff5a4e;--blue:#4fc3f7;--sea:#0d1b26}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:"Roboto Condensed","Roboto",sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
 button{font-family:inherit;cursor:pointer}
 #map{position:absolute;inset:0;background:var(--sea)}
-.leaflet-container{background:var(--sea);font-family:inherit}
-.leaflet-control-attribution{background:rgba(20,24,29,.7)!important;color:#6b7782!important;font-size:9px}
-.leaflet-control-attribution a{color:#8a96a2!important}
-.leaflet-control-scale{margin-left:10px!important;margin-bottom:6px!important}
-.leaflet-control-scale-line{background:rgba(20,24,29,.75);color:#cfd6dd;border-color:#93a0ad;font-size:10px}
+.maplibregl-map{font-family:inherit}
+.maplibregl-canvas{outline:none}
+.maplibregl-ctrl-attrib{background:rgba(20,24,29,.7)!important;color:#6b7782!important;font-size:9px;padding:0 5px!important}
+.maplibregl-ctrl-attrib a{color:#8a96a2!important}
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl{margin:0 0 6px 10px}
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl{margin:0}
+.maplibregl-ctrl-scale{background:rgba(20,24,29,.75);color:#cfd6dd;border-color:#93a0ad;font-size:10px}
+.maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{transition:bottom .2s}
+body.fs #top,body.fs #chips,body.fs #sheet,body.fs #gpswarn,body.fs #results,body.fs #climbBox,body.fs #btnZoomIn,body.fs #btnZoomOut,body.fs #btnIsland,body.fs #btnLayers{display:none!important}
+#btnLayers{display:none!important}
+body.fs #btnCompass{top:20px!important}
+body.fs.navmode #btnCompass{top:150px!important}
+#speedo .sp3{font-size:12px;color:var(--text);border-top:1px solid var(--line);padding-top:4px;width:100%;text-align:center;font-variant-numeric:tabular-nums;display:none}
+body.navmode #speedo .sp3{display:block}
 #top{position:absolute;top:10px;left:10px;right:10px;z-index:1000;display:flex;gap:8px}
 .sbox{position:relative;flex:1}
 #search{width:100%;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:0 40px 0 44px;font-size:16px;outline:none;font-family:inherit}
@@ -162,17 +171,18 @@ a{color:var(--lime)}
   <button id="navMute"></button>
 </div>
 <div id="climbBox"></div>
-<div id="speedo"><div class="sp1"><b id="spd">0</b><span>km/h</span></div><div class="sp2"><span>&Oslash;</span><b id="avg">-</b></div></div>
+<div id="speedo"><div class="sp1"><b id="spd">0</b><span>km/h</span></div><div class="sp2"><span>&Oslash;</span><b id="avg">-</b></div><div class="sp3" id="spRem"></div></div>
 
   <button class="btn hide" style="position:absolute;left:10px;top:118px;z-index:999;width:44px;height:44px;min-width:44px;padding:0;border-radius:22px" id="btnCompass" title="Norden nach oben"><svg id="compassNeedle" width="26" height="26" viewBox="0 0 24 24" style="transition:none"><path d="M12 2 15.5 12h-7z" fill="#ff5a4e"/><path d="M12 22 8.5 12h7z" fill="#cfd6dd"/></svg></button>
 <div id="side">
+  <button class="btn" id="btnFull" title="Vollbild"></button>
   <button class="btn" id="btnZoomIn" title="Hineinzoomen"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="btn" id="btnZoomOut" title="Herauszoomen"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
   <button class="btn" id="btnLoc" title="Mein Standort">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
   </button>
   <button class="btn" id="btnIsland" title="Ganze Insel">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5zM9 4v13.5M15 6.5V20"/></svg>
   </button>
   <button class="btn" id="btnLayers" title="Kartenebenen">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5zM2 13l10 5 10-5M2 17.5l10 5 10-5"/></svg>
@@ -181,8 +191,7 @@ a{color:var(--lime)}
 
 <div id="sheet"></div>
 
-<script src="leaflet.js"></script>
-<script src="leaflet-rotate.js"></script>
+<script src="maplibre-gl.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>
