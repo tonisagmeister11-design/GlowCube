@@ -75,9 +75,8 @@
   };
   var FIT = { easy: { n: 'Gemütlich', f: 0.72 }, normal: { n: 'Normal', f: 1 }, sport: { n: 'Sportlich', f: 1.35 } };
   var STYLES = {
-    scenic: { n: 'Schön', d: 'Die schönste Strecke: am Meer entlang, durch Wald und Olivenhaine, vorbei an Aussichtspunkten und Stränden, auf Radrouten statt Hauptstraße. Umwege werden in Kauf genommen.', cls: [0.75, 1, 1, 1.2, 2, 1.8, 4.5, 5.5, 1.15], route: 0.8, climb: 1.5, sc: 1.0 },
-    calm: { n: 'Ruhig', d: 'Möglichst wenig Verkehr: Radwege und ruhige Nebenstraßen, trotzdem eher schöne Wege.', cls: [0.72, 1, 1, 1.25, 2.1, 1.9, 4.5, 5.5, 1.2], route: 0.85, climb: 0, sc: 0.25 },
-    flat: { n: 'Flach', d: 'Schön, aber mit möglichst wenig Höhenmetern. Gut für Familien und schwere Räder.', cls: [0.75, 1, 1, 1.25, 2.1, 1.8, 4, 5, 1.2], route: 0.9, climb: 9, sc: 0.4 }
+    fast: { n: 'Schnell & leicht', d: 'Kürzeste Fahrzeit mit möglichst wenig Anstrengung: steile Anstiege und grobe Wege werden gemieden, auch die Hauptstraße ist erlaubt.', cls: [0.92, 1, 1.05, 1.3, 1.7, 1, 1.05, 1.15, 1.25], route: 1, climb: 4, sc: 0 },
+    scenic: { n: 'Am schönsten', d: 'Die schönste Strecke: am Meer entlang, durch Wald und Olivenhaine, vorbei an Aussichtspunkten und Stränden, auf Radrouten statt Hauptstraße. Egal ob anstrengend oder leicht.', cls: [0.75, 1, 1, 1.2, 2, 1.8, 4.5, 5.5, 1.15], route: 0.8, climb: 0, sc: 1.0 }
   };
   var CLS_CAP = [40, 35, 99, 99, 12, 99, 99, 99, 99];
   var S = load('settings', {});
@@ -166,11 +165,13 @@
     if (v < 1.5) v = 1.1;
     return v;
   }
-  var minCostPerM = 0.01;
+  var minCostPerM = 0.01, COST = {};
+  Object.keys(STYLES).forEach(function (k) { COST[k] = { c: new Float32Array(E), m: 0.01 }; });
+  // Kosten fuer beide Varianten gleichzeitig, damit man sie direkt vergleichen kann
   function computeCosts() {
-    var B = BIKES[S.bike], P = B.P * FIT[S.fit].f, st = STYLES[S.style];
+    var B = BIKES[S.bike], P = B.P * FIT[S.fit].f, keys = Object.keys(STYLES);
     var useWind = S.wind && WX && WX.wind != null, Wms = useWind ? WX.wind / 3.6 * 0.65 : 0, wdir = useWind ? WX.dir : 0;
-    var cache = new Map(), mn = 1e9;
+    var cache = new Map(), mins = keys.map(function () { return 1e9; });
     for (var e = 0; e < E; e++) {
       var w = W[eWay[e]], cls = w[0], s = w[3], L = eLen[e];
       var g = L > 4 ? Math.max(-0.35, Math.min(0.35, eRise[e] / L)) : 0;
@@ -181,12 +182,16 @@
       var t = L / v;
       eTime[e] = t;
       var scE = (SC[eFrom[e]] + SC[eTo[e]]) / 2;
-      var c = t * st.cls[cls] * B.pref[s] * ((w[2] & 2) ? st.route : 1) * (1 - st.sc * (scE - 0.35));
-      if (st.climb && eRise[e] > 0) c += eRise[e] * st.climb * (g > 0.06 ? 2 : 1);
-      eCost[e] = c;
-      var cpm = c / L; if (cpm < mn) mn = cpm;
+      for (var ki = 0; ki < keys.length; ki++) {
+        var st = STYLES[keys[ki]];
+        var c = t * st.cls[cls] * B.pref[s] * ((w[2] & 2) ? st.route : 1) * (1 - st.sc * (scE - 0.35));
+        if (st.climb && eRise[e] > 0) c += eRise[e] * st.climb * (g > 0.06 ? 2 : 1);
+        COST[keys[ki]].c[e] = c;
+        var cpm = c / L; if (cpm < mins[ki]) mins[ki] = cpm;
+      }
     }
-    minCostPerM = mn;
+    keys.forEach(function (k, ki) { COST[k].m = mins[ki]; });
+    eCost = COST[S.style].c; minCostPerM = COST[S.style].m;
   }
   computeCosts();
 
@@ -214,14 +219,15 @@
       if (heap.length) { heap[0] = ln; hk[0] = lk; var i = 0; for (;;) { var l = 2 * i + 1, r = l + 1, s = i; if (l < heap.length && hk[l] < hk[s]) s = l; if (r < heap.length && hk[r] < hk[s]) s = r; if (s === i) break; sw(i, s); i = s; } }
       return top;
     }
-    var h = minCostPerM * 0.98, tl = LAT[dst], to = LON[dst], pref = opt.prefer, pen = opt.penal;
+    var CS = COST[opt.style] || COST[S.style], cc = CS.c;
+    var h = CS.m * 0.98, tl = LAT[dst], to = LON[dst], pref = opt.prefer, pen = opt.penal;
     G_[src] = 0; push(src, 0);
     while (heap.length) {
       var u = pop(); if (CL[u]) continue; CL[u] = 1;
       if (u === dst) break;
       for (var e = OFF[u]; e < OFF[u + 1]; e++) {
         var v = eTo[e]; if (CL[v]) continue;
-        var c = eCost[e];
+        var c = cc[e];
         if (pref && !pref[eWay[e]]) c *= 25;
         if (pen && pen[v]) c *= 3.5;
         var ng = G_[u] + c;
@@ -240,7 +246,7 @@
     var edges = [], legEnds = [], penal = opt.loop ? new Uint8Array(N) : null;
     for (var k = 0; k + 1 < snaps.length; k++) {
       if (snaps[k] === snaps[k + 1]) { legEnds.push(edges.length); continue; }
-      var leg = astar(snaps[k], snaps[k + 1], { prefer: pts[k + 1].prefer, penal: penal });
+      var leg = astar(snaps[k], snaps[k + 1], { prefer: pts[k + 1].prefer, penal: penal, style: opt.style });
       if (!leg) return null;
       if (penal) leg.forEach(function (e) { penal[eTo[e]] = 1; });
       edges = edges.concat(leg); legEnds.push(edges.length);
@@ -378,7 +384,7 @@
       places: { type: 'geojson', data: fc(placeF) }, peaks: { type: 'geojson', data: fc(peakF) },
       pois: { type: 'geojson', data: fc(poiF) },
       acc: { type: 'geojson', data: fc() }, tour: { type: 'geojson', data: fc() }, track: { type: 'geojson', data: fc() },
-      route: { type: 'geojson', data: fc() }, hover: { type: 'geojson', data: fc() }
+      route: { type: 'geojson', data: fc() }, cand: { type: 'geojson', data: fc() }, hover: { type: 'geojson', data: fc() }
     },
     layers: [
       { id: 'bg', type: 'background', paint: { 'background-color': '#0d1b26' } },
@@ -397,6 +403,8 @@
       { id: 'r-casing', type: 'line', source: 'roads', filter: ['in', ['get', 'c'], ['literal', [5, 6, 7]]], layout: { 'line-join': 'round', 'line-sort-key': ['get', 'o'] }, paint: { 'line-color': '#14181d', 'line-width': wz(['+', 2.5, ['get', 'w']]), 'line-opacity': 0.7 } },
       { id: 'r-solid', type: 'line', source: 'roads', filter: ['in', ['get', 'c'], ['literal', [0, 1, 5, 6, 7]]], layout: { 'line-cap': 'round', 'line-join': 'round', 'line-sort-key': ['get', 'o'] }, paint: { 'line-color': ['get', 'col'], 'line-width': wz(['get', 'w']), 'line-opacity': 0.95 } },
       { id: 'tour', type: 'line', source: 'tour', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ff5a4e', 'line-width': wz(5) } },
+      { id: 'cand-casing', type: 'line', source: 'cand', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#14181d', 'line-width': wz(11), 'line-opacity': 0.9 } },
+      { id: 'cand', type: 'line', source: 'cand', layout: { 'line-cap': 'round', 'line-join': 'round', 'line-sort-key': ['case', ['==', ['get', 'k'], 'scenic'], 1, 0] }, paint: { 'line-color': ['get', 'col'], 'line-width': wz(6) } },
       { id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#14181d', 'line-width': wz(12), 'line-opacity': 0.92 } },
       { id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'col'], 'line-width': wz(6.5) } },
       { id: 'track', type: 'line', source: 'track', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ff5a4e', 'line-width': wz(4), 'line-opacity': 0.85 } },
@@ -465,7 +473,14 @@
     return p;
   }
   function view(lat, lon, z, dur) { map.easeTo({ center: [lon, lat], zoom: z == null ? map.getZoom() : z, padding: padding(), duration: dur == null ? 600 : dur }); }
-  function fitTo(b, dur) { map.fitBounds(b.ml(), { padding: padding(), duration: dur == null ? 700 : dur, bearing: map.getBearing(), maxZoom: 17 }); }
+  // MapLibre rechnet den bereits gesetzten Kartenrand beim Einpassen mit ein -> nur die Differenz uebergeben
+  function fitTo(b, dur) {
+    var p = padding(), c = map.getPadding(), d = {};
+    ['top', 'bottom', 'left', 'right'].forEach(function (k) { d[k] = Math.max(0, p[k] - (c[k] || 0)); });
+    var cam = map.cameraForBounds(b.ml(), { padding: d, bearing: map.getBearing(), maxZoom: 17 });
+    if (!cam) { map.easeTo({ padding: p, duration: 0 }); cam = map.cameraForBounds(b.ml(), { bearing: map.getBearing(), maxZoom: 17 }); if (!cam) return; }
+    map.easeTo({ center: cam.center, zoom: cam.zoom, bearing: cam.bearing, padding: p, duration: dur == null ? 700 : dur });
+  }
   function fitIsland() { fitTo(bounds, 0); }
 
   function updLayers() {
@@ -940,6 +955,12 @@
     if (nav || fs) return;
     $('results').style.display = 'none';
     var ll = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+    if (state === 'choose') {
+      var ch = map.queryRenderedFeatures([[e.point.x - 10, e.point.y - 10], [e.point.x + 10, e.point.y + 10]], { layers: ['cand'] });
+      var pk = ch.length && sheetEl.querySelector('[data-pick="' + ch[0].properties.k + '"]');
+      if (pk) pk.click();
+      return;
+    }
     if (state !== 'pickVia') {
       var hit = map.queryRenderedFeatures([[e.point.x - 12, e.point.y - 12], [e.point.x + 12, e.point.y + 12]], { layers: ['pois', 'pois-minor'] });
       if (hit.length) { showPoi(hit[0].properties.i); return; }
@@ -959,15 +980,18 @@
     if (!bounds.pad(0.02).contains(ll)) return;
     if (state === 'pickVia' && plan) {
       var pts = plan.pts.slice(); pts.splice(pts.length - 1, 0, { lat: ll.lat, lon: ll.lng, name: 'Zwischenziel' });
-      planRoute(pts, plan.title); return;
+      planRoute(pts, plan.title, L2(plan.opt, { picked: true })); return;
     }
     showPoint(ll.lat, ll.lng);
   });
 
   // ---------- Route planen und anzeigen ----------
   var plan = null, cur = null, routeLayer = null, hoverMarker = null;
+  // Vor jeder Route: schnell & leicht oder am schoensten? Beide werden gerechnet und verglichen.
   function planRoute(pts, title, opt) {
     opt = opt || {};
+    if (!opt.picked) { chooseRoute(pts, title, opt); return; }
+    setSrc('cand', fc());
     var r = routeVia(pts, opt);
     if (!r) { toast('Keine Route gefunden.'); return; }
     plan = { pts: pts, title: title, opt: opt, desc: opt.desc || '' };
@@ -983,6 +1007,61 @@
     drawRouteSheet();
     setFollow(false); fitTo(boundsOf(r.nodes.map(function (n) { return [LAT[n], LON[n]]; })));
   }
+  var CAND_COL = { fast: '#4fc3f7', scenic: '#c8f53c' };
+  function chooseRoute(pts, title, opt) {
+    var res = {}, ok = false;
+    Object.keys(STYLES).forEach(function (k) { res[k] = routeVia(pts, L2(opt, { style: k })); if (res[k]) ok = true; });
+    if (!ok) { toast('Keine Route gefunden.'); return; }
+    state = 'choose'; cur = null;
+    if (routeLayer) { setSrc('route', fc()); routeLayer = null; }
+    plan = { pts: pts, title: title, opt: opt, desc: opt.desc || '' };
+    clearMarkers();
+    var last = pts[pts.length - 1];
+    if (!opt.loop) setDestMarker(last.lat, last.lon);
+    var feats = [], allPts = [];
+    ['fast', 'scenic'].forEach(function (k) {
+      var r = res[k]; if (!r) return;
+      var ll = r.nodes.map(function (n) { return [LAT[n], LON[n]]; });
+      feats.push(lineF(ll, { col: CAND_COL[k], k: k })); allPts = allPts.concat(ll);
+    });
+    setSrc('cand', fc(feats));
+    var f = res.fast, sc = res.scenic, same = f && sc && f.edges.length === sc.edges.length && f.edges.every(function (e, i) { return e === sc.edges[i]; });
+    function card(k) {
+      var r = res[k]; if (!r) return '';
+      var other = res[k === 'fast' ? 'scenic' : 'fast'], hint = '';
+      if (other && !same) {
+        var parts = [];
+        if (k === 'fast') {
+          var dt = Math.round((other.secs - r.secs) / 60), da = Math.round(other.asc - r.asc);
+          if (dt >= 1) parts.push(dt + ' min schneller');
+          if (da >= 5) parts.push(da + ' m weniger bergauf');
+          if (other.len - r.len >= 200) parts.push(fmtDist(other.len - r.len) + ' kürzer');
+          hint = parts.length ? parts.join(', ') : 'Kaum schneller, aber direkter';
+        } else {
+          var dc = r.coast - other.coast;
+          if (dc >= 100) parts.push(fmtDist(dc) + ' mehr direkt am Meer');
+          if (r.beauty > other.beauty) parts.push('Schönheit ' + r.beauty + ' statt ' + other.beauty + ' von 10');
+          if ((other.mixC[6] || 0) - (r.mixC[6] || 0) >= 200) parts.push(fmtDist((other.mixC[6] || 0) - (r.mixC[6] || 0)) + ' weniger Hauptstraße');
+          hint = parts.length ? parts.join(', ') : 'Ähnlich schön, über andere Wege';
+        }
+      }
+      return '<div class="card pick" data-pick="' + k + '" style="border-color:' + (S.style === k ? CAND_COL[k] : 'transparent') + '"><div class="top"><i style="width:14px;height:14px;border-radius:7px;background:' + CAND_COL[k] + ';flex:none;margin-top:4px"></i><div class="grow"><div class="nm">' + STYLES[k].n + '</div>' + (hint ? '<div class="sub" style="font-size:13px">' + hint + '</div>' : '') + '</div><span class="tag ' + DIFF[r.diff][1] + '">' + DIFF[r.diff][0] + '</span></div>' +
+        '<div class="meta"><span><b>' + fmtDist(r.len) + '</b></span><span><b>' + fmtTime(r.secs) + '</b></span><span>bergauf <b>' + Math.round(r.asc) + ' m</b></span><span>am Meer <b>' + fmtDist(r.coast) + '</b></span><span>schön <b>' + r.beauty + '/10</b></span></div></div>';
+    }
+    sheet('<h2>Wie willst du fahren?</h2><div class="sub">Nach ' + esc(title) + ' &middot; Start: ' + esc(pts[0].name || 'Start') + '</div>' +
+      (same ? '<div class="sub" style="margin-top:6px">Hier ist die schnellste auch die schönste Strecke.</div>' : '') +
+      '<div style="margin-top:12px">' + card('fast') + card('scenic') + '</div>' +
+      '<div class="btns"><button class="go sec" id="cancel">Abbrechen</button></div>');
+    sheetEl.querySelectorAll('[data-pick]').forEach(function (c) {
+      c.onclick = function () {
+        var k = c.getAttribute('data-pick'); S.style = k; saveS(); computeCosts();
+        planRoute(pts, title, L2(opt, { style: k, picked: true }));
+      };
+    });
+    $('cancel').onclick = function () { clearRoute(); };
+    setFollow(false); fitTo(boundsOf(allPts));
+  }
+  function L2(a, b) { var o = {}; for (var k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
   function gradeColor(g) { return g > 0.10 ? '#ff5a4e' : g > 0.06 ? '#ff922b' : g > 0.03 ? '#ffd43b' : g < -0.04 ? '#4fc3f7' : '#c8f53c'; }
   function drawRoute(r) {
     var ll = r.nodes.map(function (n) { return [LAT[n], LON[n]]; }), f = [];
@@ -1000,6 +1079,7 @@
     if (routeLayer) setSrc('route', fc()); routeLayer = null;
     if (hoverMarker) setSrc('hover', fc()); hoverMarker = null;
     if (tourLayer) setSrc('tour', fc()); tourLayer = null;
+    setSrc('cand', fc());
     clearMarkers(); cur = null; plan = null;
     if (!keepSheet) { dest = null; drawHome(); }
   }
@@ -1044,11 +1124,11 @@
       '<div class="btns"><button class="go sec" id="addVia">Zwischenziel</button>' + (plan.pts.length > 2 && !plan.opt.tour ? '<button class="go sec" id="clrVia">Ohne Zwischenziele</button>' : plan.opt.tour ? '<button class="go sec" id="reverse">Umkehren</button>' : '') + '</div>' +
       '<div class="sub" style="margin-top:10px;font-size:12px">Fahrzeit berechnet für ' + BIKES[S.bike].n + ', ' + FIT[S.fit].n + (S.wind && WX ? ', mit aktuellem Wind ' + Math.round(WX.wind) + ' km/h aus ' + compass(WX.dir) : '') + '. Farben: grün flach, gelb ab 3 %, orange ab 6 %, rot ab 10 %, blau bergab.</div>';
     sheet(html);
-    bindSettingsChips(function () { planRoute(plan.pts, plan.title, plan.opt); });
+    bindSettingsChips(function () { planRoute(plan.pts, plan.title, L2(plan.opt, { style: S.style, picked: true })); });
     $('cancel').onclick = function () { clearRoute(); };
     $('start').onclick = startNav;
     $('addVia').onclick = function () { state = 'pickVia'; toast('Tippe auf die Karte, um ein Zwischenziel zu setzen.'); sheetEl.classList.add('mini'); placeSide(); };
-    if ($('clrVia')) $('clrVia').onclick = function () { planRoute([plan.pts[0], plan.pts[plan.pts.length - 1]], plan.title); };
+    if ($('clrVia')) $('clrVia').onclick = function () { planRoute([plan.pts[0], plan.pts[plan.pts.length - 1]], plan.title, L2(plan.opt, { picked: true })); };
     if ($('reverse')) $('reverse').onclick = function () {
       var p = plan.pts.slice().reverse().map(function (q) { return { lat: q.lat, lon: q.lon, node: q.node, name: q.name }; });
       if (plan.opt.follow) p[p.length - 1].prefer = plan.opt.follow;
@@ -1275,7 +1355,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Ugljan Rad 3.2. Funktioniert komplett offline. Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Ugljan Rad 3.3. Funktioniert komplett offline. Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1380,7 +1460,7 @@
       var p0 = plan.pts[0];
       if (dist(ref.lat, ref.lon, p0.lat, p0.lon) > 60 || p0.name !== 'Mein Standort') {
         var pts = [{ lat: ref.lat, lon: ref.lon, name: 'Mein Standort' }].concat(plan.opt.loop || plan.opt.tour ? plan.pts : plan.pts.slice(1));
-        var r = routeVia(pts, { loop: plan.opt.loop });
+        var r = routeVia(pts, { loop: plan.opt.loop, style: plan.opt.style });
         if (r) { cur = r; plan.pts = pts; drawRoute(r); }
       }
     }
@@ -1452,7 +1532,7 @@
           var rest = plan.pts.filter(function (p, k) { return k > 0 && r.legEnds[k - 1] > nav.lastAlong + 30; });
           if (!rest.length) rest = [plan.pts[plan.pts.length - 1]];
           var pts = [{ lat: ref.lat, lon: ref.lon, name: 'Mein Standort' }].concat(rest);
-          var nr = routeVia(pts);
+          var nr = routeVia(pts, { style: plan.opt.style });
           if (nr) { cur = r = nr; plan.pts = pts; drawRoute(r); nav.said = {}; nav.climbSaid = {}; say('Route wird neu berechnet'); toast('Neue Route'); pr = project(r, ref.lat, ref.lon, 0); }
         }
       } else nav.off = 0;
@@ -1621,7 +1701,7 @@
       window.__backT = Date.now(); toast('Nochmal Zurück drücken, um die Fahrt zu beenden'); return true;
     }
     if (state === 'pickVia') { drawRouteSheet(); state = 'route'; return true; }
-    if (state === 'route' && plan && plan.opt.tour) { var t = tourTab; clearRoute(true); showTours(t); return true; }
+    if ((state === 'route' || state === 'choose') && plan && plan.opt.tour) { var t = tourTab; clearRoute(true); showTours(t); return true; }
     if (state === 'ride') { clearRoute(true); showMenu(); return true; }
     if (state !== 'home') { clearRoute(); return true; }
     return false;
