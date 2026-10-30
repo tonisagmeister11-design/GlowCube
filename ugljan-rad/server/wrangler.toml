@@ -1,4 +1,4 @@
-name = "ugljan-rad-ki"
+name = "velora-ki"
 main = "worker.js"
 compatibility_date = "2025-06-01"
 
@@ -6,12 +6,15 @@ compatibility_date = "2025-06-01"
 [ai]
 binding = "AI"
 
-# Kennung, die die App mitschickt (frei wählbar, hier ändern)
 [vars]
-APP_ID = "ugljan-rad-2026"
+# Kennung, die die App mitschickt
+APP_ID = "velora-2026"
+# Modell: auf dem Gratis-Tarif das stärkste mit Werkzeugen.
+# Mit "Workers Paid" z. B. "@cf/deepseek-ai/deepseek-v4.1-flash-1017" oder "@cf/zai-org/glm-5.3-flash".
+MODEL = "@cf/openai/gpt-oss-120b"
 
-# Limit pro IP: 10 Anfragen pro Minute
+# Limit pro IP: 20 Anfragen pro Minute
 [[ratelimits]]
 name = "LIMIT"
-namespace_id = "1001"
-simple = { limit = 10, period = 60 }
+namespace_id = "1002"
+simple = { limit = 20, period = 60 }

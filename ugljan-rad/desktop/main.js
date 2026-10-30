@@ -1,4 +1,4 @@
-// Ugljan Rad für Windows: dieselbe App wie auf Android, in einem Electron-Fenster
+// Velora für Windows: dieselbe App wie auf Android, in einem Electron-Fenster
 const { app, BrowserWindow, protocol, net, Menu, session, shell } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
@@ -20,7 +20,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'geolocation' || perm === 'fullscreen'));
   const win = new BrowserWindow({
-    width: 440, height: 900, minWidth: 360, minHeight: 600, title: 'Ugljan Rad', backgroundColor: '#14181d',
+    width: 440, height: 900, minWidth: 360, minHeight: 600, title: 'Velora', backgroundColor: '#14181d',
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: false, sandbox: false }
   });

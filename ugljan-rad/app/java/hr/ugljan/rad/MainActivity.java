@@ -14,6 +14,9 @@ import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.view.View;
 import android.view.Window;
@@ -28,7 +31,10 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.window.OnBackInvokedDispatcher;
 
+import java.util.ArrayList;
 import java.util.Locale;
+
+import org.json.JSONObject;
 
 public class MainActivity extends Activity implements LocationListener {
     private WebView web;
@@ -37,6 +43,7 @@ public class MainActivity extends Activity implements LocationListener {
     private boolean ttsReady;
     private boolean navActive;
     private long lastGpsTime;
+    private SpeechRecognizer recognizer;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -146,11 +153,16 @@ public class MainActivity extends Activity implements LocationListener {
     @Override
     protected void onDestroy() {
         if (tts != null) tts.shutdown();
+        if (recognizer != null) recognizer.destroy();
         try {
             stopService(new Intent(this, NavService.class));
         } catch (Exception ignored) { }
         lm.removeUpdates(this);
         super.onDestroy();
+    }
+
+    private void toJs(final String js) {
+        web.post(() -> web.evaluateJavascript(js, null));
     }
 
     @Override
@@ -222,6 +234,45 @@ public class MainActivity extends Activity implements LocationListener {
                             ? View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                             : 0);
                 }
+            });
+        }
+
+        // Spracheingabe fuer Juno (freihaendig auf dem Rad)
+        @JavascriptInterface
+        public boolean canListen() {
+            return SpeechRecognizer.isRecognitionAvailable(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void listen() {
+            runOnUiThread(() -> {
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 3);
+                    toJs("window.onSpeech&&onSpeech(null,'perm')");
+                    return;
+                }
+                if (recognizer == null) {
+                    recognizer = SpeechRecognizer.createSpeechRecognizer(MainActivity.this);
+                    recognizer.setRecognitionListener(new RecognitionListener() {
+                        @Override public void onReadyForSpeech(Bundle b) { toJs("window.onSpeech&&onSpeech(null,'ready')"); }
+                        @Override public void onBeginningOfSpeech() { }
+                        @Override public void onRmsChanged(float v) { }
+                        @Override public void onBufferReceived(byte[] b) { }
+                        @Override public void onEndOfSpeech() { }
+                        @Override public void onError(int e) { toJs("window.onSpeech&&onSpeech(null,'err" + e + "')"); }
+                        @Override public void onResults(Bundle b) {
+                            ArrayList<String> r = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                            String t = r != null && !r.isEmpty() ? r.get(0) : "";
+                            toJs("window.onSpeech&&onSpeech(" + JSONObject.quote(t) + ")");
+                        }
+                        @Override public void onPartialResults(Bundle b) { }
+                        @Override public void onEvent(int t, Bundle b) { }
+                    });
+                }
+                Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag());
+                recognizer.startListening(i);
             });
         }
 

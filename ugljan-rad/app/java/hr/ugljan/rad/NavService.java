@@ -27,7 +27,7 @@ public class NavService extends Service {
         Intent open = new Intent(this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE);
         String text = intent != null && intent.getStringExtra("text") != null ? intent.getStringExtra("text") : "Fahrt wird aufgezeichnet";
-        Notification n = b.setContentTitle("Ugljan Rad")
+        Notification n = b.setContentTitle("Velora")
                 .setContentText(text)
                 .setSmallIcon(R.drawable.icon)
                 .setContentIntent(pi)

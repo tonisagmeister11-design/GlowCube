@@ -662,7 +662,10 @@
     wind: '<path d="M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/>',
     vol: '<path d="M4 9v6h4l5 4V5L8 9zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
-    mute: '<path d="M4 9v6h4l5 4V5L8 9zM17 9l5 6M22 9l-5 6"/>'
+    mute: '<path d="M4 9v6h4l5 4V5L8 9zM17 9l5 6M22 9l-5 6"/>',
+    juno: '<path d="M12 2.5l2.2 6.3 6.3 2.2-6.3 2.2L12 19.5l-2.2-6.3L3.5 11l6.3-2.2z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9z"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    send: '<path d="M4 12l16-8-6 16-2.5-6.5z"/>'
   };
   IC.snack = IC.food;
   var CAT = {
@@ -1007,6 +1010,7 @@
   function sheet(html, keepScroll) {
     var st = sheetEl.scrollTop;
     if (!keepScroll) sheetEl.classList.remove('mini');
+    sheetEl.classList.remove('tall');
     sheetEl.innerHTML = '<div class="grab" id="grab"><div></div></div>' + html;
     sheetEl.scrollTop = keepScroll ? st : 0;
     placeSide();
@@ -1043,12 +1047,12 @@
     var ref = myRef();
     homeDrawnWithGps = !!ref;
     var base = ref || PREKO;
-    var html = '<h2>Ugljan mit dem Rad</h2><div class="sub">' +
+    var html = '<h2>Velora</h2><div class="sub">' +
       (ref ? 'GPS aktiv &middot; ' + esc(nearestPlace(ref.lat, ref.lon, true)[0]) + ' &middot; ' + Math.round(demEle(ref.lat, ref.lon)) + ' m über dem Meer' :
         me ? 'Du bist außerhalb von Ugljan. Suche einen Ort oder tippe auf die Karte: Karte und Route kommen dann online.' : 'Warte auf GPS. Tippe auf die Karte, um ein Ziel zu setzen.') + '</div>' +
       wxHtml() +
       '<div class="quick">' +
-      '<button data-act="tours">' + svg('bike', '#c8f53c', 24, 2) + 'Touren</button>' +
+      '<button data-act="juno">' + svg('juno', '#c8f53c', 24, 2) + 'Juno</button>' +
       '<button data-act="loop">' + svg('loop', '#c8f53c', 24, 2) + 'Tour-Idee</button>' +
       '<button data-act="near">' + svg('list', '#c8f53c', 24, 2) + 'In der Nähe</button>' +
       '<button data-act="free">' + svg('rec', '#ff5a4e', 24, 2.4) + 'Fahrt starten</button></div>' +
@@ -1072,6 +1076,7 @@
       else if (act === 'loop') showTours('loop');
       else if (act === 'near') showNearby('food');
       else if (act === 'free') startFree();
+      else if (act === 'juno') showJuno();
       return;
     }
     var r = e.target.closest('[data-poi]');
@@ -1393,7 +1398,7 @@
   function drawRouteSheet() {
     var r = cur, d = DIFF[r.diff];
     var start = plan.pts[0];
-    var html = '<div style="display:flex;align-items:flex-start;gap:8px"><div class="grow"><h2>' + esc(plan.title) + '</h2><div class="sub">Start: ' + esc(start.name || 'Start') + (start === PREKO && !myRef() && !plan.opt.tour ? ' (du bist nicht auf der Insel)' : '') + (plan.pts.length > 2 && !plan.opt.loop ? ' &middot; ' + (plan.pts.length - 2) + ' Zwischenziel(e)' : '') + '</div></div><span class="tag ' + d[1] + '" style="margin-top:4px">' + d[0] + '</span></div>' +
+    var html = junoNote() + '<div style="display:flex;align-items:flex-start;gap:8px"><div class="grow"><h2>' + esc(plan.title) + '</h2><div class="sub">Start: ' + esc(start.name || 'Start') + (start === PREKO && !myRef() && !plan.opt.tour ? ' (du bist nicht auf der Insel)' : '') + (plan.pts.length > 2 && !plan.opt.loop ? ' &middot; ' + (plan.pts.length - 2) + ' Zwischenziel(e)' : '') + '</div></div><span class="tag ' + d[1] + '" style="margin-top:4px">' + d[0] + '</span></div>' +
       (plan.desc ? '<div class="sub" style="margin-top:6px">' + esc(plan.desc) + '</div>' : '') +
       settingsChips() + routeStatsHtml(r) +
       '<div class="prof" id="prof">' + profileSvg(r, 340, 120, true) + '</div><div class="sub" id="profInfo" style="font-size:12px;min-height:16px">Finger auf das Profil legen, um den Punkt auf der Karte zu sehen.</div>' +
@@ -1551,7 +1556,7 @@
         '<div class="btns"><button class="go" id="loopGo">Tour vorschlagen</button></div><div id="loopOut" style="margin-top:12px">' +
         (loopRes ? (loopRes.length ? loopRes.map(function (x, k) { return tourCard('data-loop="' + k + '"', x.title, x.r, x.why); }).join('') : '<div class="empty">Keine passende Tour gefunden. Probiere eine andere Dauer.</div>') : '') + '</div>';
     }
-    sheet(head + settingsChips() + body);
+    sheet(junoNote() + head + settingsChips() + body);
     bindSettingsChips(function () { loopRes = null; showTours(); });
     sheetEl.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { showTours(b.getAttribute('data-tab')); }; });
     if ($('loopGo')) {
@@ -1688,13 +1693,13 @@
     // Auf Ugljan: offline mit dem eigenen Netz (inklusive Meer und Aussicht)
     if (onIsland(s.lat, s.lon) && D < 60000) {
       setTimeout(function () {
-        var cands = [];
-        [0.85, 1.1].forEach(function (f) { cands = cands.concat(makeLoops(D * f, style, s, true)); });
+        var cands = [], st = S.tourDiff === 0 ? 'fast' : style; // leicht: Anstiege meiden
+        [0.55, 0.75, 1.0].forEach(function (f) { cands = cands.concat(makeLoops(D * f, st, s, true)); });
         var best = pickBest(cands, target, 3);
         done(best.map(function (x, k) {
           var vs = {}; x.pts.slice(1, -1).forEach(function (p) { vs[nearestPlace(p.lat, p.lon, true)[0]] = 1; });
           x.pts[x.pts.length - 1] = x.pts[0];
-          return { r: x.r, pts: x.pts, style: style, title: 'Tour ' + (k + 1) + ': ' + Object.keys(vs).slice(0, 2).join(', '), why: whyTour(x.r) };
+          return { r: x.r, pts: x.pts, style: st, title: 'Tour ' + (k + 1) + ': ' + Object.keys(vs).slice(0, 2).join(', '), why: whyTour(x.r) };
         }));
       }, 30);
       return;
@@ -1795,7 +1800,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Ugljan Rad 4.1. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 5.0 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -2037,7 +2042,8 @@
     sheet('<div class="stats" style="margin-top:0"><div class="stat"><b>' + fmtDist(remain) + '</b><span>Noch</span></div><div class="stat"><b>' + fmtTime(secs) + '</b><span>Restzeit</span></div><div class="stat"><b>' + clock(secs) + '</b><span>Ankunft</span></div></div>' +
       '<div class="prof" id="prof">' + profileSvg(r, 340, 64, false, along) + '</div>' +
       '<div class="stats four"><div class="stat w"><b>' + Math.round(r.ele[k]) + ' m</b><span>Höhe</span></div><div class="stat w"><b>' + Math.round(ascLeft) + ' m</b><span>Noch hoch</span></div><div class="stat w"><b>' + (rec ? fmtKm(rec.dist) : '0,0') + '</b><span>km gefahren</span></div><div class="stat w"><b>' + (rec ? Math.round(rec.asc) : 0) + ' m</b><span>Geklettert</span></div></div>' +
-      (nav.arrived ? '<button class="go" id="stopNav">Fahrt beenden und speichern</button>' : '<button class="go sec" id="stopNav">Navigation beenden</button>'), true);
+      '<div class="btns">' + (nav.arrived ? '<button class="go" id="stopNav">Fahrt beenden und speichern</button>' : '<button class="go sec" id="stopNav">Navigation beenden</button>') + '<button class="go sec" id="navJuno" style="flex:0 0 120px">Juno</button></div>', true);
+    $('navJuno').onclick = showJuno;
     $('stopNav').onclick = stopNav;
   }
   function freeSheet(ref) {
@@ -2193,6 +2199,204 @@
   });
 
   // =====================================================================
+  // Juno: die KI von Velora (Cloudflare Workers AI, echte Daten ueber Werkzeuge)
+  // =====================================================================
+  var KI_URL = 'https://velora-ki.toni-sagmeister11.workers.dev/chat', KI_ID = 'velora-2026';
+  var juno = load('juno', []), junoBusy = false, junoLast = null;
+  function saveJuno() { store('juno', juno.slice(-30)); }
+  function placeNameAt(lat, lon) {
+    if (onIsland(lat, lon)) return nearestPlace(lat, lon, true)[0] + ', Insel Ugljan, Kroatien';
+    var best = null, bd = 1e18;
+    try {
+      map.querySourceFeatures('ofm', { sourceLayer: 'place' }).forEach(function (f) {
+        var c = f.geometry && f.geometry.coordinates; if (!c || typeof c[0] !== 'number') return;
+        var cl = f.properties.class; if (['city', 'town', 'village', 'hamlet', 'suburb'].indexOf(cl) < 0) return;
+        var d = dist(lat, lon, c[1], c[0]); if (d < bd) { bd = d; best = f.properties['name:de'] || f.properties['name:latin'] || f.properties.name; }
+      });
+    } catch (e) {}
+    return best ? 'bei ' + best : '';
+  }
+  // echte Orte in der Naehe: auf Ugljan aus den Offline-Daten, sonst aus der Online-Karte
+  function poisNear(lat, lon) {
+    var out = [];
+    if (onIsland(lat, lon)) {
+      nearby(lat, lon, null, 60, 6000).forEach(function (x) {
+        var p = D.pois[x.i]; if (p[0] === 'parking' || p[0] === 'bus' || (p[0] === 'peak' && !p[3])) return;
+        var o = { name: p.label, kategorie: (p[4].sub || CAT[p[0]].n), km: Math.round(x.d / 100) / 10, ort: p.village, lat: p[1], lon: p[2] };
+        if (p[4].cu) o.kueche = p[4].cu;
+        if (p[4].oh) { o.oeffnungszeiten = p[4].oh; var on = openNow(p[4].oh); if (on !== null) o.jetzt_offen = on; }
+        out.push(o);
+      });
+      return out.slice(0, 45);
+    }
+    try {
+      var seen = {};
+      map.querySourceFeatures('ofm', { sourceLayer: 'poi' }).forEach(function (f) {
+        var c = f.geometry && f.geometry.coordinates, pr = f.properties || {}; if (!c || typeof c[0] !== 'number' || !pr.name) return;
+        var d = dist(lat, lon, c[1], c[0]); if (d > 5000 || seen[pr.name]) return; seen[pr.name] = 1;
+        out.push({ name: pr['name:de'] || pr.name, kategorie: pr.subclass || pr.class, km: Math.round(d / 100) / 10, lat: c[1], lon: c[0] });
+      });
+    } catch (e) {}
+    return out.sort(function (a, b) { return a.km - b.km; }).slice(0, 40);
+  }
+  function buildKontext() {
+    var ref = meRef(), c = map.getCenter(), lat = ref ? ref.lat : c.lat, lon = ref ? ref.lon : c.lng, now = new Date();
+    var k = {
+      app: 'Velora', zeit: now.toLocaleDateString('de-DE') + ' ' + hhmm(now),
+      position: { lat: +lat.toFixed(5), lon: +lon.toFixed(5), quelle: ref ? 'GPS' : 'Kartenmitte (kein GPS)', ort: placeNameAt(lat, lon) },
+      auf_ugljan: onIsland(lat, lon), rad: BIKES[S.bike].n, fitness: FIT[S.fit].n, routenstil: STYLES[S.style].n
+    };
+    var v = curSpeed(), a = avgSpeed(), z = ref ? eleAt(lat, lon) : null, o = rec || sess;
+    if (v !== null) k.tempo_kmh = Math.round(v);
+    if (a !== null) k.schnitt_kmh = +a.toFixed(1);
+    if (z != null) k.hoehe_m = Math.round(z);
+    k.gefahren_km = +(o.dist / 1000).toFixed(1); k.fahrzeit_min = Math.round(o.mv / 60);
+    if (rec) { k.aufzeichnung_laeuft = true; k.geklettert_m = Math.round(rec.asc); k.max_kmh = Math.round(rec.max); }
+    if (WX) k.wetter = { temp_c: Math.round(WX.temp), wind_kmh: Math.round(WX.wind), wind_aus: compass(WX.dir), boeen_kmh: Math.round(WX.gust || 0), lage: WCODE[WX.code] || '', regenrisiko_prozent: WX.rain };
+    if (cur && plan) {
+      k.route = { titel: plan.title, km: +(cur.len / 1000).toFixed(1), fahrzeit_min: Math.round(cur.secs / 60), bergauf_m: Math.round(cur.asc), bergab_m: Math.round(cur.desc),
+        max_steigung_prozent: Math.round(cur.maxG * 100), schwierigkeit: DIFF[cur.diff][0], stil: STYLES[plan.opt.style || S.style].n, rundtour: !!plan.opt.loop,
+        hinweis: plan.opt.angepasst ? 'Diese Werte gelten bereits für die angepasste Route (' + plan.opt.angepasst + ').' : undefined,
+        anstiege: cur.climbs.slice(0, 5).map(function (cl) { return { ab_km: +(cl.a / 1000).toFixed(1), laenge_m: Math.round(cl.len), prozent: Math.round(cl.g * 100), hoehenmeter: Math.round(cl.gain) }; }) };
+      if (cur.ext) { k.route.radrouten_km = +(cur.rlen / 1000).toFixed(1); k.route.ruhige_wege_prozent = cur.quiet; }
+      else { k.route.am_meer_km = +(cur.coast / 1000).toFixed(1); k.route.schoenheit_von_10 = cur.beauty; }
+    }
+    if (nav && !nav.free && cur) {
+      var al = nav.lastAlong || 0, rem = Math.max(0, cur.len - al), secs = remainingTime(cur, al);
+      k.navigation = { aktiv: true, rest_km: +(rem / 1000).toFixed(1), rest_min: Math.round(secs / 60), ankunft: clock(secs), naechste_anweisung: ($('navDist').textContent + ' ' + $('navText').textContent).trim(), angekommen: !!nav.arrived };
+      var up = cur.climbs.filter(function (cl) { return cl.b > al; })[0];
+      if (up) k.navigation.naechster_anstieg = { in_m: Math.max(0, Math.round(up.a - al)), laenge_m: Math.round(up.len), prozent: Math.round(up.g * 100) };
+    }
+    k.tour_wunsch = { dauer_min: S.tourDur, schwierigkeit: ['leicht', 'mittel', 'schwer'][S.tourDiff], schoenheit: ['egal', 'schoen', 'sehr_schoen'][S.tourBeauty] };
+    var rides = load('rides', []).slice(0, 3);
+    if (rides.length) k.letzte_fahrten = rides.map(function (r) { return { datum: new Date(r.t).toLocaleDateString('de-DE'), km: +(r.dist / 1000).toFixed(1), hoehenmeter: Math.round(r.asc), schnitt_kmh: r.mv > 0 ? +(r.dist / r.mv * 3.6).toFixed(1) : 0 }; });
+    k.orte_in_der_naehe = poisNear(lat, lon);
+    return k;
+  }
+  function mdLite(t) {
+    var h = esc(t).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    var lines = h.split('\n'), out = '', inList = false;
+    lines.forEach(function (l) {
+      var m = l.match(/^\s*[-*•]\s+(.*)/);
+      if (m) { if (!inList) { out += '<ul>'; inList = true; } out += '<li>' + m[1] + '</li>'; }
+      else { if (inList) { out += '</ul>'; inList = false; } if (l.trim()) out += l + '<br>'; }
+    });
+    if (inList) out += '</ul>';
+    return out.replace(/(<br>)+$/, '');
+  }
+  function plainText(t) { return String(t).replace(/\*\*/g, '').replace(/^\s*[-*•]\s+/gm, '').replace(/\|/g, ' '); }
+  var JUNO_SUGG = ['Wo gibt es hier etwas zu essen?', 'Schlag mir eine Tour von 2 Stunden vor', 'Wie weit ist es noch?', 'Lohnt sich die Gegend zum Radfahren?', 'Wird es heute regnen?'];
+  function showJuno() {
+    state = 'ai'; sheetEl.classList.add('tall');
+    var log = juno.map(function (m, i) {
+      if (m.role === 'user') return '<div class="msg mine">' + esc(m.content) + '</div>';
+      var html = '<div class="msg ai' + (m.wait ? ' wait' : '') + '">' + (m.wait ? 'Juno denkt nach ...' : mdLite(m.content));
+      // Orte nur anzeigen, wenn Juno keine Route geplant hat (sonst nur Doppelungen des Ziels)
+      if (m.orte && m.orte.length && !(m.acts || []).some(function (x) { return x.typ === 'route_planen'; })) html += '<div class="places">' + m.orte.map(function (o, k) { return '<button data-jp="' + i + '_' + k + '">' + esc(o.name) + '</button>'; }).join('') + '</div>';
+      if (m.acts && m.acts.length) html += m.acts.map(function (a, k) { return '<button class="act" data-ja="' + i + '_' + k + '">' + esc(actLabel(a)) + '</button>'; }).join('');
+      return html + '</div>';
+    }).join('');
+    var canMic = A && A.canListen && (function () { try { return A.canListen(); } catch (e) { return false; } })();
+    sheet('<div style="display:flex;align-items:center;gap:10px"><div class="ico" style="width:42px;height:42px">' + svg('juno', '#c8f53c', 24, 2) + '</div><div class="grow"><h2>Juno</h2><div class="sub" style="font-size:13px">Deine Rad-KI. Kennt deine Fahrdaten, sucht echte Orte, plant Routen.</div></div>' +
+      (juno.length ? '<button class="chip sm" id="junoClear">Neu</button>' : '') + '</div>' +
+      (juno.length ? '' : '<div class="sugg">' + JUNO_SUGG.map(function (q) { return '<button data-jq="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>') +
+      '<div class="chatlog" id="chatlog">' + log + '</div>' +
+      '<div class="chatin"><input id="chatIn" placeholder="Frag Juno ..." autocomplete="off" enterkeyhint="send">' +
+      (canMic ? '<button class="mic" id="chatMic">' + svg('mic', '#eef2f5', 22, 2.2) + '</button>' : '') +
+      '<button id="chatSend">' + svg('send', '#14181d', 22, 2.4) + '</button></div>');
+    sheetEl.classList.add('tall');
+    sheetEl.scrollTop = sheetEl.scrollHeight;
+    $('chatSend').onclick = function () { askJuno($('chatIn').value); };
+    $('chatIn').onkeydown = function (e) { if (e.key === 'Enter') askJuno(this.value); };
+    if ($('chatMic')) $('chatMic').onclick = function () { this.classList.add('on'); try { A.listen(); } catch (e) {} };
+    if ($('junoClear')) $('junoClear').onclick = function () { juno = []; saveJuno(); showJuno(); };
+    sheetEl.querySelectorAll('[data-jq]').forEach(function (b) { b.onclick = function () { askJuno(b.getAttribute('data-jq')); }; });
+    sheetEl.querySelectorAll('[data-jp]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-jp').split('_'), o = juno[+ij[0]].orte[+ij[1]]; runAction({ typ: 'ort_zeigen', name: o.name, lat: o.lat, lon: o.lon }); }; });
+    sheetEl.querySelectorAll('[data-ja]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-ja').split('_'); runAction(juno[+ij[0]].acts[+ij[1]]); }; });
+  }
+  function actLabel(a) {
+    return { route_planen: 'Route nach ' + (a.ziel_name || 'Ziel') + ' ansehen', tour_vorschlagen: 'Tourvorschläge ansehen', route_anpassen: 'Angepasste Route ansehen', navigation_starten: 'Navigation starten', ort_zeigen: (a.name || 'Ort') + ' auf der Karte' }[a.typ] || 'Ausführen';
+  }
+  window.onSpeech = function (text, err) {
+    var mic = $('chatMic'); if (mic && err !== 'ready') mic.classList.remove('on');
+    if (err === 'ready') return;
+    if (err === 'perm') { toast('Bitte das Mikrofon erlauben und nochmal tippen.'); return; }
+    if (err) { toast('Nicht verstanden, bitte nochmal.'); return; }
+    if (text) askJuno(text);
+  };
+  function askJuno(q) {
+    q = String(q || '').trim(); if (!q || junoBusy) return;
+    if (navigator.onLine === false) { toast('Juno braucht Internet.'); return; }
+    juno.push({ role: 'user', content: q });
+    var wait = { role: 'assistant', wait: true }; juno.push(wait);
+    junoBusy = true;
+    if (state === 'ai') showJuno();
+    var verlauf = juno.filter(function (m) { return !m.wait && m.content; }).slice(-12).map(function (m) { return { role: m.role, content: m.content }; });
+    fetch(KI_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-App-Id': KI_ID }, body: JSON.stringify({ verlauf: verlauf, kontext: buildKontext() }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
+        if (!d.antwort) { juno.push({ role: 'assistant', content: d.fehler || 'Juno ist gerade nicht erreichbar.' }); saveJuno(); if (state === 'ai') showJuno(); return; }
+        var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [] };
+        juno.push(m); saveJuno(); junoLast = { text: d.antwort, t: Date.now() };
+        if (nav || !$('chatlog')) say(plainText(d.antwort).slice(0, 400));
+        // Aktionen sofort ausfuehren (Route, Tour, Anpassung); Orte nur anzeigen
+        var act = (d.aktionen || []).filter(function (a) { return a.typ !== 'ort_zeigen'; })[0];
+        if (act) runAction(act); else if (state === 'ai') showJuno();
+      })
+      .catch(function () {
+        junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
+        juno.push({ role: 'assistant', content: 'Keine Verbindung zu Juno. Bitte Internet prüfen.' });
+        if (state === 'ai') showJuno();
+      });
+  }
+  // Notiz von Juno oben im Routen- oder Tourenblatt, damit man ihre Antwort auch dort sieht
+  function junoNote() {
+    if (!junoLast || Date.now() - junoLast.t > 120000) return '';
+    return '<div class="junonote"><b class="j">Juno:</b> ' + mdLite(junoLast.text) + '<div style="margin-top:6px"><button class="chip sm" data-act="juno">Weiter mit Juno</button></div></div>';
+  }
+  function runAction(a) {
+    sheetEl.classList.remove('tall');
+    var t = a.typ;
+    if (t === 'ort_zeigen' && a.lat != null) {
+      setFollow(false);
+      if (onIsland(a.lat, a.lon)) showPoint(a.lat, a.lon, a.name); else showExtPoint(a.lat, a.lon, a.name, null);
+      view(a.lat, a.lon, 15);
+    } else if (t === 'route_planen' && a.lat != null) {
+      var st = a.stil === 'schnell' ? 'fast' : 'scenic'; S.style = st; saveS(); computeCosts();
+      planRoute([startRef(), { lat: a.lat, lon: a.lon, name: a.ziel_name || 'Ziel' }], a.ziel_name || 'Ziel', { picked: true, style: st, juno: true });
+    } else if (t === 'tour_vorschlagen') {
+      if (a.dauer_min) S.tourDur = Math.max(15, Math.min(600, Math.round(a.dauer_min)));
+      if (a.schwierigkeit) S.tourDiff = Math.max(0, ['leicht', 'mittel', 'schwer'].indexOf(a.schwierigkeit));
+      if (a.schoenheit) S.tourBeauty = Math.max(0, ['egal', 'schoen', 'sehr_schoen'].indexOf(a.schoenheit));
+      saveS(); runTourSuggest();
+    } else if (t === 'route_anpassen') {
+      var w = a.wunsch;
+      if (!plan) { toast('Es gibt noch keine Route zum Anpassen.'); showJuno(); return; }
+      if (plan.opt.loop && plan.opt.tour) {
+        if (w === 'kuerzer') S.tourDur = Math.max(15, Math.round(S.tourDur * 0.7));
+        if (w === 'laenger') S.tourDur = Math.min(600, Math.round(S.tourDur * 1.4));
+        if (w === 'flacher') S.tourDiff = Math.max(0, S.tourDiff - 1);
+        if (w === 'schoener') S.tourBeauty = 2;
+        if (w === 'schneller') S.tourBeauty = 0;
+        saveS(); runTourSuggest();
+      } else {
+        // flacher/schneller/kuerzer -> "Schnell & leicht" (meidet Anstiege), schoener/laenger -> "Am schönsten"
+        var st2 = (w === 'schoener' || w === 'laenger') ? 'scenic' : 'fast';
+        S.style = st2; saveS(); computeCosts();
+        planRoute(plan.pts, plan.title, L2(plan.opt, { picked: true, style: st2, pre: null, juno: true, angepasst: w }));
+      }
+    } else if (t === 'navigation_starten') {
+      if (cur && plan) startNav(); else { toast('Es gibt noch keine Route.'); showJuno(); }
+    } else showJuno();
+  }
+  function runTourSuggest() {
+    tourTab = 'loop'; loopRes = null; showTours('loop');
+    var b = $('loopGo'); if (b) b.click();
+  }
+  $('btnAi').onclick = function () { if (!nav) showJuno(); else { showJuno(); } };
+
+  // =====================================================================
   // Zurück-Taste
   // =====================================================================
   window.goBack = function () {
@@ -2204,6 +2408,7 @@
       window.__backT = Date.now(); toast('Nochmal Zurück drücken, um die Fahrt zu beenden'); return true;
     }
     if (state === 'pickVia') { drawRouteSheet(); state = 'route'; return true; }
+    if ((state === 'route' || state === 'choose') && plan && plan.opt.juno) { clearRoute(true); showJuno(); return true; }
     if ((state === 'route' || state === 'choose') && plan && plan.opt.tour) { var t = tourTab; clearRoute(true); showTours(t); return true; }
     if (state === 'ride') { clearRoute(true); showMenu(); return true; }
     if (state !== 'home') { clearRoute(); return true; }
@@ -2213,5 +2418,5 @@
   drawChips(); updLayers(); drawHome();
   setTimeout(fitIsland, 50);
   window.__show = showPoi;
-  window.__ugljan = { getCur: function () { return cur; }, map: map, STYLES: STYLES, routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };
+  window.__ugljan = { kontext: function () { return buildKontext(); }, getCur: function () { return cur; }, map: map, STYLES: STYLES, routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };
 })();
