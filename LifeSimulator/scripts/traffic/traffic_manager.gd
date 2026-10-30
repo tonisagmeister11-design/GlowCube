@@ -31,6 +31,7 @@ var rng := RandomNumberGenerator.new()
 var visuals: Dictionary = {}          # VehicleAI -> VehicleVisual
 var buses: Dictionary = {}            # Vector2i(line, idx) -> VehicleAI
 var owned: Dictionary = {}            # vehicle_id -> PlayerVehicle
+var last_called := -1                  # zuletzt gerufenes eigenes Fahrzeug
 var stops: Array = []                 # BusStopPoint
 var emergency: Array = []             # [{ai, visual, release_at}]
 var _focus := Vector2.ZERO
@@ -656,14 +657,14 @@ func _free_spot_near(p: Vector2) -> Dictionary:
 
 
 ## Holt ein eigenes Fahrzeug an einen Ort (z.B. nach dem Kauf zum Autohaus).
-func deliver_owned(vehicle_id: int, near: Vector2) -> PlayerVehicle:
+func deliver_owned(vehicle_id: int, near: Vector2, max_spot := 80.0) -> PlayerVehicle:
 	sync_owned_vehicles()
 	var pv: PlayerVehicle = owned.get(vehicle_id)
 	if pv == null:
 		return null
 	var nl := sim.graph.nearest_lane(near)
 	var spot := _free_spot_near(near)
-	if not spot.is_empty() and spot.pos.distance_to(near) < 80.0:
+	if not spot.is_empty() and spot.pos.distance_to(near) < max_spot:
 		pv.global_position = Vector3(spot.pos.x, 0.05, spot.pos.y)
 		pv.rotation.y = float(spot.rot) + PI
 	elif nl.seg >= 0:
@@ -673,6 +674,32 @@ func deliver_owned(vehicle_id: int, near: Vector2) -> PlayerVehicle:
 		pv.rotation.y = atan2(-d.x, -d.y)
 	pv._store_position()
 	return pv
+
+
+## Ruft ein eigenes Fahrzeug direkt neben die angegebene Position (der Spieler).
+## Parkplatz nur, wenn er wirklich nah ist, sonst Fahrbahnrand: das Auto soll
+## neben dir stehen, nicht zwei Strassen weiter.
+func call_owned_to(vehicle_id: int, near: Vector2) -> Dictionary:
+	if world.player == null or vehicle_id < 0 or vehicle_id >= world.player.vehicles.size():
+		return {"ok": false, "reason": "Du hast dieses Fahrzeug nicht."}
+	var pv := deliver_owned(vehicle_id, near, 25.0)
+	if pv == null:
+		return {"ok": false, "reason": "Das Fahrzeug konnte nicht gerufen werden."}
+	last_called = vehicle_id
+	return {"ok": true, "vehicle": pv}
+
+
+## Wo steht ein eigenes Fahrzeug? Live-Position, sonst die gespeicherte.
+func owned_position(vehicle_id: int) -> Vector2:
+	var pv = owned.get(vehicle_id)
+	if pv != null and is_instance_valid(pv):
+		return Vector2(pv.global_position.x, pv.global_position.z)
+	var vs: Array = world.player.vehicles if world.player != null else []
+	if vehicle_id >= 0 and vehicle_id < vs.size() and typeof(vs[vehicle_id]) == TYPE_DICTIONARY:
+		var st = vs[vehicle_id].get("pos")
+		if st is Array and st.size() >= 2:
+			return Vector2(float(st[0]), float(st[1]))
+	return Vector2.INF
 
 
 # ============================================================ Hilfen

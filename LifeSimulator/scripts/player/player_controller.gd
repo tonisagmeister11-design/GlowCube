@@ -21,8 +21,8 @@ const GRAVITY := 9.81
 const INTERACT_RANGE := 2.5
 const VEHICLE_RANGE := 3.6
 
-@export var walk_speed := 1.8
-@export var run_speed := 5.4
+@export var walk_speed := 2.6
+@export var run_speed := 9.0
 @export var jump_velocity := 4.3
 @export var acceleration := 12.0
 @export var air_control := 2.5

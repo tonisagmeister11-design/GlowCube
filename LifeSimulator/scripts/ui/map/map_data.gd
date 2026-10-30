@@ -14,6 +14,7 @@ const CATEGORIES := {
 	"health": ["Gesundheit", "hospital", Color("#ff5d6c")],
 	"leisure": ["Freizeit", "leisure", Color("#f78fb3")],
 	"vehicles": ["Fahrzeuge", "car", Color("#4cc9f0")],
+	"mycars": ["Deine Fahrzeuge", "car", Color("#ffd166")],
 	"services": ["Dienstleistungen", "services", Color("#7bdff2")],
 	"education": ["Schulen & Universität", "school", Color("#3ddc97")],
 	"police": ["Polizei", "police", Color("#5c8dff")],
@@ -115,6 +116,18 @@ static func markers(world: WorldState) -> Array:
 			lines.append(str(c.bus_lines[lid].number) if lid < c.bus_lines.size() else str(lid))
 		out.append({"pos": s.pos, "cat": "transit", "name": "Haltestelle %s" % s.name, "type_label": "Bushaltestelle",
 			"building": -1, "address": "Linien " + ", ".join(lines), "district": str(c.district_at(s.pos).get("name", "")), "open": ""})
+	# Eigene Fahrzeuge: damit man ein gekauftes Auto wiederfindet
+	var tree := Engine.get_main_loop() as SceneTree
+	var tmn = tree.get_first_node_in_group("traffic_manager") if tree != null else null
+	if tmn != null and world.player != null:
+		for i in world.player.vehicles.size():
+			var vp: Vector2 = tmn.owned_position(i)
+			if vp == Vector2.INF:
+				continue
+			var ve: Dictionary = world.player.vehicles[i]
+			out.append({"pos": vp, "cat": "mycars", "name": "Dein Auto: %s" % str(ve.get("name", "Fahrzeug")),
+				"type_label": "Eigenes Fahrzeug", "building": -1,
+				"address": "Mit C zu dir rufen", "district": str(c.district_at(vp).get("name", "")), "open": ""})
 	# Immobilienangebote (gruppiert nach Gebaeude)
 	if world.housing != null and world.housing.has_method("list_available"):
 		var seen := {}

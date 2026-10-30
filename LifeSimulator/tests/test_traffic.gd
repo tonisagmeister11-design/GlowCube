@@ -537,3 +537,33 @@ func test_managers_in_scene() -> void:
 			runner.check(not px.can_enter(focus), "Geparktes Auto nicht abgeschlossen")
 			break
 	root.queue_free()
+
+
+func test_call_owned_vehicle_next_to_player() -> void:
+	# Ein gekauftes Auto laesst sich direkt neben den Spieler rufen. Mehrfaches
+	# Rufen setzt dasselbe Auto um und erzeugt kein zweites.
+	var Fix = load("res://tests/sim_fixture.gd")
+	var w: WorldState = Fix.medium()
+	var root := Node3D.new()
+	runner.add_child(root)
+	var focus := Node3D.new()
+	focus.add_to_group("player")
+	root.add_child(focus)
+	var sp: Vector2 = w.city.spawn_points[0].pos
+	focus.position = Vector3(sp.x, 0, sp.y)
+	w.player.vehicles.append({"good": "car_small", "name": "Testauto", "bought_day": 0})
+	var tm := TrafficManager.new()
+	root.add_child(tm)
+	tm.setup(w, null)
+	# Spieler weit vom Zuhause weg stellen
+	var far := Vector2(sp.x + 150.0, sp.y)
+	var r: Dictionary = tm.call_owned_to(0, far)
+	runner.check(bool(r.get("ok", false)), "Rufen gelingt: %s" % str(r))
+	var p1: Vector2 = tm.owned_position(0)
+	runner.check(p1.distance_to(far) < 30.0, "Auto steht neben dem Spieler: %.1f m" % p1.distance_to(far))
+	var near2 := Vector2(sp.x - 120.0, sp.y + 40.0)
+	tm.call_owned_to(0, near2)
+	runner.check_eq(tm.owned.size(), 1, "Nur ein Auto, keine Kopie")
+	runner.check(tm.owned_position(0).distance_to(near2) < 30.0, "Zweiter Ruf holt dasselbe Auto")
+	runner.check(not bool(tm.call_owned_to(5, far).get("ok", true)), "Unbekanntes Fahrzeug wird abgelehnt")
+	root.queue_free()

@@ -79,6 +79,7 @@ const DEFAULT_BINDINGS := {
 	"debug_overlay": [["key", KEY_F3]],
 	"debug_city": [["key", KEY_F4]],
 	"screenshot": [["key", KEY_F12]],
+	"call_vehicle": [["key", KEY_C]],
 	"creative_menu": [["key", KEY_F2]],
 	"creative_fly": [["key", KEY_G]],
 	"creative_noclip": [["key", KEY_N]],
@@ -99,7 +100,7 @@ const ACTION_LABELS := {
 	"quick_load": "Schnellladen", "debug_overlay": "Debug-Anzeige",
 	"debug_city": "Stadt-Debugansicht", "screenshot": "Screenshot",
 	"primary": "Primäraktion", "secondary": "Sekundäraktion",
-	"creative_menu": "Kreativ-Menü", "creative_fly": "Fliegen (Kreativ)",
+	"call_vehicle": "Eigenes Auto rufen", "creative_menu": "Kreativ-Menü", "creative_fly": "Fliegen (Kreativ)",
 	"creative_noclip": "Durch Wände (Kreativ)", "fly_down": "Runter fliegen (Kreativ)",
 }
 

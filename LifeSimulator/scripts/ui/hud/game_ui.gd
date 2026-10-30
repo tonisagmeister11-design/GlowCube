@@ -346,6 +346,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		open_map()
 		get_viewport().set_input_as_handled()
 		return
+	if InputMap.has_action("call_vehicle") and event.is_action_pressed("call_vehicle") and _panel == null:
+		_call_vehicle()
+		get_viewport().set_input_as_handled()
+		return
 	if InputMap.has_action("creative_menu") and event.is_action_pressed("creative_menu") and CreativeTools.active(world):
 		if _panel == null:
 			_open_creative()
@@ -424,6 +428,51 @@ func _new_panel(title: String, subtitle := "") -> VBoxContainer:
 	head.add_child(close)
 	v.add_child(head)
 	return v
+
+
+# ============================================================ Eigenes Auto rufen
+
+## Taste C: das eigene Auto direkt neben den Spieler holen. Mit mehreren Autos
+## erscheint eine Auswahl, sonst kommt es sofort.
+func _call_vehicle() -> void:
+	var pl := get_tree().get_first_node_in_group("player")
+	if world == null or world.player == null or pl == null:
+		return
+	if pl.get("vehicle") != null:
+		_toast("Du sitzt schon in einem Fahrzeug.", "info")
+		return
+	var vs: Array = world.player.vehicles
+	if vs.is_empty():
+		_toast("Du besitzt noch kein Fahrzeug.", "info")
+		return
+	if vs.size() == 1:
+		_do_call_vehicle(0)
+		return
+	var v := _new_panel("Fahrzeug rufen", "Welches soll zu dir kommen?")
+	var list := _scroll_list(v, 260)
+	var tm := get_tree().get_first_node_in_group("traffic_manager")
+	for i in vs.size():
+		var idx := i
+		var where := ""
+		if tm != null:
+			var p: Vector2 = tm.owned_position(i)
+			if p != Vector2.INF:
+				where = "steht in %s" % str(world.city.district_at(p).get("name", "der Stadt"))
+		_row(list, str(vs[i].get("name", "Fahrzeug")), where, "Rufen", func():
+			_close_panel()
+			_do_call_vehicle(idx))
+
+
+func _do_call_vehicle(idx: int) -> void:
+	var tm := get_tree().get_first_node_in_group("traffic_manager")
+	var here := UIMapData.player_pos(get_tree())
+	if tm == null or here == Vector2.INF:
+		return
+	var r: Dictionary = tm.call_owned_to(idx, here)
+	if r.get("ok", false):
+		_toast("%s steht neben dir." % str(world.player.vehicles[idx].get("name", "Dein Auto")), "success")
+	else:
+		_toast(str(r.get("reason", "Nicht möglich.")), "warning")
 
 
 # ============================================================ Kreativmodus
@@ -718,8 +767,9 @@ func _open_car_dealer(biz: int, title: String, hours: String, bid: int) -> void:
 			if r.get("ok", false):
 				var tm := get_tree().get_first_node_in_group("traffic_manager")
 				if tm and tm.has_method("deliver_owned"):
-					tm.deliver_owned(world.player.vehicles.size() - 1, world.city.buildings[bid].sidewalk_point)
-				_toast("%s gekauft – es steht vor dem Autohaus bereit." % it.name, "money")
+					var here := UIMapData.player_pos(get_tree())
+					tm.call_owned_to(world.player.vehicles.size() - 1, here if here != Vector2.INF else world.city.buildings[bid].sidewalk_point)
+				_toast("%s gekauft – es steht neben dir." % it.name, "money")
 				_open_car_dealer(biz, title, hours, bid)
 			else:
 				_toast(str(r.get("reason", "Kauf nicht möglich.")), "warning"), int(it.stock) > 0)
