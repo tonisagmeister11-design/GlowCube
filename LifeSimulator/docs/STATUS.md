@@ -1,0 +1,45 @@
+# Umsetzungsstand
+
+Stand dieser Version. „Getestet" = automatisierter Test im Testrunner (92 Tests, alle
+bestanden) bzw. Screenshot-Prüfung im OpenGL-Renderer unter Linux. Unter echtem Windows mit
+Grafikkarte wurde das Spiel in dieser Umgebung **nicht** ausgeführt; Bildraten auf echter
+Hardware sind nicht gemessen.
+
+## Umgesetzt
+| Bereich | Inhalt | Prüfung |
+|---|---|---|
+| Stadtgenerator | Seed-reproduzierbar, Straßennetz mit Ampeln/Kreisverkehren, Fluss mit Brücken, Blöcke/Grundstücke, 30 Gebäudearten, 16 benannte Märkte, Buslinien, Requisiten; mehrstufige Validierung + Reparatur (Überlappungen, Eingänge, Erreichbarkeit zu Fuß/Straße, Spawnpunkte) | 8 Seeds ohne Fehler, Reproduzierbarkeit |
+| 3D-Darstellung | Chunk-Streaming, prozedurale Fassaden/Dächer, Ladenschilder, Markierungen, Wasser, Tag/Nacht, Wetter, Innenräume (20 Arten), Menü-Hintergrund | Tests + Screenshots |
+| Simulation | Wirtschaft (160 Waren, Geschäfte mit Bestand/Preisen/Nachschub/Insolvenz, Firmen, Bank mit Krediten/Hypotheken), Immobilien, 45 Berufe mit Karriere, Bildung, ~2.400 NPCs mit Tagesablauf/Alterung/Geburt/Tod, Staatshaushalt | 60-Tage-Langlauf, Geldmengenerhalt |
+| Spielerleben | Bedürfnisse, Lebensphasen, freies Startalter, Startsituationen (Eltern, Wohnung, WG, obdachlos, wohlhabend), Krankheit, Tod/Erbe gemäß Regeln | Tests |
+| Kriminalität | 8 Delikte, Fahndung, Festnahme/Haft/Strafen, NPC-Kriminalität, Polizeilaufbahn, 4 Organisationen mit Aufstieg bis zum Paten | Tests |
+| Politik | Parteien, Wahlen, Ämter bis Präsident, 17 wirksame Stellschrauben | Tests |
+| Verkehr | Spurgraph, Ampeln, Vorfahrt, Kreisverkehre, Busse nach Fahrplan (zusteigen), Einsatzfahrzeuge, fahrbare und kaufbare Autos, Fußgänger aus der Bevölkerung | 271 Fahrzeuge/240 s ohne Kollision/Blockade |
+| Charaktere | Prozeduraler Humanoid mit Skelett, altersabhängigen Proportionen, Animationen, LOD; Charaktereditor mit 3D-Vorschau | Tests + Screenshots |
+| UI | Hauptmenü, Assistent, Laden/Speichern, Einstellungen inkl. Tastenbelegung, HUD, Smartphone-Apps, Stadtkarte, Minimap, Shop, Dialoge | Tests + Screenshots |
+| Audio | 53 selbst synthetisierte Klänge/Musikstücke, getrennte Lautstärken | technisch geprüft, nicht angehört |
+| Leistung | Fünf Stufen inkl. Leistungsmodus für schwache PCs, automatische Hardware-Einschätzung, Nachregelung bei Bildratenabfall, Kompatibilitäts-Renderer mit Neustart | Tests + Messungen (siehe docs/PERFORMANCE.md) |
+| Story-Modus | 7 Missionen in 4 Kapiteln, darunter der Hinterhalt an der Hafenstraße mit Absprung aus dem fahrenden Wagen; Untertitel, Kinobalken, Zeitlupe; Vorbereitung für eigene Sprachaufnahmen | Tests + Bilder |
+| Schneller laufen, Auto rufen | Gehen 2,6 m/s, Rennen 9,0 m/s. Taste C holt das eigene Auto neben den Spieler (Auswahl ab zwei Autos); ein neu gekauftes Auto steht neben dir statt vorm Autohaus; eigene Autos stehen als gelbe Marker auf der Karte | Tests |
+| Kreativmodus | Vierter Spielmodus (Testmodus): 1 Mio. Startgeld, kein Tod, keine Miete. Menü F2 (Geld, Dinge, Fahrzeuge, Spieler, Welt, Story), Fliegen G (Leertaste hoch, Strg runter, Shift schneller), Durch Wände N. Geld nur über Ledger.mint, alle Werkzeuge wirken ausschließlich in diesem Modus (getestet) | Tests + Spieltest |
+| Marke KALDRA | Eigene Fahrzeugmarke mit Emblem (Mesh und Textur); alle fünf zugelieferten Fahrzeuge gehören dazu, fremde Markenzeichen sind entfernt, abgedeckt oder übermalt | Tests + Bilder |
+| Zugelieferte Modelle | Werkzeug `tools/prepare_vehicle.gd` bereitet FBX/GLB auf: Maßstab und Ausrichtung, Räder abtrennen (über Namen oder Geometrie), nach Material zusammenführen, auf ein Dreiecksbudget vereinfachen (meshoptimizer, Rasterung als Rückfall), PBR-Materialien oder mitgelieferte Textur, Fernfassung. Fünf Fahrzeuge sind eingebaut: Vanari Furio, Vanari Lucente, Aurel Saluto, Kastor Vento, Borek Trail (letzterer auch im Stadtverkehr) | Tests + Bilder |
+| Personenvarianten | Aus einem Modell fünf Leute (Hautton, Kleidung, Statur, Größe); als Passanten im nahen und mittleren Umkreis, Anzahl nach Leistungsstufe | Tests + Bilder |
+| Spieler-Aussehen | Fertige Figur im Charaktereditor als Aussehen wählbar (ab 18 Jahren), mit Schrittgeräuschen und Kamerahöhe aus dem Modell | Tests + Spieltest |
+| Personenmodelle | `tools/prepare_person.gd` bereitet Figuren mit Skelett auf (Unsichtbares entfernen, aufrichten, Materialien reparieren, 18 Knochenrollen zuordnen); `BodyAnimator` erzeugt Grundhaltung, Gehen, Atmen und Sitzen ohne mitgelieferte Animationen. Eine bewegliche Figur (Bruno) erscheint als Passant in Spielernähe, begrenzt nach Leistungsstufe | Tests + Bilder |
+| Speichern | Versioniert, komprimiert, Sicherungskopie, Autosave | Roundtrip-Test |
+| Spielerführung | Begrüßung je Startsituation, Lebensziele mit Hinweis und Kartenmarkierung, Hilfe auf F1, Tagesübersicht | Tests + Screenshots |
+| Kriminalität in der Welt | Missionsziele vor Ort, Stehlen im Laden, Taschendiebstahl, Autoaufbruch, Haft mit Absitzen und Kaution, Polizeidienst an der Wache | Tests |
+
+## Bekannte Einschränkungen
+* Busfahrten dauern Spielstunden (Fahrplan in realer Geschwindigkeit).
+* Fenster sind Shader-Effekte (aus nächster Nähe flach); Haare ohne Strähnen-Geometrie.
+* Kaufpreise für Immobilien sind im Verhältnis zur verdichteten Lebenszeit hoch.
+* Start-Kamera kann ungünstig stehen (mit Maus drehen).
+* **Die Marke gehört dir, die Netze nicht.** Alle Fahrzeuge tragen jetzt die erfundene Marke KALDRA und kein fremdes Markenzeichen mehr. Die Netze selbst sind weiterhin Bearbeitungen zugelieferter Dateien – eine Bearbeitung lässt die Rechte beim Urheber des Modells. Fürs eigene Spielen unkritisch; vor einer Weitergabe müssten die Netze lizenziert oder mit `VehicleMeshBuilder` neu gebaut werden. Siehe docs/MODELLE.md.
+* Bei allen zugelieferten Modellen (fünf Fahrzeuge, zwei Personen) ist die Herkunft ungeklärt; vor einer Weitergabe des Spiels prüfen (siehe docs/MODELLE.md).
+* Der Vanari Lucente braucht 234.000 Dreiecke, weil das Ausgangsmodell (2,53 Millionen) kaum Reduktion verträgt. Er ist deshalb nur als Spielerfahrzeug vorgesehen; im Verkehr und im Leistungsmodus greift die Fernfassung mit 13.900 Dreiecken.
+* Das zweite Personenmodell (Nadia) hat kein Skelett und kann deshalb nicht gehen; es steht nur für stehende Rollen zur Verfügung.
+* Die Figuren der Geschichte sind weiterhin nur Untertitel – noch steht keine Figur sichtbar im Unterschlupf.
+* Bedürfnisse: Ein voller Vorrat hält rund zwei Spieltage; wer tagelang gar nichts tut, stirbt – vorher warnt das Spiel mehrfach.
+* Die EXE trägt das Standard-Godot-Symbol (Symbolwechsel erfordert rcedit unter Windows).

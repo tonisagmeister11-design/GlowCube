@@ -1,0 +1,14 @@
+# Godot
+.godot/
+*.tmp
+*.import.tmp
+# Builds
+build/
+export/
+*.pck
+
+# Zugelieferte Rohmodelle (gross, nur Quelle; die aufbereitete .scn liegt im Projekt)
+assets/models/**/*.fbx
+assets/models/**/*.fbx.import
+assets/models/**/*.glb
+assets/models/**/*.glb.import

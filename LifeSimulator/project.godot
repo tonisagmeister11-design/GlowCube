@@ -1,0 +1,72 @@
+; Engine configuration file.
+; Life Simulator - Godot 4.3
+
+config_version=5
+
+[application]
+
+config/name="Life Simulator"
+config/description="Dein Leben. Deine Entscheidungen. Deine Welt."
+config/version="0.1.0"
+run/main_scene="res://scenes/boot.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+boot_splash/bg_color=Color(0.03, 0.05, 0.09, 1)
+boot_splash/image="res://assets/branding/splash.png"
+boot_splash/fullsize=true
+boot_splash/use_filter=true
+config/icon="res://assets/branding/icon.svg"
+config/windows_native_icon="res://assets/branding/icon.ico"
+
+[autoload]
+
+Log="*res://scripts/core/log.gd"
+EventBus="*res://scripts/core/event_bus.gd"
+Settings="*res://scripts/core/settings.gd"
+Perf="*res://scripts/core/performance.gd"
+Game="*res://scripts/core/game.gd"
+AI="*res://scripts/ai/groq_client.gd"
+Audio="*res://scripts/audio/audio_manager.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom="res://assets/ui/theme.tres"
+theme/custom_font="res://assets/fonts/Inter-Variable.ttf"
+
+[physics]
+
+common/physics_ticks_per_second=60
+3d/physics_engine="DEFAULT"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+textures/canvas_textures/default_texture_filter=1
+anti_aliasing/quality/msaa_3d=1
+anti_aliasing/quality/screen_space_aa=1
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+environment/defaults/default_clear_color=Color(0.03, 0.05, 0.09, 1)
+
+[shader_globals]
+
+perf_facade_detail={
+"type": "int",
+"value": 2
+}
+perf_wind={
+"type": "float",
+"value": 1.0
+}
+perf_water_detail={
+"type": "int",
+"value": 2
+}
