@@ -102,3 +102,96 @@ func test_budget_limits_detailed_people() -> void:
 		p.free()
 		runner.check_eq(PersonModels.live, live_before, "Budget wird beim Entfernen wieder frei")
 	perf.level = before
+
+
+func test_variants_differ() -> void:
+	# Aus einem Modell sollen mehrere Leute werden: Hautton, Kleidungsfarben,
+	# Statur und Groesse muessen sich unterscheiden.
+	for id in PersonModels.available():
+		var list: Array = PersonModels.variants(str(id))
+		if list.is_empty():
+			continue
+		runner.check(list.size() >= 5, "Mindestens fuenf Spielarten (%s): %d" % [id, list.size()])
+		var skins := {}
+		var heights := {}
+		for i in list.size():
+			var p: DetailedPerson = PersonModels.build(str(id), false, i)
+			runner.check(p != null, "Spielart %d baut" % i)
+			if p == null:
+				continue
+			runner.check(str(p.person_name) != "", "Spielart %d hat einen Namen" % i)
+			skins[str(list[i].skin)] = true
+			heights["%.3f" % p.height()] = true
+			p.free()
+		runner.check(skins.size() >= 4, "Verschiedene Hauttoene: %d" % skins.size())
+		runner.check(heights.size() >= 4, "Verschiedene Koerpergroessen: %d" % heights.size())
+
+
+func test_clothing_stays_visible_at_distance() -> void:
+	# Eine fruehere Fassung hat auf Entfernung alles ausser dem Koerper
+	# ausgeblendet - die Figur stand dann ohne Kleidung da.
+	for id in PersonModels.for_role("passant"):
+		var p: DetailedPerson = PersonModels.build(str(id), false)
+		if p == null:
+			continue
+		for level in [0, 1, 2]:
+			p.set_lod(level)
+			for m in p._meshes:
+				runner.check(m.visible, "Stufe %d: '%s' bleibt sichtbar" % [level, m.name])
+		p.free()
+
+
+func test_footstep_signal_on_walk() -> void:
+	# Ohne dieses Signal verstummen die Schrittgeraeusche der Spielerfigur.
+	for id in PersonModels.for_role("skin"):
+		var p: DetailedPerson = PersonModels.build(str(id), false)
+		if p == null or p.animator == null:
+			continue
+		var steps: Array = []
+		p.footstep.connect(func(side: int, _strength: float): steps.append(side))
+		p.set_motion(1.45)
+		# Eine ganze Schrittfolge durchlaufen
+		for i in 120:
+			p.animator.step(0.02)
+		runner.check(steps.size() >= 2, "Schritte gemeldet: %d" % steps.size())
+		runner.check(steps.has(0) and steps.has(1), "Beide Fuesse melden sich")
+		p.free()
+
+
+func test_skin_models_can_walk() -> void:
+	# Ein Modell ohne Skelett taugt nicht als Spielerfigur - der Spieler stuende
+	# bewegungslos da.
+	for id in PersonModels.for_role("skin"):
+		runner.check(bool(PersonModels.info(str(id)).get("animated", false)),
+			"Spieler-Aussehen '%s' ist beweglich" % id)
+
+
+func test_player_body_accepts_a_skin() -> void:
+	# Die Spielerfigur haelt ihre sichtbare Figur in `body`. War die Variable
+	# auf Humanoid festgelegt, liess sich ein fertiges Modell gar nicht
+	# zuweisen - der Spieler stand dann ohne Koerper da. Das faellt nur im
+	# laufenden Spiel auf, deshalb hier der Vertrag.
+	var script: GDScript = load("res://scripts/player/player_controller.gd")
+	runner.check(script != null, "Spielerskript ladbar")
+	if script == null:
+		return
+	var found := false
+	for prop in script.get_script_property_list():
+		if str(prop.name) == "body":
+			found = true
+			# 0 = Variant, sonst der festgelegte Typ. Humanoid waere zu eng.
+			var hint := str(prop.get("class_name", ""))
+			runner.check(hint == "" or hint == "Node3D",
+				"`body` ist nicht auf eine Figurenklasse festgelegt (ist: '%s')" % hint)
+	runner.check(found, "Spielerfigur hat ein Feld `body`")
+	# Und die beiden Figurenarten muessen dieselben Methoden anbieten.
+	var p: DetailedPerson = null
+	for id in PersonModels.for_role("skin"):
+		p = PersonModels.build(str(id), false)
+		break
+	if p == null:
+		return
+	for m in ["height", "eye_height", "set_motion", "set_action", "get_action", "set_shadow_only"]:
+		runner.check(p.has_method(m), "Fertige Figur kann '%s'" % m)
+	runner.check(p.has_signal("footstep"), "Fertige Figur meldet Schritte")
+	p.free()

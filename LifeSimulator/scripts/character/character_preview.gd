@@ -13,6 +13,9 @@ signal character_rebuilt()
 var viewport: SubViewport
 var container: SubViewportContainer
 var humanoid: Humanoid
+## Fertiges Personenmodell, wenn eines als Aussehen gewaehlt ist.
+var skin_body: DetailedPerson = null
+var _skin_id := ""
 var camera: Camera3D
 var _pivot: Node3D
 var _yaw := 0.35
@@ -150,13 +153,37 @@ func get_focus() -> String:
 ## Animation der Vorschaufigur (idle, walk, wave, talk, sit ...).
 func set_action(action: String) -> void:
 	_action = action
-	if humanoid:
-		humanoid.set_action(action if action != "walk" else "idle")
-		humanoid.set_motion(1.3 if action == "walk" else 0.0)
+	var shown: Node = skin_body if skin_body != null else humanoid
+	if shown:
+		shown.set_action(action if action != "walk" else "idle")
+		shown.set_motion(1.3 if action == "walk" else 0.0)
 
 
 func get_humanoid() -> Humanoid:
 	return humanoid
+
+
+## Zeigt statt der eigenen Figur ein fertiges Personenmodell. Leere Kennung
+## schaltet zurueck.
+##
+## Die eigene Figur bleibt im Hintergrund bestehen, nur unsichtbar: An ihr
+## haengen Groesse und Augenhoehe fuer den Bildausschnitt, und beim
+## Zurueckschalten muss sie nicht neu gebaut werden.
+func set_skin(id: String) -> void:
+	if id == _skin_id:
+		return
+	_skin_id = id
+	if skin_body != null:
+		skin_body.queue_free()
+		skin_body = null
+	if id != "" and PersonModels.has_model(id):
+		skin_body = PersonModels.build(id, false)
+		if skin_body != null:
+			_pivot.add_child(skin_body)
+	if humanoid != null:
+		humanoid.visible = skin_body == null
+	set_action(_action)
+	character_rebuilt.emit()
 
 
 func _rebuild() -> void:
@@ -168,9 +195,15 @@ func _rebuild() -> void:
 		humanoid = Humanoid.new()
 		_pivot.add_child(humanoid)
 	humanoid.setup(app, age, bodyk)
+	if humanoid != null:
+		humanoid.visible = skin_body == null
 	set_action(_action)
-	_height = humanoid.height()
-	_eye = humanoid.eye_height()
+	if skin_body != null:
+		_height = skin_body.height()
+		_eye = skin_body.eye_height()
+	else:
+		_height = humanoid.height()
+		_eye = humanoid.eye_height()
 	character_rebuilt.emit()
 
 

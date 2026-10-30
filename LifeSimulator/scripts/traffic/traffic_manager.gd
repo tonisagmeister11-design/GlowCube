@@ -187,7 +187,8 @@ func _make_visual(v: VehicleAI) -> VehicleVisual:
 	var opts := {"collider": true}
 	# Fuer den Stadtverkehr kommen nur zugelieferte Modelle in Frage, die
 	# wenige Dreiecke haben - sonst stehen zwanzig davon gleichzeitig da.
-	if Perf.level >= 2:
+	var perf_node := get_node_or_null("/root/Perf")
+	if perf_node != null and int(perf_node.level) >= 2:
 		var tm := ImportedVehicles.traffic_model_for(v.type)
 		if tm != "" and (v.variant % 3) == 0:
 			opts["model_id"] = tm

@@ -72,6 +72,12 @@ const INTERIOR_HINTS := ["seat", "dash", "steeringwheel", "steering_wheel", "int
 	"door_panel", "sunvisor", "intr_", "airbag", "glovebox", "handbrake", "gearlever",
 	"seatbelt", "headrest", "cupholder", "air_slider", "air_control"]
 
+## Teilenamen, die auf ein Markenzeichen des Herstellers hindeuten. Solche
+## Teile fliegen immer raus: Im Spiel sind alle Marken erfunden, also darf an
+## keinem Fahrzeug das Zeichen eines echten Herstellers haengen.
+const BRAND_HINTS := ["logo", "emblem", "badge", "nameplate", "lettering", "marque",
+	"brandmark", "wordmark", "schriftzug"]
+
 var src := ""
 var dst := ""
 var disp_name := "Fahrzeug"
@@ -81,6 +87,13 @@ var budget := 30000
 var keep_tex := false
 var drop_interior := false
 var albedo_path := ""
+var stretch := Vector3.ONE
+var badge_where: Array = []
+var badge_size := 0.09
+var drop_boxes: Array = []
+var force_flip := false
+var probe_only := false
+var cover_plates: Array = []
 
 
 func _init() -> void:
@@ -101,6 +114,36 @@ func _init() -> void:
 			albedo_path = a.substr(9)
 		elif a == "--no-interior":
 			drop_interior = true
+		elif a == "--flip":
+			force_flip = true
+		elif a == "--probe":
+			probe_only = true
+		elif a.begins_with("--cover="):
+			# front:mx,my,breite,hoehe  (Anteile der Fahrzeugausdehnung)
+			var parts2 := a.substr(8).split(":")
+			if parts2.size() == 2 and str(parts2[0]) in ["front", "rear"]:
+				var v := str(parts2[1]).split(",")
+				if v.size() >= 4:
+					cover_plates.append({"where": str(parts2[0]), "cx": float(v[0]),
+						"cy": float(v[1]), "w": float(v[2]), "h": float(v[3])})
+					continue
+			print("WARNUNG: --cover=front:mx,my,breite,hoehe erwartet, ignoriert: ", a)
+		elif a.begins_with("--stretch="):
+			var sp := a.substr(10).split(",")
+			if sp.size() >= 3:
+				# Reihenfolge wie angegeben: Laenge, Hoehe, Breite
+				stretch = Vector3(float(sp[2]), float(sp[1]), float(sp[0]))
+		elif a.begins_with("--badge="):
+			for w in a.substr(8).split(","):
+				var key := str(w).strip_edges().to_lower()
+				if key in ["front", "rear"]:
+					badge_where.append(key)
+		elif a.begins_with("--badge-size="):
+			badge_size = float(a.substr(13))
+		elif a.begins_with("--drop-box="):
+			_add_box(a.substr(11), false)
+		elif a.begins_with("--drop-box-deep="):
+			_add_box(a.substr(16), true)
 		elif a.begins_with("--color="):
 			var p := a.substr(8).split(",")
 			if p.size() >= 3:
@@ -108,10 +151,30 @@ func _init() -> void:
 	if src == "" or dst == "":
 		print("Aufruf: --in=<modell> --out=<szene> [--name=..] [--color=r,g,b]")
 		print("        [--length=4.9] [--budget=30000] [--textures] [--no-interior]")
+		print("        [--stretch=L,H,B] [--badge=front,rear] [--badge-size=0.09]")
+		print("        [--drop-box=x0,y0,z0,x1,y1,z1] [--drop-box-deep=...] [--flip] [--probe]")
+		print("        [--cover=front:mx,my,breite,hoehe]")
 		quit(1)
 		return
 	_run()
 	quit(0)
+
+
+## Nimmt einen Schnittkasten entgegen. `deep` heisst: auch Lack und Carbon
+## werden geschnitten. Das braucht es, wenn ein Markenzeichen in derselben
+## Lackflaeche steckt wie die Karosserie - etwa Ringe auf einem lackierten
+## Kuehlergrill. Ohne `deep` bleibt die Aussenhaut unangetastet.
+func _add_box(text: String, deep: bool) -> void:
+	var b := text.split(",")
+	if b.size() < 6:
+		print("WARNUNG: Schnittkasten braucht sechs Werte, ignoriert: ", text)
+		return
+	drop_boxes.append({
+		"box": AABB(
+			Vector3(float(b[0]), float(b[1]), float(b[2])),
+			Vector3(float(b[3]) - float(b[0]), float(b[4]) - float(b[1]), float(b[5]) - float(b[2]))),
+		"deep": deep,
+	})
 
 
 func _run() -> void:
@@ -162,6 +225,21 @@ func _run() -> void:
 		p.xf = shift * p.xf
 	aabb = _bounds(parts)
 
+	# Vorn muss nach -Z zeigen (so haelt es das ganze Spiel, siehe
+	# VehicleMeshBuilder). Welches Ende vorn ist, verraet die Beleuchtung:
+	# rote Leuchten hinten, weisse vorn. Sonst entscheidet --flip.
+	var turn := force_flip
+	if not turn:
+		var lit := _front_from_lamps(parts)
+		if lit != 0:
+			turn = lit > 0
+	if turn:
+		var spin := Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
+		for p in parts:
+			p.xf = spin * p.xf
+		aabb = _bounds(parts)
+		print("Fahrzeug stand verkehrt herum - um 180 Grad gedreht")
+
 	# --- 3. Gruppen bilden, Raeder abtrennen
 	var wheels := {"FL": [], "FR": [], "RL": [], "RR": []}
 	var groups := {}
@@ -171,8 +249,12 @@ func _run() -> void:
 			named_wheels = true
 			break
 	var dropped_interior := 0
+	var dropped_brand := 0
 	for p in parts:
 		var g := _group_of(p)
+		if _is_brand_mark(p):
+			dropped_brand += 1
+			continue
 		if drop_interior and _is_interior(p, g):
 			dropped_interior += 1
 			continue
@@ -198,6 +280,24 @@ func _run() -> void:
 			break
 	if not any_wheel:
 		split_wheels = _triangle_wheels(groups, aabb, wheels)
+
+	# Markenzeichen, die in einem gemeinsamen Netz stecken und keinen eigenen
+	# Namen haben, werden ueber ihre Lage herausgeschnitten.
+	var dropped_box := _drop_regions(groups, aabb)
+
+	# Messlauf: nur berichten, was ein Schnittkasten trifft, und abbrechen.
+	# Das Zusammenfuehren und Vereinfachen dauert bei grossen Modellen Minuten -
+	# zum Ausmessen eines Emblems waere das verschwendete Zeit.
+	if probe_only:
+		print("Messlauf: %d Dreiecke wuerden geschnitten. Fahrzeug %.2f x %.2f x %.2f m"
+			% [dropped_box, aabb.size.x, aabb.size.y, aabb.size.z])
+		print("Gruppen: ", groups.keys())
+		for g in groups:
+			var n := 0
+			for p in groups[g]:
+				n += _tris_of(p)
+			print("   %-12s %7d Dreiecke, Bereich %s" % [str(g), n, _norm_box(_bounds(groups[g]), aabb)])
+		return
 
 	# --- 4. Szene aufbauen
 	var root := Node3D.new()
@@ -292,8 +392,48 @@ func _run() -> void:
 		far.owner = root
 		far_tris = _mesh_tris(far_mesh)
 
+	# --- 7a. Zierblenden ueber fremde Zeichen legen
+	#
+	# Manche Markenzeichen stecken in derselben Lackflaeche wie der
+	# Kuehlergrill. Sie herauszuschneiden reisst dort zwangslaeufig ein Loch -
+	# gemessen waren es beim Coupe 149.000 Dreiecke fuer vier Ringe. Eine
+	# dunkle Blende darueber verdeckt sie, ohne etwas zu zerstoeren, und wirkt
+	# wie ein Zierteil, wie es viele Fahrzeuge haben.
+	var covers := 0
+	var on_cover := {}
+	for c in cover_plates:
+		var plate := _cover_plate(body, aabb, c)
+		if plate.is_empty():
+			continue
+		root.add_child(plate.node)
+		plate.node.owner = root
+		on_cover[str(c.where)] = plate
+		covers += 1
+		total_tris += 12
+
+	# --- 7b. Eigenes Markenzeichen anbringen
+	var badges := 0
+	for where in badge_where:
+		var node := BrandKaldra.badge_node(badge_size)
+		node.name = "BadgeFront" if where == "front" else "BadgeRear"
+		if on_cover.has(where):
+			# Auf der Blende, mittig
+			var plate: Dictionary = on_cover[where]
+			node.position = plate.badge_at
+		elif where == "front":
+			node.position = Vector3(0.0, aabb.size.y * 0.42, -aabb.size.z * 0.5 + 0.004)
+		else:
+			node.position = Vector3(0.0, aabb.size.y * 0.52, aabb.size.z * 0.5 - 0.004)
+		if where == "front":
+			node.rotation.y = PI
+		root.add_child(node)
+		node.owner = root
+		badges += 1
+		total_tris += 96
+
 	root.set_meta("size", aabb.size)
 	root.set_meta("display_name", disp_name)
+	root.set_meta("brand", BrandKaldra.NAME)
 	root.set_meta("triangles", total_tris)
 	root.set_meta("triangles_far", far_tris)
 
@@ -301,6 +441,8 @@ func _run() -> void:
 	scene.pack(root)
 	var err := ResourceSaver.save(scene, dst)
 	print("Oberflaechen gelesen: %d  Rohdreiecke: %d" % [parts.size(), raw_total])
+	print("Fremde Markenzeichen verworfen: %d nach Namen, %d nach Bereich; eigene gesetzt: %d"
+		% [dropped_brand, dropped_box, badges])
 	print("Gruppen: %d  Raeder: %d (dreieckweise %d)  Innenraum verworfen: %d" % [merged, wheel_nodes, split_wheels, dropped_interior])
 	print("Dreiecke: %d (Ferne %d)  Gruppen: %s" % [total_tris, far_tris, str(groups.keys())])
 	print("Groesse (m): %.2f breit, %.2f hoch, %.2f lang" % [aabb.size.x, aabb.size.y, aabb.size.z])
@@ -354,6 +496,10 @@ func _surface_aabb(mesh: Mesh, surface: int) -> AABB:
 
 ## Dreht das Modell so, dass die laengste waagerechte Achse nach -Z zeigt
 ## (Blickrichtung in Godot), und skaliert auf die gewuenschte Laenge.
+##
+## `--stretch` aendert dabei die Maßverhaeltnisse geringfuegig: Das Fahrzeug
+## soll nicht in jedem Maß mit einem Serienfahrzeug uebereinstimmen. Drei
+## Prozent sieht man dem einzelnen Wagen nicht an.
 func _orient_and_scale(b: AABB) -> Transform3D:
 	var basis := Basis()
 	var length := b.size.z
@@ -363,7 +509,9 @@ func _orient_and_scale(b: AABB) -> Transform3D:
 	var s := 1.0
 	if want_length > 0.0 and length > 0.0001:
 		s = want_length / length
-	return Transform3D(basis.scaled(Vector3(s, s, s)), Vector3.ZERO)
+	# scaled() wirkt nach der Drehung, also auf die Fahrzeugachsen:
+	# x = Breite, y = Hoehe, z = Laenge.
+	return Transform3D(basis.scaled(Vector3(s * stretch.x, s * stretch.y, s * stretch.z)), Vector3.ZERO)
 
 
 # ============================================================ Gruppen, Raeder
@@ -384,6 +532,187 @@ func _group_of(p: Dictionary) -> String:
 		if hay.contains(str(e[0])):
 			return str(e[1])
 	return "plastic"
+
+
+## Baut eine dunkle Zierblende, die ueber einem Bereich der Karosserie liegt.
+## Die Tiefe wird nicht geraten: Es wird die vorderste (bzw. hinterste) Flaeche
+## der schon gebauten Karosserie in diesem Fenster gesucht und die Blende
+## knapp davor gesetzt.
+##
+## Gibt {node, badge_at} zurueck, oder ein leeres Verzeichnis, wenn in dem
+## Fenster keine Karosserie liegt.
+func _cover_plate(body: Node3D, veh: AABB, c: Dictionary) -> Dictionary:
+	var front: bool = str(c.where) == "front"
+	var cx: float = veh.position.x + float(c.cx) * veh.size.x
+	var cy: float = veh.position.y + float(c.cy) * veh.size.y
+	var w: float = float(c.w) * veh.size.x
+	var h: float = float(c.h) * veh.size.y
+	var best := INF if front else -INF
+	var found := false
+	for child in body.get_children():
+		var mi := child as MeshInstance3D
+		if mi == null or mi.mesh == null:
+			continue
+		var arrays: Array = mi.mesh.surface_get_arrays(0)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		for v in verts:
+			if absf(v.x - cx) > w * 0.5 or absf(v.y - cy) > h * 0.5:
+				continue
+			found = true
+			if front:
+				best = minf(best, v.z)
+			else:
+				best = maxf(best, v.z)
+	if not found:
+		print("WARNUNG: im Blendenfenster liegt keine Karosserie: ", str(c))
+		return {}
+	var thick := 0.014
+	var z: float = (best - thick * 0.5) if front else (best + thick * 0.5)
+	var mi2 := MeshInstance3D.new()
+	mi2.name = "CoverFront" if front else "CoverRear"
+	var bm := BoxMesh.new()
+	bm.size = Vector3(w, h, thick)
+	mi2.mesh = bm
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.045, 0.047, 0.052)
+	m.metallic = 0.35
+	m.roughness = 0.34
+	mi2.material_override = m
+	mi2.position = Vector3(cx, cy, z)
+	var badge_z: float = z - thick * 0.5 - 0.002 if front else z + thick * 0.5 + 0.002
+	return {"node": mi2, "badge_at": Vector3(cx, cy, badge_z)}
+
+
+## Eine Huellbox in Anteilen der Fahrzeugausdehnung, als lesbare Zeile.
+func _norm_box(b: AABB, veh: AABB) -> String:
+	var lo: Vector3 = (b.position - veh.position) / veh.size
+	var hi: Vector3 = (b.end - veh.position) / veh.size
+	return "%.2f,%.2f,%.2f..%.2f,%.2f,%.2f" % [lo.x, lo.y, lo.z, hi.x, hi.y, hi.z]
+
+
+## Wo ist vorn? Gibt +1 zurueck, wenn die Front nach +Z zeigt (das Fahrzeug
+## also gedreht werden muss), -1 wenn sie schon stimmt, 0 wenn sich aus den
+## Leuchten nichts ablesen laesst.
+##
+## Rueckleuchten sind rot, Scheinwerfer weiss - und beide erkennt die
+## Gruppenzuordnung bereits am Materialnamen. Das ist zuverlaessiger als
+## Vermutungen ueber Windschutzscheibe oder Radstand.
+func _front_from_lamps(parts: Array) -> int:
+	var red_z := 0.0
+	var red_n := 0
+	var white_z := 0.0
+	var white_n := 0
+	for p in parts:
+		var g := _group_of(p)
+		if g != "lamp_red" and g != "lamp_white":
+			continue
+		var c: Vector3 = (p.xf * _surface_aabb_of(p)).get_center()
+		if g == "lamp_red":
+			red_z += c.z
+			red_n += 1
+		else:
+			white_z += c.z
+			white_n += 1
+	if red_n > 0 and white_n > 0:
+		# Hinten (rot) muss groesser sein als vorn (weiss)
+		return 1 if (red_z / red_n) < (white_z / white_n) else -1
+	if red_n > 0:
+		return 1 if (red_z / red_n) < 0.0 else -1
+	if white_n > 0:
+		return 1 if (white_z / white_n) > 0.0 else -1
+	return 0
+
+
+## Traegt das Teil ein Markenzeichen des Herstellers im Namen?
+func _is_brand_mark(p: Dictionary) -> bool:
+	var n := (str(p.name) + " " + str(p.matname)).to_lower()
+	for h in BRAND_HINTS:
+		if n.contains(h):
+			return true
+	return false
+
+
+## Schneidet die mit --drop-box angegebenen Bereiche heraus. Die Kaesten sind
+## in Anteilen der Fahrzeugausdehnung angegeben (0 bis 1, x von links nach
+## rechts, y von unten nach oben, z von vorn nach hinten), damit dieselbe
+## Angabe bei verschiedenen Fahrzeuggroessen passt.
+##
+## Lack und Carbon bleiben verschont: Dort sitzt kein Markenzeichen, aber ein
+## Schnitt wuerde ein Loch in die Karosserie reissen.
+func _drop_regions(groups: Dictionary, veh: AABB) -> int:
+	if drop_boxes.is_empty():
+		return 0
+	var world: Array = []
+	for e in drop_boxes:
+		var bb: AABB = e.box
+		world.append({
+			"box": AABB(
+				veh.position + Vector3(bb.position.x * veh.size.x, bb.position.y * veh.size.y, bb.position.z * veh.size.z),
+				Vector3(bb.size.x * veh.size.x, bb.size.y * veh.size.y, bb.size.z * veh.size.z)),
+			"deep": bool(e.deep),
+		})
+	var removed := 0
+	var hit_box := AABB()
+	var hit_any := false
+	var per_group := {}
+	for g in groups:
+		var outer: bool = ["paint", "carbon"].has(str(g))
+		var boxes: Array = []
+		for w in world:
+			if bool(w.deep) or not outer:
+				boxes.append(w.box)
+		if boxes.is_empty():
+			continue
+		var kept: Array = []
+		for p in groups[g]:
+			var arrays: Array = _part_arrays(p)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+			if verts.is_empty() or indices.is_empty():
+				kept.append(p)
+				continue
+			var xf: Transform3D = p.xf
+			var keep_idx := PackedInt32Array()
+			for t in range(0, indices.size() - 2, 3):
+				var a := indices[t]
+				var b2 := indices[t + 1]
+				var c := indices[t + 2]
+				var mid: Vector3 = xf * ((verts[a] + verts[b2] + verts[c]) / 3.0)
+				var hit := false
+				for w in boxes:
+					if (w as AABB).has_point(mid):
+						hit = true
+						break
+				if hit:
+					removed += 1
+					per_group[g] = int(per_group.get(g, 0)) + 1
+					if hit_any:
+						hit_box = hit_box.expand(mid)
+					else:
+						hit_box = AABB(mid, Vector3.ZERO)
+						hit_any = true
+					continue
+				keep_idx.append(a)
+				keep_idx.append(b2)
+				keep_idx.append(c)
+			if keep_idx.is_empty():
+				continue
+			if keep_idx.size() == indices.size():
+				kept.append(p)
+				continue
+			var q: Dictionary = p.duplicate()
+			q.arrays = _compact_arrays(arrays, keep_idx)
+			kept.append(q)
+		groups[g] = kept
+	if hit_any:
+		# In Anteilen der Fahrzeugausdehnung, damit sich die Angabe direkt mit
+		# dem gewaehlten Kasten vergleichen laesst.
+		var lo: Vector3 = (hit_box.position - veh.position) / veh.size
+		var hi: Vector3 = (hit_box.end - veh.position) / veh.size
+		print("   geschnitten je Gruppe: %s" % str(per_group))
+		print("   getroffener Bereich: %.2f,%.2f,%.2f bis %.2f,%.2f,%.2f"
+			% [lo.x, lo.y, lo.z, hi.x, hi.y, hi.z])
+	return removed
 
 
 func _is_interior(p: Dictionary, group: String) -> bool:
@@ -825,23 +1154,21 @@ func _material(group: String) -> StandardMaterial3D:
 			m.albedo_color = Color(0.03, 0.03, 0.035)
 			m.roughness = 0.6
 		"lamp_white":
-			m.albedo_color = Color(0.95, 0.95, 0.92)
-			m.emission_enabled = true
-			m.emission = Color(1.0, 0.97, 0.9)
-			m.emission_energy_multiplier = 0.9
-			m.roughness = 0.12
+			# Kein Eigenleuchten: Am Tag leuchten Scheinwerfer nicht, und
+			# zugelieferte Modelle lassen sich nicht nachts umschalten. Ein
+			# heller, glatter Reflektor sieht richtig aus, eine leuchtende
+			# Kugel nicht.
+			m.albedo_color = Color(0.88, 0.89, 0.90)
+			m.metallic = 0.55
+			m.roughness = 0.10
 		"lamp_red":
-			m.albedo_color = Color(0.5, 0.04, 0.03)
-			m.emission_enabled = true
-			m.emission = Color(1.0, 0.1, 0.06)
-			m.emission_energy_multiplier = 1.1
-			m.roughness = 0.14
+			m.albedo_color = Color(0.46, 0.035, 0.03)
+			m.metallic = 0.25
+			m.roughness = 0.16
 		"lamp_amber":
-			m.albedo_color = Color(0.6, 0.3, 0.03)
-			m.emission_enabled = true
-			m.emission = Color(1.0, 0.55, 0.08)
-			m.emission_energy_multiplier = 0.9
-			m.roughness = 0.14
+			m.albedo_color = Color(0.58, 0.28, 0.03)
+			m.metallic = 0.25
+			m.roughness = 0.16
 		"detail":
 			m.albedo_color = Color(0.3, 0.3, 0.32)
 			m.metallic = 0.4

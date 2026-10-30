@@ -6,15 +6,17 @@ extends RefCounted
 ## weiterhin das einfache Modell.
 ##
 ## Wichtig: Modellnamen echter Hersteller werden im Spiel nicht verwendet.
-## Jedes Fahrzeug bekommt einen eigenen, erfundenen Namen (siehe `name`).
+## Alle fuenf gehoeren zur erfundenen Marke KALDRA (siehe scripts/traffic/
+## brand_kaldra.gd); fremde Markenzeichen sind beim Aufbereiten entfernt oder
+## abgedeckt worden.
 ## Prüfe vor der Weitergabe des Spiels, ob die Lizenz des Modells das erlaubt;
 ## `license` hält fest, was dazu bekannt ist.
 
 ## model_id -> Daten. `scene` ist die aufbereitete Szene, `far_only_above`
 ## schaltet ab dieser Entfernung (Meter) auf die vereinfachte Fassung um.
 const VEHICLES := {
-	"vanari_furio": {
-		"name": "Vanari Furio", "brand": "Vanari", "type": "sports", "category": "Sportwagen",
+	"kaldra_furio": {
+		"name": "KALDRA Furio", "brand": "KALDRA", "type": "sports", "category": "Sportwagen",
 		"price": 398000.0, "top_speed": 345.0, "accel": 2.6, "seats": 2, "fuel": 15.2,
 		"scene": "res://assets/models/vehicles/sportwagen.scn",
 		"source": "Vom Spieler beigesteuertes Modell (FBX)",
@@ -22,8 +24,8 @@ const VEHICLES := {
 		"far_only_above": 70.0,
 		"paint_group": "Body_paint",
 	},
-	"vanari_lucente": {
-		"name": "Vanari Lucente", "brand": "Vanari", "type": "sports", "category": "Sportwagen",
+	"kaldra_lucente": {
+		"name": "KALDRA Lucente", "brand": "KALDRA", "type": "sports", "category": "Sportwagen",
 		"price": 212000.0, "top_speed": 305.0, "accel": 3.4, "seats": 4, "fuel": 12.6,
 		"scene": "res://assets/models/vehicles/coupe.scn",
 		"source": "Vom Spieler beigesteuertes Modell (FBX)",
@@ -31,8 +33,8 @@ const VEHICLES := {
 		"far_only_above": 55.0,
 		"paint_group": "Body_paint",
 	},
-	"aurel_saluto": {
-		"name": "Aurel Saluto", "brand": "Aurel", "type": "sedan", "category": "Oldtimer",
+	"kaldra_saluto": {
+		"name": "KALDRA Saluto", "brand": "KALDRA", "type": "sedan", "category": "Oldtimer",
 		"price": 64000.0, "top_speed": 150.0, "accel": 12.8, "seats": 4, "fuel": 11.4,
 		"scene": "res://assets/models/vehicles/limousine.scn",
 		"source": "Vom Spieler beigesteuertes Modell (FBX)",
@@ -40,8 +42,8 @@ const VEHICLES := {
 		"far_only_above": 80.0,
 		"paint_group": "Body_paint",
 	},
-	"kastor_vento": {
-		"name": "Kastor Vento", "brand": "Kastor", "type": "sports", "category": "Sportwagen",
+	"kaldra_vento": {
+		"name": "KALDRA Vento", "brand": "KALDRA", "type": "sports", "category": "Sportwagen",
 		"price": 58000.0, "top_speed": 255.0, "accel": 4.6, "seats": 4, "fuel": 13.8,
 		"scene": "res://assets/models/vehicles/kombi.scn",
 		"source": "Vom Spieler beigesteuertes Modell (FBX)",
@@ -49,8 +51,8 @@ const VEHICLES := {
 		"far_only_above": 90.0,
 		"paint_group": "Body_paint",
 	},
-	"borek_trail": {
-		"name": "Borek Trail", "brand": "Borek", "type": "suv", "category": "SUV",
+	"kaldra_trail": {
+		"name": "KALDRA Trail", "brand": "KALDRA", "type": "suv", "category": "SUV",
 		"price": 29500.0, "top_speed": 185.0, "accel": 9.8, "seats": 5, "fuel": 7.6,
 		"scene": "res://assets/models/vehicles/gelaendewagen.scn",
 		"source": "Vom Spieler beigesteuertes Modell (FBX, mit Farbtextur)",
@@ -58,6 +60,10 @@ const VEHICLES := {
 		"far_only_above": 140.0,
 		"paint_group": "",
 		"traffic": true,
+		# Bei diesem Fahrzeug steckt das Markenzeichen in der Farbtextur
+		# (Kuehlergrill) - ein zusaetzlicher Knoten waere bei 4.734 Dreiecken
+		# unverhaeltnismaessig.
+		"badge": "textur",
 	},
 }
 
@@ -74,11 +80,15 @@ static func traffic_model_for(type_id: String) -> String:
 
 
 static func has_model(model_id: String) -> bool:
-	return VEHICLES.has(model_id)
+	return not info(model_id).is_empty()
 
 
 static func info(model_id: String) -> Dictionary:
-	return VEHICLES.get(model_id, {})
+	if VEHICLES.has(model_id):
+		return VEHICLES[model_id]
+	# Aeltere Spielstaende kennen die Kennungen von vor dem Markenwechsel.
+	var renamed := str(BrandKaldra.RENAMED.get(model_id, ""))
+	return VEHICLES.get(renamed, {})
 
 
 ## Alle einsatzbereiten Modelle (Szene vorhanden).

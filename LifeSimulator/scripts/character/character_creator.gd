@@ -16,6 +16,8 @@ var _name := ""
 var _body := "female"
 var _age := 24.0
 var _app: Dictionary = {}
+## Kennung eines fertigen Personenmodells, leer = eigene Figur.
+var _skin := ""
 var _rng := RandomNumberGenerator.new()
 
 var preview: CharacterPreview
@@ -48,7 +50,7 @@ func _ready() -> void:
 
 func get_character() -> Dictionary:
 	return {"name": _name.strip_edges() if _name.strip_edges() != "" else "Namenlos", "body": _body, "age": _age,
-		"appearance": Appearance.validate(_app, _age)}
+		"appearance": Appearance.validate(_app, _age), "skin": _skin}
 
 
 func set_character(d: Dictionary) -> void:
@@ -56,6 +58,9 @@ func set_character(d: Dictionary) -> void:
 	_body = "male" if str(d.get("body", _body)) == "male" else "female"
 	_age = clampf(float(d.get("age", _age)), Appearance.MIN_AGE, Appearance.MAX_AGE)
 	_app = Appearance.validate(d.get("appearance", _app), _age)
+	_skin = str(d.get("skin", _skin))
+	if not PersonModels.has_model(_skin):
+		_skin = ""
 	if is_inside_tree() and tabs:
 		_refresh_all()
 
@@ -371,6 +376,7 @@ func _page_identity() -> void:
 
 
 func _page_looks() -> void:
+	_card_skin()
 	var c := _card("looks", "Hautton")
 	_swatches(c, Appearance.SKIN_TONES, _app.skin, func(col: Color): _set_app("skin", col))
 	var ce := _card("looks", "Augenfarbe")
@@ -388,6 +394,40 @@ func _page_looks() -> void:
 	if _age >= 13.0:
 		cx.add_child(_label("Make-up"))
 		_chips(cx, Appearance.MAKEUP, int(_app.makeup), func(id): _set_app("makeup", int(id)))
+
+
+## Auswahl eines fertigen Personenmodells als Aussehen ("Skin").
+##
+## Solche Modelle stellen einen Erwachsenen dar und lassen sich nicht auf jedes
+## Alter bringen - unter 18 Jahren bleibt deshalb nur die eigene Figur, die
+## jedes Alter von 0 bis 100 mit passenden Proportionen darstellt.
+func _card_skin() -> void:
+	var available: Array = PersonModels.for_role("skin")
+	if available.is_empty():
+		return
+	var c := _card("looks", "Aussehen")
+	if _age < 18.0:
+		var hint := _label("Fertige Figuren stellen Erwachsene dar. Ab 18 Jahren kannst du hier "
+			+ "eine auswählen; bis dahin wird deine eigene Figur verwendet.", "CaptionLabel")
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		c.add_child(hint)
+		return
+	var options: Array = [{"id": "", "label": "Eigene Figur"}]
+	for id in available:
+		options.append({"id": str(id), "label": str(PersonModels.info(str(id)).get("name", id))})
+	_chips(c, options, _skin, func(id): _set_skin(str(id)))
+	var note := _label("Mit einer fertigen Figur treten die Regler für Gesicht, Haare und "
+		+ "Kleidung zurück - das Aussehen bringt das Modell mit.", "CaptionLabel")
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	c.add_child(note)
+
+
+func _set_skin(id: String) -> void:
+	if _skin == id:
+		return
+	_skin = id
+	_refresh_all()
+	changed.emit()
 
 
 func _page_hair() -> void:
@@ -551,6 +591,8 @@ func _sync_age_controls() -> void:
 func _update_preview() -> void:
 	if preview:
 		preview.set_character(_app, _age, _body)
+		if preview.has_method("set_skin"):
+			preview.set_skin(_skin if _age >= 18.0 else "")
 
 
 func _on_randomize() -> void:

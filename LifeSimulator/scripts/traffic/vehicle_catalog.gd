@@ -74,16 +74,17 @@ const MODELS := {
 		"price": 9800.0, "top_speed": 210.0, "accel": 3.9, "seats": 2, "fuel": 4.6},
 	"falkner_city":   {"name": "Falkner Stadtrad", "brand": "Falkner", "type": "bicycle", "category": "Fahrrad",
 		"price": 690.0, "top_speed": 28.0, "accel": 8.0, "seats": 1, "fuel": 0.0},
-	# Fahrzeuge aus zugelieferten 3D-Modellen (siehe ImportedVehicles)
-	"vanari_furio":   {"name": "Vanari Furio", "brand": "Vanari", "type": "sports", "category": "Sportwagen",
+	# Fahrzeuge der Marke KALDRA, aus zugelieferten 3D-Modellen aufbereitet
+	# (siehe ImportedVehicles und scripts/traffic/brand_kaldra.gd)
+	"kaldra_furio":   {"name": "KALDRA Furio", "brand": "KALDRA", "type": "sports", "category": "Sportwagen",
 		"price": 398000.0, "top_speed": 345.0, "accel": 2.6, "seats": 2, "fuel": 15.2, "imported": true},
-	"vanari_lucente": {"name": "Vanari Lucente", "brand": "Vanari", "type": "sports", "category": "Sportwagen",
+	"kaldra_lucente": {"name": "KALDRA Lucente", "brand": "KALDRA", "type": "sports", "category": "Sportwagen",
 		"price": 212000.0, "top_speed": 305.0, "accel": 3.4, "seats": 4, "fuel": 12.6, "imported": true},
-	"aurel_saluto":   {"name": "Aurel Saluto", "brand": "Aurel", "type": "sedan", "category": "Oldtimer",
+	"kaldra_saluto":  {"name": "KALDRA Saluto", "brand": "KALDRA", "type": "sedan", "category": "Oldtimer",
 		"price": 64000.0, "top_speed": 150.0, "accel": 12.8, "seats": 4, "fuel": 11.4, "imported": true},
-	"kastor_vento":   {"name": "Kastor Vento", "brand": "Kastor", "type": "sports", "category": "Sportwagen",
+	"kaldra_vento":   {"name": "KALDRA Vento", "brand": "KALDRA", "type": "sports", "category": "Sportwagen",
 		"price": 58000.0, "top_speed": 255.0, "accel": 4.6, "seats": 4, "fuel": 13.8, "imported": true},
-	"borek_trail":    {"name": "Borek Trail", "brand": "Borek", "type": "suv", "category": "SUV",
+	"kaldra_trail":   {"name": "KALDRA Trail", "brand": "KALDRA", "type": "suv", "category": "SUV",
 		"price": 29500.0, "top_speed": 185.0, "accel": 9.8, "seats": 5, "fuel": 7.6, "imported": true},
 }
 
@@ -196,11 +197,11 @@ const GOOD_TYPES := {
 
 ## Ware -> aufbereitetes Fremdmodell (leer, wenn es keines gibt).
 const GOOD_IMPORTED := {
-	"car_hyper": "vanari_furio",
-	"car_coupe": "vanari_lucente",
-	"car_classic": "aurel_saluto",
-	"car_muscle": "kastor_vento",
-	"car_crossover": "borek_trail",
+	"car_hyper": "kaldra_furio",
+	"car_coupe": "kaldra_lucente",
+	"car_classic": "kaldra_saluto",
+	"car_muscle": "kaldra_vento",
+	"car_crossover": "kaldra_trail",
 }
 
 

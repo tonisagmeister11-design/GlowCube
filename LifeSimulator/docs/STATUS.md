@@ -20,7 +20,10 @@ Hardware sind nicht gemessen.
 | Audio | 53 selbst synthetisierte Klänge/Musikstücke, getrennte Lautstärken | technisch geprüft, nicht angehört |
 | Leistung | Fünf Stufen inkl. Leistungsmodus für schwache PCs, automatische Hardware-Einschätzung, Nachregelung bei Bildratenabfall, Kompatibilitäts-Renderer mit Neustart | Tests + Messungen (siehe docs/PERFORMANCE.md) |
 | Story-Modus | 7 Missionen in 4 Kapiteln, darunter der Hinterhalt an der Hafenstraße mit Absprung aus dem fahrenden Wagen; Untertitel, Kinobalken, Zeitlupe; Vorbereitung für eigene Sprachaufnahmen | Tests + Bilder |
+| Marke KALDRA | Eigene Fahrzeugmarke mit Emblem (Mesh und Textur); alle fünf zugelieferten Fahrzeuge gehören dazu, fremde Markenzeichen sind entfernt, abgedeckt oder übermalt | Tests + Bilder |
 | Zugelieferte Modelle | Werkzeug `tools/prepare_vehicle.gd` bereitet FBX/GLB auf: Maßstab und Ausrichtung, Räder abtrennen (über Namen oder Geometrie), nach Material zusammenführen, auf ein Dreiecksbudget vereinfachen (meshoptimizer, Rasterung als Rückfall), PBR-Materialien oder mitgelieferte Textur, Fernfassung. Fünf Fahrzeuge sind eingebaut: Vanari Furio, Vanari Lucente, Aurel Saluto, Kastor Vento, Borek Trail (letzterer auch im Stadtverkehr) | Tests + Bilder |
+| Personenvarianten | Aus einem Modell fünf Leute (Hautton, Kleidung, Statur, Größe); als Passanten im nahen und mittleren Umkreis, Anzahl nach Leistungsstufe | Tests + Bilder |
+| Spieler-Aussehen | Fertige Figur im Charaktereditor als Aussehen wählbar (ab 18 Jahren), mit Schrittgeräuschen und Kamerahöhe aus dem Modell | Tests + Spieltest |
 | Personenmodelle | `tools/prepare_person.gd` bereitet Figuren mit Skelett auf (Unsichtbares entfernen, aufrichten, Materialien reparieren, 18 Knochenrollen zuordnen); `BodyAnimator` erzeugt Grundhaltung, Gehen, Atmen und Sitzen ohne mitgelieferte Animationen. Eine bewegliche Figur (Bruno) erscheint als Passant in Spielernähe, begrenzt nach Leistungsstufe | Tests + Bilder |
 | Speichern | Versioniert, komprimiert, Sicherungskopie, Autosave | Roundtrip-Test |
 | Spielerführung | Begrüßung je Startsituation, Lebensziele mit Hinweis und Kartenmarkierung, Hilfe auf F1, Tagesübersicht | Tests + Screenshots |
@@ -31,7 +34,8 @@ Hardware sind nicht gemessen.
 * Fenster sind Shader-Effekte (aus nächster Nähe flach); Haare ohne Strähnen-Geometrie.
 * Kaufpreise für Immobilien sind im Verhältnis zur verdichteten Lebenszeit hoch.
 * Start-Kamera kann ungünstig stehen (mit Maus drehen).
-* Bei allen zugelieferten Modellen (fünf Fahrzeuge, zwei Personen) ist die Lizenz ungeklärt; vor einer Weitergabe des Spiels prüfen (siehe docs/MODELLE.md).
+* **Die Marke gehört dir, die Netze nicht.** Alle Fahrzeuge tragen jetzt die erfundene Marke KALDRA und kein fremdes Markenzeichen mehr. Die Netze selbst sind weiterhin Bearbeitungen zugelieferter Dateien – eine Bearbeitung lässt die Rechte beim Urheber des Modells. Fürs eigene Spielen unkritisch; vor einer Weitergabe müssten die Netze lizenziert oder mit `VehicleMeshBuilder` neu gebaut werden. Siehe docs/MODELLE.md.
+* Bei allen zugelieferten Modellen (fünf Fahrzeuge, zwei Personen) ist die Herkunft ungeklärt; vor einer Weitergabe des Spiels prüfen (siehe docs/MODELLE.md).
 * Der Vanari Lucente braucht 234.000 Dreiecke, weil das Ausgangsmodell (2,53 Millionen) kaum Reduktion verträgt. Er ist deshalb nur als Spielerfahrzeug vorgesehen; im Verkehr und im Leistungsmodus greift die Fernfassung mit 13.900 Dreiecken.
 * Das zweite Personenmodell (Nadia) hat kein Skelett und kann deshalb nicht gehen; es steht nur für stehende Rollen zur Verfügung.
 * Die Figuren der Geschichte sind weiterhin nur Untertitel – noch steht keine Figur sichtbar im Unterschlupf.

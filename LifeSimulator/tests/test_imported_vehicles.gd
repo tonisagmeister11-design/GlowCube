@@ -4,6 +4,12 @@ extends RefCounted
 
 var runner
 
+## Echte Hersteller, die in keinem Namen auftauchen duerfen - im Spiel sind
+## alle Marken erfunden.
+const REAL_BRANDS := ["lamborghini", "audi", "jeep", "bmw", "mercedes", "porsche",
+	"ferrari", "volkswagen", "toyota", "ford", "renault", "opel", "skoda", "tesla",
+	"nissan", "honda", "hyundai", "kia", "mazda", "volvo", "renegade", "revuelto"]
+
 
 func test_model_available_and_sane() -> void:
 	var ids: Array = ImportedVehicles.available()
@@ -11,7 +17,12 @@ func test_model_available_and_sane() -> void:
 	for id in ids:
 		var d: Dictionary = ImportedVehicles.info(str(id))
 		runner.check(str(d.get("name", "")) != "", "Modell '%s' hat einen Namen" % id)
-		runner.check(not str(d.name).to_lower().contains("lamborghini"), "Kein echter Markenname: %s" % str(d.name))
+		for brand in REAL_BRANDS:
+			runner.check(not str(d.name).to_lower().contains(brand),
+				"Kein echter Markenname in '%s'" % str(d.name))
+			runner.check(not str(d.get("brand", "")).to_lower().contains(brand),
+				"Kein echter Hersteller als Marke: %s" % str(d.get("brand", "")))
+		runner.check_eq(str(d.get("brand", "")), BrandKaldra.NAME, "Gehoert zur Marke KALDRA")
 		runner.check(str(d.get("license", "")) != "", "Lizenzangabe vorhanden")
 		var tris: int = ImportedVehicles.triangles(str(id))
 		runner.check(tris > 1000 and tris < 400000, "Dreiecke im brauchbaren Rahmen: %d" % tris)
@@ -52,7 +63,7 @@ func test_catalog_and_good_linked() -> void:
 
 func test_visual_uses_imported_model() -> void:
 	var v := VehicleVisual.new()
-	v.build("sports", Color(1, 0.7, 0), 0, {"model_id": "vanari_furio"})
+	v.build("sports", Color(1, 0.7, 0), 0, {"model_id": "kaldra_furio"})
 	runner.check(v.get_node_or_null("ImportedBody") != null, "Fremdmodell wird verwendet")
 	runner.check_eq(v.wheels.size(), 4, "Raeder uebernommen")
 	for w in v.wheels:
@@ -99,3 +110,47 @@ func test_traffic_models_are_light() -> void:
 		runner.check(tris <= 12000, "Verkehrsmodell '%s' ist leicht: %d Dreiecke" % [id, tris])
 		runner.check_eq(str(ImportedVehicles.info(id).get("type", "")), type_id, "Bauform passt")
 	runner.check_eq(ImportedVehicles.traffic_model_for("bus"), "", "Kein Bus aus Fremdmodellen")
+
+
+func test_brand_marks_removed() -> void:
+	# Kein Teil darf noch einen Namen tragen, der auf ein Markenzeichen
+	# hindeutet, und jedes Fahrzeug muss ein eigenes Zeichen tragen - entweder
+	# als Knoten am Modell oder in der Textur.
+	for id in ImportedVehicles.available():
+		var p: Node3D = ImportedVehicles.build(str(id), Color.WHITE)
+		if p == null:
+			continue
+		var names: Array = []
+		var stack: Array = [p]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			for c in n.get_children():
+				stack.append(c)
+			names.append(String(n.name).to_lower())
+		for bad in ["logo", "emblem", "badgefremd", "nameplate", "lettering"]:
+			for nm in names:
+				runner.check(not nm.contains(bad), "Kein Teil '%s' in %s" % [bad, id])
+		var how := str(ImportedVehicles.info(str(id)).get("badge", "knoten"))
+		if how == "knoten":
+			runner.check(names.has("badgefront") or names.has("badgerear"),
+				"Eigenes Markenzeichen am Modell: %s" % id)
+		else:
+			runner.check_eq(how, "textur", "Markenzeichen steckt in der Textur: %s" % id)
+		p.free()
+
+
+func test_vehicles_face_forward() -> void:
+	# Im ganzen Spiel zeigt vorn nach -Z. Zugelieferte Modelle kommen oft
+	# andersherum; dann faehrt das Fahrzeug rueckwaerts. Geprueft wird an den
+	# Leuchten: rote gehoeren nach hinten.
+	for id in ImportedVehicles.available():
+		var p: Node3D = ImportedVehicles.build(str(id), Color.WHITE)
+		if p == null:
+			continue
+		var red: Node = p.find_child("Body_lamp_red", true, false)
+		var white: Node = p.find_child("Body_lamp_white", true, false)
+		if red is MeshInstance3D and white is MeshInstance3D:
+			var rz: float = (red as MeshInstance3D).mesh.get_aabb().get_center().z
+			var wz: float = (white as MeshInstance3D).mesh.get_aabb().get_center().z
+			runner.check(rz > wz, "%s: Rueckleuchten hinter den Scheinwerfern (%.2f > %.2f)" % [id, rz, wz])
+		p.free()

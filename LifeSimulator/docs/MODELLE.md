@@ -50,10 +50,58 @@ Drei Stellen:
 Danach steht das Auto im Autohaus zum Kauf, lässt sich fahren, parkt beim Zuhause
 und erscheint im Leistungsmodus automatisch in der vereinfachten Fassung.
 
+## Die Marke KALDRA
+
+Alle fünf zugelieferten Fahrzeuge gehören im Spiel zur erfundenen Marke
+**KALDRA**: KALDRA Furio, Lucente, Saluto, Vento und Trail.
+`scripts/traffic/brand_kaldra.gd` baut das Emblem (ein liegendes Sechseck mit
+kantigem K, 96 Dreiecke) als Mesh und als Bild für Texturflächen.
+
+Beim Aufbereiten werden fremde Markenzeichen auf drei Wegen entfernt:
+
+| Weg | Wann | Beispiel |
+|---|---|---|
+| **Nach Namen** (immer an) | Das Teil heißt `Logo`, `Emblem`, `Badge`, `Nameplate`, `Lettering` oder `Marque` | Heckemblem des Furio, `Front_Logo_Part1/2` des Saluto |
+| **`--drop-box`** | Das Zeichen steckt in einem gemeinsamen Netz, liegt aber nicht in der Lackfläche | Zierteile in Chrom oder Metall |
+| **`--cover`** | Das Zeichen steckt in **derselben** Lackfläche wie die Karosserie | Die vier Ringe des Lucente: Herausschneiden hätte 149.000 Dreiecke und damit ein Loch im Kühlergrill gekostet, deshalb liegt dort eine dunkle Zierblende mit dem KALDRA-Zeichen darauf |
+
+Steckt das Zeichen in der **Textur**, hilft keiner dieser Wege:
+`tools/retexture_vehicle.py` malt es dort um. Beim Trail sind so der
+Sieben-Schlitz-Grill zu waagerechten Stegen und die kreuzförmigen Rückleuchten
+zu einem Lichtband geworden; das KALDRA-Zeichen sitzt mitten im Grill.
+Mit `--only-patches` lässt sich damit jede Textur stellenweise übermalen, auch
+die eines Kleidungsstücks.
+
+`--stretch=L,H,B` ändert die Maßverhältnisse um wenige Prozent. Dem einzelnen
+Wagen sieht man das nicht an, aber seine Maße stimmen dann nicht mehr mit einem
+Serienfahrzeug überein.
+
+### Wie nah ist welches Fahrzeug noch am Ausgangsmodell?
+
+| Fahrzeug | Fremde Zeichen | Form | Einschätzung |
+|---|---|---|---|
+| KALDRA Trail | entfernt (Textur neu: Grill, Leuchten, Schriftzüge) | 3 % geändert | Grill und Leuchtbild sind die Erkennungszeichen und jetzt eigene; die Silhouette bleibt die des Ausgangsmodells |
+| KALDRA Lucente | abgedeckt (Blende vorn und hinten) | 2 % geändert | Silhouette unverändert, Zeichen nicht mehr sichtbar |
+| KALDRA Furio | 7 Teile entfernt, eigenes Emblem | 3 % geändert | Silhouette unverändert |
+| KALDRA Saluto | 2 Teile entfernt, eigenes Emblem | 3 % geändert | Silhouette unverändert |
+| KALDRA Vento | eigenes Emblem | 3 % geändert | Silhouette unverändert |
+
+**Das betrifft nur Markenzeichen und Form.** Am Urheberrecht des Netzes ändert
+keine dieser Bearbeitungen etwas; dazu der nächste Abschnitt.
+
 ## Rechtliches – bitte lesen
 
 * **Markennamen echter Hersteller werden im Spiel nicht verwendet.** Alle Marken sind
   erfunden. Ein Modell eines echten Fahrzeugs bekommt deshalb einen eigenen Namen.
+* **Eine Bearbeitung verschafft keine Rechte.** Wer ein 3D-Modell verändert,
+  schafft eine Bearbeitung – die Rechte bleiben beim Urheber des Modells, egal
+  wie stark die Änderung ist. Markenzeichen zu entfernen löst das Markenrecht,
+  nicht das Urheberrecht am Netz. Wirklich saubere Rechte gibt es nur über eine
+  Lizenz oder über ein selbst gebautes Modell (dafür steht
+  `scripts/traffic/vehicle_mesh_builder.gd` bereit).
+* **Die Form eines echten Serienautos** kann als Geschmacksmuster geschützt
+  sein, auch unabhängig vom Modell. Deshalb ändert `--stretch` die
+  Maßverhältnisse und werden Grill und Leuchtbild ersetzt.
 * **Kläre die Lizenz, bevor du das Spiel weitergibst.** Trag in `VEHICLES` unter `source`
   und `license` ein, woher das Modell stammt und was erlaubt ist. Viele kostenlose Modelle
   verlangen eine Namensnennung (CC-BY), andere verbieten die kommerzielle Nutzung.
@@ -88,6 +136,21 @@ Willst du ein Modell erneut aufbereiten, lege die Quelldatei wieder in
 | Vereinfachen (`--budget`) | Erst meshoptimizer (den Godot mitbringt), bei Netzen, die der verweigert — typisch Glasscheiben — eine Rasterung. An Lack und Carbon geht die Rasterung nie ran, sonst knittert die Karosserie. |
 | Materialien | Eigene PBR-Materialien je Gruppe, oder mit `--textures` bzw. `--albedo=` die mitgelieferte Textur. Rueck- und Frontleuchten leuchten selbst. |
 | Fernfassung | Ein zusaetzliches, hart reduziertes Mesh fuer grosse Entfernungen und den Leistungsmodus. |
+
+### Vorn ist -Z
+
+Im ganzen Spiel zeigt die Fahrzeugfront nach **-Z**. Zugelieferte Modelle
+kommen oft andersherum; dann fährt das Fahrzeug im Spiel rückwärts. Alle fünf
+hier waren so. Das Werkzeug erkennt das an den Leuchten (rot gehört nach
+hinten, weiß nach vorn) und dreht das Fahrzeug; hat ein Modell keine
+unterscheidbaren Leuchten, hilft `--flip`. Ein Test prüft die Lage
+(`test_vehicles_face_forward`).
+
+### Scheinwerfer leuchten nicht
+
+Die Leuchtenmaterialien tragen **kein** Eigenleuchten. Ein zugeliefertes Modell
+lässt sich nachts nicht umschalten, und am Tag sähe ein leuchtender Scheinwerfer
+aus wie eine Glühbirne. Stattdessen gibt es einen hellen, glatten Reflektor.
 
 ### Wie viel Budget?
 
@@ -183,3 +246,43 @@ Verformen des Skeletts ist der teuerste Teil.
 Eine Figur ohne Skelett kann nicht gehen. `animated: false` in
 `PersonModels.MODELS` hält sie aus dem Passantenverkehr heraus; sie bleibt für
 stehende Rollen brauchbar.
+
+
+## Spielarten: aus einem Modell werden fünf Leute
+
+Ein fertiges Personenmodell ist teuer – 66.000 Dreiecke und 32 MB Texturen.
+Statt mehrere Modelle zu brauchen, wird dasselbe beim Aufbauen eingefärbt:
+`PersonModels.VARIANTS` hält je Spielart einen Hautton, Kleidungsfarben je
+Mesh, Statur und Körpergröße. `DetailedPerson` legt dafür Materialkopien an und
+multipliziert deren Albedo-Farbe mit der Textur – die Texturdateien bleiben
+unangetastet.
+
+Beim ersten Modell sind das fünf Leute (Bruno, Teo, Marek, Idris, Sören) mit
+Körpergrößen von 1,75 m bis 1,87 m. `PersonModels.pick_variant()` wählt immer
+die Spielart, die gerade am seltensten zu sehen ist – sonst liefen fünfmal
+dieselben Leute durch die Stadt.
+
+Was die Reparatur am Beispielmodell gebraucht hat:
+
+| Problem | Ursache | Behebung |
+|---|---|---|
+| Figur stand ohne Kleidung da | Eine frühere Fassung blendete ab mittlerer Entfernung alles außer dem Körper aus | Es wird nichts mehr ausgeblendet; auf Entfernung wird nur der Bewegungsablauf angehalten |
+| Komplett in die Kapuze eingepackt | Die Kapuze gehört zum Mesh `Vest` und liegt über dem Kopf | `--drop-region=Vest:0,0.845,0,1,1,1` schneidet sie heraus (782 Dreiecke) |
+| Auffallend dünn | Das Modell ist schlank gebaut | `--bulk=1.07` verbreitert in X und Z, nicht in Y |
+| Handflächen standen ab | In der T-Haltung zeigen die Handflächen nach unten; bei gesenkten Armen dann nach vorn | Grundhaltung dreht die Hände um die Armachse |
+| Sitzhaltung geknickt | Zu kleine Winkel an Hüfte und Knie | Oberschenkel waagerecht, Unterschenkel senkrecht |
+
+## Eigenes Aussehen für die Spielerfigur
+
+Ein Modell mit der Rolle `skin` lässt sich im Charaktereditor unter „Aussehen"
+als Spielerfigur wählen. Voraussetzung ist ein Skelett – ohne eines stünde der
+Spieler bewegungslos da; ein Test besteht darauf
+(`test_skin_models_can_walk`).
+
+Unter 18 Jahren ist die Auswahl gesperrt: Ein fertiges Erwachsenenmodell kann
+kein Kind darstellen. Dafür bleibt die prozedurale Figur zuständig, die jedes
+Alter von 0 bis 100 mit passenden Proportionen baut.
+
+Damit die Schrittgeräusche weiterspielen, meldet `BodyAnimator` über das Signal
+`footstep`, wenn ein Fuß aufsetzt – die Spielerfigur hängt ihre Geräusche
+daran.

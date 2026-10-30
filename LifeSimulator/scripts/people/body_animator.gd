@@ -16,11 +16,18 @@ extends Node
 ## Modell liegt.
 
 ## Grundhaltung in Grad: Arme aus der T-Haltung an den Koerper.
+##
+## Die Haende brauchen eine eigene Drehung: In der T-Haltung zeigen die
+## Handflaechen nach unten; sind die Arme erst gesenkt, zeigen sie nach vorn
+## und die Finger stehen seitlich ab. Eine Drehung um die Armachse legt sie an
+## den Koerper.
 const REST_POSE := {
-	"upperarm_l": {"axis": "z", "deg": -72.0},
-	"upperarm_r": {"axis": "z", "deg": 72.0},
-	"lowerarm_l": {"axis": "y", "deg": -12.0},
-	"lowerarm_r": {"axis": "y", "deg": 12.0},
+	"upperarm_l": {"axis": "z", "deg": -76.0},
+	"upperarm_r": {"axis": "z", "deg": 76.0},
+	"lowerarm_l": {"axis": "y", "deg": -10.0},
+	"lowerarm_r": {"axis": "y", "deg": 10.0},
+	"hand_l": {"axis": "y", "deg": 78.0},
+	"hand_r": {"axis": "y", "deg": -78.0},
 }
 
 ## Ausschlag der Gehbewegung in Grad.
@@ -28,6 +35,10 @@ const WALK := {
 	"thigh": 26.0, "calf": 38.0, "foot": 10.0,
 	"arm": 22.0, "forearm": 14.0, "spine": 3.0, "head": 2.0,
 }
+
+## Wird ausgeloest, wenn ein Fuss aufsetzt: side 0 links, 1 rechts.
+## Die Lautstaerke richtet sich nach dem Tempo.
+signal footstep(side: int, intensity: float)
 
 var skeleton: Skeleton3D = null
 var speed := 0.0            ## Laufgeschwindigkeit in m/s (steuert Takt und Ausschlag)
@@ -86,6 +97,15 @@ func _find_skeleton(n: Node) -> Skeleton3D:
 	return null
 
 
+## Wurde beim Fortschreiten von `a` nach `b` der Winkel `mark` ueberschritten?
+## Beruecksichtigt den Ueberlauf von TAU auf 0.
+func _crossed(a: float, b: float, mark: float) -> bool:
+	if b >= a:
+		return a < mark and mark <= b
+	# ueber den Nullpunkt gelaufen
+	return mark > a or mark <= b
+
+
 func _axis_of(role: String, key: String) -> Vector3:
 	var a: Dictionary = _axis.get(role, {})
 	return a.get(key, Vector3.RIGHT)
@@ -104,7 +124,15 @@ func step(delta: float) -> void:
 		return
 	# Schrittlaenge haengt an der Geschwindigkeit: schneller = hoeherer Takt
 	var cadence: float = clampf(speed * 1.8, 0.0, 6.5)
+	var prev := _phase
 	_phase = fposmod(_phase + delta * cadence * TAU * 0.5, TAU)
+	# Ein Fuss setzt auf, wenn sein Bein durch die hinterste Lage geht: links
+	# bei Phase 0, rechts bei PI. Gemeldet wird beim Ueberschreiten.
+	if speed > 0.15 and delta > 0.0:
+		if _crossed(prev, _phase, 0.0):
+			footstep.emit(0, clampf(speed / 1.6, 0.25, 1.0))
+		if _crossed(prev, _phase, PI):
+			footstep.emit(1, clampf(speed / 1.6, 0.25, 1.0))
 	_blend = move_toward(_blend, 1.0 if speed > 0.15 else 0.0, delta * 4.0)
 	var amp: float = clampf(speed / 1.6, 0.0, 1.35) * _blend
 	if seated:
@@ -132,18 +160,23 @@ func step(delta: float) -> void:
 	_bone("hips", "x", 2.5 * amp)
 
 
+## Sitzhaltung. Die Oberschenkel gehen waagerecht nach vorn, die Unterschenkel
+## senkrecht nach unten - damit sitzt die Figur auf einer Flaeche, statt in der
+## Luft gebeugt zu haengen. Der Oberkoerper bleibt fast aufrecht.
 func _apply_seated() -> void:
-	_bone("thigh_l", "x", 82.0)
-	_bone("thigh_r", "x", 82.0)
-	_bone("calf_l", "x", -78.0)
-	_bone("calf_r", "x", -78.0)
-	_bone("foot_l", "x", -8.0)
-	_bone("foot_r", "x", -8.0)
-	_bone("upperarm_l", "x", 8.0)
-	_bone("upperarm_r", "x", 8.0)
-	_bone("lowerarm_l", "x", -42.0)
-	_bone("lowerarm_r", "x", -42.0)
-	_bone("spine", "x", 6.0)
+	_bone("hips", "x", -4.0)
+	_bone("thigh_l", "x", 88.0)
+	_bone("thigh_r", "x", 88.0)
+	_bone("calf_l", "x", -88.0)
+	_bone("calf_r", "x", -88.0)
+	_bone("foot_l", "x", 2.0)
+	_bone("foot_r", "x", 2.0)
+	_bone("upperarm_l", "x", 14.0)
+	_bone("upperarm_r", "x", 14.0)
+	_bone("lowerarm_l", "x", -56.0)
+	_bone("lowerarm_r", "x", -56.0)
+	_bone("spine", "x", 4.0)
+	_bone("chest", "x", -2.0)
 
 
 ## Dreht einen Knochen um die angegebene Weltachse, aufgesetzt auf Ruhelage

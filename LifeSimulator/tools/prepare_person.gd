@@ -57,6 +57,8 @@ var src := ""
 var dst := ""
 var disp_name := "Person"
 var want_height := 0.0
+var bulk := 1.0
+var drop_regions: Array = []
 
 
 func _init() -> void:
@@ -69,8 +71,25 @@ func _init() -> void:
 			disp_name = a.substr(7)
 		elif a.begins_with("--height="):
 			want_height = float(a.substr(9))
+		elif a.begins_with("--bulk="):
+			bulk = float(a.substr(7))
+		elif a.begins_with("--drop-region="):
+			# Mesh:x0,y0,z0,x1,y1,z1 in Anteilen der Koerperausdehnung
+			var two := a.substr(14).split(":")
+			if two.size() == 2:
+				var v := str(two[1]).split(",")
+				if v.size() >= 6:
+					drop_regions.append({
+						"mesh": str(two[0]).to_lower(),
+						"box": AABB(
+							Vector3(float(v[0]), float(v[1]), float(v[2])),
+							Vector3(float(v[3]) - float(v[0]), float(v[4]) - float(v[1]), float(v[5]) - float(v[2]))),
+					})
+					continue
+			print("WARNUNG: --drop-region=Mesh:x0,y0,z0,x1,y1,z1 erwartet, ignoriert: ", a)
 	if src == "" or dst == "":
 		print("Aufruf: --in=<modell> --out=<szene> [--name=..] [--height=1.82]")
+		print("        [--bulk=1.07] [--drop-region=Vest:0,0.84,0,1,1,1]")
 		quit(1)
 		return
 	_run()
@@ -113,6 +132,19 @@ func _run() -> void:
 		meshes.erase(m)
 		m.get_parent().remove_child(m)
 		m.queue_free()
+
+	# --- Lage: manche Modelle kommen mit Z nach oben und liegen dadurch.
+	# Die Drehung muss vor dem Schneiden stehen, damit sich ein Schnittbereich
+	# immer auf die aufgerichtete Figur bezieht.
+	var pre := _bounds(meshes)
+	if pre.size.z > pre.size.y * 1.4:
+		root.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
+		for m in meshes:
+			(m as MeshInstance3D).force_update_transform()
+		print("Modell lag auf dem Ruecken (Z nach oben) - aufgerichtet")
+
+	# --- Bereiche wegschneiden (etwa eine Kapuze, die ueber dem Kopf liegt).
+	var cut_tris := _cut_regions(meshes)
 
 	# --- Materialien nachbessern: Durchsichtigkeit, Haut, Rueckseiten.
 	# Die Materialien gehoeren zur importierten Datei, deshalb wird mit einer
@@ -175,20 +207,18 @@ func _run() -> void:
 			fresh.surface_set_material(si, src_mesh.surface_get_material(si))
 		mi.mesh = fresh
 
-	# --- Lage: manche Modelle kommen mit Z nach oben und liegen dadurch.
-	var pre := _bounds(meshes)
-	if pre.size.z > pre.size.y * 1.4:
-		root.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
-		print("Modell lag auf dem Ruecken (Z nach oben) - aufgerichtet")
-
-	# --- Groesse
+	# --- Groesse und Statur
 	for m in meshes:
 		(m as MeshInstance3D).force_update_transform()
 	var box := _bounds(meshes)
 	if want_height > 0.0 and box.size.y > 0.0001:
 		var s: float = want_height / box.size.y
-		root.scale = Vector3(s, s, s)
-		box = AABB(box.position * s, box.size * s)
+		# `bulk` verbreitert die Figur, ohne sie groesser zu machen. Modelle aus
+		# Charaktergeneratoren sind oft auffallend schlank; sieben Prozent mehr
+		# Breite wirken deutlich, ohne etwas sichtbar zu verzerren.
+		root.scale = Vector3(s * bulk, s, s * bulk)
+		box = AABB(Vector3(box.position.x * s * bulk, box.position.y * s, box.position.z * s * bulk),
+			Vector3(box.size.x * s * bulk, box.size.y * s, box.size.z * s * bulk))
 
 	# --- Knochenrollen zuordnen
 	var roles := {}
@@ -224,13 +254,75 @@ func _run() -> void:
 	var perr := scene.pack(root)
 	var err := ResourceSaver.save(scene, dst)
 	print("Meshes: %d (%d verworfen, %d Dreiecke gespart)" % [meshes.size(), dropped, dropped_tris])
-	print("Materialien mit Durchsichtigkeit: %d" % cut)
+	print("Materialien mit Durchsichtigkeit: %d  weggeschnittene Dreiecke: %d" % [cut, cut_tris])
 	print("Morphziele entfernt: %d" % shapes_dropped)
 	print("Dreiecke: %d  Hoehe: %.2f m" % [total, box.size.y])
 	print("Knochen zugeordnet: %d von %d" % [roles.size(), BONE_ROLES.size()])
 	if not missing.is_empty():
 		print("  NICHT gefunden: ", missing)
 	print("Gespeichert: %s (pack %d, save %d, %d ms)" % [dst, perr, err, Time.get_ticks_msec() - t0])
+
+
+## Schneidet Bereiche aus benannten Meshes heraus, etwa eine Kapuze, die ueber
+## dem Kopf liegt und die Figur wie eingepackt aussehen laesst.
+##
+## Entfernt werden nur Eintraege aus der Dreiecksliste. Die Eckpunkte bleiben
+## stehen, auch die unbenutzten: Knochen und Gewichte haengen an ihnen, und ein
+## Umsortieren waere die haeufigste Fehlerquelle beim Umgang mit verformten
+## Meshes. Die paar uebrigen Eckpunkte kosten nichts.
+func _cut_regions(meshes: Array) -> int:
+	if drop_regions.is_empty():
+		return 0
+	var body := _bounds(meshes)
+	var removed := 0
+	for m in meshes:
+		var mi := m as MeshInstance3D
+		var low := String(mi.name).to_lower()
+		var boxes: Array = []
+		for r in drop_regions:
+			if low.contains(str(r.mesh)):
+				var b: AABB = r.box
+				boxes.append(AABB(
+					body.position + Vector3(b.position.x * body.size.x, b.position.y * body.size.y, b.position.z * body.size.z),
+					Vector3(b.size.x * body.size.x, b.size.y * body.size.y, b.size.z * body.size.z)))
+		if boxes.is_empty():
+			continue
+		var xf := mi.global_transform
+		var fresh := ArrayMesh.new()
+		fresh.resource_name = mi.mesh.resource_name
+		var changed := false
+		for si in mi.mesh.get_surface_count():
+			var arrays: Array = mi.mesh.surface_get_arrays(si)
+			var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+			if not verts.is_empty() and not idx.is_empty():
+				var keep := PackedInt32Array()
+				for t in range(0, idx.size() - 2, 3):
+					var a := idx[t]
+					var b2 := idx[t + 1]
+					var c := idx[t + 2]
+					var mid: Vector3 = xf * ((verts[a] + verts[b2] + verts[c]) / 3.0)
+					var hit := false
+					for bx in boxes:
+						if (bx as AABB).has_point(mid):
+							hit = true
+							break
+					if hit:
+						removed += 1
+						continue
+					keep.append(a)
+					keep.append(b2)
+					keep.append(c)
+				if keep.size() != idx.size():
+					arrays[Mesh.ARRAY_INDEX] = keep
+					changed = true
+			var flags: int = int(mi.mesh.surface_get_format(si)) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
+			fresh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, flags)
+			fresh.surface_set_name(si, mi.mesh.surface_get_name(si))
+			fresh.surface_set_material(si, mi.mesh.surface_get_material(si))
+		if changed:
+			mi.mesh = fresh
+	return removed
 
 
 func _bounds(meshes: Array) -> AABB:

@@ -36,10 +36,12 @@ func setup(p_crowd, appearance: Dictionary, age: float, body_kind: String, level
 		level = clampi(level + perf.i("ped_lod_bias"), 0, 2)
 	lod = level
 	# Zugeliefertes Personenmodell, wenn eines passt und die Leistungsstufe es
-	# zulaesst: nur in Spielernaehe (level 0), nur fuer Erwachsene, und nur so
-	# viele gleichzeitig, wie PersonModels erlaubt. Sonst wie bisher die
-	# prozedurale Figur - nur die kann jedes Alter darstellen.
-	if level == 0 and age >= 18.0 and PersonModels.budget_left() > 0:
+	# zulaesst: im nahen und mittleren Umkreis (Stufe 0 und 1), nur fuer
+	# Erwachsene, und nur so viele gleichzeitig, wie PersonModels erlaubt.
+	# Jede Figur bekommt die Spielart, die gerade am seltensten zu sehen ist -
+	# sonst liefen fuenfmal dieselben Leute durch die Stadt.
+	# Sonst wie bisher die prozedurale Figur: nur die kann jedes Alter.
+	if level <= 1 and age >= 18.0 and PersonModels.budget_left() > 0:
 		var fitting: Array = []
 		for id in PersonModels.for_role("passant"):
 			if str(PersonModels.info(str(id)).get("sex", "")) == body_kind:

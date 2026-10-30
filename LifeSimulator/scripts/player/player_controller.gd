@@ -35,7 +35,12 @@ var character: Dictionary = {}
 var age := 24.0
 var vehicle: Node = null
 
-var body: Humanoid
+## Die sichtbare Figur: entweder eine prozedurale `Humanoid` oder ein
+## zugeliefertes Modell (`DetailedPerson`), wenn im Editor ein Aussehen gewaehlt
+## wurde. Beide bieten dieselben Methoden (height, eye_height, set_motion,
+## set_action, set_shadow_only) und das Signal `footstep`, deshalb steht hier
+## `Node3D` statt einer der beiden Klassen.
+var body: Node3D
 var collision: CollisionShape3D
 var cam_pivot: Node3D
 var spring: SpringArm3D
@@ -135,13 +140,27 @@ func refresh_body_from(d: Dictionary) -> void:
 func _build_body() -> void:
 	if body:
 		body.queue_free()
-	body = Humanoid.new()
-	body.name = "Body"
-	add_child(body)
-	body.setup(character.get("appearance", {}), age, str(character.get("body", "female")))
+	# Ein zugeliefertes Personenmodell als Aussehen ("Skin"), wenn eines
+	# gewaehlt ist. Nur fuer Erwachsene: ein fertiges Erwachsenenmodell kann
+	# kein Kind darstellen, dafuer bleibt die prozedurale Figur zustaendig.
+	var skin := str(character.get("skin", ""))
+	body = null
+	if skin != "" and age >= 18.0 and PersonModels.has_model(skin):
+		body = PersonModels.build(skin, false)
+	if body == null:
+		body = Humanoid.new()
+		body.name = "Body"
+		add_child(body)
+		body.setup(character.get("appearance", {}), age, str(character.get("body", "female")))
+	else:
+		body.name = "Body"
+		add_child(body)
 	body.rotation.y = body_yaw
 	body.footstep.connect(func(_side: int, intensity: float): footstep.emit(global_position, intensity))
-	var h := body.height()
+	# Typ ausgeschrieben: `body` ist nicht auf eine Figurenklasse festgelegt
+	# (es kann eine prozedurale oder eine fertige Figur sein), deshalb laesst
+	# sich der Rueckgabetyp nicht ableiten.
+	var h: float = body.height()
 	var crawling := age < 1.0
 	var r := clampf(0.17 * h / 1.75 + 0.04, 0.11, 0.3)
 	var ch := maxf(h * (0.45 if crawling else 0.96), r * 2.0 + 0.02)
