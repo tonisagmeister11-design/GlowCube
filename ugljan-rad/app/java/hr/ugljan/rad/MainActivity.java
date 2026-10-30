@@ -45,15 +45,31 @@ public class MainActivity extends Activity implements LocationListener {
     private long lastGpsTime;
     private SpeechRecognizer recognizer;
 
+    private static final int LIGHT_BARS = Build.VERSION.SDK_INT >= 26
+            ? View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+
+    /** Helles Design: dunkle Symbole in Status- und Navigationsleiste. */
+    private void lightBars() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsetsController c = getWindow().getInsetsController();
+            if (c == null) return;
+            int m = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            c.setSystemBarsAppearance(m, m);
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(LIGHT_BARS);
+        }
+    }
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
         Window w = getWindow();
-        w.setStatusBarColor(Color.parseColor("#14181D"));
-        w.setNavigationBarColor(Color.parseColor("#14181D"));
+        w.setStatusBarColor(Color.WHITE);
+        w.setNavigationBarColor(Color.WHITE);
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.parseColor("#14181D"));
+        root.setBackgroundColor(Color.parseColor("#F3F6FA"));
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets i = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -66,7 +82,7 @@ public class MainActivity extends Activity implements LocationListener {
         });
 
         web = new WebView(this);
-        web.setBackgroundColor(Color.parseColor("#0D1B26"));
+        web.setBackgroundColor(Color.parseColor("#A8D5F2"));
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -87,6 +103,7 @@ public class MainActivity extends Activity implements LocationListener {
         web.addJavascriptInterface(new Bridge(), "Android");
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
+        lightBars();
         web.loadUrl("file:///android_asset/index.html");
 
         lm = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -229,10 +246,11 @@ public class MainActivity extends Activity implements LocationListener {
                     } else {
                         c.show(WindowInsets.Type.systemBars());
                     }
+                    lightBars();
                 } else {
                     getWindow().getDecorView().setSystemUiVisibility(on
                             ? View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                            : 0);
+                            : LIGHT_BARS);
                 }
             });
         }

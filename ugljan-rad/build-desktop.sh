@@ -7,14 +7,7 @@ W=build/desktop
 rm -rf "$W" && mkdir -p "$W" dist
 cp desktop/main.js desktop/preload.js "$W"/
 cp -r app/assets "$W"/assets
-python3 - "$W" <<'PY'
-import sys
-from PIL import Image
-im = Image.open('app/res/drawable-nodpi/ic_cover_fg.png').convert('RGBA')
-w = im.size[0]; m = int(w * (1 - 72 / 108) / 2)
-c = im.crop((m, m, w - m, w - m)).resize((256, 256), Image.LANCZOS)
-c.save(sys.argv[1] + '/icon.png'); c.save(sys.argv[1] + '/icon.ico', sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-PY
+cp desktop/icon.png desktop/icon.ico "$W"/
 VER=$(grep -o 'versionName="[^"]*"' app/AndroidManifest.xml | cut -d'"' -f2)
 cat > "$W"/package.json <<JSON
 {

@@ -49,19 +49,19 @@
   }
 
   var CLASS = [
-    { n: 'Radweg', c: '#c8f53c', w: 4.5 },
-    { n: 'Ruhige Straße', c: '#8e9aa6', w: 2.6 },
-    { n: 'Feldweg', c: '#c49a6c', w: 2.6, d: '7 5' },
-    { n: 'Pfad', c: '#b09572', w: 2, d: '2 5' },
-    { n: 'Fußweg', c: '#76818c', w: 1.6, d: '2 4' },
-    { n: 'Landstraße', c: '#dde3e8', w: 3.6 },
+    { n: 'Radweg', c: '#0fae73', w: 4.5 },
+    { n: 'Ruhige Straße', c: '#8f9cab', w: 2.6 },
+    { n: 'Feldweg', c: '#a8743c', w: 2.6, d: '7 5' },
+    { n: 'Pfad', c: '#8d6c49', w: 2, d: '2 5' },
+    { n: 'Fußweg', c: '#a3acb6', w: 1.6, d: '2 4' },
+    { n: 'Landstraße', c: '#f2b134', w: 3.6 },
     { n: 'Hauptstraße', c: '#ff5a4e', w: 4.2 },
     { n: 'Hauptstraße', c: '#ff5a4e', w: 4.2 },
-    { n: 'Grober Weg', c: '#8a6c4c', w: 2.2, d: '4 4' }
+    { n: 'Grober Weg', c: '#7a5530', w: 2.2, d: '4 4' }
   ];
   var SURF = [
-    { n: 'Asphalt', c: '#c8f53c' }, { n: 'Pflaster', c: '#9fb3c4' }, { n: 'Verdichtet', c: '#e0c27a' },
-    { n: 'Schotter', c: '#c49a6c' }, { n: 'Erde', c: '#9a7650' }, { n: 'Fels', c: '#ff5a4e' }
+    { n: 'Asphalt', c: '#0fae73' }, { n: 'Pflaster', c: '#9fb3c4' }, { n: 'Verdichtet', c: '#e0c27a' },
+    { n: 'Schotter', c: '#a8743c' }, { n: 'Erde', c: '#9a7650' }, { n: 'Fels', c: '#ff5a4e' }
   ];
 
   // =====================================================================
@@ -467,7 +467,7 @@
   var peakF = D.pois.filter(function (p) { return p[0] === 'peak' && p[3]; }).map(function (p) { return ptF(p[1], p[2], { t: p[3] + (p[4].ele ? ' ' + p[4].ele + ' m' : '') }); });
   var poiF = D.pois.map(function (p, i) { return ptF(p[1], p[2], { i: i, cat: p[0], icon: 'poi-' + p[0] }); }).filter(function (f) { return f.properties.cat !== 'peak'; });
   var rl = D.relief;
-  var FONT = ['NotoSansMedium'], HALO = { 'text-halo-color': '#05080b', 'text-halo-width': 1.6, 'text-halo-blur': 0.4 };
+  var FONT = ['NotoSansMedium'], HALO = { 'text-halo-color': '#ffffff', 'text-halo-width': 1.6, 'text-halo-blur': 0.3 };
   var style = {
     version: 8,
     glyphs: BASE + 'glyphs/{fontstack}/{range}.pbf',
@@ -489,63 +489,63 @@
       route: { type: 'geojson', data: fc() }, cand: { type: 'geojson', data: fc() }, hover: { type: 'geojson', data: fc() }
     },
     layers: [
-      { id: 'bg', type: 'background', paint: { 'background-color': '#0d1b26' } },
-      { id: 'o-landuse', type: 'fill', source: 'ofm', 'source-layer': 'landuse', filter: ['in', ['get', 'class'], ['literal', ['residential', 'suburb', 'neighbourhood', 'commercial', 'retail', 'industrial', 'village']]], paint: { 'fill-color': '#272f2a' } },
-      { id: 'o-grass', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', ['grass', 'farmland', 'wetland']]], paint: { 'fill-color': '#202b21', 'fill-opacity': 0.7 } },
-      { id: 'o-wood', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest']]], paint: { 'fill-color': '#21382a' } },
-      { id: 'o-park', type: 'fill', source: 'ofm', 'source-layer': 'park', paint: { 'fill-color': '#21382a', 'fill-opacity': 0.5 } },
-      { id: 'o-water', type: 'fill', source: 'ofm', 'source-layer': 'water', paint: { 'fill-color': '#0d1b26' } },
-      { id: 'o-waterway', type: 'line', source: 'ofm', 'source-layer': 'waterway', minzoom: 8, paint: { 'line-color': '#1a3a52', 'line-width': 1.2 } },
-      { id: 'o-hillshade', type: 'hillshade', source: 'terrain', paint: { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#000a10', 'hillshade-highlight-color': 'rgba(230,245,200,0.16)', 'hillshade-accent-color': '#000000' } },
-      { id: 'o-boundary', type: 'line', source: 'ofm', 'source-layer': 'boundary', filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': '#93a0ad', 'line-width': 1.2, 'line-dasharray': [3, 2], 'line-opacity': 0.6 } },
-      { id: 'o-ferry', type: 'line', source: 'ofm', 'source-layer': 'transportation', filter: ['==', ['get', 'class'], 'ferry'], paint: { 'line-color': '#4fc3f7', 'line-width': 1.2, 'line-dasharray': [2, 2], 'line-opacity': 0.6 } },
-      { id: 'o-path', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 13, filter: ['all', ['==', ['get', 'class'], 'path'], ['!=', ['get', 'subclass'], 'cycleway']], paint: { 'line-color': '#b09572', 'line-width': wz(1.7), 'line-dasharray': [1, 2.5] } },
-      { id: 'o-track', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12, filter: ['==', ['get', 'class'], 'track'], paint: { 'line-color': '#c49a6c', 'line-width': wz(2.3), 'line-dasharray': [2.7, 1.9] } },
-      { id: 'o-minor', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['minor', 'service']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8e9aa6', 'line-width': wz(2.3) } },
-      { id: 'o-mid', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 7, filter: ['in', ['get', 'class'], ['literal', ['tertiary', 'secondary']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#dde3e8', 'line-width': wz(3.2) } },
-      { id: 'o-main-casing', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-join': 'round' }, paint: { 'line-color': '#14181d', 'line-width': wz(6.5), 'line-opacity': 0.7 } },
-      { id: 'o-main', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'class'], 'motorway', '#b23a33', '#ff5a4e'], 'line-width': wz(4) } },
-      { id: 'o-cycleway', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 10, filter: ['all', ['==', ['get', 'class'], 'path'], ['==', ['get', 'subclass'], 'cycleway']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#c8f53c', 'line-width': wz(3.4) } },
+      { id: 'bg', type: 'background', paint: { 'background-color': '#a8d5f2' } },
+      { id: 'o-landuse', type: 'fill', source: 'ofm', 'source-layer': 'landuse', filter: ['in', ['get', 'class'], ['literal', ['residential', 'suburb', 'neighbourhood', 'commercial', 'retail', 'industrial', 'village']]], paint: { 'fill-color': '#e7e3dc' } },
+      { id: 'o-grass', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', ['grass', 'farmland', 'wetland']]], paint: { 'fill-color': '#dcecd1', 'fill-opacity': 0.8 } },
+      { id: 'o-wood', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest']]], paint: { 'fill-color': '#c6e1b9' } },
+      { id: 'o-park', type: 'fill', source: 'ofm', 'source-layer': 'park', paint: { 'fill-color': '#c6e1b9', 'fill-opacity': 0.5 } },
+      { id: 'o-water', type: 'fill', source: 'ofm', 'source-layer': 'water', paint: { 'fill-color': '#a8d5f2' } },
+      { id: 'o-waterway', type: 'line', source: 'ofm', 'source-layer': 'waterway', minzoom: 8, paint: { 'line-color': '#7cb8e3', 'line-width': 1.2 } },
+      { id: 'o-hillshade', type: 'hillshade', source: 'terrain', paint: { 'hillshade-exaggeration': 0.35, 'hillshade-shadow-color': '#4b5d4b', 'hillshade-highlight-color': 'rgba(255,255,255,0.35)', 'hillshade-accent-color': '#6b7b6b' } },
+      { id: 'o-boundary', type: 'line', source: 'ofm', 'source-layer': 'boundary', filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': '#7d6a8f', 'line-width': 1.2, 'line-dasharray': [3, 2], 'line-opacity': 0.6 } },
+      { id: 'o-ferry', type: 'line', source: 'ofm', 'source-layer': 'transportation', filter: ['==', ['get', 'class'], 'ferry'], paint: { 'line-color': '#1e88e5', 'line-width': 1.2, 'line-dasharray': [2, 2], 'line-opacity': 0.6 } },
+      { id: 'o-path', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 13, filter: ['all', ['==', ['get', 'class'], 'path'], ['!=', ['get', 'subclass'], 'cycleway']], paint: { 'line-color': '#8d6c49', 'line-width': wz(1.7), 'line-dasharray': [1, 2.5] } },
+      { id: 'o-track', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12, filter: ['==', ['get', 'class'], 'track'], paint: { 'line-color': '#a8743c', 'line-width': wz(2.3), 'line-dasharray': [2.7, 1.9] } },
+      { id: 'o-minor', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['minor', 'service']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9aa6b3', 'line-width': wz(2.3) } },
+      { id: 'o-mid', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 7, filter: ['in', ['get', 'class'], ['literal', ['tertiary', 'secondary']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#f2b134', 'line-width': wz(3.2) } },
+      { id: 'o-main-casing', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': wz(6.5), 'line-opacity': 0.7 } },
+      { id: 'o-main', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'class'], 'motorway', '#e0533f', '#f28c5b'], 'line-width': wz(4) } },
+      { id: 'o-cycleway', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 10, filter: ['all', ['==', ['get', 'class'], 'path'], ['==', ['get', 'subclass'], 'cycleway']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0fae73', 'line-width': wz(3.4) } },
       { id: 'o-routes', type: 'raster', source: 'wmt', minzoom: 6, paint: { 'raster-opacity': 0.6, 'raster-fade-duration': 0 } },
       { id: 'o-poi', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['restaurant', 'fast_food', 'cafe', 'ice_cream', 'bakery', 'bar', 'beer', 'drinking_water', 'toilets', 'bicycle', 'attraction', 'castle', 'monument', 'museum', 'grocery', 'pharmacy', 'hospital', 'ferry_terminal', 'lodging', 'campsite']]], layout: { 'icon-image': ['match', ['get', 'class'], 'restaurant', 'poi-food', 'fast_food', 'poi-snack', 'cafe', 'poi-cafe', 'ice_cream', 'poi-cafe', 'bakery', 'poi-cafe', 'bar', 'poi-bar', 'beer', 'poi-bar', 'drinking_water', 'poi-water', 'toilets', 'poi-wc', 'bicycle', 'poi-bike', 'grocery', 'poi-shop', 'pharmacy', 'poi-health', 'hospital', 'poi-health', 'ferry_terminal', 'poi-ferry', 'lodging', 'poi-stay', 'campsite', 'poi-stay', 'poi-sight'], 'icon-allow-overlap': false } },
-      { id: 'o-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11, layout: { 'text-field': ['concat', ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], ['case', ['has', 'ele'], ['concat', ' ', ['to-string', ['get', 'ele']], ' m'], '']], 'text-font': ['NotoSansMedium'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#e9d8b4' }) },
-      { id: 'o-water-name', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 4, layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansItalic'], 'text-size': 12, 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#5f93b3' }) },
-      { id: 'o-place-small', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['village', 'hamlet', 'suburb', 'neighbourhood', 'isolated_dwelling', 'quarter']]], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 11.5, 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#c4cdd5' }) },
-      { id: 'o-place-town', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 7.5, filter: ['==', ['get', 'class'], 'town'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 13, 'text-transform': 'uppercase', 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#e3e9ee' }) },
-      { id: 'o-place-city', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 4, filter: ['==', ['get', 'class'], 'city'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 10, 17], 'text-transform': 'uppercase', 'text-letter-spacing': 0.12 }, paint: L_({ 'text-color': '#ffffff' }) },
-      { id: 'o-country', type: 'symbol', source: 'ofm', 'source-layer': 'place', maxzoom: 7, filter: ['==', ['get', 'class'], 'country'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 14, 'text-letter-spacing': 0.2, 'text-transform': 'uppercase' }, paint: L_({ 'text-color': '#93a0ad' }) },
-      { id: 'others', type: 'fill', source: 'others', paint: { 'fill-color': '#1a241f' } },
-      { id: 'coast', type: 'line', source: 'land', paint: { 'line-color': '#28485c', 'line-width': wz(7), 'line-opacity': 0.55 } },
-      { id: 'land', type: 'fill', source: 'land', paint: { 'fill-color': '#1f2b24' } },
-      { id: 'green', type: 'fill', source: 'green', paint: { 'fill-color': '#223a29' } },
-      { id: 'built', type: 'fill', source: 'built', paint: { 'fill-color': '#2c342f' } },
-      { id: 'relief', type: 'raster', source: 'relief', paint: { 'raster-opacity': 0.85, 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
-      { id: 'contours', type: 'line', source: 'contours', minzoom: 12.5, paint: { 'line-color': '#a6c08f', 'line-width': ['case', ['==', ['get', 'major'], 1], 1.3, 0.7], 'line-opacity': ['case', ['==', ['get', 'major'], 1], 0.42, 0.24] } },
+      { id: 'o-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11, layout: { 'text-field': ['concat', ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], ['case', ['has', 'ele'], ['concat', ' ', ['to-string', ['get', 'ele']], ' m'], '']], 'text-font': ['NotoSansMedium'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#6b4f2a' }) },
+      { id: 'o-water-name', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 4, layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansItalic'], 'text-size': 12, 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#2a6f9e' }) },
+      { id: 'o-place-small', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['village', 'hamlet', 'suburb', 'neighbourhood', 'isolated_dwelling', 'quarter']]], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 11.5, 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#3b4d5e' }) },
+      { id: 'o-place-town', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 7.5, filter: ['==', ['get', 'class'], 'town'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 13, 'text-transform': 'uppercase', 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#13263a' }) },
+      { id: 'o-place-city', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 4, filter: ['==', ['get', 'class'], 'city'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 10, 17], 'text-transform': 'uppercase', 'text-letter-spacing': 0.12 }, paint: L_({ 'text-color': '#0d1f30' }) },
+      { id: 'o-country', type: 'symbol', source: 'ofm', 'source-layer': 'place', maxzoom: 7, filter: ['==', ['get', 'class'], 'country'], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 14, 'text-letter-spacing': 0.2, 'text-transform': 'uppercase' }, paint: L_({ 'text-color': '#5f7184' }) },
+      { id: 'others', type: 'fill', source: 'others', paint: { 'fill-color': '#e8ecdf' } },
+      { id: 'coast', type: 'line', source: 'land', paint: { 'line-color': '#7fb8e0', 'line-width': wz(7), 'line-opacity': 0.55 } },
+      { id: 'land', type: 'fill', source: 'land', paint: { 'fill-color': '#eef2e6' } },
+      { id: 'green', type: 'fill', source: 'green', paint: { 'fill-color': '#cbe4bf' } },
+      { id: 'built', type: 'fill', source: 'built', paint: { 'fill-color': '#e6e2da' } },
+      { id: 'relief', type: 'raster', source: 'relief', paint: { 'raster-opacity': 0.55, 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
+      { id: 'contours', type: 'line', source: 'contours', minzoom: 12.5, paint: { 'line-color': '#a8844f', 'line-width': ['case', ['==', ['get', 'major'], 1], 1.3, 0.7], 'line-opacity': ['case', ['==', ['get', 'major'], 1], 0.42, 0.24] } },
       { id: 'routeglow', type: 'line', source: 'roads', filter: ['==', ['get', 'r'], 1], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffb020', 'line-width': wz(11), 'line-opacity': 0.26 } },
       { id: 'r-foot', type: 'line', source: 'roads', filter: ['==', ['get', 'c'], 4], paint: { 'line-color': ['get', 'col'], 'line-width': wz(['get', 'w']), 'line-dasharray': [1.2, 2.4] } },
       { id: 'r-path', type: 'line', source: 'roads', filter: ['==', ['get', 'c'], 3], paint: { 'line-color': ['get', 'col'], 'line-width': wz(['get', 'w']), 'line-dasharray': [1, 2.5] } },
       { id: 'r-rough', type: 'line', source: 'roads', filter: ['==', ['get', 'c'], 8], paint: { 'line-color': ['get', 'col'], 'line-width': wz(['get', 'w']), 'line-dasharray': [1.8, 1.8] } },
       { id: 'r-track', type: 'line', source: 'roads', filter: ['==', ['get', 'c'], 2], paint: { 'line-color': ['get', 'col'], 'line-width': wz(['get', 'w']), 'line-dasharray': [2.7, 1.9] } },
-      { id: 'r-casing', type: 'line', source: 'roads', filter: ['in', ['get', 'c'], ['literal', [5, 6, 7]]], layout: { 'line-join': 'round', 'line-sort-key': ['get', 'o'] }, paint: { 'line-color': '#14181d', 'line-width': wz(['+', 2.5, ['get', 'w']]), 'line-opacity': 0.7 } },
+      { id: 'r-casing', type: 'line', source: 'roads', filter: ['in', ['get', 'c'], ['literal', [5, 6, 7]]], layout: { 'line-join': 'round', 'line-sort-key': ['get', 'o'] }, paint: { 'line-color': '#ffffff', 'line-width': wz(['+', 2.5, ['get', 'w']]), 'line-opacity': 0.7 } },
       { id: 'r-solid', type: 'line', source: 'roads', filter: ['in', ['get', 'c'], ['literal', [0, 1, 5, 6, 7]]], layout: { 'line-cap': 'round', 'line-join': 'round', 'line-sort-key': ['get', 'o'] }, paint: { 'line-color': ['get', 'col'], 'line-width': wz(['get', 'w']), 'line-opacity': 0.95 } },
       { id: 'tour', type: 'line', source: 'tour', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ff5a4e', 'line-width': wz(5) } },
-      { id: 'cand-casing', type: 'line', source: 'cand', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#14181d', 'line-width': wz(11), 'line-opacity': 0.9 } },
+      { id: 'cand-casing', type: 'line', source: 'cand', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0d2b3e', 'line-width': wz(11), 'line-opacity': 0.9 } },
       { id: 'cand', type: 'line', source: 'cand', layout: { 'line-cap': 'round', 'line-join': 'round', 'line-sort-key': ['case', ['==', ['get', 'k'], 'scenic'], 1, 0] }, paint: { 'line-color': ['get', 'col'], 'line-width': wz(6) } },
-      { id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#14181d', 'line-width': wz(12), 'line-opacity': 0.92 } },
+      { id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0d2b3e', 'line-width': wz(12), 'line-opacity': 0.92 } },
       { id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'col'], 'line-width': wz(6.5) } },
       { id: 'track', type: 'line', source: 'track', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ff5a4e', 'line-width': wz(4), 'line-opacity': 0.85 } },
-      { id: 'acc-fill', type: 'fill', source: 'acc', paint: { 'fill-color': '#c8f53c', 'fill-opacity': 0.07 } },
-      { id: 'acc-line', type: 'line', source: 'acc', paint: { 'line-color': '#c8f53c', 'line-width': 1, 'line-opacity': 0.4 } },
-      { id: 'hover', type: 'circle', source: 'hover', paint: { 'circle-radius': 8, 'circle-color': '#ffffff', 'circle-stroke-color': '#14181d', 'circle-stroke-width': 3 } },
-      { id: 'cont-lbl', type: 'symbol', source: 'contLbl', minzoom: 14.5, layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansRegular'], 'text-size': 10, 'text-rotation-alignment': 'viewport' }, paint: L_({ 'text-color': '#a3b29a' }) },
-      { id: 'peaks', type: 'symbol', source: 'peaks', minzoom: 13.5, layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': 11, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, paint: L_({ 'text-color': '#e9d8b4' }) },
+      { id: 'acc-fill', type: 'fill', source: 'acc', paint: { 'fill-color': '#0fae73', 'fill-opacity': 0.07 } },
+      { id: 'acc-line', type: 'line', source: 'acc', paint: { 'line-color': '#0fae73', 'line-width': 1, 'line-opacity': 0.4 } },
+      { id: 'hover', type: 'circle', source: 'hover', paint: { 'circle-radius': 8, 'circle-color': '#ffffff', 'circle-stroke-color': '#0d2b3e', 'circle-stroke-width': 3 } },
+      { id: 'cont-lbl', type: 'symbol', source: 'contLbl', minzoom: 14.5, layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansRegular'], 'text-size': 10, 'text-rotation-alignment': 'viewport' }, paint: L_({ 'text-color': '#8a6d45' }) },
+      { id: 'peaks', type: 'symbol', source: 'peaks', minzoom: 13.5, layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': 11, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true }, paint: L_({ 'text-color': '#6b4f2a' }) },
       { id: 'pois', type: 'symbol', source: 'pois', minzoom: 12, filter: ['!', ['in', ['get', 'cat'], ['literal', ['bus', 'parking']]]], layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-ignore-placement': true } },
       { id: 'pois-minor', type: 'symbol', source: 'pois', minzoom: 15, filter: ['in', ['get', 'cat'], ['literal', ['bus', 'parking']]], layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-ignore-placement': true } },
-      { id: 'pl-loc', type: 'symbol', source: 'places', minzoom: 14, filter: ['==', ['get', 'k'], 'l'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#a9b39f' }) },
-      { id: 'pl-bay', type: 'symbol', source: 'places', minzoom: 13.2, filter: ['==', ['get', 'k'], 'b'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 12.5], 'text-max-width': 7 }, paint: L_({ 'text-color': '#7fb6d6' }) },
-      { id: 'pl-island', type: 'symbol', source: 'places', minzoom: 11, filter: ['==', ['get', 'k'], 'i'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 10.5, 15, 13], 'text-letter-spacing': 0.06 }, paint: L_({ 'text-color': '#cfe3ef' }) },
-      { id: 'pl-small', type: 'symbol', source: 'places', minzoom: 11.8, filter: ['==', ['get', 'k'], 's'], layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': ['interpolate', ['linear'], ['zoom'], 12, 9.5, 15, 12], 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#c4cdd5' }) },
-      { id: 'pl-village', type: 'symbol', source: 'places', minzoom: 9.8, filter: ['==', ['get', 'k'], 'v'], layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 15], 'text-transform': 'uppercase', 'text-letter-spacing': 0.14 }, paint: L_({ 'text-color': '#e8edf1' }) }
+      { id: 'pl-loc', type: 'symbol', source: 'places', minzoom: 14, filter: ['==', ['get', 'k'], 'l'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#5c6b4f' }) },
+      { id: 'pl-bay', type: 'symbol', source: 'places', minzoom: 13.2, filter: ['==', ['get', 'k'], 'b'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 12.5], 'text-max-width': 7 }, paint: L_({ 'text-color': '#2a6f9e' }) },
+      { id: 'pl-island', type: 'symbol', source: 'places', minzoom: 11, filter: ['==', ['get', 'k'], 'i'], layout: { 'text-field': ['get', 't'], 'text-font': ['NotoSansItalic'], 'text-size': ['interpolate', ['linear'], ['zoom'], 11, 10.5, 15, 13], 'text-letter-spacing': 0.06 }, paint: L_({ 'text-color': '#2c5470' }) },
+      { id: 'pl-small', type: 'symbol', source: 'places', minzoom: 11.8, filter: ['==', ['get', 'k'], 's'], layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': ['interpolate', ['linear'], ['zoom'], 12, 9.5, 15, 12], 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#3b4d5e' }) },
+      { id: 'pl-village', type: 'symbol', source: 'places', minzoom: 9.8, filter: ['==', ['get', 'k'], 'v'], layout: { 'text-field': ['get', 't'], 'text-font': FONT, 'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 15], 'text-transform': 'uppercase', 'text-letter-spacing': 0.14 }, paint: L_({ 'text-color': '#13263a' }) }
     ]
   };
   function L_(p) { for (var k in HALO) p[k] = HALO[k]; return p; }
@@ -591,7 +591,7 @@
   map.on('sourcedata', function (e) {
     if (!online && e.sourceId === 'ofm' && e.tile && e.tile.state === 'loaded') {
       online = true;
-      map.setPaintProperty('bg', 'background-color', '#1d2722');
+      map.setPaintProperty('bg', 'background-color', '#eef2e6');
       setVis('others', false);
     }
   });
@@ -601,9 +601,9 @@
     var cat = e.id.replace('poi-', ''); if (!CAT[cat] || map.hasImage(e.id)) return;
     var s = 56, cv = document.createElement('canvas'); cv.width = cv.height = s;
     var g = cv.getContext('2d');
-    g.fillStyle = 'rgba(0,0,0,0.35)'; rr(g, 4, 6, 48, 48, 17); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.22)'; rr(g, 4, 6, 48, 48, 17); g.fill();
     g.fillStyle = CAT[cat].c; rr(g, 4, 3, 48, 48, 17); g.fill();
-    g.strokeStyle = '#14181d'; g.lineWidth = 4; rr(g, 4, 3, 48, 48, 17); g.stroke();
+    g.strokeStyle = '#ffffff'; g.lineWidth = 4; rr(g, 4, 3, 48, 48, 17); g.stroke();
     g.save(); g.translate(13, 12); g.scale(30 / 24, 30 / 24);
     g.strokeStyle = '#14181d'; g.lineWidth = 2.4; g.lineCap = 'round'; g.lineJoin = 'round';
     var src = IC[cat], m, re = /<(path|circle|rect)([^>]*)\/>/g;
@@ -697,9 +697,9 @@
   var CAT = {
     food: { n: 'Restaurant', c: '#ff9f43' }, snack: { n: 'Imbiss', c: '#ff9f43' }, cafe: { n: 'Cafe', c: '#e8c07d' },
     bar: { n: 'Bar', c: '#c38bff' }, beach: { n: 'Strand', c: '#4fc3f7' }, water: { n: 'Trinkwasser', c: '#4fc3f7' },
-    wc: { n: 'Toilette', c: '#9fb3c4' }, view: { n: 'Aussichtspunkt', c: '#c8f53c' }, peak: { n: 'Gipfel', c: '#e9d8b4' },
+    wc: { n: 'Toilette', c: '#9fb3c4' }, view: { n: 'Aussichtspunkt', c: '#0fae73' }, peak: { n: 'Gipfel', c: '#e9d8b4' },
     sight: { n: 'Sehenswürdigkeit', c: '#f6e05e' }, shop: { n: 'Einkaufen', c: '#7ee0b0' }, health: { n: 'Gesundheit', c: '#ff7b7b' },
-    bike: { n: 'Fahrradservice', c: '#c8f53c' }, ferry: { n: 'Fähre', c: '#4fc3f7' }, stay: { n: 'Unterkunft', c: '#b39ddb' },
+    bike: { n: 'Fahrradservice', c: '#0fae73' }, ferry: { n: 'Fähre', c: '#4fc3f7' }, stay: { n: 'Unterkunft', c: '#b39ddb' },
     money: { n: 'Geld', c: '#7ee0b0' }, fuel: { n: 'Tankstelle', c: '#9fb3c4' }, port: { n: 'Hafen', c: '#4fc3f7' },
     bus: { n: 'Bus', c: '#9fb3c4' }, parking: { n: 'Parkplatz', c: '#6f8fb0' }
   };
@@ -859,7 +859,7 @@
     if (!meMarker) {
       var el = document.createElement('div');
       el.className = 'me';
-      el.innerHTML = '<svg id="meArrow" width="34" height="34" viewBox="0 0 34 34" style="display:none"><path d="M17 0 24 10H10z" fill="#c8f53c" stroke="#14181d" stroke-width="2"/></svg><div class="dot"></div>';
+      el.innerHTML = '<svg id="meArrow" width="34" height="34" viewBox="0 0 34 34" style="display:none"><path d="M17 0 24 10H10z" fill="#1aa874" stroke="#ffffff" stroke-width="2"/></svg><div class="dot"></div>';
       meMarker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'viewport' }).setLngLat([lon, lat]).addTo(map);
     }
     setSrc('acc', accPoly(lat, lon, Math.min(acc, 300)));
@@ -1078,9 +1078,9 @@
         me ? 'Du bist außerhalb von Ugljan. Suche einen Ort oder tippe auf die Karte: Karte und Route kommen dann online.' : 'Warte auf GPS. Tippe auf die Karte, um ein Ziel zu setzen.') + '</div>' +
       wxHtml() +
       '<div class="quick">' +
-      '<button data-act="juno">' + svg('juno', '#c8f53c', 24, 2) + 'Juno</button>' +
-      '<button data-act="loop">' + svg('loop', '#c8f53c', 24, 2) + 'Tour-Idee</button>' +
-      '<button data-act="near">' + svg('list', '#c8f53c', 24, 2) + 'In der Nähe</button>' +
+      '<button data-act="juno">' + svg('juno', '#0fae73', 24, 2) + 'Juno</button>' +
+      '<button data-act="loop">' + svg('loop', '#0fae73', 24, 2) + 'Tour-Idee</button>' +
+      '<button data-act="near">' + svg('list', '#0fae73', 24, 2) + 'In der Nähe</button>' +
       '<button data-act="free">' + svg('rec', '#ff5a4e', 24, 2.4) + 'Fahrt starten</button></div>' +
       '<h3>Essen in der Nähe' + (ref ? '' : ' von Preko') + '</h3><div class="list">' +
       nearby(base.lat, base.lon, ['food', 'snack', 'cafe'], 4).map(poiRow).join('') + '</div>' +
@@ -1152,7 +1152,7 @@
   var destMarker = null, viaMarkers = [];
   function setDestMarker(lat, lon) {
     if (destMarker) destMarker.remove();
-    var el = document.createElement('div'); el.innerHTML = '<div class="pin" style="background:#c8f53c">' + svg('flag', '#14181d', 15) + '</div>';
+    var el = document.createElement('div'); el.innerHTML = '<div class="pin" style="background:#0fae73">' + svg('flag', '#ffffff', 15) + '</div>';
     destMarker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [9, -2] }).setLngLat([lon, lat]).addTo(map);
   }
   function clearMarkers() {
@@ -1297,7 +1297,7 @@
     drawRouteSheet();
     setFollow(false); fitTo(boundsOf(routeLL(r)));
   }
-  var CAND_COL = { fast: '#4fc3f7', scenic: '#c8f53c' };
+  var CAND_COL = { fast: '#1e88e5', scenic: '#17b26a' };
   function chooseRoute(pts, title, opt) {
     var res = {};
     if (isLocal(pts)) {
@@ -1375,7 +1375,7 @@
     setFollow(false); fitTo(boundsOf(allPts));
   }
   function L2(a, b) { var o = {}; for (var k in a) o[k] = a[k]; for (k in b) o[k] = b[k]; return o; }
-  function gradeColor(g) { return g > 0.10 ? '#ff5a4e' : g > 0.06 ? '#ff922b' : g > 0.03 ? '#ffd43b' : g < -0.04 ? '#4fc3f7' : '#c8f53c'; }
+  function gradeColor(g) { return g > 0.10 ? '#e5383b' : g > 0.06 ? '#f77f00' : g > 0.03 ? '#f2c200' : g < -0.04 ? '#1e88e5' : '#17b26a'; }
   function drawRoute(r) {
     var ll = routeLL(r), f = [], n = ll.length;
     // nach Steigung eingefaerbt, in 80-m-Abschnitten
@@ -1484,7 +1484,7 @@
     var stp = Math.max(1, Math.floor(r.cum.length / 120));
     for (var k = 0; k < r.cum.length; k += stp) pts += (r.cum[k] / r.len * w).toFixed(1) + ',' + (h - 2 - (r.ele[k] - lo) / (hi - lo) * (h - 4)).toFixed(1) + ' ';
     pts += w + ',' + h;
-    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><polygon points="' + pts + '" fill="#c8f53c" fill-opacity="0.25" stroke="#c8f53c" stroke-width="1.2"/></svg>';
+    return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><polygon points="' + pts + '" fill="#0fae73" fill-opacity="0.25" stroke="#0fae73" stroke-width="1.2"/></svg>';
   }
   function idxAt(r, d) { var lo = 0, hi = r.cum.length - 1; while (lo < hi) { var m = (lo + hi) >> 1; if (r.cum[m] < d) lo = m + 1; else hi = m; } return lo; }
   function bindProfile(r, el, info) {
@@ -1823,10 +1823,10 @@
       '<h3>Meine Fahrten</h3>' +
       (rides.length ? rides.map(function (r, k) {
         var d = new Date(r.t);
-        return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
+        return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 5.1 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 5.2 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -2160,7 +2160,7 @@
     res.sort(function (a, b) { return a.k - b.k || a.d - b.d; });
     res = res.slice(0, 40);
     box.innerHTML = res.length ? res.map(function (x) {
-      if (x.place != null) { var p = D.places[x.place]; return '<div class="row" data-place="' + x.place + '"><div class="ico">' + svg('pin', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + esc(p[0]) + '</div><div class="s">' + ({ village: 'Dorf', town: 'Ort', hamlet: 'Weiler', bay: 'Bucht', cape: 'Kap', peninsula: 'Halbinsel', locality: 'Flurname', island: 'Insel', islet: 'Inselchen', isolated_dwelling: 'Einzelgehöft' }[p[3]] || 'Ortsteil') + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
+      if (x.place != null) { var p = D.places[x.place]; return '<div class="row" data-place="' + x.place + '"><div class="ico">' + svg('pin', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + esc(p[0]) + '</div><div class="s">' + ({ village: 'Dorf', town: 'Ort', hamlet: 'Weiler', bay: 'Bucht', cape: 'Kap', peninsula: 'Halbinsel', locality: 'Flurname', island: 'Insel', islet: 'Inselchen', isolated_dwelling: 'Einzelgehöft' }[p[3]] || 'Ortsteil') + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
       if (x.street != null) { var s = STREETS[x.street]; return '<div class="row" data-street="' + x.street + '"><div class="ico">' + svg('road', '#9fb3c4', 18) + '</div><div class="grow"><div class="t">' + esc(s.name) + '</div><div class="s">Straße/Weg &middot; ' + esc(nearestPlace(s.lat, s.lon, true)[0]) + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
       return poiRow(x);
     }).join('') : '<div class="row" id="noLocal"><div class="s">Auf Ugljan nichts gefunden. Tipp: auch "Strand", "Eis", "Wasser" oder "Pizza" geht.</div></div>';
@@ -2323,7 +2323,7 @@
       return html + '</div>';
     }).join('');
     var canMic = A && A.canListen && (function () { try { return A.canListen(); } catch (e) { return false; } })();
-    sheet('<div style="display:flex;align-items:center;gap:10px"><div class="ico" style="width:42px;height:42px">' + svg('juno', '#c8f53c', 24, 2) + '</div><div class="grow"><h2>Juno</h2><div class="sub" style="font-size:13px">Deine Rad-KI. Kennt deine Fahrdaten, sucht echte Orte, plant Routen.</div></div>' +
+    sheet('<div style="display:flex;align-items:center;gap:10px"><div class="ico" style="width:42px;height:42px">' + svg('juno', '#0fae73', 24, 2) + '</div><div class="grow"><h2>Juno</h2><div class="sub" style="font-size:13px">Deine Rad-KI. Kennt deine Fahrdaten, sucht echte Orte, plant Routen.</div></div>' +
       (juno.length ? '<button class="chip sm" id="junoClear">Neu</button>' : '') + '</div>' +
       (juno.length ? '' : '<div class="sugg">' + JUNO_SUGG.map(function (q) { return '<button data-jq="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>') +
       '<div class="chatlog" id="chatlog">' + log + '</div>' +
