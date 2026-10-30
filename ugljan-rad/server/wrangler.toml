@@ -1,0 +1,17 @@
+name = "ugljan-rad-ki"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+# Eingebaute Cloudflare-KI (Workers AI)
+[ai]
+binding = "AI"
+
+# Kennung, die die App mitschickt (frei wählbar, hier ändern)
+[vars]
+APP_ID = "ugljan-rad-2026"
+
+# Limit pro IP: 10 Anfragen pro Minute
+[[ratelimits]]
+name = "LIMIT"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
