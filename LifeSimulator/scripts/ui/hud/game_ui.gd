@@ -46,6 +46,7 @@ func _ready() -> void:
 	add_to_group("ui_root")
 	_build_hud()
 	_build_extras()
+	_build_creative_badge()
 	EventBus.request_route.connect(_on_request_route)
 	EventBus.notify.connect(_toast)
 	EventBus.interaction_available.connect(func(t): _prompt_lbl.text = "[%s]  %s" % [Settings.binding_label("interact"), t]; _prompt.visible = true)
@@ -345,6 +346,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		open_map()
 		get_viewport().set_input_as_handled()
 		return
+	if InputMap.has_action("creative_menu") and event.is_action_pressed("creative_menu") and CreativeTools.active(world):
+		if _panel == null:
+			_open_creative()
+		else:
+			_close_panel()
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("pause"):
 		if _panel:
 			_close_panel()
@@ -367,6 +375,8 @@ func _on_open_panel(kind: String, ctx := {}) -> void:
 		open_phone()
 	elif kind == "map":
 		open_map()
+	elif kind == "creative":
+		_open_creative()
 	elif kind == "jail":
 		_open_jail()
 	elif kind == "crime_car":
@@ -414,6 +424,159 @@ func _new_panel(title: String, subtitle := "") -> VBoxContainer:
 	head.add_child(close)
 	v.add_child(head)
 	return v
+
+
+# ============================================================ Kreativmodus
+
+var _creative_tab := "geld"
+var _creative_filter := ""
+var _creative_qty := 1
+
+
+## Kleines Abzeichen, damit man nicht vergisst, dass Cheats aktiv sind.
+func _build_creative_badge() -> void:
+	if not CreativeTools.active(world):
+		return
+	var l := _label("KREATIV  ·  %s Menü  ·  %s Fliegen  ·  %s Wände" % [
+		Settings.binding_label("creative_menu"), Settings.binding_label("creative_fly"),
+		Settings.binding_label("creative_noclip")], "CaptionLabel")
+	l.set_anchors_preset(PRESET_CENTER_TOP)
+	l.grow_horizontal = GROW_DIRECTION_BOTH
+	l.position = Vector2(0, 4)
+	l.modulate = Color(0.78, 0.55, 1.0, 0.9)
+	l.mouse_filter = MOUSE_FILTER_IGNORE
+	add_child(l)
+
+
+func _open_creative(tab := "") -> void:
+	if not CreativeTools.active(world):
+		return
+	if tab != "":
+		_creative_tab = tab
+	var v := _new_panel("Kreativmodus", "Testwerkzeuge – gibt es nur in diesem Modus")
+	var tabs := HBoxContainer.new()
+	for t in [["geld", "Geld"], ["dinge", "Dinge"], ["fahrzeuge", "Fahrzeuge"],
+			["spieler", "Spieler"], ["welt", "Welt"], ["story", "Story"]]:
+		var b := Button.new()
+		b.text = str(t[1])
+		b.toggle_mode = true
+		b.button_pressed = _creative_tab == str(t[0])
+		b.theme_type_variation = "ChipButton"
+		var key: String = str(t[0])
+		b.pressed.connect(func(): _open_creative(key))
+		tabs.add_child(b)
+	v.add_child(tabs)
+	var list := _scroll_list(v, 360)
+	match _creative_tab:
+		"geld": _creative_money(list)
+		"dinge": _creative_items(list, v)
+		"fahrzeuge": _creative_vehicles(list)
+		"spieler": _creative_player(list)
+		"welt": _creative_world(list)
+		"story": _creative_story(list)
+
+
+func _creative_money(list: VBoxContainer) -> void:
+	_row(list, "Kontostand", Economy.fmt_money(world.ledger.balance(int(world.player.account))), "Aktualisieren", func(): _open_creative("geld"))
+	for amount in [1000.0, 100000.0, 10000000.0]:
+		var a: float = amount
+		_row(list, "+ %s" % Economy.fmt_money(a), "Wird als Geld von außerhalb der Stadt gebucht.", "Geben", func():
+			CreativeTools.give_money(world, a)
+			_open_creative("geld"))
+
+
+func _creative_items(list: VBoxContainer, v: VBoxContainer) -> void:
+	var search := LineEdit.new()
+	search.placeholder_text = "Suchen (Name oder Kennung)"
+	search.text = _creative_filter
+	search.text_changed.connect(func(t: String): _creative_filter = t)
+	search.text_submitted.connect(func(_t): _open_creative("dinge"))
+	list.add_child(search)
+	var q := SpinBox.new()
+	q.min_value = 1
+	q.max_value = 999
+	q.value = _creative_qty
+	q.prefix = "Menge "
+	q.value_changed.connect(func(x: float): _creative_qty = int(x))
+	list.add_child(q)
+	var shown := 0
+	for id in CreativeTools.item_ids():
+		var g: Dictionary = GoodsCatalog.get_good(id)
+		var f := _creative_filter.to_lower()
+		if f != "" and not (str(g.name).to_lower().contains(f) or id.contains(f)):
+			continue
+		var gid: String = id
+		_row(list, str(g.name), "%s · im Inventar: %d" % [id, int(world.player.inventory.get(id, 0))], "Geben", func():
+			CreativeTools.give_item(world, gid, _creative_qty)
+			_toast("%d× %s" % [_creative_qty, str(GoodsCatalog.get_good(gid).name)], "success"))
+		shown += 1
+		if shown >= 40:
+			list.add_child(_label("Weitere Treffer: Suche eingrenzen.", "CaptionLabel"))
+			break
+
+
+func _creative_vehicles(list: VBoxContainer) -> void:
+	_row(list, "Alle Fahrzeuge", "Jedes Fahrzeug einmal, einschließlich der KALDRA-Modelle.", "Alle geben", func():
+		var n := CreativeTools.give_all_vehicles(world)
+		_toast("%d Fahrzeuge erhalten." % n, "success"))
+	for id in CreativeTools.vehicle_ids():
+		var g: Dictionary = GoodsCatalog.get_good(id)
+		var gid: String = id
+		_row(list, str(g.name), "Ohne Kauf, ohne Altersgrenze.", "Geben", func():
+			CreativeTools.give_item(world, gid, 1)
+			_toast("%s erhalten." % str(GoodsCatalog.get_good(gid).name), "success"))
+
+
+func _creative_player(list: VBoxContainer) -> void:
+	_row(list, "Heilen", "Alle Bedürfnisse und die Gesundheit auf 100.", "Heilen", func():
+		CreativeTools.heal_all(world)
+		_toast("Bedürfnisse aufgefüllt.", "success"))
+	_row(list, "Fahndung löschen", "Setzt die Fahndungsstufe auf 0.", "Löschen", func():
+		CreativeTools.clear_wanted(world)
+		_toast("Fahndung gelöscht.", "success"))
+	var pl := get_tree().get_first_node_in_group("player")
+	if pl != null and pl.has_method("set_fly"):
+		_row(list, "Fliegen", "Taste %s. Leertaste hoch, Strg runter, Shift schneller." % Settings.binding_label("creative_fly"),
+			"An/Aus", func():
+				pl.set_fly(not pl.fly_mode)
+				_close_panel())
+		_row(list, "Durch Wände", "Taste %s. Keine Kollision mit Gebäuden." % Settings.binding_label("creative_noclip"),
+			"An/Aus", func():
+				pl.set_noclip(not pl.noclip_mode)
+				_close_panel())
+
+
+func _creative_world(list: VBoxContainer) -> void:
+	for h in [[6.0, "Morgen (6 Uhr)"], [12.0, "Mittag (12 Uhr)"], [18.0, "Abend (18 Uhr)"], [0.0, "Mitternacht"]]:
+		var hh: float = h[0]
+		_row(list, "Uhrzeit: %s" % str(h[1]), "", "Setzen", func():
+			CreativeTools.set_hour(world, hh)
+			_toast("Uhrzeit gesetzt.", "success"))
+	for t in [["supermarket", "Supermarkt"], ["car_dealer", "Autohaus"], ["job_center", "Jobcenter"],
+			["hospital", "Krankenhaus"], ["bank", "Bank"], ["gas_station", "Tankstelle"]]:
+		var kind: String = str(t[0])
+		_row(list, "Teleport: %s" % str(t[1]), "Zum nächstgelegenen.", "Hin", func():
+			if CreativeTools.teleport_to_kind(world, kind):
+				_close_panel()
+			else:
+				_toast("Keines gefunden.", "warning"))
+
+
+func _creative_story(list: VBoxContainer) -> void:
+	_row(list, "Alle Kapitel freischalten", "Ohne Bandenbeitritt.", "Freischalten", func():
+		var n := CreativeTools.unlock_story(world)
+		_toast("%d Kapitel freigeschaltet." % n, "success"))
+	for c in StoryCatalog.CHAPTERS:
+		for mid in c.get("missions", []):
+			var m: Dictionary = StoryCatalog.mission(str(mid))
+			if m.is_empty():
+				continue
+			var id: String = str(mid)
+			_row(list, str(m.get("title", id)), "Kapitel: %s" % str(c.title), "Starten", func():
+				var r := CreativeTools.start_mission(world, id)
+				_report(r, "Auftrag gestartet.")
+				if r.get("ok", false):
+					_close_panel())
 
 
 func _close_panel() -> void:

@@ -13,7 +13,7 @@ const LIFE_STAGES := {
 	"older_adult": "Reifes Alter", "senior": "Seniorenalter",
 }
 const BODY_LABELS := {"female": "Weiblich", "male": "Männlich"}
-const MODE_ICONS := {"life": "heart", "sandbox": "sliders", "free": "leaf"}
+const MODE_ICONS := {"life": "heart", "sandbox": "sliders", "free": "leaf", "creative": "sparkle"}
 const EDUCATION_LABELS := {
 	"none": "Kein Abschluss", "school": "Schulabschluss", "vocational": "Berufsausbildung",
 	"bachelor": "Bachelor", "master": "Master", "doctor": "Promotion",

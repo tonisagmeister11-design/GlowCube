@@ -62,6 +62,12 @@ var _step_smooth := 0.0
 var _pivot_base := 1.5
 var _mouse_captured := false
 
+## Kreativmodus: Fliegen und Durch-Waende-Gehen. Beides wirkt nur, wenn die
+## Welt im Modus "creative" laeuft, sonst werden die Tasten ignoriert.
+var fly_mode := false
+var noclip_mode := false
+var _saved_mask := 1
+
 
 func _ready() -> void:
 	add_to_group("player")
@@ -369,6 +375,10 @@ func _physics_process(delta: float) -> void:
 	if vehicle:
 		_vehicle_physics()
 		return
+	_creative_toggles()
+	if fly_mode:
+		_fly(delta)
+		return
 	var input := Vector2.ZERO
 	var active := controls_enabled and not _ui_blocked()
 	if active:
@@ -419,6 +429,68 @@ func _physics_process(delta: float) -> void:
 			var v := _nearest_vehicle()
 			if v:
 				enter_vehicle(v)
+
+
+## Ist der Kreativmodus aktiv? Nur dann gelten die Flugtasten.
+func _creative_active() -> bool:
+	var w = Game.world
+	return w != null and CreativeTools.active(w)
+
+
+func _creative_toggles() -> void:
+	if not _creative_active():
+		if fly_mode or noclip_mode:
+			set_fly(false)
+			set_noclip(false)
+		return
+	if _ui_blocked() or not controls_enabled:
+		return
+	if Input.is_action_just_pressed("creative_fly"):
+		set_fly(not fly_mode)
+	if Input.is_action_just_pressed("creative_noclip"):
+		set_noclip(not noclip_mode)
+
+
+func set_fly(on: bool) -> void:
+	if on and not _creative_active():
+		return
+	fly_mode = on
+	velocity = Vector3.ZERO
+	if Game.world != null:
+		Game.world.notify("Fliegen %s" % ("an" if on else "aus"), "info")
+
+
+func set_noclip(on: bool) -> void:
+	if on and not _creative_active():
+		return
+	if on and not noclip_mode:
+		_saved_mask = collision_mask
+	noclip_mode = on
+	collision_mask = 0 if on else _saved_mask
+	if Game.world != null:
+		Game.world.notify("Durch Wände %s" % ("an" if on else "aus"), "info")
+
+
+## Freiflug: Blickrichtung bestimmt die Richtung, Leertaste hoch, Strg runter,
+## Shift schneller. Keine Schwerkraft.
+func _fly(delta: float) -> void:
+	var active := controls_enabled and not _ui_blocked()
+	var input := Vector2.ZERO
+	var rise := 0.0
+	if active:
+		input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+		rise = (1.0 if Input.is_action_pressed("jump") else 0.0) - (1.0 if Input.is_action_pressed("fly_down") else 0.0)
+	var fwd := Vector3(-sin(cam_yaw), 0.0, -cos(cam_yaw))
+	var right := Vector3(cos(cam_yaw), 0.0, -sin(cam_yaw))
+	var wish := right * input.x + fwd * (-input.y) + Vector3.UP * rise
+	if wish.length() > 1.0:
+		wish = wish.normalized()
+	var speed := 14.0 * (3.0 if (active and Input.is_action_pressed("sprint")) else 1.0)
+	velocity = velocity.lerp(wish * speed, 1.0 - exp(-8.0 * delta))
+	move_and_slide()
+	if body:
+		var hs := Vector2(velocity.x, velocity.z).length()
+		body.set_motion(minf(hs, 3.0), false)
 
 
 func _move_with_steps(delta: float, was_on_floor: bool) -> void:

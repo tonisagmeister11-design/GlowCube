@@ -19,7 +19,7 @@ const SITUATIONS := {
 	"homeless": ["Obdachlos", "warning", "Kein Dach über dem Kopf und kaum Geld. Eine harte Herausforderung."],
 	"wealthy": ["Wohlhabend", "trophy", "Großes Startvermögen und ein eigenes Haus in guter Lage."],
 }
-const POP_DEFAULTS := {"life": 2400, "sandbox": 2400, "free": 2000}
+const POP_DEFAULTS := {"life": 2400, "sandbox": 2400, "free": 2000, "creative": 2000}
 
 var step := 0
 var mode := "life"
@@ -194,7 +194,7 @@ func _build_stepper() -> void:
 func _page_mode() -> void:
 	var scroll_v := UIKit.vbox(22)
 	var cards := UIKit.hbox(18)
-	for m in ["life", "sandbox", "free"]:
+	for m in ["life", "sandbox", "free", "creative"]:
 		cards.add_child(_mode_card(m))
 	scroll_v.add_child(cards)
 	if mode == "sandbox":
@@ -216,14 +216,14 @@ func _mode_card(m: String) -> Control:
 	var card := UISelectCard.new(UITheme.RADIUS_L, 24)
 	card.size_flags_horizontal = SIZE_EXPAND_FILL
 	card.selected = m == mode
-	var accent: Color = {"life": UITheme.ACCENT, "sandbox": UITheme.WARM, "free": UITheme.SUCCESS}[m]
+	var accent: Color = {"life": UITheme.ACCENT, "sandbox": UITheme.WARM, "free": UITheme.SUCCESS, "creative": Color(0.72, 0.45, 1.0)}[m]
 	card.set_accent(accent)
 	var v := UIKit.vbox(10)
 	var top := UIKit.hbox(14)
 	top.add_child(UIKit.icon_badge(UIKit.MODE_ICONS[m], accent, 56, 0.48))
 	var tv := UIKit.vbox(0)
 	tv.add_child(UIKit.label(GameRules.MODES[m].label, "TitleLabel"))
-	var tags := {"life": "Volle Simulation", "sandbox": "Deine Regeln", "free": "Entspannt spielen"}
+	var tags := {"life": "Volle Simulation", "sandbox": "Deine Regeln", "free": "Entspannt spielen", "creative": "Testmodus"}
 	tv.add_child(UIKit.label(tags[m], "CaptionLabel"))
 	tv.size_flags_horizontal = SIZE_EXPAND_FILL
 	top.add_child(tv)

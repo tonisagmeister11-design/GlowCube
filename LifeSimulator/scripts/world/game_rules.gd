@@ -7,6 +7,7 @@ extends RefCounted
 const MODES := {
 	"life": {"label": "Lebensmodus", "desc": "Das volle Leben: Alterung, Bedürfnisse, Rechnungen, Krankheit und Tod."},
 	"sandbox": {"label": "Sandbox", "desc": "Alle Regeln frei einstellbar – Startgeld, Alterung, Wirtschaft, Kriminalität und Tod."},
+	"creative": {"label": "Kreativ", "desc": "Testmodus: viel Geld, Fliegen, alles direkt bekommen, kein Tod, keine Rechnungen. Zum Ausprobieren aller Funktionen."},
 	"free": {"label": "Freier Modus", "desc": "Entspannt spielen: langsame Bedürfnisse, kein Tod durch Vernachlässigung, großzügiger Start."},
 }
 
@@ -36,6 +37,9 @@ const PRESETS := {
 	"sandbox": {"start_money": 5000.0, "days_per_year": 3, "aging": true, "needs_decay": 1.0, "needs_can_harm": true,
 		"price_level": 1.0, "wage_level": 1.0, "rent_required": true, "crime_rate": 1.0, "police_strictness": 1.0,
 		"death": "new_character", "illness": true, "lifespan": 82, "population": 2400, "city_size": "medium"},
+	"creative": {"start_money": 1000000.0, "days_per_year": 6, "aging": false, "needs_decay": 0.0, "needs_can_harm": false,
+		"price_level": 1.0, "wage_level": 1.0, "rent_required": false, "crime_rate": 0.3, "police_strictness": 0.0,
+		"death": "disabled", "illness": false, "lifespan": 95, "population": 2000, "city_size": "medium"},
 	"free": {"start_money": 25000.0, "days_per_year": 6, "aging": true, "needs_decay": 0.4, "needs_can_harm": false,
 		"price_level": 0.8, "wage_level": 1.3, "rent_required": true, "crime_rate": 0.6, "police_strictness": 0.6,
 		"death": "disabled", "illness": false, "lifespan": 95, "population": 2000, "city_size": "medium"},
