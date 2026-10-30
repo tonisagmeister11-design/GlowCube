@@ -11,12 +11,12 @@ Kostenlos im Rahmen des Cloudflare-Gratis-Kontingents, ohne fremden API-Key.
    npx wrangler login
    npx wrangler deploy
    ```
-4. Wrangler zeigt am Ende die Adresse, z. B. `https://ugljan-rad-ki.DEINNAME.workers.dev`
+4. Wrangler zeigt am Ende die Adresse, z. B. `https://ugljan-rad-ki.toni-sagmeister11.workers.dev`
 
 ## Testen
 
 ```
-curl -X POST https://ugljan-rad-ki.DEINNAME.workers.dev/ki \
+curl -X POST https://ugljan-rad-ki.toni-sagmeister11.workers.dev/ki \
   -H "Content-Type: application/json" -H "X-App-Id: ugljan-rad-2026" \
   -d '{"frage":"Was kann man in Kukljica am Abend machen?"}'
 ```

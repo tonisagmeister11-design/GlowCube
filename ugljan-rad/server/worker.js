@@ -3,7 +3,7 @@
 // und gibt die Antwort zurück. Kein fremder API-Key nötig, kein Schlüssel in der App.
 // Schutz: Limit pro Gerät/IP und maximale Textlänge, damit niemand das Gratis-Kontingent leerfragt.
 
-const MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
 const SYSTEM = 'Du bist der Fahrrad-Assistent der App "Ugljan Rad". Antworte kurz, freundlich und auf Deutsch. ' +
   'Du hilfst bei Radtouren, Sehenswürdigkeiten, Pausen und Tipps unterwegs. Erfinde keine Fakten über Orte.';
 
@@ -45,8 +45,12 @@ export default {
         ],
         max_tokens: 400
       });
-      return json({ antwort: out.response });
+      // Cloudflare liefert je nach Modell-Version das alte ({response}) oder das neue Format ({choices})
+      const antwort = (out && (out.response || (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content))) || '';
+      if (!antwort) throw new Error('Leere Antwort: ' + JSON.stringify(out).slice(0, 200));
+      return json({ antwort: String(antwort).trim() });
     } catch (e) {
+      console.error('KI-Fehler', e && e.message);
       // z. B. wenn das Tageskontingent aufgebraucht ist
       return json({ fehler: 'KI gerade nicht verfügbar, bitte später nochmal.' }, 503);
     }
