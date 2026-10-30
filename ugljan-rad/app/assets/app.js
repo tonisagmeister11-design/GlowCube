@@ -83,7 +83,8 @@
   S = {
     bike: BIKES[S.bike] ? S.bike : 'city', fit: FIT[S.fit] ? S.fit : 'normal', style: STYLES[S.style] ? S.style : 'scenic', headUp: !!S.headUp,
     voice: S.voice !== false, wind: S.wind !== false, relief: S.relief !== false, contours: S.contours !== false,
-    routes: S.routes !== false, labels: S.labels !== false
+    routes: S.routes !== false, labels: S.labels !== false,
+    tourDur: S.tourDur || 120, tourDiff: S.tourDiff != null ? S.tourDiff : 1, tourBeauty: S.tourBeauty != null ? S.tourBeauty : 2
   };
   function saveS() { store('settings', S); }
 
@@ -292,8 +293,9 @@
     r.minEle = Math.min.apply(null, ele); r.maxEle = Math.max.apply(null, ele);
     var L = r.len, mixS = r.mixS;
     var rough = ((mixS[3] || 0) + (mixS[4] || 0) * 1.5 + (mixS[5] || 0) * 3) / Math.max(1, L);
-    var score = asc / Math.max(0.5, L / 1000) + maxG * 60 + rough * 15 + Math.min(L, 40000) / 4000;
-    r.diff = score < 12 ? 0 : score < 24 ? 1 : 2;
+    // Schwierigkeit: Hoehenmeter pro km, steilste Stelle, Gesamt-Hoehenmeter, grober Belag
+    var score = asc / Math.max(1, L / 1000) + Math.min(maxG, 0.25) * 30 + asc / 120 + rough * 10;
+    r.diff = score < 9 ? 0 : score < 20 ? 1 : 2;
     r.quiet = Math.round(((r.mixC[0] || 0) + (r.mixC[1] || 0) + (r.mixC[2] || 0) + (r.mixC[8] || 0)) / Math.max(1, L) * 100);
   }
   function routeLL(r) { return r.la.map(function (a, i) { return [a, r.lo[i]]; }); }
@@ -320,9 +322,9 @@
     4: ['Scharf links', 'scharf links abbiegen', -140], 5: ['Rechts abbiegen', 'rechts abbiegen', 90], 6: ['Leicht rechts', 'leicht rechts halten', 40],
     7: ['Scharf rechts', 'scharf rechts abbiegen', 140], 8: ['Links halten', 'links halten', -30], 9: ['Rechts halten', 'rechts halten', 30],
     10: ['Wenden', 'wenden', -170], 11: ['Wenden', 'wenden', -170], 12: ['Wenden', 'wenden', 170] };
-  function fetchExt(pts, style) {
+  function fetchExt(pts, style, profile) {
     var url = 'https://brouter.de/brouter?lonlats=' + pts.map(function (p) { return p.lon.toFixed(6) + ',' + p.lat.toFixed(6); }).join('|') +
-      '&profile=' + brProfile(style) + '&alternativeidx=0&format=geojson&timode=2';
+      '&profile=' + (profile || brProfile(style)) + '&alternativeidx=0&format=geojson&timode=2';
     return fetch(url).then(function (res) {
       return res.text().then(function (t) { if (!res.ok) throw new Error(t || res.status); return buildExt(JSON.parse(t), pts); });
     });
@@ -504,7 +506,7 @@
       { id: 'o-main-casing', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-join': 'round' }, paint: { 'line-color': '#14181d', 'line-width': wz(6.5), 'line-opacity': 0.7 } },
       { id: 'o-main', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'class'], 'motorway', '#b23a33', '#ff5a4e'], 'line-width': wz(4) } },
       { id: 'o-cycleway', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 10, filter: ['all', ['==', ['get', 'class'], 'path'], ['==', ['get', 'subclass'], 'cycleway']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#c8f53c', 'line-width': wz(3.4) } },
-      { id: 'o-routes', type: 'raster', source: 'wmt', minzoom: 6, paint: { 'raster-opacity': 0.85, 'raster-fade-duration': 0 } },
+      { id: 'o-routes', type: 'raster', source: 'wmt', minzoom: 6, paint: { 'raster-opacity': 0.6, 'raster-fade-duration': 0 } },
       { id: 'o-poi', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['restaurant', 'fast_food', 'cafe', 'ice_cream', 'bakery', 'bar', 'beer', 'drinking_water', 'toilets', 'bicycle', 'attraction', 'castle', 'monument', 'museum', 'grocery', 'pharmacy', 'hospital', 'ferry_terminal', 'lodging', 'campsite']]], layout: { 'icon-image': ['match', ['get', 'class'], 'restaurant', 'poi-food', 'fast_food', 'poi-snack', 'cafe', 'poi-cafe', 'ice_cream', 'poi-cafe', 'bakery', 'poi-cafe', 'bar', 'poi-bar', 'beer', 'poi-bar', 'drinking_water', 'poi-water', 'toilets', 'poi-wc', 'bicycle', 'poi-bike', 'grocery', 'poi-shop', 'pharmacy', 'poi-health', 'hospital', 'poi-health', 'ferry_terminal', 'poi-ferry', 'lodging', 'poi-stay', 'campsite', 'poi-stay', 'poi-sight'], 'icon-allow-overlap': false } },
       { id: 'o-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11, layout: { 'text-field': ['concat', ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], ['case', ['has', 'ele'], ['concat', ' ', ['to-string', ['get', 'ele']], ' m'], '']], 'text-font': ['NotoSansMedium'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#e9d8b4' }) },
       { id: 'o-water-name', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 4, layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansItalic'], 'text-size': 12, 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#5f93b3' }) },
@@ -783,6 +785,7 @@
   var posHist = [], lastGoodSpeedT = 0;
   function cleanSpeed(lat, lon, acc, speed, sacc, isGps, now) {
     var v = -1;
+    if (window.__sim) return speed; // Fahrt-Simulation am Computer
     if (!isGps || acc > 30) return -1;
     // Punkte, die unmoeglich schnell vom letzten entfernt sind, sind Ortungsspruenge
     var prev = posHist[posHist.length - 1];
@@ -963,7 +966,35 @@
     var d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d);
     setTimeout(function () { d.remove(); }, 3200);
   }
-  function say(t) { if (S.voice && A) try { A.speak(t); } catch (e) {} }
+  function say(t) {
+    if (!S.voice) return;
+    if (A) { try { A.speak(t); } catch (e) {} return; }
+    // am Computer: Sprachausgabe des Systems
+    try { var u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  }
+  var DESKTOP = !!window.__desktop;
+  // Am Computer ohne GPS: Testhilfen
+  function hereBtn() { return DESKTOP ? '<button class="go sec" id="hereTest">Hier bin ich (Test)</button>' : ''; }
+  function bindHere(lat, lon) {
+    if (!$('hereTest')) return;
+    $('hereTest').onclick = function () { onGps(lat, lon, 5, 0, -1, -1, 1, null); toast('Test-Standort gesetzt'); setFollow(true); view(lat, lon, Math.max(map.getZoom(), 15)); drawHome(); };
+  }
+  var simT = null;
+  function simulateRide() {
+    if (!cur) return;
+    var r = cur, d = 0, v = 5.5, step = v * 4; // 4-fach schnell, Tempo 20 km/h
+    startNav();
+    clearInterval(simT);
+    simT = setInterval(function () {
+      if (!nav || nav.free) { clearInterval(simT); return; }
+      d = Math.min(r.len, d + step);
+      var k = idxAt(r, d), k0 = Math.max(0, k - 1), f = (d - r.cum[k0]) / Math.max(0.1, r.cum[k] - r.cum[k0]);
+      var la = r.la[k0] + (r.la[k] - r.la[k0]) * f, lo = r.lo[k0] + (r.lo[k] - r.lo[k0]) * f;
+      window.__sim = true; onGps(la, lo, 4, v, bearing(r.la[k0], r.lo[k0], r.la[k], r.lo[k]), 0.3, 1, r.ele[k]); window.__sim = false;
+      if (d >= r.len) clearInterval(simT);
+    }, 1000);
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && window.goBack) window.goBack(); });
   function buzz(ms) { if (A) try { A.vibrate(ms); } catch (e) {} }
 
   // =====================================================================
@@ -1018,7 +1049,7 @@
       wxHtml() +
       '<div class="quick">' +
       '<button data-act="tours">' + svg('bike', '#c8f53c', 24, 2) + 'Touren</button>' +
-      '<button data-act="loop">' + svg('loop', '#c8f53c', 24, 2) + 'Rundtour</button>' +
+      '<button data-act="loop">' + svg('loop', '#c8f53c', 24, 2) + 'Tour-Idee</button>' +
       '<button data-act="near">' + svg('list', '#c8f53c', 24, 2) + 'In der Nähe</button>' +
       '<button data-act="free">' + svg('rec', '#ff5a4e', 24, 2.4) + 'Fahrt starten</button></div>' +
       '<h3>Essen in der Nähe' + (ref ? '' : ' von Preko') + '</h3><div class="list">' +
@@ -1037,7 +1068,7 @@
     var a = e.target.closest('[data-act]');
     if (a) {
       var act = a.getAttribute('data-act');
-      if (act === 'tours') showTours('official');
+      if (act === 'tours') showTours();
       else if (act === 'loop') showTours('loop');
       else if (act === 'near') showNearby('food');
       else if (act === 'free') startFree();
@@ -1147,9 +1178,10 @@
     var near = nearby(lat, lon, null, 3, 500);
     sheet('<h2>' + esc(dest.name) + '</h2><div class="sub">' + (name ? (placeKindName(name) || 'Ort auf Ugljan') : 'Punkt bei ' + esc(place[0])) + ' &middot; ' + z + ' m über dem Meer' + (dist(lat, lon, LAT[n], LON[n]) > 80 ? ' &middot; ' + fmtDist(dist(lat, lon, LAT[n], LON[n])) + ' abseits vom Weg' : '') + '</div>' +
       quickRouteInfo(lat, lon) +
-      '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button></div>' +
+      '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button>' + hereBtn() + '</div>' +
       (near.length ? '<h3>In der Nähe</h3><div class="list">' + near.map(poiRow).join('') + '</div>' : ''));
     $('goRoute').onclick = function () { planRoute([startRef(), dest], dest.name); };
+    bindHere(lat, lon);
   }
   function showExtPoint(lat, lon, name, sub) {
     state = 'point'; clearRoute(true);
@@ -1158,9 +1190,10 @@
     var s = startRef(), d = dist(s.lat, s.lon, lat, lon);
     sheet('<h2>' + esc(dest.name) + '</h2><div class="sub">' + (sub ? esc(sub) + ' &middot; ' : '') + fmtDist(d) + ' Luftlinie ' + (s === PREKO ? 'von Preko' : 'von dir') + '</div>' +
       (navigator.onLine === false ? '<div class="sub bad" style="margin-top:8px">Kein Internet: Routen außerhalb von Ugljan gehen nur online.</div>' : '') +
-      '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button></div>' +
+      '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button>' + hereBtn() + '</div>' +
       '<div class="sub" style="font-size:12px;margin-top:10px">Außerhalb von Ugljan wird die Route online berechnet, mit Höhen, Radwegen und Radrouten. Fahrzeit für ' + BIKES[S.bike].n + ', ' + FIT[S.fit].n + '.</div>');
     $('goRoute').onclick = function () { planRoute([startRef(), dest], dest.name); };
+    bindHere(lat, lon);
   }
   map.on('click', function (e) {
     if (nav || fs) return;
@@ -1365,6 +1398,7 @@
       settingsChips() + routeStatsHtml(r) +
       '<div class="prof" id="prof">' + profileSvg(r, 340, 120, true) + '</div><div class="sub" id="profInfo" style="font-size:12px;min-height:16px">Finger auf das Profil legen, um den Punkt auf der Karte zu sehen.</div>' +
       '<div class="btns"><button class="go sec" id="cancel">Abbrechen</button><button class="go" id="start">Los fahren</button></div>' +
+      (DESKTOP ? '<div class="btns"><button class="go sec" id="simRide">Fahrt simulieren (Test am PC)</button></div>' : '') +
       '<h3>Belag</h3>' + mixBar(r.mixS, SURF, r.len, [0, 1, 2, 3, 4, 5]) +
       '<h3>Wegart</h3>' + mixBar(r.mixC, CLASS, r.len, [0, 1, 5, 2, 8, 3, 4, 6]) +
       (r.walk > 30 ? '<div class="sub" style="margin-top:8px">Ca. ' + fmtDist(r.walk) + ' zu steil oder zu grob zum Fahren: dort wird Schieben eingerechnet.</div>' : '') +
@@ -1377,6 +1411,7 @@
     bindSettingsChips(function () { planRoute(plan.pts, plan.title, L2(plan.opt, { style: S.style, picked: true })); });
     $('cancel').onclick = function () { clearRoute(); };
     $('start').onclick = startNav;
+    if ($('simRide')) $('simRide').onclick = simulateRide;
     $('addVia').onclick = function () { state = 'pickVia'; toast('Tippe auf die Karte, um ein Zwischenziel zu setzen.'); sheetEl.classList.add('mini'); placeSide(); };
     if ($('clrVia')) $('clrVia').onclick = function () { planRoute([plan.pts[0], plan.pts[plan.pts.length - 1]], plan.title, L2(plan.opt, { picked: true })); };
     if ($('reverse')) $('reverse').onclick = function () {
@@ -1485,10 +1520,13 @@
       '<div class="meta"><span><b>' + fmtDist(r.len) + '</b></span><span><b>' + fmtTime(r.secs) + '</b></span><span>bergauf <b>' + Math.round(r.asc) + ' m</b></span><span>max. <b>' + pct(r.maxG) + '</b></span><span>am Meer <b>' + fmtDist(r.coast) + '</b></span><span>schön <b>' + r.beauty + '/10</b></span></div>' +
       '<div class="mix" style="height:6px;margin:4px 0 0">' + ['0', '1', '2', '3', '4', '5'].map(function (k) { var v = r.mixS[k] || 0; return v ? '<div style="width:' + v / r.len * 100 + '%;background:' + SURF[k].c + '"></div>' : ''; }).join('') + '</div>' + sparkSvg(r) + '</div>';
   }
-  var tourTab = 'official', loopKm = load('loopKm', 20), loopRes = null, ideaCache = null;
+  var tourTab = 'loop', loopKm = load('loopKm', 20), loopRes = null, ideaCache = null;
   function showTours(tab) {
     tourTab = tab || tourTab; state = 'tours'; clearRoute(true);
-    var head = '<h2>Touren auf Ugljan</h2><div class="seg"><button data-tab="official" class="' + (tourTab === 'official' ? 'on' : '') + '">Radrouten</button><button data-tab="ideas" class="' + (tourTab === 'ideas' ? 'on' : '') + '">Tourenideen</button><button data-tab="loop" class="' + (tourTab === 'loop' ? 'on' : '') + '">Rundtour</button></div>';
+    var tsx = tourStart(), here = meRef() ? onIsland(tsx.lat, tsx.lon) : bounds.pad(0.25).contains([tsx.lat, tsx.lon]);
+    if (!here) tourTab = 'loop';
+    var head = here ? '<h2>Touren auf Ugljan</h2><div class="seg"><button data-tab="loop" class="' + (tourTab === 'loop' ? 'on' : '') + '">Vorschlag</button><button data-tab="official" class="' + (tourTab === 'official' ? 'on' : '') + '">Radrouten</button><button data-tab="ideas" class="' + (tourTab === 'ideas' ? 'on' : '') + '">Tourenideen</button></div>'
+      : '<h2>Tour vorschlagen</h2>';
     var body = '';
     if (tourTab === 'official') {
       body = '<div class="sub" style="margin-bottom:8px">Offiziell beschilderte Radrouten (auf der Karte orange hinterlegt). Werte für ' + BIKES[S.bike].n + '.</div>' +
@@ -1505,18 +1543,26 @@
       body = '<div class="sub" style="margin-bottom:8px">Ausgesuchte Touren, Start an der Fähre Preko (außer anders angegeben). Mit "Los fahren" wirst du von deinem Standort aus hingeführt.</div>' +
         ideaCache.list.map(function (x, k) { return x ? tourCard('data-idea="' + k + '"', x.t.n, x.r, x.t.d) : ''; }).join('');
     } else {
-      var s = startRef();
-      body = '<div class="sub">Die App sucht Rundtouren ab ' + (s === PREKO ? 'der Fähre Preko' : 'deinem Standort') + ' mit möglichst wenig doppelt gefahrenen Wegen.</div>' +
-        '<div style="display:flex;align-items:center;gap:12px;margin-top:12px"><input type="range" id="loopKm" min="6" max="70" step="2" value="' + loopKm + '"><b id="loopKmV" style="font-size:20px;min-width:64px;text-align:right">' + loopKm + ' km</b></div>' +
-        '<div class="btns"><button class="go" id="loopGo">Rundtouren vorschlagen</button></div><div id="loopOut" style="margin-top:12px">' +
-        (loopRes ? loopRes.map(function (x, k) { return tourCard('data-loop="' + k + '"', 'Rundtour ' + (k + 1) + ': ' + x.dir, x.r, 'über ' + x.via); }).join('') : '') + '</div>';
+      var ts = tourStart();
+      body = '<div class="sub">Rundtour ab ' + esc(ts.label) + '. Wähle, was du willst, die App sucht die passende Tour.</div>' +
+        '<h3>Dauer</h3><div class="seg">' + [[30, '30 min'], [60, '1 h'], [120, '2 h'], [180, '3 h'], [300, '5 h']].map(function (d) { return '<button data-tdur="' + d[0] + '" class="' + (S.tourDur === d[0] ? 'on' : '') + '">' + d[1] + '</button>'; }).join('') + '</div>' +
+        '<h3>Schwierigkeit</h3><div class="seg">' + ['Leicht', 'Mittel', 'Schwer'].map(function (n, i) { return '<button data-tdiff="' + i + '" class="' + (S.tourDiff === i ? 'on' : '') + '">' + n + '</button>'; }).join('') + '</div>' +
+        '<h3>Schönheit</h3><div class="seg">' + ['Egal', 'Schön', 'Sehr schön'].map(function (n, i) { return '<button data-tbeau="' + i + '" class="' + (S.tourBeauty === i ? 'on' : '') + '">' + n + '</button>'; }).join('') + '</div>' +
+        '<div class="btns"><button class="go" id="loopGo">Tour vorschlagen</button></div><div id="loopOut" style="margin-top:12px">' +
+        (loopRes ? (loopRes.length ? loopRes.map(function (x, k) { return tourCard('data-loop="' + k + '"', x.title, x.r, x.why); }).join('') : '<div class="empty">Keine passende Tour gefunden. Probiere eine andere Dauer.</div>') : '') + '</div>';
     }
     sheet(head + settingsChips() + body);
     bindSettingsChips(function () { loopRes = null; showTours(); });
     sheetEl.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { showTours(b.getAttribute('data-tab')); }; });
-    if ($('loopKm')) {
-      $('loopKm').oninput = function () { loopKm = +this.value; $('loopKmV').textContent = loopKm + ' km'; store('loopKm', loopKm); };
-      $('loopGo').onclick = function () { $('loopOut').innerHTML = '<div class="empty">Berechne Rundtouren ...</div>'; setTimeout(function () { loopRes = makeLoops(loopKm * 1000); showTours('loop'); }, 30); };
+    if ($('loopGo')) {
+      [['data-tdur', 'tourDur'], ['data-tdiff', 'tourDiff'], ['data-tbeau', 'tourBeauty']].forEach(function (x) {
+        sheetEl.querySelectorAll('[' + x[0] + ']').forEach(function (b) { b.onclick = function () { S[x[1]] = +b.getAttribute(x[0]); saveS(); loopRes = null; showTours('loop'); }; });
+      });
+      $('loopGo').onclick = function () {
+        $('loopOut').innerHTML = '<div class="empty" id="loopMsg">Suche schöne Ziele in der Umgebung ...</div>';
+        suggestTours(function (res) { loopRes = res; if (state === 'tours' && tourTab === 'loop') { showTours('loop'); var o = $('loopOut'); if (o) sheetEl.scrollTop = o.offsetTop - 60; } },
+          function (msg) { var m = $('loopMsg'); if (m) m.textContent = msg; });
+      };
     }
   }
   sheetEl.addEventListener('click', function (e) {
@@ -1525,15 +1571,15 @@
     c = e.target.closest('[data-idea]');
     if (c) { var x = ideaCache.list[+c.getAttribute('data-idea')]; showTourPreview(x.t.n, x.pts, { desc: x.t.d, loop: x.loop }); return; }
     c = e.target.closest('[data-loop]');
-    if (c) { var l = loopRes[+c.getAttribute('data-loop')]; showTourPreview('Rundtour ' + Math.round(l.r.len / 1000) + ' km: ' + l.dir, l.pts, { desc: 'Rundtour über ' + l.via + '.', loop: true }); }
+    if (c) { var l = loopRes[+c.getAttribute('data-loop')]; showTourPreview(l.title, l.pts, { desc: l.why, loop: true, picked: true, style: l.style, pre: l.r }); }
   });
   function showTourPreview(title, pts, opt) {
     opt.tour = true;
     planRoute(pts, title, opt);
   }
   // Rundtouren-Generator
-  function makeLoops(target) {
-    var s = startRef(), sn = nearestNode(s.lat, s.lon), res = [];
+  function makeLoops(target, style, start, all) {
+    var s = start || startRef(), sn = nearestNode(s.lat, s.lon), res = [];
     var R = target / (2 * Math.PI) * 1.15;
     for (var h = 0; h < 360; h += 30) {
       var cands = [];
@@ -1542,14 +1588,16 @@
         cands.push({ lat: la, lon: lo });
       });
       var pts = [{ lat: s.lat, lon: s.lon, name: s.name, node: sn }].concat(cands.map(function (c) { var n = nearestNode(c.lat, c.lon); return { node: n, lat: LAT[n], lon: LON[n], name: '' }; })).concat([{ lat: s.lat, lon: s.lon, name: s.name, node: sn }]);
-      var r = routeVia(pts, { loop: true });
+      var r = routeVia(pts, { loop: true, style: style });
       if (!r || r.len < 1000) continue;
       // doppelt gefahrene Anteile
       var seen = {}, dup = 0;
       r.edges.forEach(function (e) { var k = Math.min(eFrom[e], eTo[e]) + '_' + Math.max(eFrom[e], eTo[e]); if (seen[k]) dup += eLen[e]; seen[k] = 1; });
       var score = Math.abs(r.len - target) / target + dup / r.len * 1.2 - r.beauty / 10 * 0.5;
+      r.dupFrac = dup / r.len;
       res.push({ r: r, pts: pts, score: score, h: h });
     }
+    if (all) return res;
     res.sort(function (a, b) { return a.score - b.score; });
     var out = [];
     res.forEach(function (x) {
@@ -1563,6 +1611,148 @@
       out.push(x);
     });
     return out;
+  }
+
+  // ---------- Tourenvorschlag: weltweit, nach Dauer, Schwierigkeit und Schönheit ----------
+  var DIRS = ['Norden', 'Nordosten', 'Osten', 'Südosten', 'Süden', 'Südwesten', 'Westen', 'Nordwesten'];
+  function dirName(h) { return DIRS[Math.round(((h % 360) + 360) % 360 / 45) % 8]; }
+  function tourStart() {
+    var r = meRef();
+    if (r) return { lat: r.lat, lon: r.lon, name: 'Mein Standort', label: 'deinem Standort' };
+    var c = map.getCenter();
+    return { lat: c.lat, lon: c.lng, name: 'Start', label: 'der Kartenmitte (kein GPS)' };
+  }
+  function offset(s, hdg, m) {
+    var a = hdg * RAD;
+    return { lat: s.lat + Math.cos(a) * m / 110540, lon: s.lon + Math.sin(a) * m / (111320 * Math.cos(s.lat * RAD)) };
+  }
+  // Schoenheit einer Route als Wert 0..1
+  function beautyVal(r) { return r.ext ? Math.min(1, (r.rlen / Math.max(1, r.len)) * 0.45 + r.quiet / 100 * 0.55 + (r.attr ? 0.2 : 0)) : r.beauty / 10; }
+  function dupFrac(r) {
+    if (r.dupFrac != null) return r.dupFrac;
+    var seen = {}, dup = 0;
+    for (var i = 1; i < r.la.length; i++) {
+      var k = Math.round(r.la[i] * 4000) + '_' + Math.round(r.lo[i] * 4000);
+      if (seen[k] && seen[k] < i - 3) dup += r.cum[i] - r.cum[i - 1]; else if (!seen[k]) seen[k] = i;
+    }
+    return dup / Math.max(1, r.len);
+  }
+  function scoreTour(r, target) {
+    var tErr = Math.abs(r.secs - target) / target;
+    var dErr = Math.abs(r.diff - S.tourDiff);
+    return tErr * 2 + dErr * 0.7 + dupFrac(r) * 1.5 - beautyVal(r) * [0, 0.8, 1.6][S.tourBeauty];
+  }
+  function whyTour(r, extra) {
+    var parts = [fmtTime(r.secs), DIFF[r.diff][0]];
+    if (r.ext) { if (r.rlen > 500) parts.push(fmtDist(r.rlen) + ' auf Radrouten'); parts.push(r.quiet + ' % ruhige Wege'); }
+    else { if (r.coast > 300) parts.push(fmtDist(r.coast) + ' am Meer'); parts.push('Schönheit ' + r.beauty + '/10'); }
+    return (extra ? extra + ' · ' : '') + parts.join(' · ');
+  }
+  function pickBest(cands, target, n) {
+    cands.forEach(function (c) { c.score = scoreTour(c.r, target); });
+    cands.sort(function (a, b) { return a.score - b.score; });
+    var out = [];
+    cands.forEach(function (c) {
+      if (out.length >= n) return;
+      if (out.some(function (o) { return Math.abs(o.r.len - c.r.len) < 400 && Math.abs(o.r.asc - c.r.asc) < 15; })) return;
+      out.push(c);
+    });
+    return out;
+  }
+  // Lohnende Ziele aus der Online-Karte der Umgebung: Gipfel, Seen/Buchten, Orte
+  function attractions(s, R) {
+    var out = [], seen = {};
+    function add(f, kind) {
+      var g = f.geometry; if (!g) return;
+      var c = g.type === 'Point' ? g.coordinates : g.type === 'Polygon' ? g.coordinates[0][0] : g.coordinates[0];
+      if (!c || typeof c[0] !== 'number') return;
+      var p = f.properties || {}, nm = p['name:de'] || p['name:latin'] || p.name;
+      if (!nm || seen[nm]) return;
+      var d = dist(s.lat, s.lon, c[1], c[0]);
+      if (d < R * 0.35 || d > R * 1.5) return;
+      seen[nm] = 1;
+      out.push({ lat: c[1], lon: c[0], name: nm, kind: kind, ele: p.ele || 0, d: d, h: bearing(s.lat, s.lon, c[1], c[0]) });
+    }
+    try {
+      map.querySourceFeatures('ofm', { sourceLayer: 'mountain_peak' }).forEach(function (f) { add(f, 'peak'); });
+      map.querySourceFeatures('ofm', { sourceLayer: 'water_name' }).forEach(function (f) { add(f, 'water'); });
+      map.querySourceFeatures('ofm', { sourceLayer: 'place' }).forEach(function (f) { var c = f.properties && f.properties.class; if (c === 'village' || c === 'town' || c === 'hamlet') add(f, 'place'); });
+    } catch (e) {}
+    return out;
+  }
+  function suggestTours(done, status) {
+    var s = tourStart(), target = S.tourDur * 60;
+    var B = BIKES[S.bike], P = B.P * FIT[S.fit].f, v0 = rideSpeed(B, P, 0, 0, 1, 0);
+    var D = target * v0 * [0.95, 0.8, 0.68][S.tourDiff]; // Strecke passend zur Dauer, Huegel kosten Zeit
+    var style = S.tourBeauty > 0 ? 'scenic' : 'fast';
+    // Auf Ugljan: offline mit dem eigenen Netz (inklusive Meer und Aussicht)
+    if (onIsland(s.lat, s.lon) && D < 60000) {
+      setTimeout(function () {
+        var cands = [];
+        [0.85, 1.1].forEach(function (f) { cands = cands.concat(makeLoops(D * f, style, s, true)); });
+        var best = pickBest(cands, target, 3);
+        done(best.map(function (x, k) {
+          var vs = {}; x.pts.slice(1, -1).forEach(function (p) { vs[nearestPlace(p.lat, p.lon, true)[0]] = 1; });
+          x.pts[x.pts.length - 1] = x.pts[0];
+          return { r: x.r, pts: x.pts, style: style, title: 'Tour ' + (k + 1) + ': ' + Object.keys(vs).slice(0, 2).join(', '), why: whyTour(x.r) };
+        }));
+      }, 30);
+      return;
+    }
+    if (navigator.onLine === false) { status(NET_MSG); return; }
+    var R = D / (2 * Math.PI) * 1.1;
+    // Umgebung laden, damit die Online-Karte Gipfel, Seen und Orte kennt
+    setFollow(false);
+    fitTo(new Bounds(s.lat - R * 1.6 / 110540, s.lon - R * 1.6 / (111320 * Math.cos(s.lat * RAD)), s.lat + R * 1.6 / 110540, s.lon + R * 1.6 / (111320 * Math.cos(s.lat * RAD))), 0);
+    var started = false, cands = [], prof = S.tourBeauty > 0 ? (S.bike === 'road' ? 'fastbike-lowtraffic' : 'safety') : (S.bike === 'road' ? 'fastbike' : S.tourDiff === 2 && S.bike === 'mtb' ? 'mtb' : 'trekking');
+    var pref = S.tourDiff === 2 ? ['peak', 'place', 'water'] : S.tourDiff === 0 ? ['water', 'place'] : ['water', 'peak', 'place'];
+    function plansFor(Rr, h0, withAtt) {
+      var plans = [];
+      if (withAtt && S.tourBeauty > 0) {
+        var att = attractions(s, Rr).filter(function (a) { return pref.indexOf(a.kind) >= 0; });
+        // Ziele passend zur Schwierigkeit: schwer -> hohe Gipfel, leicht -> Wasser und Orte
+        att.sort(function (a, b) { return pref.indexOf(a.kind) - pref.indexOf(b.kind) || (a.kind === 'peak' ? (S.tourDiff === 2 ? b.ele - a.ele : a.ele - b.ele) : 0); });
+        att.slice(0, 3).forEach(function (a) {
+          // Schleife ueber das Ziel: hin ueber einen Punkt links, zurueck ueber einen rechts davon
+          var v1 = offset(s, a.h - 55, a.d * 0.6), v2 = offset(s, a.h + 55, a.d * 0.6);
+          plans.push({ pts: [s, v1, { lat: a.lat, lon: a.lon, name: a.name }, v2, s], label: a.name, attr: true });
+        });
+      }
+      for (var k = 0; plans.length < 6; k++) {
+        var h = h0 + k * 90;
+        plans.push({ pts: [s, offset(s, h - 35, Rr), offset(s, h + 35, Rr), s], label: 'Richtung ' + dirName(h) });
+      }
+      return plans;
+    }
+    function batch(plans, cb) {
+      var left = plans.length;
+      plans.forEach(function (pl) {
+        fetchExt(pl.pts, style, prof).then(function (r) { r.attr = !!pl.attr; cands.push({ r: r, pts: pl.pts, label: pl.label }); }, function () {}).then(function () { if (!--left) cb(); });
+      });
+    }
+    function finish() {
+      if (!cands.length) { status('Keine Verbindung zum Routenplaner. Bitte Internet prüfen.'); return; }
+      var best = pickBest(cands, target, 3);
+      done(best.map(function (x, k) {
+        return { r: x.r, pts: x.pts, style: style, title: 'Tour ' + (k + 1) + ': ' + (x.r.attr ? 'über ' : '') + x.label, why: whyTour(x.r) };
+      }));
+    }
+    function go() {
+      if (started) return; started = true;
+      status('Berechne passende Rundtouren ...');
+      var h0 = Math.random() * 90;
+      batch(plansFor(R, h0, true), function () {
+        // Zweite Runde, wenn die Fahrzeit noch nicht passt (Berge, Umwege): Radius anpassen
+        var good = cands.filter(function (c) { return Math.abs(c.r.secs - target) / target < 0.2; }).length;
+        if (good >= 2 || !cands.length) { finish(); return; }
+        var ratios = cands.map(function (c) { return target / c.r.secs; }).sort(function (a, b) { return a - b; });
+        var f = Math.max(0.35, Math.min(2.2, ratios[Math.floor(ratios.length / 2)]));
+        status('Passe die Länge an ...');
+        batch(plansFor(R * f, h0 + 45, true), finish);
+      });
+    }
+    map.once('idle', go);
+    setTimeout(go, 6000);
   }
 
   // ---------- In der Nähe ----------
@@ -1605,7 +1795,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Ugljan Rad 4.0. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Ugljan Rad 4.1. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1742,6 +1932,7 @@
   }
   function stopNav() {
     var wasFree = nav && nav.free;
+    clearInterval(simT);
     nav = null; leaveNavUi(); recStop();
     if (hoverMarker) { setSrc('hover', fc()); hoverMarker = null; }
     clearRoute();

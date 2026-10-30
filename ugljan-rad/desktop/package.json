@@ -1,0 +1,9 @@
+{
+  "name": "ugljan-rad",
+  "productName": "Ugljan Rad",
+  "version": "4.1.0",
+  "description": "Fahrrad-Navigation: Ugljan offline, weltweit online",
+  "main": "main.js",
+  "author": "Ugljan Rad",
+  "license": "UNLICENSED"
+}
