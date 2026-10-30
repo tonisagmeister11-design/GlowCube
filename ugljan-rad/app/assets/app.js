@@ -551,13 +551,39 @@
   function L_(p) { for (var k in HALO) p[k] = HALO[k]; return p; }
   (function () {
     var c = document.createElement('canvas');
-    if (!(c.getContext('webgl2') || c.getContext('webgl'))) setTimeout(function () { toast('Dieses Handy unterstützt keine 3D-Grafik (WebGL). Die Karte kann nicht gezeichnet werden.'); }, 500);
+    if (!(c.getContext('webgl2') || c.getContext('webgl'))) {
+      // Windows-Version: einmal mit Software-Grafik neu starten (klappt auf jedem PC)
+      if (window.__needSoftGL && !/soft-gl/.test(navigator.userAgent)) { window.__needSoftGL(); return; }
+      setTimeout(function () { toast('Dieses Gerät unterstützt keine 3D-Grafik (WebGL). Die Karte kann nicht gezeichnet werden.'); }, 500);
+    }
   })();
-  var map = new maplibregl.Map({
-    container: 'map', style: style, center: [15.17, 44.075], zoom: 11.5, minZoom: 2, maxZoom: 19.5,
-    attributionControl: false, pitchWithRotate: false, dragRotate: true,
-    touchPitch: false, maxPitch: 60, fadeDuration: 0, localIdeographFontFamily: false
-  });
+  // Ohne 3D-Grafik keine Karte: dann mit einem Platzhalter weiterlaufen, damit Juno, Suche und Listen trotzdem gehen
+  function fakeMap() {
+    var c = { lng: 15.17, lat: 44.075 }, noop = function () {}, ctl = { enable: noop, disable: noop };
+    var api = {
+      getCenter: function () { return c; }, getZoom: function () { return 12; }, getBearing: function () { return 0; }, getPitch: function () { return 0; },
+      getPadding: function () { return { top: 0, bottom: 0, left: 0, right: 0 }; }, project: function () { return { x: -9999, y: -9999 }; },
+      queryRenderedFeatures: function () { return []; }, querySourceFeatures: function () { return []; }, isMoving: function () { return false; },
+      loaded: function () { return false; }, getCanvas: function () { return document.createElement('canvas'); }, getContainer: function () { return $('map'); },
+      getSource: function () { return { setData: noop }; }, getLayer: function () { return null; }, hasImage: function () { return true; },
+      cameraForBounds: function () { return null; }, touchZoomRotate: ctl, scrollZoom: ctl,
+      easeTo: function (o) { if (o && o.center) c = { lng: o.center[0], lat: o.center[1] }; }, jumpTo: function (o) { api.easeTo(o); }
+    };
+    return new Proxy(api, { get: function (t, k) { return k in t ? t[k] : noop; } });
+  }
+  var map, NO_MAP = false;
+  try {
+    map = new maplibregl.Map({
+      container: 'map', style: style, center: [15.17, 44.075], zoom: 11.5, minZoom: 2, maxZoom: 19.5,
+      attributionControl: false, pitchWithRotate: false, dragRotate: true,
+      touchPitch: false, maxPitch: 60, fadeDuration: 0, localIdeographFontFamily: false
+    });
+  } catch (e) {
+    NO_MAP = true; map = fakeMap();
+    maplibregl.Marker = function () { this.setLngLat = function () { return this; }; this.addTo = function () { return this; }; this.remove = function () {}; this.setRotation = function () { return this; }; };
+    maplibregl.AttributionControl = maplibregl.ScaleControl = function () {};
+    $('map').innerHTML = '<div style="padding:120px 24px;color:#93a0ad;text-align:center;font-size:15px;line-height:1.5">Die Karte kann auf diesem Gerät nicht angezeigt werden (keine 3D-Grafik).<br>Juno, Suche, Touren und Listen funktionieren trotzdem.</div>';
+  }
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Daten &copy; OpenStreetMap-Mitwirkende, Höhen: Copernicus DEM / AWS Terrain Tiles, Karte: OpenFreeMap &copy; OpenMapTiles, Radrouten: waymarkedtrails.org, Routing: BRouter' }), 'bottom-right');
   // Online-Karte: sobald Kacheln ankommen, Hintergrund auf Land umstellen (Meer kommt dann aus den Kacheln)
   var online = false;
@@ -1800,7 +1826,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#c8f53c', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 5.0 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 5.1 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });

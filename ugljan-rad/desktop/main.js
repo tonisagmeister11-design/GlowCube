@@ -1,12 +1,33 @@
 // Velora für Windows: dieselbe App wie auf Android, in einem Electron-Fenster
-const { app, BrowserWindow, protocol, net, Menu, session, shell } = require('electron');
+const { app, BrowserWindow, protocol, net, Menu, session, shell, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { pathToFileURL } = require('url');
+
+// 3D-Grafik (WebGL) für die Karte: Grafikkarte nicht wegen Sperrlisten ablehnen,
+// und notfalls auf Software-Grafik (SwiftShader) ausweichen, damit die Karte auf jedem PC läuft.
+const softMarker = () => path.join(app.getPath('userData'), 'software-grafik');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+const soft = process.argv.includes('--soft-gl') || fs.existsSync(softMarker());
+if (soft) {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('use-angle', 'swiftshader');
+  app.commandLine.appendSwitch('use-gl', 'angle');
+}
 
 // Eigenes Schema statt file://, damit Karte, Schriften und Online-Dienste wie im Browser laden
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }
 ]);
+
+// Die Seite meldet, wenn WebGL fehlt: dann einmalig mit Software-Grafik neu starten
+ipcMain.on('soft-gl', () => {
+  if (soft) return;
+  try { fs.writeFileSync(softMarker(), '1'); } catch (e) { }
+  app.relaunch({ args: process.argv.slice(1).concat(['--soft-gl']) });
+  app.exit(0);
+});
 
 app.whenReady().then(() => {
   const root = path.join(__dirname, 'assets');

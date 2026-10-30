@@ -236,6 +236,8 @@ export default {
       return json({ antwort: 'Das war mir gerade zu kompliziert. Frag mich bitte etwas genauer.', aktionen, orte: dedupe(orte) });
     } catch (e) {
       console.error('KI-Fehler', e && e.message);
+      if (/4006|daily free allocation/i.test(String(e && e.message)))
+        return json({ fehler: 'Juno hat ihr kostenloses Tageskontingent für heute aufgebraucht. Ab 1 Uhr nachts (deutsche Zeit) geht es wieder. Mit dem bezahlten Cloudflare-Tarif gäbe es kein Tageslimit.' }, 503);
       return json({ fehler: 'Juno ist gerade nicht erreichbar. Bitte später nochmal versuchen.' }, 503);
     }
   }
