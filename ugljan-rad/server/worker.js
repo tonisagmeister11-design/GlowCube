@@ -172,11 +172,74 @@ function msgOf(out) {
   return { content: out && out.response, tool_calls: out && out.tool_calls };
 }
 
+// ---------------------------------------------------------------------
+// Live-Standort teilen (Velora Plus): die App schickt jede Minute ihre Position,
+// Familie und Freunde sehen sie unter /l/<id>. Daten verfallen nach 2 Stunden.
+// ---------------------------------------------------------------------
+async function sha(t) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function live(req, env, url) {
+  const idOk = id => /^[a-z0-9]{8,24}$/.test(id || '');
+  if (req.method === 'POST' && url.pathname === '/live') {
+    if (req.headers.get('X-App-Id') !== env.APP_ID) return json({ fehler: 'Nicht erlaubt' }, 403);
+    let b; try { b = await req.json(); } catch { return json({ fehler: 'Ungültig' }, 400); }
+    if (!idOk(b.id) || typeof b.key !== 'string' || b.key.length < 16) return json({ fehler: 'Ungültig' }, 400);
+    const old = await env.LIVE.get('l:' + b.id, 'json');
+    const kh = await sha(b.key);
+    if (old && old.kh !== kh) return json({ fehler: 'Nicht erlaubt' }, 403);
+    if (b.ende) { await env.LIVE.put('l:' + b.id, JSON.stringify({ kh, ende: true, t: Date.now(), name: old && old.name }), { expirationTtl: 3600 }); return json({ ok: true }); }
+    const num = (v, lo, hi) => typeof v === 'number' && v >= lo && v <= hi ? v : null;
+    const lat = num(b.lat, -90, 90), lon = num(b.lon, -180, 180);
+    if (lat == null || lon == null) return json({ fehler: 'Ungültig' }, 400);
+    const rec = { kh, lat, lon, spd: num(b.spd, 0, 120), rest: num(b.rest, 0, 1e6), eta: num(b.eta, 0, 1e13), ziel: String(b.ziel || '').slice(0, 80), name: String(b.name || '').slice(0, 40), t: Date.now() };
+    await env.LIVE.put('l:' + b.id, JSON.stringify(rec), { expirationTtl: 7200 });
+    return json({ ok: true });
+  }
+  if (req.method === 'GET' && url.pathname.startsWith('/live/')) {
+    const id = url.pathname.slice(6);
+    if (!idOk(id)) return json({ fehler: 'Ungültig' }, 400);
+    const r = await env.LIVE.get('l:' + id, 'json');
+    if (!r) return json({ fehler: 'Nicht gefunden' }, 404);
+    delete r.kh;
+    return json(r);
+  }
+  if (req.method === 'GET' && url.pathname.startsWith('/l/')) {
+    const id = url.pathname.slice(3);
+    if (!idOk(id)) return new Response('Link ungültig', { status: 404 });
+    return new Response(LIVE_PAGE.replace('__ID__', id), { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  }
+  return json({ fehler: 'Nicht gefunden' }, 404);
+}
+const LIVE_PAGE = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Velora Live</title><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.css">
+<style>html,body{margin:0;height:100%;font-family:system-ui,sans-serif;background:#f3f6fa;color:#13263a}#m{position:absolute;inset:0}
+#c{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));background:#fff;border-radius:18px;padding:14px 16px;box-shadow:0 8px 30px rgba(19,38,58,.2)}
+#c b{font-size:18px}#c .s{color:#5f7184;font-size:14px;margin-top:4px}.dot{width:22px;height:22px;border-radius:50%;background:#1aa874;border:4px solid #fff;box-shadow:0 0 0 8px rgba(26,168,116,.25),0 2px 8px rgba(0,0,0,.3)}</style></head>
+<body><div id="m"></div><div id="c"><b id="h">Velora Live</b><div class="s" id="s">Lade Standort ...</div></div>
+<script src="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.js"></script><script>
+var id='__ID__',map=new maplibregl.Map({container:'m',style:'https://tiles.openfreemap.org/styles/liberty',center:[15.19,44.07],zoom:11}),mk=null,first=true;
+function ago(t){var s=Math.round((Date.now()-t)/1000);return s<60?'gerade eben':Math.round(s/60)+' min her'}
+function up(){fetch('/live/'+id).then(function(r){return r.json()}).then(function(d){
+ if(d.fehler){document.getElementById('s').textContent='Diese Fahrt ist beendet oder der Link ist abgelaufen.';return}
+ document.getElementById('h').textContent=(d.name?d.name+' fährt':'Velora Live')+(d.ende?' (beendet)':'');
+ if(d.ende){document.getElementById('s').textContent='Die Fahrt wurde beendet.';return}
+ var t=[ago(d.t)];if(d.spd!=null)t.push(Math.round(d.spd)+' km/h');if(d.ziel)t.push('Ziel: '+d.ziel);if(d.rest!=null)t.push('noch '+(d.rest/1000).toFixed(1).replace('.',',')+' km');
+ if(d.eta){var e=new Date(d.eta);t.push('Ankunft '+('0'+e.getHours()).slice(-2)+':'+('0'+e.getMinutes()).slice(-2))}
+ document.getElementById('s').textContent=t.join(' · ');
+ if(!mk){var el=document.createElement('div');el.className='dot';mk=new maplibregl.Marker({element:el}).setLngLat([d.lon,d.lat]).addTo(map)}else mk.setLngLat([d.lon,d.lat]);
+ if(first){map.jumpTo({center:[d.lon,d.lat],zoom:14});first=false}else map.easeTo({center:[d.lon,d.lat]});
+}).catch(function(){})}
+up();setInterval(up,15000);
+</script></body></html>`;
+
 export default {
   async fetch(req, env) {
     if (req.method === 'GET' && new URL(req.url).pathname === '/') return new Response(TESTER, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' } });
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const url = new URL(req.url);
+    if (url.pathname === '/live' || url.pathname.startsWith('/live/') || url.pathname.startsWith('/l/')) return live(req, env, url);
     if (req.method !== 'POST' || (url.pathname !== '/chat' && url.pathname !== '/ki' && url.pathname !== '/werkzeug')) return json({ fehler: 'Nicht gefunden' }, 404);
     if (req.headers.get('X-App-Id') !== env.APP_ID) return json({ fehler: 'Nicht erlaubt' }, 403);
     // Werkzeug direkt testen (nur mit App-Kennung)

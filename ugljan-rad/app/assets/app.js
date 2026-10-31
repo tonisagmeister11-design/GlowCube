@@ -5,6 +5,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var A = window.Android || null;
   var RAD = Math.PI / 180;
+  // Erweiterungen (plus.js) haengen sich hier ein
+  function HOOK(n, a, b, c) { var X = window.VX; if (X && X[n]) try { return X[n](a, b, c); } catch (e) { if (window.console) console.error('VX.' + n, e); } }
 
   // =====================================================================
   // Hilfsfunktionen
@@ -71,6 +73,9 @@
     city: { n: 'City / Trekking', P: 105, m: 95, CdA: 0.58, crr: [0.006, 0.011, 0.011, 0.017, 0.026, 0.045], cap: [38, 24, 24, 20, 15, 8], push: 0.15, walkSurf: 9, pref: [1, 1.1, 1.08, 1.25, 1.6, 3.5] },
     road: { n: 'Rennrad', P: 160, m: 82, CdA: 0.34, crr: [0.0045, 0.013, 0.016, 0.03, 0.05, 0.1], cap: [58, 25, 22, 14, 9, 5], push: 0.18, walkSurf: 4, pref: [1, 1.5, 1.8, 3.2, 7, 12] },
     mtb: { n: 'Mountainbike', P: 145, m: 92, CdA: 0.55, crr: [0.0085, 0.011, 0.011, 0.014, 0.018, 0.028], cap: [48, 30, 36, 32, 28, 20], push: 0.3, walkSurf: 9, pref: [1.05, 1.05, 0.95, 0.88, 0.88, 1] },
+    // Plus-Profile
+    gravel: { n: 'Gravel', pro: 1, P: 140, m: 88, CdA: 0.45, crr: [0.0055, 0.011, 0.011, 0.016, 0.024, 0.05], cap: [50, 32, 34, 28, 20, 10], push: 0.22, walkSurf: 9, pref: [1, 1, 0.88, 0.92, 1.1, 2.5] },
+    family: { n: 'Familie / Kinder', pro: 1, P: 70, m: 85, CdA: 0.6, crr: [0.007, 0.012, 0.012, 0.018, 0.028, 0.05], cap: [18, 15, 15, 14, 10, 6], push: 0.1, walkSurf: 5, pref: [1, 1.15, 1.15, 1.4, 2, 4], clsMul: [0.85, 1, 1.1, 1.6, 1.3, 2.6, 5, 5, 1.6] },
     ebike: { n: 'E-Bike', P: 100, assist: 230, m: 115, CdA: 0.6, crr: [0.0065, 0.012, 0.012, 0.018, 0.027, 0.045], cap: [42, 25, 26, 23, 17, 10], push: 0.26, walkSurf: 9, pref: [1, 1.1, 1.05, 1.15, 1.4, 2.6] }
   };
   var FIT = { easy: { n: 'Gemütlich', f: 0.72 }, normal: { n: 'Normal', f: 1 }, sport: { n: 'Sportlich', f: 1.35 } };
@@ -84,6 +89,8 @@
     bike: BIKES[S.bike] ? S.bike : 'city', fit: FIT[S.fit] ? S.fit : 'normal', style: STYLES[S.style] ? S.style : 'scenic', headUp: !!S.headUp,
     voice: S.voice !== false, wind: S.wind !== false, relief: S.relief !== false, contours: S.contours !== false,
     routes: S.routes !== false, labels: S.labels !== false,
+    maxG: S.maxG || 0, hap: S.hap != null ? S.hap : 2, night: S.night || 'auto', theme: S.theme || 'mint', arrow: S.arrow || '3d', goalKm: S.goalKm || 30, weight: S.weight || 75,
+    guide: S.guide !== false, tailwind: !!S.tailwind, batt: S.batt || 500, assist: S.assist || 'tour', hu2: !!S.hu2,
     tourDur: S.tourDur || 120, tourDiff: S.tourDiff != null ? S.tourDiff : 1, tourBeauty: S.tourBeauty != null ? S.tourBeauty : 2
   };
   function saveS() { store('settings', S); }
@@ -185,7 +192,8 @@
       var scE = (SC[eFrom[e]] + SC[eTo[e]]) / 2;
       for (var ki = 0; ki < keys.length; ki++) {
         var st = STYLES[keys[ki]];
-        var c = t * st.cls[cls] * B.pref[s] * ((w[2] & 2) ? st.route : 1) * (1 - st.sc * (scE - 0.35));
+        var c = t * st.cls[cls] * B.pref[s] * ((w[2] & 2) ? st.route : 1) * (1 - st.sc * (scE - 0.35)) * (B.clsMul ? B.clsMul[cls] : 1);
+        if (S.maxG && S.bike === 'road' && g > S.maxG) c *= 8; // Rennrad: Steigungsgrenze (Plus)
         if (st.climb && eRise[e] > 0) c += eRise[e] * st.climb * (g > 0.06 ? 2 : 1);
         COST[keys[ki]].c[e] = c;
         var cpm = c / L; if (cpm < mins[ki]) mins[ki] = cpm;
@@ -310,6 +318,7 @@
   // =====================================================================
   function isLocal(pts) { return pts.every(function (p) { return onIsland(p.lat, p.lon); }); }
   function brProfile(style) {
+    if (S.bike === 'family') return 'safety';
     if (style === 'fast') return S.bike === 'road' ? 'fastbike' : S.bike === 'mtb' ? 'mtb' : 'trekking';
     return S.bike === 'road' ? 'fastbike-lowtraffic' : 'safety';
   }
@@ -1024,7 +1033,7 @@
     }, 1000);
   }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && window.goBack) window.goBack(); });
-  function buzz(ms) { if (A) try { A.vibrate(ms); } catch (e) {} }
+  function buzz(ms) { if (HOOK('haptic', ms >= 500 ? 'success' : 'turn') === undefined && A) try { A.vibrate(ms); } catch (e) {} }
 
   // =====================================================================
   // Unteres Blatt
@@ -1076,7 +1085,7 @@
     var html = '<h2>Velora</h2><div class="sub">' +
       (ref ? 'GPS aktiv &middot; ' + esc(nearestPlace(ref.lat, ref.lon, true)[0]) + ' &middot; ' + Math.round(demEle(ref.lat, ref.lon)) + ' m über dem Meer' :
         me ? 'Du bist außerhalb von Ugljan. Suche einen Ort oder tippe auf die Karte: Karte und Route kommen dann online.' : 'Warte auf GPS. Tippe auf die Karte, um ein Ziel zu setzen.') + '</div>' +
-      wxHtml() +
+      wxHtml() + (HOOK('homeHtml') || '') +
       '<div class="quick">' +
       '<button data-act="juno">' + svg('juno', '#0fae73', 24, 2) + 'Juno</button>' +
       '<button data-act="loop">' + svg('loop', '#0fae73', 24, 2) + 'Tour-Idee</button>' +
@@ -1087,6 +1096,7 @@
       '<h3>Kartenlegende</h3>' + legendHtml() +
       '<div class="sub" style="margin-top:12px;font-size:12px">Rad: ' + BIKES[S.bike].n + ' &middot; ' + FIT[S.fit].n + ' &middot; Stil ' + STYLES[S.style].n + ' (im Menü änderbar)</div>';
     sheet(html);
+    HOOK('homeBound');
   }
   function legendHtml() {
     var items = [[0, 'Radweg'], [-1, 'Radroute (markiert)'], [1, 'Ruhige Straße'], [5, 'Landstraße'], [2, 'Feldweg'], [8, 'Grober Weg'], [3, 'Pfad'], [6, 'Hauptstraße']];
@@ -1103,6 +1113,7 @@
       else if (act === 'near') showNearby('food');
       else if (act === 'free') startFree();
       else if (act === 'juno') showJuno();
+      else HOOK('act', act, a);
       return;
     }
     var r = e.target.closest('[data-poi]');
@@ -1387,9 +1398,10 @@
       k = j;
     }
     setSrc('route', fc(f)); routeLayer = true;
+    HOOK('routeDrawn', r);
   }
   function clearRoute(keepSheet) {
-    if (routeLayer) setSrc('route', fc()); routeLayer = null;
+    if (routeLayer) { setSrc('route', fc()); HOOK('routeDrawn', null); } routeLayer = null;
     if (hoverMarker) setSrc('hover', fc()); hoverMarker = null;
     if (tourLayer) setSrc('tour', fc()); tourLayer = null;
     setSrc('cand', fc());
@@ -1418,7 +1430,7 @@
       '<div class="sub" style="font-size:12.5px;margin:-4px 0 4px">' + STYLES[S.style].d + '</div>';
   }
   function bindSettingsChips(after) {
-    sheetEl.querySelectorAll('[data-bike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-bike'); saveS(); computeCosts(); after(); }; });
+    sheetEl.querySelectorAll('[data-bike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-bike'))) return; S.bike = b.getAttribute('data-bike'); saveS(); computeCosts(); after(); }; });
     sheetEl.querySelectorAll('[data-style]').forEach(function (b) { b.onclick = function () { S.style = b.getAttribute('data-style'); saveS(); computeCosts(); after(); }; });
   }
   function drawRouteSheet() {
@@ -1426,7 +1438,7 @@
     var start = plan.pts[0];
     var html = junoNote() + '<div style="display:flex;align-items:flex-start;gap:8px"><div class="grow"><h2>' + esc(plan.title) + '</h2><div class="sub">Start: ' + esc(start.name || 'Start') + (start === PREKO && !myRef() && !plan.opt.tour ? ' (du bist nicht auf der Insel)' : '') + (plan.pts.length > 2 && !plan.opt.loop ? ' &middot; ' + (plan.pts.length - 2) + ' Zwischenziel(e)' : '') + '</div></div><span class="tag ' + d[1] + '" style="margin-top:4px">' + d[0] + '</span></div>' +
       (plan.desc ? '<div class="sub" style="margin-top:6px">' + esc(plan.desc) + '</div>' : '') +
-      settingsChips() + routeStatsHtml(r) +
+      settingsChips() + routeStatsHtml(r) + (HOOK('routeHtml', r, plan) || '') +
       '<div class="prof" id="prof">' + profileSvg(r, 340, 120, true) + '</div><div class="sub" id="profInfo" style="font-size:12px;min-height:16px">Finger auf das Profil legen, um den Punkt auf der Karte zu sehen.</div>' +
       '<div class="btns"><button class="go sec" id="cancel">Abbrechen</button><button class="go" id="start">Los fahren</button></div>' +
       (DESKTOP ? '<div class="btns"><button class="go sec" id="simRide">Fahrt simulieren (Test am PC)</button></div>' : '') +
@@ -1451,6 +1463,7 @@
       planRoute(p, plan.opt.loop ? plan.title : (p[p.length - 1].name || 'Ziel'), plan.opt);
     };
     bindProfile(r, $('prof'), $('profInfo'));
+    HOOK('routeBound', r, plan);
   }
 
   // ---------- Höhenprofil ----------
@@ -1582,7 +1595,8 @@
         '<div class="btns"><button class="go" id="loopGo">Tour vorschlagen</button></div><div id="loopOut" style="margin-top:12px">' +
         (loopRes ? (loopRes.length ? loopRes.map(function (x, k) { return tourCard('data-loop="' + k + '"', x.title, x.r, x.why); }).join('') : '<div class="empty">Keine passende Tour gefunden. Probiere eine andere Dauer.</div>') : '') + '</div>';
     }
-    sheet(junoNote() + head + settingsChips() + body);
+    sheet(junoNote() + head + settingsChips() + (tourTab === 'loop' ? HOOK('toursHtml') || '' : '') + body);
+    HOOK('toursBound');
     bindSettingsChips(function () { loopRes = null; showTours(); });
     sheetEl.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { showTours(b.getAttribute('data-tab')); }; });
     if ($('loopGo')) {
@@ -1591,7 +1605,7 @@
       });
       $('loopGo').onclick = function () {
         $('loopOut').innerHTML = '<div class="empty" id="loopMsg">Suche schöne Ziele in der Umgebung ...</div>';
-        suggestTours(function (res) { loopRes = res; if (state === 'tours' && tourTab === 'loop') { showTours('loop'); var o = $('loopOut'); if (o) sheetEl.scrollTop = o.offsetTop - 60; } },
+        suggestTours(function (res) { loopRes = HOOK('loops', res) || res; if (state === 'tours' && tourTab === 'loop') { showTours('loop'); var o = $('loopOut'); if (o) sheetEl.scrollTop = o.offsetTop - 60; } },
           function (msg) { var m = $('loopMsg'); if (m) m.textContent = msg; });
       };
     }
@@ -1807,11 +1821,11 @@
   function showMenu(focus) {
     state = 'menu'; clearRoute(true);
     var rides = load('rides', []);
-    var html = '<h2>Einstellungen</h2>' +
+    var html = (HOOK('menuTop') || '') + '<h2>Einstellungen</h2>' +
       '<h3>Dein Fahrrad</h3><div class="hscroll" style="flex-wrap:wrap;overflow:visible">' + Object.keys(BIKES).map(function (k) { return '<button class="chip' + (k === S.bike ? ' on' : '') + '" data-mbike="' + k + '">' + BIKES[k].n + '</button>'; }).join('') + '</div>' +
       '<h3>Fitness</h3><div class="seg">' + Object.keys(FIT).map(function (k) { return '<button class="' + (k === S.fit ? 'on' : '') + '" data-fit="' + k + '">' + FIT[k].n + '</button>'; }).join('') + '</div>' +
       '<h3>Routenstil</h3><div class="seg">' + Object.keys(STYLES).map(function (k) { return '<button class="' + (k === S.style ? 'on' : '') + '" data-mstyle="' + k + '">' + STYLES[k].n + '</button>'; }).join('') + '</div><div class="sub">' + STYLES[S.style].d + '</div>' +
-      '<h3>Navigation</h3>' +
+      '<h3>Navigation</h3>' + (HOOK('menuNav') || '') +
       '<div class="opt"><div class="grow">Sprachansagen<div class="sub">Abbiegen, Anstiege, Ankunft</div></div>' + sw('swVoice', S.voice) + '</div>' +
       '<div class="opt"><div class="grow">Wind einrechnen<div class="sub">' + (WX ? 'Aktuell ' + Math.round(WX.wind) + ' km/h aus ' + compass(WX.dir) + windName(WX.dir) : 'Wetterdaten brauchen Internet') + '</div></div>' + sw('swWind', S.wind) + '</div>' +
       '<h3 id="mapSec">Karte</h3>' +
@@ -1826,9 +1840,9 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 5.3 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 5.4 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
-    sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
+    sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-mstyle]').forEach(function (b) { b.onclick = function () { S.style = b.getAttribute('data-mstyle'); saveS(); computeCosts(); showMenu(); }; });
     function tg(id, key, after) { $(id).onclick = function () { S[key] = !S[key]; saveS(); this.classList.toggle('on', S[key]); if (after) after(); }; }
@@ -1837,6 +1851,7 @@
     tg('swRelief', 'relief', updLayers); tg('swCont', 'contours', updLayers); tg('swRoutes', 'routes', updLayers); tg('swLabels', 'labels', updLayers);
     $('mFree').onclick = startFree;
     sheetEl.querySelectorAll('[data-ride]').forEach(function (b) { b.onclick = function () { showRide(+b.getAttribute('data-ride')); }; });
+    HOOK('menuBound');
     if (focus === 'map') setTimeout(function () { var el = $('mapSec'); if (el) sheetEl.scrollTop = el.offsetTop - 40; }, 30);
   }
   $('btnMenu').onclick = function () { if (!nav) showMenu(); };
@@ -1863,7 +1878,7 @@
   // =====================================================================
   var nav = null, rec = null, trackLayer = null;
   function recStart(title) {
-    rec = { t: Date.now(), title: title || '', dist: 0, mv: 0, asc: 0, max: 0, last: null, lastT: 0, eref: null, trk: [] };
+    rec = { t: Date.now(), title: title || '', dist: 0, mv: 0, asc: 0, max: 0, last: null, lastT: 0, eref: null, trk: [], tt: [] };
     trackLayer = []; setSrc('track', fc());
   }
   function recPoint(lat, lon, acc, speed) {
@@ -1882,18 +1897,21 @@
     var z = eleAt(lat, lon), hy = onIsland(lat, lon) ? 3 : 6;
     if (z != null) { if (rec.eref == null) rec.eref = z; else if (z - rec.eref > hy) { rec.asc += z - rec.eref; rec.eref = z; } else if (z < rec.eref - hy) rec.eref = z; }
     rec.last = [lat, lon]; rec.lastT = now;
-    rec.trk.push([Math.round(lat * 1e5) / 1e5, Math.round(lon * 1e5) / 1e5]);
+    rec.trk.push([Math.round(lat * 1e5) / 1e5, Math.round(lon * 1e5) / 1e5]); rec.tt.push(Math.round((now - rec.t) / 1000));
     trackLayer.push([lat, lon]); if (trackLayer.length > 1) setSrc('track', fc([lineF(trackLayer)]));
   }
   function saveRide(r) {
     var l = load('rides', []);
     var trk = r.trk, stp = Math.max(1, Math.ceil(trk.length / 1500));
-    l.unshift({ t: r.t, title: r.title, dist: r.dist, mv: r.mv, asc: r.asc, max: r.max, tot: ((r.lastT || Date.now()) - r.t) / 1000, trk: trk.filter(function (_, k) { return k % stp === 0; }) });
+    var tt = r.tt || [];
+    var ride = { t: r.t, title: r.title, dist: r.dist, mv: r.mv, asc: r.asc, max: r.max, tot: ((r.lastT || Date.now()) - r.t) / 1000, trk: trk.filter(function (_, k) { return k % stp === 0; }), tt: tt.filter(function (_, k) { return k % stp === 0; }) };
+    l.unshift(ride);
     store('rides', l.slice(0, 30));
+    HOOK('rideSaved', ride);
   }
   // Zwischenstand sichern, falls Android die App waehrend der Fahrt beendet
   setInterval(function () {
-    if (rec && rec.dist > 0) { var c = {}; for (var k in rec) c[k] = rec[k]; var stp = Math.max(1, Math.ceil(rec.trk.length / 1500)); c.trk = rec.trk.filter(function (_, i) { return i % stp === 0; }); store('recDraft', c); }
+    if (rec && rec.dist > 0) { var c = {}; for (var k in rec) c[k] = rec[k]; var stp = Math.max(1, Math.ceil(rec.trk.length / 1500)); c.trk = rec.trk.filter(function (_, i) { return i % stp === 0; }); c.tt = (rec.tt || []).filter(function (_, i) { return i % stp === 0; }); store('recDraft', c); }
   }, 20000);
   (function () {
     var d = load('recDraft', null);
@@ -1964,7 +1982,7 @@
   function stopNav() {
     var wasFree = nav && nav.free;
     clearInterval(simT);
-    nav = null; leaveNavUi(); recStop();
+    nav = null; leaveNavUi(); recStop(); HOOK('navStop');
     if (hoverMarker) { setSrc('hover', fc()); hoverMarker = null; }
     clearRoute();
   }
@@ -2003,6 +2021,7 @@
       var pr = project(r, ref.lat, ref.lon, nav.lastAlong);
       if (pr.d > 35 + Math.min(ref.acc, 30)) {
         nav.off++;
+        if (nav.off === 2) HOOK('haptic', 'warn');
         if (nav.off >= 3) {
           nav.off = 0;
           // verbleibende Wegpunkte behalten
@@ -2035,7 +2054,8 @@
     if (ref && !step.end) {
       var key = si + '_' + step.at.toFixed(0);
       if (toStep < 260 && toStep > 90 && !nav.said[key + 'f']) { nav.said[key + 'f'] = 1; say('In ' + fmtSay(toStep) + ' ' + step.say + (step.name ? ' in ' + step.name : '')); }
-      if (toStep <= 35 && !nav.said[key + 'n']) { nav.said[key + 'n'] = 1; say('Jetzt ' + step.say + (step.name ? ' in ' + step.name : '')); buzz(250); }
+      if (toStep <= 35 && !nav.said[key + 'n']) { nav.said[key + 'n'] = 1; say('Jetzt ' + step.say + (step.name ? ' in ' + step.name : '')); if (HOOK('haptic', step.turn < 0 ? 'left' : 'right') === undefined) buzz(250); }
+      if (toStep < 110 && toStep > 60 && !nav.said[key + 'h']) { nav.said[key + 'h'] = 1; HOOK('haptic', step.turn < 0 ? 'left' : 'right'); }
     }
     var upcoming = r.climbs.filter(function (c) { return c.b > along; })[0];
     if (ref && upcoming && upcoming.a - along < 300 && upcoming.a - along > 0 && !nav.climbSaid[upcoming.a]) {
@@ -2043,7 +2063,8 @@
       say('Achtung, Anstieg in ' + fmtSay(upcoming.a - along) + ': ' + fmtSay(upcoming.len) + ' mit ' + Math.round(upcoming.g * 100) + ' Prozent');
     }
     $('spRem').textContent = fmtDist(remain) + ' · ' + clock(secs);
-    if (remain < 25 && ref && !nav.arrived) { nav.arrived = true; say('Du hast dein Ziel erreicht'); buzz(600); }
+    if (remain < 25 && ref && !nav.arrived) { nav.arrived = true; say('Du hast dein Ziel erreicht'); buzz(600); HOOK('arrived', plan); }
+    HOOK('navTick', r, along, ref);
     if (nav.arrived) {
       $('navDist').textContent = 'Angekommen'; $('navText').textContent = plan.title; $('navThen').textContent = '';
       $('navPath').setAttribute('d', 'M10 26 L20 36 L38 14');
@@ -2071,6 +2092,7 @@
       '<div class="btns">' + (nav.arrived ? '<button class="go" id="stopNav">Fahrt beenden und speichern</button>' : '<button class="go sec" id="stopNav">Navigation beenden</button>') + '<button class="go sec" id="navJuno" style="flex:0 0 120px">Juno</button></div>', true);
     $('navJuno').onclick = showJuno;
     $('stopNav').onclick = stopNav;
+    HOOK('navSheet');
   }
   function freeSheet(ref) {
     $('climbBox').style.display = 'none';
@@ -2353,6 +2375,7 @@
   };
   function askJuno(q) {
     q = String(q || '').trim(); if (!q || junoBusy) return;
+    if (HOOK('junoGate') === false) return;
     if (navigator.onLine === false) { toast('Juno braucht Internet.'); return; }
     juno.push({ role: 'user', content: q });
     var wait = { role: 'assistant', wait: true }; juno.push(wait);
@@ -2365,6 +2388,7 @@
         junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
         if (!d.antwort) { juno.push({ role: 'assistant', content: d.fehler || 'Juno ist gerade nicht erreichbar.' }); saveJuno(); if (state === 'ai') showJuno(); return; }
         var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [] };
+        HOOK('haptic', 'soft'); HOOK('junoUsed');
         juno.push(m); saveJuno(); junoLast = { text: d.antwort, t: Date.now() };
         if (nav || !$('chatlog')) say(plainText(d.antwort).slice(0, 400));
         // Aktionen sofort ausfuehren (Route, Tour, Anpassung); Orte nur anzeigen
@@ -2427,6 +2451,7 @@
   // Zurück-Taste
   // =====================================================================
   window.goBack = function () {
+    if (HOOK('back')) return true;
     if (fs) { setFs(false); return true; }
     if ($('results').style.display === 'block') { $('results').style.display = 'none'; return true; }
     if (nav) {
@@ -2445,5 +2470,16 @@
   drawChips(); updLayers(); drawHome();
   setTimeout(fitIsland, 50);
   window.__show = showPoi;
+  window.V = {
+    D: D, A: A, S: S, saveS: saveS, BIKES: BIKES, FIT: FIT, STYLES: STYLES, CLASS: CLASS, CAT: CAT, IC: IC, LAT: LAT, LON: LON,
+    map: map, sheet: sheet, sheetEl: sheetEl, toast: toast, say: say, svg: svg, esc: esc, $: $, store: store, load: load,
+    dist: dist, bearing: bearing, fmtDist: fmtDist, fmtKm: fmtKm, fmtTime: fmtTime, hhmm: hhmm, clock: clock, demEle: demEle, eleAt: eleAt, onIsland: onIsland,
+    nearestPlace: nearestPlace, nearestNode: nearestNode, nearby: nearby, routeVia: routeVia, planRoute: planRoute, startRef: startRef, meRef: meRef, myRef: myRef,
+    computeCosts: computeCosts, drawHome: drawHome, drawRouteSheet: drawRouteSheet, showMenu: showMenu, showJuno: showJuno, askJuno: askJuno, showTours: showTours, setSrc: setSrc, fc: fc, lineF: lineF, ptF: ptF,
+    fitTo: fitTo, boundsOf: boundsOf, view: view, setFollow: setFollow, padding: padding, sunTimes: sunTimes, idxAt: idxAt, routeLL: routeLL, profileSvg: profileSvg,
+    get state() { return state; }, set state(v) { state = v; }, get nav() { return nav; }, get rec() { return rec; }, get cur() { return cur; }, get plan() { return plan; }, get me() { return me; }, get WX() { return WX; }, get mapReady() { return mapReady; },
+    get lastSpeed() { return lastSpeed; }, meMarker: function () { return meMarker; }, DESKTOP: DESKTOP
+  };
+  HOOK('init');
   window.__ugljan = { kontext: function () { return buildKontext(); }, getCur: function () { return cur; }, map: map, STYLES: STYLES, routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };
 })();

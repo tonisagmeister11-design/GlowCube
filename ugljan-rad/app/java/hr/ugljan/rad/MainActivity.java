@@ -25,10 +25,26 @@ import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
+import android.content.ContentValues;
+import android.provider.MediaStore;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.Map;
+import org.json.JSONArray;
 import android.window.OnBackInvokedDispatcher;
 
 import java.util.ArrayList;
@@ -99,6 +115,23 @@ public class MainActivity extends Activity implements LocationListener {
                 } catch (Exception ignored) { }
                 return true;
             }
+
+            // Offline-Karten: heruntergeladene Kacheln direkt aus dem Speicher liefern
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
+                if (!"GET".equals(req.getMethod())) return null;
+                String u = req.getUrl().toString();
+                if (!isTileUrl(u)) return null;
+                File f = tileFile(u);
+                if (!f.exists()) return null;
+                try {
+                    Map<String, String> h = new HashMap<>();
+                    h.put("Access-Control-Allow-Origin", "*");
+                    return new WebResourceResponse(mimeOf(u), null, 200, "OK", h, new FileInputStream(f));
+                } catch (Exception e) {
+                    return null;
+                }
+            }
         });
         web.addJavascriptInterface(new Bridge(), "Android");
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
@@ -119,6 +152,34 @@ public class MainActivity extends Activity implements LocationListener {
         if (Build.VERSION.SDK_INT >= 33) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::handleBack);
         }
+    }
+
+    static boolean isTileUrl(String u) {
+        return u.startsWith("https://tiles.openfreemap.org/") || u.startsWith("https://s3.amazonaws.com/elevation-tiles-prod/")
+                || u.startsWith("https://tile.waymarkedtrails.org/");
+    }
+
+    static String mimeOf(String u) {
+        if (u.endsWith(".png")) return "image/png";
+        if (u.endsWith(".pbf") || u.endsWith(".mvt")) return "application/x-protobuf";
+        return "application/json";
+    }
+
+    File tileFile(String u) {
+        try {
+            byte[] d = MessageDigest.getInstance("SHA-1").digest(u.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            for (byte x : d) sb.append(String.format("%02x", x));
+            return new File(new File(getFilesDir(), "tiles"), sb.toString());
+        } catch (Exception e) {
+            return new File(getFilesDir(), "tiles/x");
+        }
+    }
+
+    private volatile boolean dlStop = false;
+
+    private void js(String code) {
+        runOnUiThread(() -> web.evaluateJavascript(code, null));
     }
 
     private void handleBack() {
@@ -310,6 +371,149 @@ public class MainActivity extends Activity implements LocationListener {
                 Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
                 if (v != null) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
             } catch (Exception ignored) { }
+        }
+
+        // Haptik wie in guten Apps: kurze, knackige Effekte statt Brummen. level 1 = leicht, 2 = stark
+        @JavascriptInterface
+        public void haptic(String type, int level) {
+            try {
+                Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                if (v == null || !v.hasVibrator() || level <= 0) return;
+                float k = level >= 2 ? 1f : 0.55f;
+                if (Build.VERSION.SDK_INT >= 30 && v.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK,
+                        VibrationEffect.Composition.PRIMITIVE_TICK, VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, VibrationEffect.Composition.PRIMITIVE_THUD)) {
+                    VibrationEffect.Composition c = VibrationEffect.startComposition();
+                    switch (type) {
+                        case "tick": c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.7f * k); break;
+                        case "click": c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f * k); break;
+                        case "soft": c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f * k).addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.35f * k, 70); break;
+                        case "success": c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.7f * k).addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f * k, 60); break;
+                        case "celebrate": c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f * k).addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f * k, 90)
+                                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.8f * k, 60).addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f * k, 40); break;
+                        case "left": c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f * k).addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f * k, 130); break;
+                        case "right": c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f * k).addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f * k, 130).addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f * k, 130); break;
+                        case "warn": c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 1f * k).addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 1f * k, 120).addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 1f * k, 120); break;
+                        default: c.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f * k);
+                    }
+                    v.vibrate(c.compose());
+                    return;
+                }
+                if (Build.VERSION.SDK_INT >= 29 && (type.equals("tick") || type.equals("click") || type.equals("soft"))) {
+                    v.vibrate(VibrationEffect.createPredefined(type.equals("click") ? (level >= 2 ? VibrationEffect.EFFECT_HEAVY_CLICK : VibrationEffect.EFFECT_CLICK) : VibrationEffect.EFFECT_TICK));
+                    return;
+                }
+                int a = level >= 2 ? 255 : 140;
+                long[] t;
+                int[] amp;
+                switch (type) {
+                    case "tick": t = new long[]{0, 12}; amp = new int[]{0, a / 2}; break;
+                    case "click": case "soft": t = new long[]{0, 22}; amp = new int[]{0, a}; break;
+                    case "success": t = new long[]{0, 30, 60, 45}; amp = new int[]{0, a / 2, 0, a}; break;
+                    case "celebrate": t = new long[]{0, 35, 70, 35, 70, 80}; amp = new int[]{0, a, 0, a, 0, a}; break;
+                    case "left": t = new long[]{0, 40, 110, 40}; amp = new int[]{0, a, 0, a}; break;
+                    case "right": t = new long[]{0, 40, 110, 40, 110, 40}; amp = new int[]{0, a, 0, a, 0, a}; break;
+                    case "warn": t = new long[]{0, 120, 90, 120, 90, 120}; amp = new int[]{0, a, 0, a, 0, a}; break;
+                    default: t = new long[]{0, 25}; amp = new int[]{0, a};
+                }
+                if (v.hasAmplitudeControl()) v.vibrate(VibrationEffect.createWaveform(t, amp, -1));
+                else v.vibrate(VibrationEffect.createWaveform(t, -1));
+            } catch (Exception ignored) { }
+        }
+
+        // Datei (z. B. GPX) im Ordner Downloads speichern, liefert den Ort oder "" bei Fehler
+        @JavascriptInterface
+        public String saveFile(String name, String mime, String text) {
+            try {
+                byte[] data = text.getBytes("UTF-8");
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.Downloads.DISPLAY_NAME, name);
+                    cv.put(MediaStore.Downloads.MIME_TYPE, mime);
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (uri == null) return "";
+                    try (OutputStream o = getContentResolver().openOutputStream(uri)) { o.write(data); }
+                    return "Downloads/" + name;
+                }
+                File f = new File(getExternalFilesDir(null), name);
+                try (OutputStream o = new FileOutputStream(f)) { o.write(data); }
+                return f.getAbsolutePath();
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
+        // Offline-Karten: Kacheln im Hintergrund laden, Fortschritt an VX.dlProgress(fertig, gesamt, fehler)
+        @JavascriptInterface
+        public void downloadTiles(String json) {
+            dlStop = false;
+            new Thread(() -> {
+                int done = 0, fail = 0, total = 0;
+                try {
+                    JSONArray a = new JSONArray(json);
+                    total = a.length();
+                    new File(getFilesDir(), "tiles").mkdirs();
+                    for (int i = 0; i < total && !dlStop; i++) {
+                        String u = a.getString(i);
+                        File f = tileFile(u);
+                        if (!f.exists()) {
+                            try {
+                                HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+                                c.setConnectTimeout(15000); c.setReadTimeout(20000);
+                                c.setRequestProperty("User-Agent", "Velora/5.4 (Android)");
+                                int code = c.getResponseCode();
+                                if (code == 200) {
+                                    File tmp = new File(f.getPath() + ".tmp");
+                                    try (InputStream in = c.getInputStream(); OutputStream o = new FileOutputStream(tmp)) {
+                                        byte[] buf = new byte[16384]; int n;
+                                        while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                                    }
+                                    tmp.renameTo(f);
+                                } else if (code != 204 && code != 404) fail++;
+                                c.disconnect();
+                            } catch (Exception e) { fail++; }
+                        }
+                        done++;
+                        if (done % 20 == 0 || done == total) js("window.VX&&VX.dlProgress(" + done + "," + total + "," + fail + ")");
+                    }
+                } catch (Exception e) { fail++; }
+                js("window.VX&&VX.dlProgress(" + done + "," + total + "," + fail + ",true)");
+            }).start();
+        }
+
+        @JavascriptInterface
+        public void stopDownload() { dlStop = true; }
+
+        @JavascriptInterface
+        public void shareText(String title, String text) {
+            runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text);
+                    startActivity(Intent.createChooser(i, title));
+                } catch (Exception ignored) { }
+            });
+        }
+
+        @JavascriptInterface
+        public String tileInfo() {
+            File[] l = new File(getFilesDir(), "tiles").listFiles();
+            long b = 0; int n = 0;
+            if (l != null) for (File f : l) { b += f.length(); n++; }
+            return n + "," + b;
+        }
+
+        @JavascriptInterface
+        public void clearTiles() {
+            File[] l = new File(getFilesDir(), "tiles").listFiles();
+            if (l != null) for (File f : l) f.delete();
+        }
+
+        // Startbildschirm-Widget mit Wochenkilometern und Serie
+        @JavascriptInterface
+        public void setWidget(String big, String small, String line) {
+            getSharedPreferences("widget", MODE_PRIVATE).edit().putString("big", big).putString("small", small).putString("line", line).apply();
+            AppWidgetManager m = AppWidgetManager.getInstance(MainActivity.this);
+            int[] ids = m.getAppWidgetIds(new ComponentName(MainActivity.this, VeloraWidget.class));
+            if (ids.length > 0) VeloraWidget.update(MainActivity.this, m, ids);
         }
 
         @JavascriptInterface

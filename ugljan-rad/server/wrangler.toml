@@ -24,3 +24,8 @@ simple = { limit = 20, period = 60 }
 [[rules]]
 type = "Text"
 globs = ["**/*.html"]
+
+# Live-Standort teilen (Velora Plus)
+[[kv_namespaces]]
+binding = "LIVE"
+id = "fc0f09a228394fa183c473036fc21d62"

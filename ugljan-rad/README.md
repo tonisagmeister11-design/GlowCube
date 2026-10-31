@@ -28,3 +28,14 @@ und hat Werkzeuge für echte Daten: Ortssuche und Umkreissuche (OpenStreetMap/No
 Recherche (Wikivoyage/Wikipedia) und Wetter (Open-Meteo). Sie kann der App Aktionen geben:
 Route planen, Tour vorschlagen, Route anpassen, Navigation starten, Ort zeigen.
 Hochladen: im Ordner `server/` `npx wrangler deploy` (Cloudflare-Konto nötig).
+
+## Velora Plus, Velo und Haptik (ab 5.4)
+
+`app/assets/plus.js` und `plus.css` hängen sich über `window.VX` an die Haken (`HOOK`) in `app.js`:
+Vibrationen (Android `haptic`), Maskottchen Velo mit Serien-Feiern, Nachtmodus, Farbthemen, 3D-Pfeil,
+Pfeile auf der Route und Velora Plus (Profile, E-Bike-Akku, Rückenwind, Regenwarnung, Routen/GPX,
+Offline-Karten, Tagebuch, Abzeichen, Bestzeiten, Live-Standort, Widget, Juno ohne Limit, Reiseführer,
+Tagesplaner). Plus wird bis zur Play-Store-Bezahlung lokal zum Testen freigeschaltet.
+Live-Standort: `server/worker.js` (`/live`, `/l/<id>`, KV-Speicher `LIVE`).
+Browser-Tester: `python3 tools/build_tester.py` (Demo-Juno) bzw. `--real server/public/index.html` (echte Juno, liegt auf dem Server unter `/`).
+Schrift: Inter (SIL Open Font License, `app/assets/fonts/OFL.txt`).
