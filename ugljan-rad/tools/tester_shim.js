@@ -26,16 +26,16 @@
   }
   window.fetch = function (url, opt) {
     var u = String(url && url.url || url);
-    if (/workers\.dev\/chat/.test(u)) { try { return demo(JSON.parse(opt.body)); } catch (e) { return demo({}); } }
+    if (!window.__REAL_KI && /workers\.dev\/chat/.test(u)) { try { return demo(JSON.parse(opt.body)); } catch (e) { return demo({}); } }
     return realFetch(url, opt);
   };
 
   addEventListener('load', function () {
     var bar = document.createElement('div');
-    bar.textContent = 'Testmodus: Standort Preko, Juno Demo ohne KI-Limit';
+    bar.textContent = window.__REAL_KI ? 'Testversion: echte Juno-KI' : 'Testmodus: Standort Preko, Juno Demo ohne KI-Limit';
     bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(6px + env(safe-area-inset-bottom));z-index:9999;background:#0d2b3e;color:#fff;font:600 11px system-ui;padding:4px 10px;border-radius:10px;opacity:.85;pointer-events:none;white-space:nowrap';
     document.body.appendChild(bar);
     setTimeout(function () { bar.remove(); }, 7000);
-    setTimeout(function () { if (window.onGps) onGps(44.0764, 15.1944, 5, 0, -1, -1, 1, 8); }, 1200);
+    if (!window.__REAL_KI) setTimeout(function () { if (window.onGps) onGps(44.0764, 15.1944, 5, 0, -1, -1, 1, 8); }, 1200);
   });
 })();

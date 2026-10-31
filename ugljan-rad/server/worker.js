@@ -1,3 +1,4 @@
+import TESTER from './public/index.html';
 // Velora KI-Server ("Juno") auf Cloudflare Workers.
 // Die App schickt den Chatverlauf und ihre Live-Daten (Standort, Tempo, Höhe, Route, Navigation ...) an POST /chat.
 // Juno antwortet mit Hilfe von Werkzeugen, die echte Daten holen (OpenStreetMap, Wikivoyage/Wikipedia, Open-Meteo),
@@ -173,6 +174,7 @@ function msgOf(out) {
 
 export default {
   async fetch(req, env) {
+    if (req.method === 'GET' && new URL(req.url).pathname === '/') return new Response(TESTER, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' } });
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const url = new URL(req.url);
     if (req.method !== 'POST' || (url.pathname !== '/chat' && url.pathname !== '/ki' && url.pathname !== '/werkzeug')) return json({ fehler: 'Nicht gefunden' }, 404);

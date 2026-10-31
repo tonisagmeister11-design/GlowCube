@@ -18,3 +18,9 @@ MODEL = "@cf/openai/gpt-oss-120b"
 name = "LIMIT"
 namespace_id = "1002"
 simple = { limit = 20, period = 60 }
+
+
+# Testversion der App im Browser (z. B. iPhone): GET / liefert public/index.html
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
