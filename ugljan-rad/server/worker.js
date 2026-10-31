@@ -275,12 +275,14 @@ export default {
         const calls = aktionen.length ? [] : (m.tool_calls || []);
         if (!calls.length) {
           let antwort = cleanText(m.content);
+          let extra = 0;
           if (!antwort) {
             // kaputte oder leere Ausgabe: mit einem zweiten Modell aus denselben echten Daten neu formulieren
-            antwort = await fallbackAnswer(env, messages);
+            antwort = await fallbackAnswer(env, messages); extra = 1;
           }
           if (!antwort) antwort = aktionen.length ? 'Erledigt, schau in die App.' : 'Das habe ich gerade nicht hinbekommen. Frag mich bitte nochmal.';
-          return json({ antwort, aktionen, orte: dedupe(orte), modell: model });
+          // Credits: jeder Rechenschritt der KI kostet einen (einfache Frage 1, mit Suche/Recherche 2 bis 4)
+          return json({ antwort, aktionen, orte: dedupe(orte), modell: model, credits: Math.min(5, schritt + 1 + extra) });
         }
         messages.push({ role: 'assistant', content: m.content || '', tool_calls: calls });
         for (const c of calls) {
@@ -298,11 +300,11 @@ export default {
           messages.push({ role: 'tool', tool_call_id: c.id, name, content: JSON.stringify(result).slice(0, 5000) });
         }
       }
-      return json({ antwort: 'Das war mir gerade zu kompliziert. Frag mich bitte etwas genauer.', aktionen, orte: dedupe(orte) });
+      return json({ antwort: 'Das war mir gerade zu kompliziert. Frag mich bitte etwas genauer.', aktionen, orte: dedupe(orte), credits: 5 });
     } catch (e) {
       console.error('KI-Fehler', e && e.message);
       if (/4006|daily free allocation/i.test(String(e && e.message)))
-        return json({ fehler: 'Juno hat ihr kostenloses Tageskontingent für heute aufgebraucht. Ab 1 Uhr nachts (deutsche Zeit) geht es wieder. Mit dem bezahlten Cloudflare-Tarif gäbe es kein Tageslimit.' }, 503);
+        return json({ fehler: 'Juno ist für heute ausgelastet. Morgen geht es wieder.' }, 503);
       return json({ fehler: 'Juno ist gerade nicht erreichbar. Bitte später nochmal versuchen.' }, 503);
     }
   }

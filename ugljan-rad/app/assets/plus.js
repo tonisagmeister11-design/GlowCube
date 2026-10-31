@@ -23,20 +23,16 @@
   function setPlus(on) { P.on = on; P.since = on ? Date.now() : 0; V.store('plus', P); applyLook(); updWidget(); }
   var TAG = '<span class="plustag">PLUS</span>';
   var FEATS = [
-    ['bike', 'Mehr Fahrprofile', 'Gravel, Familie mit Kindern (ruhig und flach) und Rennrad mit Steigungsgrenze.'],
-    ['wind', 'E-Bike-Akkuplaner', 'Reicht dein Akku für die Route? Mit Ladestationen in der Nähe.'],
-    ['wind', 'Rückenwind-Touren', 'Rundtouren so gelegt, dass du auf dem Heimweg Rückenwind hast.'],
-    ['sun', 'Regenwarnung für die Route', 'Zeigt, ob es unterwegs zu deiner Ankunftszeit regnet.'],
-    ['flag', 'Routen speichern und GPX', 'Lieblingsrouten sichern, GPX exportieren und importieren.'],
-    ['road', 'Offline-Karten', 'Kartenausschnitte für Reisen ohne Internet herunterladen.'],
-    ['list', 'Fahrten-Tagebuch', 'Wochen, Monate, Kalorien, Höhenmeter und Wochenziel.'],
-    ['up', 'Abzeichen und Bestzeiten', 'Sammle Abzeichen und jage deine Rekorde an Anstiegen.'],
-    ['pin', 'Live-Standort teilen', 'Familie und Freunde sehen per Link, wo du gerade fährst.'],
-    ['play', 'Startbildschirm-Widget', 'Wochenkilometer und Serie direkt auf dem Handy.'],
-    ['juno', 'Juno ohne Tageslimit', 'Kostenlos 5 Fragen pro Tag, mit Plus so viele du willst.'],
+    ['juno', '100 Juno-Credits am Tag', 'Statt 10. Für lange Gespräche, Recherche und viele Routen.'],
     ['juno', 'Juno als Reiseführer', 'Erzählt unterwegs, an welchen Orten du gerade vorbeifährst.'],
     ['loop', 'Tagesplaner', 'Ein ganzer Tag mit Aussicht, Mittagessen und Badestopp als eine Route.'],
-    ['sun', 'Designs und Pfeile', 'Farbthemen und verschiedene Navigationspfeile.']
+    ['bike', 'Mehr Fahrprofile', 'Gravel sowie Familie mit Kindern (ruhig und flach).'],
+    ['wind', 'E-Bike-Akkuplaner', 'Reicht dein Akku für die Route? Mit Ladestationen in der Nähe.'],
+    ['sun', 'Regenwarnung für die Route', 'Zeigt, ob es unterwegs zu deiner Ankunftszeit regnet.'],
+    ['up', 'Bestzeiten an Anstiegen', 'Velo misst jeden Anstieg und feiert deine Rekorde.'],
+    ['road', 'Offline-Karten ohne Grenze', 'Beliebig viele und größere Gebiete (gratis: ein kleines Gebiet).'],
+    ['flag', 'GPX-Export und -Import', 'Strecken mit anderen Apps und Geräten austauschen.'],
+    ['sun', 'Mehr Farben und Pfeile', 'Abendrot, Lavendel, Kirschblüte, Mitternacht, Gold und weitere Navigationspfeile.']
   ];
   var PRICE = load2('price', 'year');
   function load2(k, d) { return V.load(k, d); }
@@ -55,7 +51,7 @@
     if (!inModal) V.state = 'plus';
     var html = '<div class="plus-hero"><h2>Velora Plus</h2><div class="sub" style="max-width:68%">' + (why ? esc(why) + ' ist Teil von Velora Plus.' : 'Mehr Touren, mehr Juno, mehr Spaß auf dem Rad.') + '</div>' + mascot('cheer', 92) + '</div>' +
       FEATS.map(function (f) { return '<div class="feat"><div class="ico">' + svg(f[0], '#6b4dff', 18, 2.2) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') +
-      '<div class="sub" style="margin-top:10px">Rundtouren, Navigation, Juno (5 Fragen am Tag) und die Serie mit Velo bleiben kostenlos.</div>' +
+      '<div class="sub" style="margin-top:10px">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und 10 Juno-Credits am Tag.</div>' +
       '<div class="price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><b>2,99 €</b><span>pro Monat</span></button><button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '"><em>-44 %</em><b>19,99 €</b><span>pro Jahr</span></button></div>' +
       (isPlus() ? '<div class="pbox ok"><div class="t">' + svg('flag', '#0c9a68', 18) + 'Plus ist aktiv</div><div class="sub">Danke! Alle Funktionen sind freigeschaltet.</div></div><div class="btns"><button class="go sec" id="plusOff">Plus beenden (Test)</button></div>'
         : '<div class="btns"><button class="go plus" id="plusGo">Plus freischalten</button></div><div class="sub" style="font-size:12px;margin-top:8px;text-align:center">Testversion: Die Bezahlung über Google Play wird mit der Veröffentlichung eingebaut. Bis dahin wird Plus hier kostenlos zum Ausprobieren freigeschaltet.</div>') +
@@ -100,53 +96,28 @@
   }, { capture: true, passive: true });
 
   // =====================================================================
-  // Maskottchen Velo: ein kleines Rad mit Helm
+  // Maskottchen Velo, der Fuchs (fox.js) und seine Animationen
   // =====================================================================
-  var mId = 0;
   function mascot(mood, size) {
-    var g = 'vg' + (++mId);
-    var spokes = '';
-    for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6; spokes += '<line x1="60" y1="64" x2="' + (60 + Math.cos(a) * 37).toFixed(1) + '" y2="' + (64 + Math.sin(a) * 37).toFixed(1) + '"/>'; }
-    return '<div class="mascot m-' + mood + '" style="width:' + size + 'px;height:' + size + 'px"><svg viewBox="0 0 120 120" aria-label="Velo">' +
-      '<defs><radialGradient id="' + g + 'f" cx="42%" cy="35%" r="70%"><stop offset="0" stop-color="#6ff0bf"/><stop offset=".6" stop-color="#2fd59a"/><stop offset="1" stop-color="#14a873"/></radialGradient>' +
-      '<linearGradient id="' + g + 'h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb35c"/><stop offset="1" stop-color="#f76707"/></linearGradient></defs>' +
-      '<ellipse class="m-sh" cx="60" cy="112" rx="30" ry="5" fill="rgba(13,43,62,.16)"/>' +
-      '<g class="m-lines" stroke="#9fb0bf" stroke-width="3" stroke-linecap="round"><path d="M6 50 H22"/><path d="M2 64 H16"/><path d="M8 78 H20"/></g>' +
-      '<g class="m-body">' +
-      '<g class="m-arml" stroke="#0d2b3e" stroke-width="6" stroke-linecap="round" fill="none"><path class="arm-down" d="M19 70 Q9 74 7 84"/><path class="arm-up" d="M19 58 Q8 48 9 34"/></g>' +
-      '<g class="m-armr" stroke="#0d2b3e" stroke-width="6" stroke-linecap="round" fill="none"><path class="arm-down" d="M101 70 Q111 74 113 84"/><path class="arm-up" d="M101 58 Q112 48 111 34"/></g>' +
-      '<circle cx="60" cy="64" r="44" fill="#0d2b3e"/>' +
-      '<circle cx="60" cy="64" r="41" fill="none" stroke="#2a4a62" stroke-width="2.5" stroke-dasharray="3 5"/>' +
-      '<circle cx="60" cy="64" r="37" fill="#dfe7ee"/>' +
-      '<g class="m-spokes" stroke="#9fb0bf" stroke-width="1.6">' + spokes + '</g>' +
-      '<circle cx="60" cy="64" r="31" fill="url(#' + g + 'f)" stroke="#ffffff" stroke-width="2"/>' +
-      '<g class="m-eyes"><ellipse cx="49" cy="59" rx="7.5" ry="9" fill="#fff"/><ellipse cx="71" cy="59" rx="7.5" ry="9" fill="#fff"/>' +
-      '<circle cx="50.5" cy="60.5" r="4.6" fill="#0d2b3e"/><circle cx="72.5" cy="60.5" r="4.6" fill="#0d2b3e"/><circle cx="52.2" cy="58.4" r="1.7" fill="#fff"/><circle cx="74.2" cy="58.4" r="1.7" fill="#fff"/></g>' +
-      '<ellipse cx="40" cy="71" rx="5" ry="3" fill="#ff8fa3" opacity=".75"/><ellipse cx="80" cy="71" rx="5" ry="3" fill="#ff8fa3" opacity=".75"/>' +
-      '<path class="mo mo-smile" d="M51 73 Q60 81 69 73" stroke="#0d2b3e" stroke-width="3.2" fill="none" stroke-linecap="round"/>' +
-      '<g class="mo mo-open"><path d="M50 71 Q60 89 70 71 Z" fill="#0d2b3e"/><path d="M55 79 Q60 84 65 79 Q60 76 55 79 Z" fill="#ff6b81"/></g>' +
-      '<path class="mo mo-sad" d="M52 79 Q60 72 68 79" stroke="#0d2b3e" stroke-width="3.2" fill="none" stroke-linecap="round"/>' +
-      '<path class="m-tear" d="M43 68 q-3 5 0 7 q3 -2 0 -7z" fill="#5aa9ff"/>' +
-      '<path d="M24 37 C27 12 93 12 96 37 C80 31 40 31 24 37 Z" fill="url(#' + g + 'h)" stroke="#d9480f" stroke-width="1.5"/>' +
-      '<path d="M47 18 L44 31 M60 15 V30 M73 18 L76 31" stroke="#ffd8a8" stroke-width="3" stroke-linecap="round"/>' +
-      '<path d="M90 33 Q100 34 104 39" stroke="#d9480f" stroke-width="4" stroke-linecap="round" fill="none"/>' +
-      '</g></svg></div>';
+    var m = { idle: 'idle', wave: 'wave', cheer: 'cheer', sad: 'sad', ride: 'ride', think: 'think', thumbs: 'thumbs', sleep: 'sleep', trophy: 'trophy' }[mood] || 'idle';
+    return '<div class="fxw fx-' + m + '" style="width:' + Math.round(size * 0.87) + 'px;height:' + size + 'px">' + (window.Fox ? Fox.svg(m) : '') + '</div>';
   }
   VX.mascot = mascot;
   var FLAME = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-4-1-6 1-9z" fill="#ff922b"/><path d="M12 12c1 2 3 3 3 5a3 3 0 0 1-6 0c0-1 1-2 1-3 1 1 2 0 2-2z" fill="#ffd43b"/></svg>';
+  // grosse Flamme fuer die Serie, in drei Schichten (flackert ueber CSS)
+  function bigFlame(cls) {
+    return '<svg class="bflame ' + (cls || '') + '" viewBox="0 0 120 150"><defs><radialGradient id="bfG" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#ffe066"/><stop offset=".55" stop-color="#ff922b"/><stop offset="1" stop-color="#f03e3e"/></radialGradient></defs>' +
+      '<g class="bf-o"><path d="M60 6 C70 34 104 52 104 92 A44 44 0 0 1 16 92 C16 70 30 56 38 46 C38 60 44 70 54 72 C50 50 52 26 60 6 Z" fill="url(#bfG)"/></g>' +
+      '<g class="bf-m"><path d="M60 52 C66 70 86 80 86 102 A26 26 0 0 1 34 102 C34 90 42 82 46 76 C47 86 52 90 58 90 C55 78 56 64 60 52 Z" fill="#ffd43b"/></g>' +
+      '<g class="bf-i"><path d="M60 88 C64 98 74 104 74 114 A14 14 0 0 1 46 114 C46 106 52 102 54 98 C55 104 58 106 61 106 C59 100 59 94 60 88 Z" fill="#fff9db"/></g></svg>';
+  }
 
-  // ---------- Feiern ----------
+  // ---------- Feiern: Warteschlange, damit mehrere Animationen nacheinander kommen ----------
   var celeQ = [], celeOpen = false;
   function celebrate(o) { celeQ.push(o); if (celeOpen && !$('cele')) celeOpen = false; if (!celeOpen) nextCele(); }
-  function nextCele() {
-    var o = celeQ.shift(); if (!o) { celeOpen = false; return; }
-    celeOpen = true;
-    var el = document.createElement('div'); el.id = 'cele';
-    var top = o.medal ? '<div class="medal">' + medalSvg(o.medal, o.col || '#f5b70a') + '</div>' : mascot(o.mood || 'cheer', 140);
-    el.innerHTML = '<div class="cbox">' + top + (o.big != null ? '<div class="big' + (o.flame ? '' : ' acc') + '">' + (o.flame ? FLAME.replace('22', '44').replace('22', '44') : '') + o.big + '</div>' : '') +
-      '<h2>' + esc(o.title) + '</h2><div class="sub">' + esc(o.text || '') + '</div><button class="go" id="celeOk">' + esc(o.btn || 'Weiter') + '</button></div>';
+  function confetti(el, n) {
     var cols = ['#2fd59a', '#5aa9ff', '#ffa94d', '#f06595', '#ffd43b', '#b197fc'];
-    for (var i = 0; i < 70; i++) {
+    for (var i = 0; i < (n || 70); i++) {
       var c = document.createElement('i'); c.className = 'conf';
       c.style.left = Math.random() * 100 + '%'; c.style.background = cols[i % cols.length];
       c.style.setProperty('--dx', (Math.random() * 160 - 80) + 'px'); c.style.setProperty('--rot', (Math.random() * 900 - 450) + 'deg');
@@ -154,22 +125,70 @@
       if (Math.random() < 0.3) c.style.borderRadius = '50%';
       el.appendChild(c);
     }
+  }
+  function countUp(el, to, ms, fmt) {
+    var t0 = performance.now();
+    (function step(t) { var k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(to * e); if (k < 1) requestAnimationFrame(step); })(t0);
+  }
+  function nextCele() {
+    var o = celeQ.shift(); if (!o) { celeOpen = false; return; }
+    celeOpen = true;
+    var el = document.createElement('div'); el.id = 'cele';
+    var body = o.kind === 'streak' ? streakHtml(o) : o.kind === 'ride' ? rideHtml(o) : o.kind === 'badge' ? badgeHtml(o) : genericHtml(o);
+    el.innerHTML = '<div class="cbox c-' + (o.kind || 'gen') + '">' + body + '<button class="go" id="celeOk">' + esc(o.btn || 'Weiter') + '</button></div>';
     document.body.appendChild(el);
-    hap('celebrate');
+    if (o.kind !== 'streak') { confetti(el, o.kind === 'ride' ? 40 : 70); hap('celebrate'); }
     if (o.say && S.voice) V.say(o.say);
+    if (o.kind === 'streak') runStreak(el, o);
+    if (o.kind === 'ride') runRide(el, o);
+    if (o.kind === 'badge') setTimeout(function () { hap('success'); }, 450);
     function close() { el.style.transition = 'opacity .25s'; el.style.opacity = 0; setTimeout(function () { el.remove(); nextCele(); }, 250); }
     $('celeOk').onclick = close;
     el.onclick = function (e) { if (e.target === el) close(); };
   }
   VX.celebrate = celebrate;
-  function medalSvg(icon, col) {
-    return '<svg viewBox="0 0 64 64"><path d="M22 2h8l6 16-8 4zM42 2h-8l-6 16 8 4z" fill="#e5463c"/><path d="M27 2h3l4 11-3 2zM37 2h-3l-4 11 3 2z" fill="#ff8787"/>' +
-      '<circle cx="32" cy="40" r="20" fill="' + col + '"/><circle cx="32" cy="40" r="16" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2"/>' +
-      '<g transform="translate(20 28)">' + svg(icon, '#ffffff', 24, 2.4).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '') + '</g></svg>';
+  function genericHtml(o) {
+    return mascot(o.mood || 'cheer', 150) + (o.big != null ? '<div class="big acc">' + o.big + '</div>' : '') + '<h2>' + esc(o.title) + '</h2><div class="sub">' + esc(o.text || '') + '</div>';
+  }
+  // Serie: wie bei Duolingo entzuendet sich die Flamme und die Zahl springt hoch
+  function streakHtml(o) {
+    var names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], ws = weekStart(Date.now()), today = (new Date().getDay() + 6) % 7;
+    var days = names.map(function (n, i) {
+      var on = rodeOn(ws + i * 864e5), isT = i === today;
+      return '<div class="sd' + (on && !isT ? ' on' : '') + (isT ? ' today' : '') + '"><i>' + (on || isT ? FLAME : '') + '</i><span>' + n + '</span></div>';
+    }).join('');
+    return '<div class="flamebox">' + bigFlame('ign') + '<div class="sparks">' + new Array(10).join('<b></b>') + '</div></div>' +
+      '<div class="snum"><span class="old">' + o.from + '</span><span class="new">' + o.to + '</span></div>' +
+      '<h2>' + (o.to === 1 ? 'Serie gestartet!' : o.to + ' Tage in Folge!') + '</h2><div class="sub">' + esc(o.text) + '</div><div class="sweek">' + days + '</div>' +
+      '<div class="sfox">' + mascot('thumbs', 86) + '</div>';
+  }
+  function runStreak(el) {
+    var box = el.querySelector('.cbox');
+    setTimeout(function () { box.classList.add('lit'); hap('success'); }, 700);
+    setTimeout(function () { box.classList.add('flip'); hap('click'); }, 1250);
+    setTimeout(function () { box.classList.add('day'); hap('celebrate'); confetti(el, 50); }, 1750);
+  }
+  // Fahrt beendet: Velo faehrt ins Bild, dann zaehlen die Werte hoch
+  function rideHtml(o) {
+    return '<div class="rfox">' + mascot('ride', 120) + '</div><h2>' + esc(o.title) + '</h2>' +
+      '<div class="rstats"><div><b data-cu="' + o.km + '" data-f="km">0</b><span>km</span></div><div><b data-cu="' + o.min + '" data-f="int">0</b><span>Minuten</span></div><div><b data-cu="' + o.asc + '" data-f="int">0</b><span>Höhenmeter</span></div><div><b data-cu="' + o.kcal + '" data-f="int">0</b><span>kcal</span></div></div>' +
+      '<div class="sub">' + esc(o.text || '') + '</div>';
+  }
+  function runRide(el) {
+    el.querySelectorAll('[data-cu]').forEach(function (b, i) {
+      var to = +b.getAttribute('data-cu'), f = b.getAttribute('data-f') === 'km' ? function (v) { return num(v.toFixed(1)); } : function (v) { return String(Math.round(v)); };
+      setTimeout(function () { countUp(b, to, 900, f); }, 500 + i * 180);
+    });
+    setTimeout(function () { var w = el.querySelector('.rfox .fxw'); if (w) { w.outerHTML = mascot('thumbs', 120); } hap('success'); }, 1900);
+  }
+  function badgeHtml(o) {
+    return '<div class="bshow"><div class="rays"></div>' + badgeSvg(o.fam, o.tier, false, true) + '</div>' +
+      '<div class="btier" style="color:' + TIERS[o.tier - 1][2] + '">' + TIERS[o.tier - 1][0] + '</div><h2>' + esc(o.fam[1]) + '</h2><div class="sub">' + esc(o.text) + '</div>' +
+      '<div class="bfox">' + mascot('trophy', 80) + '</div>';
   }
 
   // =====================================================================
-  // Fahrten-Tagebuch, Serie, Wochenziel
+  // Fahrten-Tagebuch, Serie, Wochenziel (kostenlos)
   // =====================================================================
   var LOG = V.load('log', null);
   if (!LOG) { LOG = V.load('rides', []).map(function (r) { return { t: r.t, d: r.dist, mv: r.mv, asc: r.asc, max: r.max || 0 }; }).reverse(); V.store('log', LOG); }
@@ -179,6 +198,7 @@
     if (S.bike === 'ebike') met *= 0.6;
     return Math.round(met * S.weight * h + r.asc * S.weight * 9.81 / 4184 / 0.24 * 0.3);
   }
+  function rodeOn(t0) { return LOG.some(function (r) { return r.d >= 1000 && r.t >= t0 && r.t < t0 + 864e5; }); }
   function streak() {
     var days = {}; LOG.forEach(function (r) { if (r.d >= 1000) days[dayKey(r.t)] = 1; });
     var now = Date.now(), cur = 0, t = dayStart(now);
@@ -186,7 +206,8 @@
     while (days[dayKey(t)]) { cur++; t -= 864e5; }
     var best = 0, run = 0, keys = Object.keys(days).sort(), prev = null;
     keys.forEach(function (k) { var d = new Date(k + 'T12:00:00').getTime(); run = prev && Math.round((d - prev) / 864e5) === 1 ? run + 1 : 1; prev = d; if (run > best) best = run; });
-    return { cur: cur, best: best, today: !!days[dayKey(now)] };
+    var last = keys.length ? new Date(keys[keys.length - 1] + 'T12:00:00').getTime() : 0;
+    return { cur: cur, best: best, today: !!days[dayKey(now)], lost: !cur && best > 1 && now - last < 7 * 864e5 };
   }
   function sumSince(t0, t1) {
     var o = { d: 0, mv: 0, asc: 0, kcal: 0, n: 0, maxD: 0 };
@@ -195,70 +216,106 @@
   }
   function weekDays(ws) { var out = []; for (var i = 0; i < 7; i++) { var a = ws + i * 864e5; out.push(sumSince(a, a + 864e5).d); } return out; }
 
-  // ---------- Abzeichen ----------
-  var IS = (function () { // Nordwest- und Suedostspitze von Ugljan
-    var bb = V.D.bbox, k = (bb[2] - bb[0]) / (bb[3] - bb[1]), mx = -1e9, mn = 1e9, a = 0, b = 0;
-    for (var i = 0; i < V.LAT.length; i += 7) { var p = V.LAT[i] - V.LON[i] * k; if (p > mx) { mx = p; a = i; } if (p < mn) { mn = p; b = i; } }
-    return { nw: [V.LAT[a], V.LON[a]], se: [V.LAT[b], V.LON[b]] };
-  })();
-  var VIS = V.load('visited', { beach: {}, village: {} });
-  var BADGES = [
-    ['first', 'Erste Fahrt', 'bike', '#2fd59a', function (c) { return c.n >= 1; }],
-    ['km10', '10 km gesamt', 'road', '#5aa9ff', function (c) { return c.tot >= 10000; }],
-    ['km100', '100 km gesamt', 'road', '#4c6ef5', function (c) { return c.tot >= 100000; }],
-    ['km500', '500 km gesamt', 'road', '#7c5cff', function (c) { return c.tot >= 500000; }],
-    ['km1000', '1000 km gesamt', 'road', '#f5b70a', function (c) { return c.tot >= 1000000; }],
-    ['r25', '25 km am Stück', 'flag', '#20c997', function (c) { return c.maxD >= 25000; }],
-    ['r50', '50 km am Stück', 'flag', '#f76707', function (c) { return c.maxD >= 50000; }],
-    ['hm500', '500 Höhenmeter in einer Fahrt', 'up', '#e8590c', function (c) { return c.maxAsc >= 500; }],
-    ['hm5k', '5000 Höhenmeter gesamt', 'up', '#c92a2a', function (c) { return c.asc >= 5000; }],
-    ['s3', '3 Tage in Folge', 'sun', '#ff922b', function (c) { return c.best >= 3; }],
-    ['s7', '7 Tage in Folge', 'sun', '#f76707', function (c) { return c.best >= 7; }],
-    ['s30', '30 Tage in Folge', 'sun', '#d9480f', function (c) { return c.best >= 30; }],
-    ['ugljan', 'Ganz Ugljan von Spitze zu Spitze', 'loop', '#0c9a68', function (c) { return !!c.ugljan; }],
-    ['beach5', '5 Strände besucht', 'beach', '#4fc3f7', function (c) { return c.beaches >= 5; }],
-    ['villages', 'Alle Orte auf Ugljan', 'pin', '#e64980', function (c) { return c.villages >= c.villAll; }],
-    ['early', 'Frühaufsteher: Start vor 7 Uhr', 'sun', '#fab005', function (c) { return c.early; }],
-    ['night', 'Nachtfahrt: Start nach 21 Uhr', 'mute', '#5c7cfa', function (c) { return c.night; }],
-    ['juno', '10 Fragen an Juno', 'juno', '#7c5cff', function (c) { return c.juno >= 10; }]
+  // =====================================================================
+  // Abzeichen: Familien mit bis zu 10 Stufen, damit sie ueber Jahre reichen
+  // =====================================================================
+  var TIERS = [['Bronze', '#f3b680', '#b4652d'], ['Silber', '#f1f4f7', '#8796a5'], ['Gold', '#ffe27a', '#d39b00'], ['Platin', '#dff5ff', '#5aa3c4'], ['Smaragd', '#8af0bd', '#0f9f63'],
+    ['Saphir', '#9cc8ff', '#1f5fd1'], ['Rubin', '#ff9eac', '#c8102e'], ['Amethyst', '#dcbcff', '#7a3fd1'], ['Diamant', '#ffffff', '#47b8e6'], ['Legende', '#ffe08a', '#ff4fa0']];
+  // [id, Name, Symbol, Stufen, Wert(c), Text(x)]
+  var FAM = [
+    ['km', 'Kilometerfresser', 'road', [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000], function (c) { return c.tot / 1000; }, function (x) { return x + ' km insgesamt'; }],
+    ['hm', 'Bergziege', 'up', [500, 1000, 2500, 5000, 8849, 15000, 25000, 50000, 100000], function (c) { return c.asc; }, function (x) { return (x === 8849 ? '8849 m (einmal Mount Everest)' : x + ' Höhenmeter') + ' insgesamt'; }],
+    ['rides', 'Stammgast', 'bike', [1, 10, 25, 50, 100, 250, 500, 1000], function (c) { return c.n; }, function (x) { return x === 1 ? 'Erste Fahrt' : x + ' Fahrten'; }],
+    ['streak', 'Feuer und Flamme', 'sun', [3, 7, 14, 30, 60, 100, 200, 365], function (c) { return c.best; }, function (x) { return x + ' Tage in Folge gefahren'; }],
+    ['long', 'Langstrecke', 'flag', [25, 50, 75, 100, 150, 200], function (c) { return c.maxD / 1000; }, function (x) { return x + ' km an einem Tag'; }],
+    ['climbday', 'Gipfelstürmer', 'up', [250, 500, 1000, 1500, 2000, 3000], function (c) { return c.maxAsc; }, function (x) { return x + ' Höhenmeter an einem Tag'; }],
+    ['top', 'Höhenluft', 'peak', [500, 1000, 1500, 2000, 2500], function (c) { return c.top; }, function (x) { return 'Auf ' + x + ' m über dem Meer geradelt'; }],
+    ['explore', 'Entdecker', 'pin', [3, 10, 25, 50, 100, 250], function (c) { return c.cells; }, function (x) { return 'In ' + x + ' verschiedenen Gegenden gefahren'; }],
+    ['far', 'Weltenbummler', 'loop', [1, 3, 5, 10, 20], function (c) { return c.far; }, function (x) { return x + (x === 1 ? ' Fahrt' : ' Fahrten') + ' über 300 km von zu Hause'; }],
+    ['tours', 'Ziel erreicht', 'flag', [1, 5, 10, 25, 50, 100, 250], function (c) { return c.arr; }, function (x) { return x + (x === 1 ? ' Navigation' : ' Navigationen') + ' bis ans Ziel'; }],
+    ['goal', 'Wochenheld', 'list', [1, 4, 12, 26, 52, 104], function (c) { return c.goals; }, function (x) { return x + (x === 1 ? ' Woche' : ' Wochen') + ' mit erreichtem Wochenziel'; }],
+    ['months', 'Treue', 'sun', [1, 3, 6, 12, 24, 36, 60], function (c) { return c.months; }, function (x) { return x + (x === 1 ? ' Monat' : ' Monate') + ' mit mindestens einer Fahrt'; }],
+    ['seasons', 'Bei jedem Wetter', 'wind', [4, 8, 12, 20], function (c) { return c.seasons; }, function (x) { return x + ' Jahreszeiten mit Fahrten'; }],
+    ['early', 'Frühaufsteher', 'sun', [1, 5, 20, 50], function (c) { return c.early; }, function (x) { return x + (x === 1 ? ' Fahrt' : ' Fahrten') + ' vor 7 Uhr'; }],
+    ['night', 'Nachteule', 'mute', [1, 5, 20, 50], function (c) { return c.night; }, function (x) { return x + (x === 1 ? ' Fahrt' : ' Fahrten') + ' nach 21 Uhr'; }],
+    ['weekend', 'Wochenendkrieger', 'bike', [5, 25, 100, 250], function (c) { return c.wkend; }, function (x) { return x + ' Fahrten am Wochenende'; }],
+    ['speed', 'Rakete', 'wind', [30, 40, 50, 60], function (c) { return c.vmax; }, function (x) { return 'Höchstgeschwindigkeit ' + x + ' km/h'; }],
+    ['juno', 'Juno-Freund', 'juno', [1, 10, 50, 200, 500], function (c) { return c.juno; }, function (x) { return x + (x === 1 ? ' Frage' : ' Fragen') + ' an Juno'; }]
   ];
-  var VILLAGES = V.D.places.filter(function (p) { return p[3] === 'village'; });
-  var GOT = V.load('badges', {});
+  var GOT = V.load('tiers', {});
+  function cellOf(r) { return r.c || null; }
   function badgeCtx() {
-    var c = { n: 0, tot: 0, maxD: 0, maxAsc: 0, asc: 0, best: streak().best, ugljan: V.load('ugljanDone', false), beaches: Object.keys(VIS.beach).length, villages: Object.keys(VIS.village).length, villAll: VILLAGES.length, early: false, night: false, juno: V.load('junoTotal', 0) };
-    LOG.forEach(function (r) { if (r.d < 300) return; c.n++; c.tot += r.d; c.asc += r.asc; if (r.d > c.maxD) c.maxD = r.d; if (r.asc > c.maxAsc) c.maxAsc = r.asc; var h = new Date(r.t).getHours(); if (h < 7 && h >= 3) c.early = true; if (h >= 21) c.night = true; });
+    var c = { n: 0, tot: 0, maxD: 0, maxAsc: 0, asc: 0, top: 0, best: streak().best, cells: 0, far: 0, arr: 0, goals: 0, months: 0, seasons: 0, early: 0, night: 0, wkend: 0, vmax: 0, juno: V.load('junoTotal', 0) };
+    var cells = {}, months = {}, seas = {}, day = {}, weeks = {}, home = V.load('homeCell', null);
+    LOG.forEach(function (r) {
+      if (r.d < 300) return;
+      var d = new Date(r.t), h = d.getHours(), wd = d.getDay();
+      c.n++; c.tot += r.d; c.asc += r.asc; if (r.d > c.maxD) c.maxD = r.d; if ((r.top || 0) > c.top) c.top = r.top; if ((r.max || 0) < 90 && (r.max || 0) > c.vmax) c.vmax = r.max;
+      var dk = dayKey(r.t); day[dk] = (day[dk] || 0) + r.asc;
+      if (r.c) { cells[r.c] = 1; if (home && dist2(r.c, home) > 300000) c.far++; }
+      if (r.arr) c.arr++;
+      if (h >= 3 && h < 7) c.early++; if (h >= 21) c.night++; if (wd === 0 || wd === 6) c.wkend++;
+      months[d.getFullYear() + '-' + d.getMonth()] = 1;
+      seas[(d.getMonth() === 11 ? d.getFullYear() + 1 : d.getFullYear()) + '-' + Math.floor(((d.getMonth() + 1) % 12) / 3)] = 1;
+      var wk = weekStart(r.t); weeks[wk] = (weeks[wk] || 0) + r.d;
+    });
+    for (var k in day) if (day[k] > c.maxAsc) c.maxAsc = day[k];
+    c.cells = Object.keys(cells).length; c.months = Object.keys(months).length; c.seasons = Object.keys(seas).length;
+    for (var w in weeks) if (weeks[w] >= S.goalKm * 1000) c.goals++;
     return c;
   }
+  function dist2(a, b) { var p = a.split(','), q = b.split(','); return V.dist(+p[0], +p[1], +q[0], +q[1]); }
+  function tierOf(f, c) { var v = f[4](c), t = 0; f[3].forEach(function (x, i) { if (v >= x) t = i + 1; }); return { t: t, v: v }; }
   function checkBadges(show) {
     var c = badgeCtx(), fresh = [];
-    BADGES.forEach(function (b) { if (!GOT[b[0]] && b[4](c)) { GOT[b[0]] = Date.now(); fresh.push(b); } });
-    if (fresh.length) V.store('badges', GOT);
-    if (show) fresh.forEach(function (b) { celebrate({ medal: b[2], col: b[3], title: 'Neues Abzeichen!', text: b[1] + (isPlus() ? '' : '. Alle Abzeichen siehst du mit Velora Plus.'), btn: 'Super' }); });
+    FAM.forEach(function (f) { var t = tierOf(f, c).t; if (t > (GOT[f[0]] || 0)) { GOT[f[0]] = t; fresh.push([f, t]); } });
+    if (fresh.length) V.store('tiers', GOT);
+    if (show) fresh.forEach(function (x) { celebrate({ kind: 'badge', fam: x[0], tier: x[1], text: x[0][5](x[0][3][x[1] - 1]) + '. Stufe ' + x[1] + ' von ' + x[0][3].length + '.', btn: 'Stark' }); });
   }
-  function visitTrack(trk) {
-    var beaches = V.D.pois.map(function (p, i) { return p[0] === 'beach' ? i : -1; }).filter(function (i) { return i >= 0; });
-    var nw = false, se = false;
-    for (var k = 0; k < trk.length; k += 2) {
-      var la = trk[k][0], lo = trk[k][1];
-      if (!V.onIsland(la, lo)) continue;
-      beaches.forEach(function (i) { var p = V.D.pois[i]; if (!VIS.beach[i] && Math.abs(p[1] - la) < 0.002 && V.dist(la, lo, p[1], p[2]) < 150) VIS.beach[i] = 1; });
-      VILLAGES.forEach(function (p) { if (!VIS.village[p[0]] && Math.abs(p[1] - la) < 0.006 && V.dist(la, lo, p[1], p[2]) < 500) VIS.village[p[0]] = 1; });
-      if (V.dist(la, lo, IS.nw[0], IS.nw[1]) < 2000) nw = true;
-      if (V.dist(la, lo, IS.se[0], IS.se[1]) < 2000) se = true;
-    }
-    if (nw && se) V.store('ugljanDone', true);
-    V.store('visited', VIS);
+  // Abzeichen-Design: Sechseck mit Edelmetall-Rand, Sternen fuer die Stufe und Band
+  var bId = 0;
+  function badgeSvg(f, tier, locked, big) {
+    var id = 'bd' + (++bId), T = TIERS[Math.max(0, tier - 1)], c1 = locked ? '#e9eef3' : T[1], c2 = locked ? '#aeb8c2' : T[2];
+    var ic = svg(f[2], locked ? '#c3ccd5' : '#ffffff', 24, 2.6).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+    var stars = '', ns = locked ? 0 : Math.min(5, tier), sx = 50 - (ns - 1) * 6;
+    for (var i = 0; i < ns; i++) stars += '<path transform="translate(' + (sx + i * 12) + ' 9) scale(.42)" d="M0 -10 L2.9 -3.1 10 -3.1 4.3 1.2 6.5 8.1 0 4 -6.5 8.1 -4.3 1.2 -10 -3.1 -2.9 -3.1Z" fill="#fff" stroke="' + c2 + '" stroke-width="2"/>';
+    return '<svg class="bdg' + (big ? ' big' : '') + (locked ? ' lock' : '') + '" viewBox="0 0 100 112"><defs>' +
+      '<linearGradient id="' + id + 'r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + c1 + '"/><stop offset=".5" stop-color="' + c2 + '"/><stop offset="1" stop-color="' + c1 + '"/></linearGradient>' +
+      '<radialGradient id="' + id + 'f" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c2 + '"/></radialGradient>' +
+      (tier === 10 && !locked ? '<linearGradient id="' + id + 'l" x1="0" x2="1"><stop offset="0" stop-color="#ff6b6b"/><stop offset=".25" stop-color="#ffd43b"/><stop offset=".5" stop-color="#51cf66"/><stop offset=".75" stop-color="#4dabf7"/><stop offset="1" stop-color="#cc5de8"/></linearGradient>' : '') +
+      '<clipPath id="' + id + 'c"><path d="M50 14 L83 33 V73 L50 94 L17 73 V33 Z"/></clipPath></defs>' +
+      '<path d="M50 3 L93 27 V79 L50 105 L7 79 V27 Z" fill="url(#' + id + (tier === 10 && !locked ? 'l' : 'r') + ')" stroke="rgba(13,43,62,.35)" stroke-width="1.5"/>' +
+      '<path d="M50 14 L83 33 V73 L50 94 L17 73 V33 Z" fill="url(#' + id + 'f)"/>' +
+      '<g clip-path="url(#' + id + 'c)"><path d="M50 14 L83 33 V45 C70 38 30 38 17 45 V33 Z" fill="#fff" opacity=".22"/>' + (big ? '<rect class="shine" x="-40" y="0" width="22" height="120" fill="#fff" opacity=".55" transform="skewX(-20)"/>' : '') + '</g>' +
+      '<circle cx="50" cy="54" r="21" fill="rgba(0,0,0,.14)"/><g transform="translate(34 38) scale(1.33)" fill="none" stroke="' + (locked ? '#c3ccd5' : '#ffffff') + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">' + ic + '</g>' +
+      (locked ? '<g transform="translate(66 72)"><circle r="10" fill="#8796a5"/><rect x="-5" y="-2" width="10" height="8" rx="1.5" fill="#fff"/><path d="M-3 -2 v-3 a3 3 0 0 1 6 0 v3" stroke="#fff" stroke-width="2" fill="none"/></g>' : '') +
+      stars + '<path d="M22 92 H78 L74 100 L78 108 H22 L26 100 Z" fill="' + c2 + '" stroke="rgba(13,43,62,.3)" stroke-width="1"/>' +
+      '<text x="50" y="103.5" text-anchor="middle" font-family="Inter,sans-serif" font-size="8.5" font-weight="800" fill="#fff" letter-spacing=".6" textLength="40" lengthAdjust="spacingAndGlyphs" style="letter-spacing:.6px">' + (locked ? 'STUFE 1' : 'STUFE ' + tier) + '</text></svg>';
+  }
+  function badgeGrid(c) {
+    return '<div class="badges">' + FAM.map(function (f, i) {
+      var t = tierOf(f, c), nx = f[3][t.t], prev = t.t ? f[3][t.t - 1] : 0, pc = nx ? Math.max(0, Math.min(100, (t.v - prev) / (nx - prev) * 100)) : 100;
+      return '<div class="badge' + (t.t ? ' got' : '') + '" data-fam="' + i + '">' + badgeSvg(f, Math.max(1, t.t), !t.t) + '<b>' + esc(f[1]) + '</b><div class="bbar"><i style="width:' + pc + '%"></i></div></div>';
+    }).join('') + '</div>';
+  }
+  function showFamily(i) {
+    var f = FAM[i], c = badgeCtx(), t = tierOf(f, c), nx = f[3][t.t];
+    var m = modal('<div style="text-align:center">' + badgeSvg(f, Math.max(1, t.t), !t.t, true) + '<h2>' + esc(f[1]) + '</h2><div class="sub">' + (t.t ? 'Stufe ' + t.t + ' von ' + f[3].length + ' (' + TIERS[t.t - 1][0] + ')' : 'Noch nicht freigeschaltet') + '</div>' +
+      (nx ? '<div class="pbox"><div class="t">Nächste Stufe</div><div class="sub">' + esc(f[5](nx)) + '</div><div class="meter"><i style="width:' + Math.min(100, t.v / nx * 100) + '%;background:linear-gradient(90deg,var(--lime),var(--acc))"></i></div><div class="sub">Aktuell: ' + num(Math.round(t.v * 10) / 10) + '</div></div>' : '<div class="pbox ok"><div class="sub">Alle Stufen geschafft. Legende!</div></div>') +
+      '<div class="tiers">' + f[3].map(function (x, k) { return '<div class="' + (k < t.t ? 'got' : '') + '">' + badgeSvg(f, k + 1, k >= t.t) + '<span>' + esc(f[5](x)) + '</span></div>'; }).join('') + '</div>' +
+      '<div class="btns"><button class="go sec" id="famClose">Schließen</button></div></div>');
+    $('famClose').onclick = closeModal;
   }
 
-  // ---------- Bestzeiten an Anstiegen ----------
+  // ---------- Bestzeiten an Anstiegen (Plus) ----------
   var BEST = V.load('bests', {});
   function climbsOf(ride) {
     var trk = ride.trk, tt = ride.tt, out = [];
     if (!trk || !tt || tt.length !== trk.length || trk.length < 5) return out;
-    var ele = trk.map(function (p) { return V.onIsland(p[0], p[1]) ? V.demEle(p[0], p[1]) : null; });
+    var ele = ride.ee && ride.ee.length === trk.length ? ride.ee.slice() : trk.map(function (p) { return V.onIsland(p[0], p[1]) ? V.demEle(p[0], p[1]) : null; });
     var lo = 0, hi = 0;
     function flush() {
-      if (ele[hi] - ele[lo] >= 30 && hi > lo) {
+      if (ele[hi] != null && ele[lo] != null && ele[hi] - ele[lo] >= 30 && hi > lo) {
         var len = 0; for (var j = lo + 1; j <= hi; j++) len += V.dist(trk[j - 1][0], trk[j - 1][1], trk[j][0], trk[j][1]);
         var t = tt[hi] - tt[lo];
         if (len >= 300 && t > 20) out.push({ a: lo, b: hi, gain: ele[hi] - ele[lo], len: len, t: t });
@@ -273,9 +330,8 @@
     flush();
     return out.map(function (c) {
       var A0 = trk[c.a], B0 = trk[c.b], g = function (v) { return Math.round(v * 400) / 400; };
-      var top = V.nearestPlace(B0[0], B0[1]);
       c.key = g(A0[0]) + ',' + g(A0[1]) + '>' + g(B0[0]) + ',' + g(B0[1]);
-      c.name = 'Anstieg bei ' + (top ? top[0] : 'Ugljan');
+      c.name = 'Anstieg +' + Math.round(c.gain) + ' m (' + V.fmtDist(c.len) + ')';
       return c;
     });
   }
@@ -285,7 +341,7 @@
       var b = BEST[c.key];
       if (!b || c.t < b.t) {
         var old = b ? b.t : null;
-        BEST[c.key] = { name: c.name, t: c.t, gain: Math.round(c.gain), len: Math.round(c.len), when: ride.t, prev: old };
+        BEST[c.key] = { name: (b && b.name) || c.name, t: c.t, gain: Math.round(c.gain), len: Math.round(c.len), when: ride.t, prev: old };
         if (old && isPlus()) celebrate({ mood: 'cheer', big: fmtMin(c.t).replace(' min', ''), title: 'Neuer Rekord!', text: c.name + ': ' + Math.round(old - c.t) + ' Sekunden schneller als deine alte Bestzeit.', say: 'Neuer Rekord am Anstieg' });
       }
     });
@@ -293,18 +349,19 @@
   }
 
   // ---------- Fahrt gespeichert: Tagebuch, Serie, Abzeichen, Rekorde ----------
+  var arrivedFlag = false;
   VX.rideSaved = function (ride) {
     var before = streak();
-    LOG.push({ t: ride.t, d: ride.dist, mv: ride.mv, asc: ride.asc, max: ride.max || 0 });
+    var c0 = ride.trk && ride.trk[0] ? ride.trk[0][0].toFixed(1) + ',' + ride.trk[0][1].toFixed(1) : null;
+    if (c0 && !V.load('homeCell', null)) V.store('homeCell', c0);
+    LOG.push({ t: ride.t, d: ride.dist, mv: ride.mv, asc: ride.asc, max: ride.max || 0, top: ride.top != null ? Math.round(ride.top) : null, c: c0, arr: arrivedFlag ? 1 : 0 });
+    arrivedFlag = false;
     V.store('log', LOG);
     var after = streak();
-    if (ride.trk) visitTrack(ride.trk);
     if (ride.dist >= 1000) {
-      if (LOG.filter(function (r) { return r.d >= 1000; }).length === 1) celebrate({ mood: 'cheer', title: 'Deine erste Fahrt!', text: 'Ich bin Velo und feiere ab jetzt jede Fahrt mit dir. Fahr morgen wieder, dann startet deine Serie.', say: 'Super, deine erste Fahrt!' });
-      else if (!before.today && after.cur >= 2) celebrate({ mood: 'cheer', flame: true, big: after.cur, title: after.cur + ' Tage in Folge!', text: after.cur >= after.best ? 'Das ist deine längste Serie bisher. Morgen wieder fahren, dann sind es ' + (after.cur + 1) + '.' : 'Stark! Deine Bestmarke sind ' + after.best + ' Tage. Bleib dran!', say: after.cur + ' Tage in Folge, stark!' });
-      else celebrate({ mood: 'wave', big: km(ride.dist), title: 'Fahrt gespeichert', text: Math.round(ride.asc) + ' m bergauf, etwa ' + kcal({ d: ride.dist, mv: ride.mv, asc: ride.asc }) + ' kcal. Gut gemacht!' });
-      var ws = weekStart(Date.now()), wk = sumSince(ws).d, wkBefore = wk - ride.dist;
-      if (isPlus() && wk >= S.goalKm * 1000 && wkBefore < S.goalKm * 1000) celebrate({ mood: 'cheer', big: S.goalKm + ' km', title: 'Wochenziel geschafft!', text: 'Du hast diese Woche schon ' + km(wk) + ' km geschafft.' });
+      var first = LOG.filter(function (r) { return r.d >= 1000; }).length === 1;
+      celebrate({ kind: 'ride', title: first ? 'Deine erste Fahrt!' : 'Fahrt geschafft!', km: Math.round(ride.dist / 100) / 10, min: Math.round(ride.mv / 60), asc: Math.round(ride.asc), kcal: kcal({ d: ride.dist, mv: ride.mv, asc: ride.asc }), text: first ? 'Ich bin Velo und feiere ab jetzt jede Fahrt mit dir.' : 'Gut gemacht!' });
+      if (!before.today) celebrate({ kind: 'streak', from: Math.max(0, after.cur - 1), to: after.cur, text: after.cur === 1 ? 'Fahr morgen wieder, dann brennt die Flamme weiter.' : after.cur >= after.best ? 'Deine längste Serie bisher. Morgen wieder fahren!' : 'Deine Bestmarke sind ' + after.best + ' Tage. Bleib dran!', say: after.cur > 1 ? after.cur + ' Tage in Folge!' : 'Serie gestartet!' });
     }
     checkBests(ride);
     checkBadges(true);
@@ -312,28 +369,29 @@
   };
   checkBadges(false);
 
-  // ---------- Startbildschirm-Widget ----------
+  // ---------- Startbildschirm-Widget (kostenlos) ----------
   function updWidget() {
     if (!A || !A.setWidget) return;
     try {
-      if (!isPlus()) { A.setWidget('Velora', 'Widget mit Velora Plus', 'Wochenkilometer und Serie auf einen Blick'); return; }
       var wk = sumSince(weekStart(Date.now())), st = streak();
-      A.setWidget(km(wk.d) + ' km', 'diese Woche' + (st.cur ? ' · Serie ' + st.cur + ' ' + (st.cur === 1 ? 'Tag' : 'Tage') : ''), wk.d >= S.goalKm * 1000 ? 'Wochenziel geschafft!' : 'Noch ' + km(Math.max(0, S.goalKm * 1000 - wk.d)) + ' km bis zum Wochenziel');
+      A.setWidget(km(wk.d) + ' km', 'diese Woche' + (st.cur ? ' · Serie ' + st.cur + ' ' + (st.cur === 1 ? 'Tag' : 'Tage') : ''), wk.d >= S.goalKm * 1000 ? 'Wochenziel geschafft' : 'Noch ' + km(Math.max(0, S.goalKm * 1000 - wk.d)) + ' km bis zum Wochenziel');
     } catch (e) {}
   }
   updWidget();
 
   // ---------- Startseite: Velo mit Serie und Wochenziel ----------
   VX.homeHtml = function () {
-    var st = streak(), wk = sumSince(weekStart(Date.now())), goal = S.goalKm * 1000, mood = 'idle', head, txt;
+    var st = streak(), wk = sumSince(weekStart(Date.now())), goal = S.goalKm * 1000, mood, head, txt;
     var hr = new Date().getHours();
-    if (!LOG.length) { mood = 'wave'; head = 'Hallo, ich bin Velo!'; txt = 'Starte deine erste Fahrt, ich zähle mit und feiere jede Serie mit dir.'; }
-    else if (st.today) { mood = 'cheer'; head = st.cur > 1 ? st.cur + ' Tage in Folge!' : 'Heute schon gefahren!'; txt = 'Diese Woche: ' + km(wk.d) + ' km. ' + (st.cur > 1 ? 'Morgen geht die Serie weiter.' : 'Fahr morgen wieder für eine Serie.'); }
-    else if (st.cur > 0) { mood = 'wave'; head = 'Serie: ' + st.cur + (st.cur === 1 ? ' Tag' : ' Tage'); txt = hr >= 18 ? 'Heute noch eine kleine Runde? Sonst ist die Serie morgen weg.' : 'Fahr heute, damit deine Serie weiterläuft.'; }
-    else { mood = 'idle'; head = (hr < 11 ? 'Guten Morgen!' : hr < 18 ? 'Lust auf eine Runde?' : 'Guten Abend!'); txt = 'Diese Woche: ' + km(wk.d) + ' km. Eine kurze Tour bringt dich wieder in Schwung.'; }
-    return '<div class="velo-card" data-act="stats">' + mascot(mood, 58) + '<div class="bubble"><b>' + esc(head) + '</b><span>' + esc(txt) + '</span>' +
+    if (!LOG.length) { mood = 'wave'; head = 'Hallo, ich bin Velo!'; txt = 'Starte deine erste Fahrt. Ich zähle mit und feiere jede Serie mit dir.'; }
+    else if (st.today) { mood = 'thumbs'; head = st.cur > 1 ? st.cur + ' Tage in Folge!' : 'Heute schon gefahren!'; txt = 'Diese Woche: ' + km(wk.d) + ' km. ' + (st.cur > 1 ? 'Morgen geht die Serie weiter.' : 'Fahr morgen wieder für eine Serie.'); }
+    else if (hr >= 22 || hr < 6) { mood = 'sleep'; head = 'Gute Nacht!'; txt = st.cur ? 'Morgen fahren, sonst erlischt deine Flamme (' + st.cur + ' Tage).' : 'Morgen ist ein guter Tag für eine Runde.'; }
+    else if (st.cur > 0) { mood = 'wave'; head = 'Serie: ' + st.cur + (st.cur === 1 ? ' Tag' : ' Tage'); txt = hr >= 18 ? 'Heute noch eine kleine Runde? Sonst erlischt die Flamme.' : 'Fahr heute, damit deine Flamme weiterbrennt.'; }
+    else if (st.lost) { mood = 'sad'; head = 'Die Flamme ist aus'; txt = 'Deine Serie von ' + st.best + ' Tagen ist vorbei. Eine Fahrt heute zündet sie neu an!'; }
+    else { mood = 'idle'; head = (hr < 11 ? 'Guten Morgen!' : hr < 18 ? 'Lust auf eine Runde?' : 'Guten Abend!'); txt = 'Diese Woche: ' + km(wk.d) + ' km. Eine kurze Tour bringt dich in Schwung.'; }
+    return '<div class="velo-card" data-act="stats">' + mascot(mood, 74) + '<div class="bubble"><b>' + esc(head) + '</b><span>' + esc(txt) + '</span>' +
       '<div class="goalbar"><i style="width:' + Math.min(100, wk.d / goal * 100).toFixed(1) + '%"></i></div></div>' +
-      (st.cur ? '<div class="flame">' + FLAME + st.cur + '</div>' : '') + '</div>';
+      '<div class="flame' + (st.cur ? '' : ' off') + '">' + FLAME + st.cur + '</div></div>';
   };
   VX.act = function (act) {
     if (act === 'stats') showStats();
@@ -341,59 +399,67 @@
     else if (act === 'dayplan') showDayPlan();
   };
 
-  // ---------- Statistik-Seite ----------
+  // ---------- Statistik-Seite (kostenlos; Bestzeiten mit Plus) ----------
   function showStats() {
     V.state = 'stats';
     var st = streak(), now = Date.now(), ws = weekStart(now), days = weekDays(ws), mx = Math.max.apply(null, days.concat([1000]));
     var wk = sumSince(ws), lastWk = sumSince(ws - 7 * 864e5, ws), mo = new Date(now); mo.setDate(1); mo.setHours(0, 0, 0, 0);
     var mon = sumSince(mo.getTime()), yr = sumSince(new Date(new Date().getFullYear(), 0, 1).getTime()), all = sumSince(0);
-    var names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], c = badgeCtx();
-    var html = '<div style="display:flex;align-items:center;gap:12px">' + mascot(st.today ? 'cheer' : 'wave', 70) + '<div class="grow"><h2>Deine Fahrten</h2><div class="sub">Serie: <b>' + st.cur + '</b> ' + (st.cur === 1 ? 'Tag' : 'Tage') + ' &middot; Bestmarke ' + st.best + '</div></div></div>' +
-      '<h3>Diese Woche</h3><div class="weekbars">' + days.map(function (d, i) { var h = d / mx * 100; return '<div><em>' + (d ? km(d) : '') + '</em><i class="' + (d ? '' : 'zero') + '" style="height:' + Math.max(4, h) + '%;animation-delay:' + i * 0.05 + 's"></i><span>' + names[i] + '</span></div>'; }).join('') + '</div>';
-    if (!isPlus()) {
-      html += '<div class="plusbar"><div class="grow"><b>Tagebuch, Abzeichen und Rekorde</b><span>Monate, Kalorien, Wochenziel, ' + BADGES.length + ' Abzeichen und Bestzeiten an Anstiegen gibt es mit Plus.</span></div><button class="go plus" style="width:auto;padding:0 14px;height:42px;font-size:15px" data-act="plus">Plus</button></div>' +
-        '<div class="stats"><div class="stat"><b>' + km(wk.d) + '</b><span>km Woche</span></div><div class="stat"><b>' + st.cur + '</b><span>Serie</span></div><div class="stat"><b>' + LOG.length + '</b><span>Fahrten</span></div></div>';
-    } else {
-      var goal = S.goalKm * 1000, diff = lastWk.d ? Math.round((wk.d - lastWk.d) / lastWk.d * 100) : null;
-      html += '<div class="pbox"><div class="t">Wochenziel ' + S.goalKm + ' km</div><div class="meter"><i style="width:' + Math.min(100, wk.d / goal * 100) + '%;background:linear-gradient(90deg,var(--lime),var(--acc))"></i></div><div class="sub">' + km(wk.d) + ' von ' + S.goalKm + ' km' + (wk.d >= goal ? ' &middot; geschafft!' : '') + '</div>' +
-        '<div class="seg">' + [20, 30, 50, 80, 120].map(function (g) { return '<button data-goal="' + g + '" class="' + (S.goalKm === g ? 'on' : '') + '">' + g + '</button>'; }).join('') + '</div></div>' +
-        '<div class="stats"><div class="stat"><b>' + km(wk.d) + '</b><span>km Woche</span></div><div class="stat"><b>' + km(mon.d) + '</b><span>km Monat</span></div><div class="stat"><b>' + km(yr.d) + '</b><span>km Jahr</span></div></div>' +
-        '<div class="stats"><div class="stat w"><b>' + wk.kcal + '</b><span>kcal Woche</span></div><div class="stat w"><b>' + Math.round(wk.asc) + ' m</b><span>Höhe Woche</span></div><div class="stat w"><b>' + (all.mv ? num((all.d / all.mv * 3.6).toFixed(1)) : '0') + '</b><span>km/h Schnitt</span></div></div>' +
-        '<div class="stats"><div class="stat w"><b>' + km(all.d) + '</b><span>km gesamt</span></div><div class="stat w"><b>' + km(all.maxD) + '</b><span>Längste</span></div><div class="stat w"><b>' + all.n + '</b><span>Fahrten</span></div></div>' +
-        '<h3>Wochenrückblick von Velo</h3><div class="velo-card">' + mascot(diff != null && diff >= 0 ? 'cheer' : 'idle', 50) + '<div class="bubble"><span>' + esc(recap(wk, lastWk, diff, st)) + '</span></div></div>';
-      var bl = Object.keys(BEST).map(function (k) { return BEST[k]; }).sort(function (a, b) { return b.gain - a.gain; });
-      html += '<h3>Bestzeiten an Anstiegen</h3>' + (bl.length ? bl.slice(0, 8).map(function (b) { return '<div class="row"><div class="ico">' + svg('up', '#e8590c', 18) + '</div><div class="grow"><div class="t ell">' + esc(b.name) + '</div><div class="s">' + V.fmtDist(b.len) + ', +' + b.gain + ' m' + (b.prev ? ' &middot; vorher ' + fmtMin(b.prev) : '') + '</div></div><div class="r"><b>' + fmtMin(b.t) + '</b></div></div>'; }).join('') : '<div class="empty sub">Fahr auf Ugljan einen Anstieg hoch, dann misst Velo deine Zeit.</div>');
-    }
-    html += '<h3>Abzeichen ' + Object.keys(GOT).length + ' / ' + BADGES.length + '</h3><div class="badges">' + BADGES.map(function (b) { return '<div class="badge' + (GOT[b[0]] ? ' got' : '') + '">' + medalSvg(b[2], b[3]) + esc(b[1]) + '</div>'; }).join('') + '</div>' +
-      '<div class="sub" style="font-size:12px">Strände besucht: ' + c.beaches + ' &middot; Orte: ' + c.villages + ' / ' + c.villAll + '</div>' +
+    var names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], c = badgeCtx(), goal = S.goalKm * 1000, diff = lastWk.d ? Math.round((wk.d - lastWk.d) / lastWk.d * 100) : null;
+    var nGot = FAM.reduce(function (a, f) { return a + tierOf(f, c).t; }, 0), nAll = FAM.reduce(function (a, f) { return a + f[3].length; }, 0);
+    var html = '<div style="display:flex;align-items:center;gap:12px">' + mascot(st.today ? 'thumbs' : 'wave', 84) + '<div class="grow"><h2>Deine Fahrten</h2><div class="sub"><span class="flame inl">' + FLAME + st.cur + '</span> Serie &middot; Bestmarke ' + st.best + ' Tage</div></div></div>' +
+      '<h3>Diese Woche</h3><div class="weekbars">' + days.map(function (d, i) { var h = d / mx * 100; return '<div><em>' + (d ? km(d) : '') + '</em><i class="' + (d ? '' : 'zero') + '" style="height:' + Math.max(4, h) + '%;animation-delay:' + i * 0.05 + 's"></i><span>' + names[i] + '</span></div>'; }).join('') + '</div>' +
+      '<div class="pbox"><div class="t">Wochenziel ' + S.goalKm + ' km</div><div class="meter"><i style="width:' + Math.min(100, wk.d / goal * 100) + '%;background:linear-gradient(90deg,var(--lime),var(--acc))"></i></div><div class="sub">' + km(wk.d) + ' von ' + S.goalKm + ' km' + (wk.d >= goal ? ' &middot; geschafft' : '') + '</div>' +
+      '<div class="seg">' + [20, 30, 50, 80, 120, 200].map(function (g) { return '<button data-goal="' + g + '" class="' + (S.goalKm === g ? 'on' : '') + '">' + g + '</button>'; }).join('') + '</div></div>' +
+      '<div class="stats"><div class="stat"><b>' + km(wk.d) + '</b><span>km Woche</span></div><div class="stat"><b>' + km(mon.d) + '</b><span>km Monat</span></div><div class="stat"><b>' + km(yr.d) + '</b><span>km Jahr</span></div></div>' +
+      '<div class="stats"><div class="stat w"><b>' + wk.kcal + '</b><span>kcal Woche</span></div><div class="stat w"><b>' + Math.round(wk.asc) + ' m</b><span>Höhe Woche</span></div><div class="stat w"><b>' + (all.mv ? num((all.d / all.mv * 3.6).toFixed(1)) : '0') + '</b><span>km/h Schnitt</span></div></div>' +
+      '<div class="stats"><div class="stat w"><b>' + km(all.d) + '</b><span>km gesamt</span></div><div class="stat w"><b>' + km(all.maxD) + '</b><span>Längste</span></div><div class="stat w"><b>' + all.n + '</b><span>Fahrten</span></div></div>' +
+      '<h3>Wochenrückblick</h3><div class="velo-card">' + mascot(diff != null && diff >= 0 ? 'thumbs' : 'idle', 64) + '<div class="bubble"><span>' + esc(recap(wk, lastWk, diff, st)) + '</span></div></div>' +
+      '<h3>Abzeichen ' + nGot + ' / ' + nAll + ' Stufen</h3>' + badgeGrid(c);
+    var bl = Object.keys(BEST).map(function (k) { return BEST[k]; }).sort(function (a, b) { return b.gain - a.gain; });
+    html += '<h3>Bestzeiten an Anstiegen' + (isPlus() ? '' : TAG) + '</h3>' + (!isPlus() ? '<div class="pbox locked" data-lock="Bestzeiten an Anstiegen"><div class="sub">Velo misst deine Zeit an jedem Anstieg und feiert neue Rekorde.</div></div>'
+      : bl.length ? bl.slice(0, 10).map(function (b) { return '<div class="row"><div class="ico">' + svg('up', '#e8590c', 18) + '</div><div class="grow"><div class="t ell">' + esc(b.name) + '</div><div class="s">' + new Date(b.when).toLocaleDateString('de-DE') + (b.prev ? ' &middot; vorher ' + fmtMin(b.prev) : '') + '</div></div><div class="r"><b>' + fmtMin(b.t) + '</b></div></div>'; }).join('') : '<div class="empty sub">Fahr einen Anstieg hoch, dann misst Velo deine Zeit.</div>') +
       '<div class="btns"><button class="go sec" id="stBack">Zurück</button></div>';
     V.sheet(html); V.sheetEl.classList.add('tall');
     V.sheetEl.querySelectorAll('[data-goal]').forEach(function (b) { b.onclick = function () { S.goalKm = +b.getAttribute('data-goal'); V.saveS(); updWidget(); showStats(); }; });
+    V.sheetEl.querySelectorAll('[data-fam]').forEach(function (b) { b.onclick = function () { showFamily(+b.getAttribute('data-fam')); }; });
+    V.sheetEl.querySelectorAll('[data-lock]').forEach(function (b) { b.onclick = function () { gate(b.getAttribute('data-lock')); }; });
     $('stBack').onclick = function () { V.drawHome(); };
   }
   function recap(wk, lw, diff, st) {
     if (!wk.n && !lw.n) return 'Diese Woche noch keine Fahrt. Schon 20 Minuten auf dem Rad machen den Kopf frei!';
     var t = 'Diese Woche ' + km(wk.d) + ' km in ' + wk.n + (wk.n === 1 ? ' Fahrt' : ' Fahrten') + ', ' + Math.round(wk.asc) + ' Höhenmeter und rund ' + wk.kcal + ' kcal.';
     if (diff != null) t += diff >= 0 ? ' Das sind ' + diff + ' % mehr als letzte Woche, stark!' : ' Letzte Woche waren es ' + km(lw.d) + ' km, da geht noch was.';
-    if (st.cur >= 3) t += ' Deine Serie: ' + st.cur + ' Tage.';
+    if (st.cur >= 3) t += ' Deine Flamme brennt seit ' + st.cur + ' Tagen.';
     return t;
   }
 
   // =====================================================================
   // Juno: kostenlos 5 Fragen am Tag, mit Plus unbegrenzt
   // =====================================================================
-  var FREE_Q = 5;
-  function junoCount() { var c = V.load('junoCnt', { d: '', n: 0 }); if (c.d !== dayKey(Date.now())) c = { d: dayKey(Date.now()), n: 0 }; return c; }
+  // Credits: jede Rechenrunde der KI kostet einen (einfache Frage 1, mit Suche oder Recherche 2 bis 4)
+  var CR_FREE = 10, CR_PLUS = 100;
+  function crMax() { return isPlus() ? CR_PLUS : CR_FREE; }
+  function crUsed() { var c = V.load('junoCr', { d: '', n: 0 }); return c.d === dayKey(Date.now()) ? c.n : 0; }
+  function crLeft() { return Math.max(0, crMax() - crUsed()); }
   VX.junoGate = function () {
-    if (isPlus()) return true;
-    if (junoCount().n >= FREE_Q) { paywall('Mehr als ' + FREE_Q + ' Fragen am Tag an Juno'); return false; }
-    return true;
+    if (crLeft() >= 1) return true;
+    if (isPlus()) { V.toast('Deine ' + CR_PLUS + ' Credits für heute sind aufgebraucht. Morgen gibt es neue.'); return false; }
+    paywall('Mehr Juno-Credits (' + CR_PLUS + ' statt ' + CR_FREE + ' am Tag)'); return false;
   };
-  VX.junoUsed = function () {
-    var c = junoCount(); c.n++; V.store('junoCnt', c);
+  VX.junoUsed = function (cr) {
+    V.store('junoCr', { d: dayKey(Date.now()), n: crUsed() + (cr || 1) });
     V.store('junoTotal', V.load('junoTotal', 0) + 1);
-    if (!isPlus() && FREE_Q - c.n <= 2 && FREE_Q - c.n > 0) V.toast('Noch ' + (FREE_Q - c.n) + ' kostenlose Juno-Fragen heute');
+    var left = crLeft();
+    if (!isPlus() && left <= 3) V.toast(left ? 'Noch ' + left + ' Juno-Credits heute' : 'Juno-Credits für heute aufgebraucht');
+    var h = $('crHead'); if (h) h.outerHTML = VX.junoHead();
     checkBadges(true);
+  };
+  VX.junoHead = function () {
+    var m = crMax(), l = crLeft();
+    return '<div class="crhead" id="crHead"><svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#ffd43b" stroke="#e09a00" stroke-width="2"/><path d="M12 7v10M9 9.5h4.5a1.75 1.75 0 0 1 0 3.5h-3a1.75 1.75 0 0 0 0 3.5H15" stroke="#a86b00" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>' +
+      '<div class="grow"><b>' + l + ' von ' + m + ' Credits heute</b><div class="meter" style="margin:4px 0 0"><i style="width:' + (l / m * 100) + '%;background:linear-gradient(90deg,#ffd43b,#ff922b)"></i></div></div>' +
+      (isPlus() ? '' : '<button class="chip sm" data-act="plus">Mehr mit Plus</button>') + '</div>';
   };
 
   // =====================================================================
@@ -420,7 +486,7 @@
     }
     h += isPlus() ? '<div class="pbox" id="rainBox"><div class="t">' + svg('sun', '#5aa9ff', 18) + 'Wetter unterwegs</div><div class="sub">Prüfe Regen entlang der Route ...</div></div>'
       : '<div class="pbox locked" data-lock="Die Regenwarnung"><div class="t">' + svg('sun', '#7c5cff', 18) + 'Regnet es unterwegs?' + TAG + '</div><div class="sub">Regenwarnung zu deiner Ankunftszeit an jedem Abschnitt.</div></div>';
-    h += '<div class="linkrow"><button id="rtSave">' + svg('flag', 'currentColor', 18) + 'Speichern' + (isPlus() ? '' : TAG) + '</button><button id="rtGpx">' + svg('road', 'currentColor', 18) + 'GPX' + (isPlus() ? '' : TAG) + '</button></div>';
+    h += '<div class="linkrow"><button id="rtSave">' + svg('flag', 'currentColor', 18) + 'Speichern</button><button id="rtGpx">' + svg('road', 'currentColor', 18) + 'GPX' + (isPlus() ? '' : TAG) + '</button></div>';
     return h;
   };
   VX.routeBound = function (r, plan) {
@@ -429,7 +495,7 @@
     el.querySelectorAll('[data-assist]').forEach(function (b) { b.onclick = function () { S.assist = b.getAttribute('data-assist'); V.saveS(); rerouteSheet(); }; });
     el.querySelectorAll('[data-batt]').forEach(function (b) { b.onclick = function () { S.batt = +b.getAttribute('data-batt'); V.saveS(); rerouteSheet(); }; });
     if ($('chargeBtn')) $('chargeBtn').onclick = function () { chargers(r); };
-    $('rtSave').onclick = function () { if (gate('Routen speichern')) saveRoute(r, plan); };
+    $('rtSave').onclick = function () { saveRoute(r, plan); };
     $('rtGpx').onclick = function () { if (gate('GPX-Export')) exportGpx(r, plan.title); };
     if (isPlus() && $('rainBox')) rainCheck(r);
   };
@@ -471,11 +537,11 @@
   function showSaved() {
     V.state = 'saved';
     V.sheet('<h2>Gespeicherte Routen</h2>' + (SAVED.length ? SAVED.map(function (x, i) { return '<div class="row" data-sv="' + i + '"><div class="ico">' + svg(x.opt.loop ? 'loop' : 'flag', 'currentColor', 18) + '</div><div class="grow"><div class="t ell">' + esc(x.title) + '</div><div class="s">' + V.fmtDist(x.len) + ' &middot; ' + V.fmtTime(x.secs) + ' &middot; ' + Math.round(x.asc) + ' m bergauf</div></div><button class="chip sm" data-svdel="' + i + '">Löschen</button></div>'; }).join('') : '<div class="velo-card">' + mascot('think', 50) + '<div class="bubble"><span>Noch keine Routen. Plane eine Route und tippe auf "Speichern".</span></div></div>') +
-      '<div class="btns"><button class="go sec" id="gpxIn">GPX importieren</button></div><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none">' +
+      '<div class="btns"><button class="go sec" id="gpxIn">GPX importieren' + (isPlus() ? '' : TAG) + '</button></div><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none">' +
       '<div class="btns"><button class="go sec" id="svBack">Zurück</button></div>');
     V.sheetEl.querySelectorAll('[data-sv]').forEach(function (b) { b.onclick = function (e) { if (e.target.closest('[data-svdel]')) return; var x = SAVED[+b.getAttribute('data-sv')]; V.planRoute(x.pts, x.title, { picked: true, loop: x.opt.loop, tour: x.opt.tour, style: x.opt.style }); }; });
     V.sheetEl.querySelectorAll('[data-svdel]').forEach(function (b) { b.onclick = function () { SAVED.splice(+b.getAttribute('data-svdel'), 1); V.store('saved', SAVED); showSaved(); }; });
-    $('gpxIn').onclick = function () { $('gpxFile').click(); };
+    $('gpxIn').onclick = function () { if (gate('GPX-Import')) $('gpxFile').click(); };
     $('gpxFile').onchange = function () { var f = this.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { importGpx(String(rd.result), f.name); }; rd.readAsText(f); };
     $('svBack').onclick = function () { V.showMenu(); };
   }
@@ -551,13 +617,13 @@
     if (ref) { guideCheck(ref); liveSend(ref, r, along); }
   };
   VX.navStop = function () { liveStop(); var g = $('guide'); if (g) g.remove(); if (mapOk) map.getSource('rDone').setData(V.fc()); };
-  VX.arrived = function (plan) { hap('success'); };
+  VX.arrived = function (plan) { hap('success'); arrivedFlag = true; };
   VX.navSheet = function () {
     if (!V.nav || V.nav.free) return;
     var b = document.createElement('button'); b.className = 'go sec'; b.id = 'liveBtn'; b.style.cssText = 'height:42px;font-size:15px;margin-top:8px';
-    b.innerHTML = live ? 'Live-Standort wird geteilt' : 'Live-Standort teilen' + (isPlus() ? '' : TAG);
+    b.innerHTML = live ? 'Live-Standort wird geteilt' : 'Live-Standort teilen';
     V.sheetEl.appendChild(b);
-    b.onclick = function () { if (gate('Live-Standort teilen')) liveStart(); };
+    b.onclick = liveStart;
   };
 
   // ---------- Juno als Reisefuehrer (Wikipedia, kostet kein Juno-Kontingent) ----------
@@ -624,7 +690,7 @@
     '3d': ['3D-Pfeil', '<svg viewBox="0 0 50 54"><path d="M25 3 L45 49 L25 39 Z" style="fill:var(--acc)"/><path d="M25 3 L5 49 L25 39 Z" style="fill:var(--lime)"/><path d="M25 3 L45 49 L25 39 L5 49 Z" fill="none" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/></svg>'],
     pfeil: ['Klassisch', '<svg viewBox="0 0 50 54"><path d="M25 4 L44 46 L25 37 L6 46 Z" style="fill:var(--acc)" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>'],
     dart: ['Pfeilspitze', '<svg viewBox="0 0 50 54"><defs><linearGradient id="aD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb35c"/><stop offset="1" stop-color="#f76707"/></linearGradient></defs><path d="M25 2 L37 50 L25 43 L13 50 Z" fill="url(#aD)" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/></svg>'],
-    rad: ['Velo', '<svg viewBox="0 0 50 54"><path d="M25 1 L33 15 H17 Z" style="fill:var(--acc)" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/><circle cx="25" cy="32" r="17" fill="#0d2b3e" stroke="#fff" stroke-width="3"/><circle cx="25" cy="32" r="11" style="fill:var(--lime)"/><circle cx="21" cy="30" r="2.6" fill="#0d2b3e"/><circle cx="29" cy="30" r="2.6" fill="#0d2b3e"/><path d="M20.5 35.5 Q25 39 29.5 35.5" stroke="#0d2b3e" stroke-width="2" fill="none" stroke-linecap="round"/></svg>']
+    rad: ['Rad', '<svg viewBox="0 0 50 54"><path d="M25 1 L33 15 H17 Z" style="fill:var(--acc)" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/><circle cx="25" cy="32" r="17" fill="#0d2b3e" stroke="#fff" stroke-width="3"/><circle cx="25" cy="32" r="11" style="fill:var(--lime)"/><circle cx="21" cy="30" r="2.6" fill="#0d2b3e"/><circle cx="29" cy="30" r="2.6" fill="#0d2b3e"/><path d="M20.5 35.5 Q25 39 29.5 35.5" stroke="#0d2b3e" stroke-width="2" fill="none" stroke-linecap="round"/></svg>']
   };
   var rotNow = 0, upgraded = null;
   function rotTo(deg) {
@@ -663,7 +729,7 @@
     return tot ? sum / tot : null;
   }
   VX.loops = function (res) {
-    if (!res || !isPlus() || !V.WX) return res;
+    if (!res || !V.WX) return res;
     res.forEach(function (x) {
       var t = tailShare(x.r); x.tail = t;
       if (t != null && V.WX.wind >= 8) x.why = (x.why ? x.why + ' · ' : '') + (t > 0.25 ? 'Heimweg mit Rückenwind' : t < -0.25 ? 'Heimweg mit Gegenwind' : 'Heimweg mit Seitenwind');
@@ -672,11 +738,11 @@
     return res;
   };
   VX.toursHtml = function () {
-    return '<div class="opt" id="twRow"><div class="grow">Rückenwind auf dem Heimweg' + (isPlus() ? '' : TAG) + '<div class="sub">' + (V.WX ? 'Wind ' + Math.round(V.WX.wind) + ' km/h' : 'Braucht Wetterdaten (Internet)') + '</div></div><div class="sw' + (S.tailwind && isPlus() ? ' on' : '') + '" id="swTail"></div></div>';
+    return '<div class="opt" id="twRow"><div class="grow">Rückenwind auf dem Heimweg<div class="sub">' + (V.WX ? 'Wind ' + Math.round(V.WX.wind) + ' km/h' : 'Braucht Wetterdaten (Internet)') + '</div></div><div class="sw' + (S.tailwind ? ' on' : '') + '" id="swTail"></div></div>';
   };
   VX.toursBound = function () {
     var s = $('swTail'); if (!s) return;
-    s.onclick = function () { if (!gate('Rückenwind-Touren')) return; S.tailwind = !S.tailwind; V.saveS(); s.classList.toggle('on', S.tailwind); };
+    s.onclick = function () { S.tailwind = !S.tailwind; V.saveS(); s.classList.toggle('on', S.tailwind); };
   };
 
   // =====================================================================
@@ -701,38 +767,91 @@
     $('dpBack').onclick = function () { V.showMenu(); };
   }
   function planDay() {
-    var s = V.startRef();
-    if (!V.onIsland(s.lat, s.lon)) { $('dpOut').innerHTML = '<div class="pbox"><div class="sub">Der Tagesplaner rechnet zurzeit auf Ugljan. Für andere Orte frag Juno, sie kennt die Gegend.</div></div>'; return; }
-    var STOP = { view: [['view', 'peak'], 20, 'Aussicht'], food: [['food'], 70, 'Mittagessen'], beach: [['beach'], 90, 'Baden'], cafe: [['cafe'], 30, 'Kaffeepause'] };
+    var s = V.startRef(), out = $('dpOut');
+    var STOP = { view: [['view', 'sight', 'peak'], 20, 'Aussicht'], food: [['food'], 70, 'Mittagessen'], beach: [['beach'], 90, 'Baden'], cafe: [['cafe'], 30, 'Kaffeepause'] };
     var keys = Object.keys(STOP).filter(function (k) { return DP.want[k]; });
     if (!keys.length) { V.toast('Wähle mindestens einen Stopp'); return; }
     var budget = DP.h * 60, pause = keys.reduce(function (a, k) { return a + STOP[k][1]; }, 0), rideMin = Math.max(40, budget - pause);
-    var radius = Math.min(14000, rideMin / 60 * 13000 / 2.4);
-    var best = null;
-    for (var tryR = radius; tryR > 1500 && !best; tryR *= 0.75) {
+    var radius = Math.min(18000, rideMin / 60 * 14000 / 2.4);
+    var local = V.nearIsl(s) && V.onIsland(s.lat, s.lon);
+    out.innerHTML = '<div class="m-load">' + mascot('think', 80) + '</div><div class="sub" style="text-align:center">Velo sucht schöne Stopps ...</div>';
+    function cands(cats, R) {
+      if (local) return V.D.pois.filter(function (p) { return cats.indexOf(p[0]) >= 0 && V.dist(s.lat, s.lon, p[1], p[2]) < R; }).map(function (p) { return { lat: p[1], lon: p[2], name: p[3] || V.CAT[p[0]].n, named: !!p[3] }; });
+      return V.onlinePois(s.lat, s.lon, cats, 400, R).map(function (x) { return { lat: x.lat, lon: x.lon, name: x.name, named: true }; });
+    }
+    function pick(R) {
       var stops = [], used = {};
       keys.forEach(function (k, ki) {
-        var ang = ki / keys.length * Math.PI * 2 + 0.6, tgt = { lat: s.lat + Math.cos(ang) * tryR * 0.7 / 110540, lon: s.lon + Math.sin(ang) * tryR * 0.7 / (111320 * Math.cos(s.lat * Math.PI / 180)) };
-        var cand = V.D.pois.map(function (p, i) { return { p: p, i: i }; }).filter(function (x) { return STOP[k][0].indexOf(x.p[0]) >= 0 && !used[x.i] && V.dist(s.lat, s.lon, x.p[1], x.p[2]) < tryR; });
-        cand.sort(function (a, b) { return V.dist(tgt.lat, tgt.lon, a.p[1], a.p[2]) - V.dist(tgt.lat, tgt.lon, b.p[1], b.p[2]) - (a.p[3] ? 300 : 0) + (b.p[3] ? 300 : 0); });
-        if (cand[0]) { used[cand[0].i] = 1; stops.push({ k: k, p: cand[0].p }); }
+        var ang = ki / keys.length * Math.PI * 2 + 0.6, tgt = { lat: s.lat + Math.cos(ang) * R * 0.7 / 110540, lon: s.lon + Math.sin(ang) * R * 0.7 / (111320 * Math.cos(s.lat * Math.PI / 180)) };
+        var c = cands(STOP[k][0], R).filter(function (x) { return !used[x.name]; });
+        c.sort(function (a, b) { return V.dist(tgt.lat, tgt.lon, a.lat, a.lon) - V.dist(tgt.lat, tgt.lon, b.lat, b.lon) - (a.named ? 300 : 0) + (b.named ? 300 : 0); });
+        if (c[0]) { used[c[0].name] = 1; stops.push({ k: k, p: c[0] }); }
       });
-      if (!stops.length) continue;
-      stops.sort(function (a, b) { return Math.atan2(a.p[2] - s.lon, a.p[1] - s.lat) - Math.atan2(b.p[2] - s.lon, b.p[1] - s.lat); });
-      if (DP.want.food) { var fi = stops.findIndex(function (x) { return x.k === 'food'; }); if (fi >= 0 && stops.length > 2 && fi !== Math.floor(stops.length / 2)) { var f = stops.splice(fi, 1)[0]; stops.splice(Math.floor(stops.length / 2), 0, f); } }
-      var pts = [{ lat: s.lat, lon: s.lon, name: s.name }].concat(stops.map(function (x) { return { lat: x.p[1], lon: x.p[2], name: x.p[3] || V.CAT[x.p[0]].n }; })).concat([{ lat: s.lat, lon: s.lon, name: s.name }]);
-      var r = V.routeVia(pts, { loop: true, style: 'scenic' });
-      if (r && r.secs / 60 <= rideMin * 1.15) best = { r: r, pts: pts, stops: stops };
+      stops.sort(function (a, b) { return Math.atan2(a.p.lon - s.lon, a.p.lat - s.lat) - Math.atan2(b.p.lon - s.lon, b.p.lat - s.lat); });
+      if (DP.want.food) { var fi = stops.findIndex(function (x) { return x.k === 'food'; }); if (fi >= 0 && stops.length > 2) { var f = stops.splice(fi, 1)[0]; stops.splice(Math.floor(stops.length / 2), 0, f); } }
+      return stops;
     }
-    if (!best) { $('dpOut').innerHTML = '<div class="pbox warn"><div class="sub">Dafür reicht die Zeit nicht. Nimm mehr Stunden oder weniger Stopps.</div></div>'; return; }
-    var t = DP.start * 60, plan = [V.hhmm(dt(t)) + ' Start ' + best.pts[0].name], r = best.r;
-    best.stops.forEach(function (x, i) {
-      var ride = (r.tc[V.idxAt(r, r.legEnds[i])] || 0) - (i ? r.tc[V.idxAt(r, r.legEnds[i - 1])] || 0 : 0);
-      t += ride / 60; plan.push(V.hhmm(dt(t)) + ' ' + STOP[x.k][2] + ': ' + (best.pts[i + 1].name) + ' (' + STOP[x.k][1] + ' min)'); t += STOP[x.k][1];
-    });
-    t += (r.secs - (r.tc[V.idxAt(r, r.legEnds[best.stops.length - 1])] || 0)) / 60; plan.push(V.hhmm(dt(t)) + ' zurück in ' + best.pts[0].name);
-    hap('success');
-    V.planRoute(best.pts, 'Tagesplan ' + DP.h + ' h', { picked: true, loop: true, tour: true, pre: r, style: 'scenic', desc: plan.join('  ·  ') });
+    function finish(r, pts, stops) {
+      var t = DP.start * 60, plan = [V.hhmm(dt(t)) + ' Start'];
+      stops.forEach(function (x, i) {
+        var ride = (r.tc[V.idxAt(r, r.legEnds[i])] || 0) - (i ? r.tc[V.idxAt(r, r.legEnds[i - 1])] || 0 : 0);
+        t += ride / 60; plan.push(V.hhmm(dt(t)) + ' ' + STOP[x.k][2] + ': ' + x.p.name + ' (' + STOP[x.k][1] + ' min)'); t += STOP[x.k][1];
+      });
+      t += (r.secs - (r.tc[V.idxAt(r, r.legEnds[stops.length - 1])] || 0)) / 60; plan.push(V.hhmm(dt(t)) + ' zurück am Start');
+      hap('success');
+      V.planRoute(pts, 'Tagesplan ' + DP.h + ' h', { picked: true, loop: true, tour: true, pre: r, style: 'scenic', desc: plan.join('  ·  ') });
+    }
+    function ptsOf(stops) { return [{ lat: s.lat, lon: s.lon, name: s.name }].concat(stops.map(function (x) { return { lat: x.p.lat, lon: x.p.lon, name: x.p.name }; })).concat([{ lat: s.lat, lon: s.lon, name: s.name }]); }
+    function fail(msg) { if ($('dpOut')) $('dpOut').innerHTML = '<div class="velo-card">' + mascot('sad', 60) + '<div class="bubble"><span>' + esc(msg) + '</span></div></div>'; }
+    if (local) {
+      for (var R = radius; R > 1500; R *= 0.75) {
+        var st = pick(R); if (!st.length) continue;
+        var pts = ptsOf(st), r = V.routeVia(pts, { loop: true, style: 'scenic' });
+        if (r && r.secs / 60 <= rideMin * 1.15) { finish(r, pts, st); return; }
+      }
+      fail('Dafür reicht die Zeit nicht. Nimm mehr Stunden oder weniger Stopps.'); return;
+    }
+    // weltweit: passende Orte rund um Zielpunkte bei OpenStreetMap (Overpass) abfragen, Route online berechnen
+    var Q = { view: '["tourism"="viewpoint"]', food: '["amenity"="restaurant"]["name"]', beach: '["leisure"="bathing_place"]', cafe: '["amenity"~"cafe|ice_cream"]["name"]' };
+    var Q2 = { beach: '["natural"="beach"]' };
+    function targets(R) {
+      return keys.map(function (k, ki) { var ang = ki / keys.length * Math.PI * 2 + 0.6; return { k: k, lat: s.lat + Math.cos(ang) * R * 0.7 / 110540, lon: s.lon + Math.sin(ang) * R * 0.7 / (111320 * Math.cos(s.lat * Math.PI / 180)) }; });
+    }
+    function overpass(R) {
+      var tg = targets(R), q = '[out:json][timeout:25];(';
+      tg.forEach(function (t) { var a = '(around:' + Math.round(R * 0.45) + ',' + t.lat.toFixed(5) + ',' + t.lon.toFixed(5) + ');'; q += 'nwr' + Q[t.k] + a; if (Q2[t.k]) q += 'nwr' + Q2[t.k] + a; });
+      q += ');out center 400;';
+      var body = 'data=' + encodeURIComponent(q);
+      function go(u) { return fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body }).then(function (x) { if (!x.ok) throw new Error(x.status); return x.json(); }); }
+      return go('https://overpass-api.de/api/interpreter').catch(function () { return go('https://overpass.kumi.systems/api/interpreter'); }).then(function (j) {
+        var res = { view: [], food: [], beach: [], cafe: [] };
+        (j.elements || []).forEach(function (e) {
+          var t = e.tags || {}, la = e.lat != null ? e.lat : e.center && e.center.lat, lo = e.lon != null ? e.lon : e.center && e.center.lon;
+          if (la == null) return;
+          var k = t.tourism === 'viewpoint' ? 'view' : t.amenity === 'restaurant' ? 'food' : /cafe|ice_cream/.test(t.amenity || '') ? 'cafe' : (t.natural === 'beach' || t.leisure === 'bathing_place') ? 'beach' : null;
+          if (k) res[k].push({ lat: la, lon: lo, name: t['name:de'] || t.name || STOP[k][2], named: !!t.name });
+        });
+        return { tg: tg, res: res };
+      });
+    }
+    (function attempt(R, tries) {
+      overpass(R).then(function (o) {
+        var stops = [], used = {};
+        o.tg.forEach(function (t) {
+          var c = o.res[t.k].filter(function (x) { return !used[x.name + x.lat]; });
+          c.sort(function (a, b) { return V.dist(t.lat, t.lon, a.lat, a.lon) - V.dist(t.lat, t.lon, b.lat, b.lon) - (a.named ? 400 : 0) + (b.named ? 400 : 0); });
+          if (c[0]) { used[c[0].name + c[0].lat] = 1; stops.push({ k: t.k, p: c[0] }); }
+        });
+        if (!stops.length) { if (tries < 2) attempt(R * 1.5, tries + 1); else fail('In der Umgebung habe ich keine passenden Stopps gefunden. Wähle andere Stopps.'); return; }
+        stops.sort(function (a, b) { return Math.atan2(a.p.lon - s.lon, a.p.lat - s.lat) - Math.atan2(b.p.lon - s.lon, b.p.lat - s.lat); });
+        if (DP.want.food) { var fi = stops.findIndex(function (x) { return x.k === 'food'; }); if (fi >= 0 && stops.length > 2) { var f = stops.splice(fi, 1)[0]; stops.splice(Math.floor(stops.length / 2), 0, f); } }
+        var pts = ptsOf(stops);
+        return V.fetchExt(pts, 'scenic').then(function (r) {
+          if (r.secs / 60 > rideMin * 1.2 && tries < 2) { attempt(R * 0.65, tries + 1); return; }
+          finish(r, pts, stops);
+        });
+      }).catch(function () { fail('Für den Tagesplan braucht die App Internet.'); });
+    })(radius, 0);
   }
   function dt(min) { var d = new Date(); d.setHours(0, 0, 0, 0); return new Date(d.getTime() + min * 60000); }
 
@@ -746,23 +865,26 @@
     for (var z = z0; z <= z1; z++) for (var x = x2(b.getWest(), z); x <= x2(b.getEast(), z); x++) for (var y = y2(b.getNorth(), z); y <= y2(b.getSouth(), z); y++) out.push([z, x, y]);
     return out;
   }
+  var OFF_FREE = 1500, OFF_PLUS = 6000;
   function showOffline() {
-    if (!gate('Offline-Karten')) return;
     V.state = 'offline';
+    var areas = V.load('offAreas', 0);
     var info = A && A.tileInfo ? A.tileInfo().split(',') : null;
-    V.sheet('<div style="display:flex;align-items:center;gap:12px">' + mascot('idle', 56) + '<div class="grow"><h2>Offline-Karten</h2><div class="sub">Ugljan ist immer offline dabei. Für andere Gegenden: Karte auf den Bereich schieben und speichern.</div></div></div>' +
+    V.sheet('<div style="display:flex;align-items:center;gap:12px">' + mascot('idle', 56) + '<div class="grow"><h2>Offline-Karten</h2><div class="sub">Karte auf das Gebiet schieben, das du ohne Internet brauchst, und speichern.</div></div></div>' +
       (A && A.downloadTiles ? '<div class="pbox"><div class="t">Gespeichert</div><div class="sub">' + (info ? info[0] + ' Kartenteile, ' + num((info[1] / 1048576).toFixed(1)) + ' MB' : '-') + '</div></div>' +
-        '<div class="btns"><button class="go" id="dlGo">Sichtbaren Bereich speichern</button></div><div id="dlBox"></div><div class="btns"><button class="go sec" id="dlClear">Alle löschen</button></div>' +
-        '<div class="sub" style="font-size:12px;margin-top:8px">Gespeichert werden Karte, Relief und Radrouten bis Zoomstufe 14. Routen außerhalb von Ugljan brauchen weiterhin Internet.</div>'
+        (isPlus() ? '' : '<div class="sub" style="font-size:13px;margin-bottom:6px">Gratis: ein Gebiet (etwa eine Stadt mit Umgebung). Mit Plus beliebig viele und größere.</div>') + '<div class="btns"><button class="go" id="dlGo">Sichtbaren Bereich speichern</button></div><div id="dlBox"></div><div class="btns"><button class="go sec" id="dlClear">Alle löschen</button></div>' +
+        '<div class="sub" style="font-size:12px;margin-top:8px">Gespeichert werden Karte, Relief und Radrouten bis Zoomstufe 14. Neue Routen berechnen braucht weiterhin Internet.</div>'
         : '<div class="pbox"><div class="sub">Offline-Karten gibt es in der Android-App.</div></div>') +
       '<div class="btns"><button class="go sec" id="dlBack">Zurück</button></div>');
     $('dlBack').onclick = function () { V.showMenu(); };
     if (!$('dlGo')) return;
-    $('dlClear').onclick = function () { A.clearTiles(); showOffline(); };
+    $('dlClear').onclick = function () { A.clearTiles(); V.store('offAreas', 0); showOffline(); };
     $('dlGo').onclick = function () {
-      var b = map.getBounds(), z1 = 14, list;
-      while ((list = tilesFor(b, 6, z1)).length > 6000 && z1 > 10) z1--;
-      if (list.length > 6000) { V.toast('Bereich zu groß, bitte weiter hineinzoomen'); return; }
+      if (!isPlus() && areas >= 1) { gate('Mehr als ein Offline-Gebiet'); return; }
+      var lim = isPlus() ? OFF_PLUS : OFF_FREE, b = map.getBounds(), z1 = 14, list;
+      while ((list = tilesFor(b, 6, z1)).length > lim && z1 > 10) z1--;
+      if (list.length > lim) { if (isPlus()) V.toast('Bereich zu groß, bitte weiter hineinzoomen'); else gate('Größere Offline-Gebiete'); return; }
+      V.store('offAreas', areas + 1);
       var src = map.getSource('ofm'), ofm = src && src.tiles && src.tiles[0], urls = [];
       if (src && src.url) urls.push(src.url);
       list.forEach(function (t) {
@@ -787,10 +909,11 @@
   // =====================================================================
   // Menue: Plus, Statistik, Einstellungen fuer Haptik, Design, Pfeil
   // =====================================================================
-  var THEMES = [['mint', 'Minze', '#2fd59a'], ['ocean', 'Ozean', '#5aa9ff'], ['sunset', 'Abendrot', '#ffa94d'], ['lavender', 'Lavendel', '#b197fc'], ['forest', 'Wald', '#69db7c']];
+  var THEMES = [['mint', 'Minze', '#2fd59a'], ['ocean', 'Ozean', '#5aa9ff'], ['forest', 'Wald', '#69db7c'], ['sunset', 'Abendrot', '#ffa94d', 1], ['lavender', 'Lavendel', '#b197fc', 1], ['cherry', 'Kirschblüte', '#f783ac', 1], ['midnight', 'Mitternacht', '#748ffc', 1], ['gold', 'Gold', '#fcc419', 1]];
+  function themeFree(t) { return THEMES.some(function (x) { return x[0] === t && !x[3]; }); }
   VX.menuTop = function () {
     return (isPlus() ? '<div class="plusbar" data-act="plus"><div class="ico">' + svg('flag', '#6b4dff', 18) + '</div><div class="grow"><b>Velora Plus ist aktiv</b><span>Alle Funktionen freigeschaltet</span></div></div>'
-      : '<div class="plusbar" data-act="plus">' + mascot('cheer', 46) + '<div class="grow"><b>Velora Plus</b><span>Tagebuch, Abzeichen, Offline-Karten, Juno ohne Limit und mehr</span></div><button class="go plus" style="width:auto;padding:0 14px;height:40px;font-size:14px">Ansehen</button></div>') +
+      : '<div class="plusbar" data-act="plus">' + mascot('thumbs', 56) + '<div class="grow"><b>Velora Plus</b><span>100 Juno-Credits am Tag, Reiseführer, Tagesplaner, Akkuplaner und mehr</span></div><button class="go plus" style="width:auto;padding:0 14px;height:40px;font-size:14px">Ansehen</button></div>') +
       '<div class="linkrow"><button data-act="stats">' + svg('list', 'currentColor', 18) + 'Statistik</button><button id="mSaved">' + svg('flag', 'currentColor', 18) + 'Meine Routen</button>' +
       '<button data-act="dayplan">' + svg('loop', 'currentColor', 18) + 'Tagesplaner</button><button id="mOffline">' + svg('road', 'currentColor', 18) + 'Offline-Karten</button></div>';
   };
@@ -800,21 +923,21 @@
       '<div class="seg" style="margin-top:0">' + [[0, 'Aus'], [1, 'Leicht'], [2, 'Stark']].map(function (x) { return '<button data-hap="' + x[0] + '" class="' + (S.hap === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>' +
       '<div class="opt"><div class="grow">Nachtmodus<div class="sub">Dunkles Design, automatisch nach Sonnenuntergang</div></div></div>' +
       '<div class="seg" style="margin-top:0">' + [['off', 'Aus'], ['auto', 'Automatisch'], ['on', 'An']].map(function (x) { return '<button data-night="' + x[0] + '" class="' + (S.night === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="opt"><div class="grow">Farbe' + (plus ? '' : TAG) + '</div></div><div class="hscroll" style="margin-top:0">' + THEMES.map(function (t, i) { return '<button class="chip' + (S.theme === t[0] ? ' on' : '') + '" data-theme="' + t[0] + '"><i style="width:12px;height:12px;border-radius:50%;background:' + t[2] + ';display:inline-block"></i>' + t[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="opt"><div class="grow">Navigationspfeil' + (plus ? '' : TAG) + '</div></div><div class="hscroll" style="margin-top:0">' + Object.keys(ARROWS).map(function (k) { return '<button class="chip' + (S.arrow === k ? ' on' : '') + '" data-arrow="' + k + '"><span style="width:18px;height:20px;display:inline-block">' + ARROWS[k][1] + '</span>' + ARROWS[k][0] + '</button>'; }).join('') + '</div>' +
+      '<div class="opt"><div class="grow">Farbe</div></div><div class="hscroll" style="margin-top:0">' + THEMES.map(function (t, i) { return '<button class="chip' + (S.theme === t[0] ? ' on' : '') + '" data-theme="' + t[0] + '"><i style="width:12px;height:12px;border-radius:50%;background:' + t[2] + ';display:inline-block"></i>' + t[1] + (t[3] && !plus ? TAG : '') + '</button>'; }).join('') + '</div>' +
+      '<div class="opt"><div class="grow">Navigationspfeil</div></div><div class="hscroll" style="margin-top:0">' + Object.keys(ARROWS).map(function (k) { return '<button class="chip' + (S.arrow === k ? ' on' : '') + '" data-arrow="' + k + '"><span style="width:18px;height:20px;display:inline-block">' + ARROWS[k][1] + '</span>' + ARROWS[k][0] + (plus || k === '3d' || k === 'pfeil' ? '' : TAG) + '</button>'; }).join('') + '</div>' +
       '<div class="opt"><div class="grow">Juno als Reiseführer' + (plus ? '' : TAG) + '<div class="sub">Erzählt unterwegs über Orte, an denen du vorbeifährst</div></div>' + '<div class="sw' + (S.guide && plus ? ' on' : '') + '" id="swGuide"></div></div>' +
-      (S.bike === 'road' ? '<div class="opt"><div class="grow">Rennrad: maximale Steigung' + (plus ? '' : TAG) + '</div></div><div class="seg" style="margin-top:0">' + [[0, 'Egal'], [0.06, '6 %'], [0.08, '8 %'], [0.1, '10 %']].map(function (x) { return '<button data-maxg="' + x[0] + '" class="' + (S.maxG === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>' : '');
+      (S.bike === 'road' ? '<div class="opt"><div class="grow">Rennrad: maximale Steigung</div></div><div class="seg" style="margin-top:0">' + [[0, 'Egal'], [0.06, '6 %'], [0.08, '8 %'], [0.1, '10 %']].map(function (x) { return '<button data-maxg="' + x[0] + '" class="' + (S.maxG === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>' : '');
   };
   VX.menuBound = function () {
     var el = V.sheetEl;
     el.querySelectorAll('[data-mbike]').forEach(function (b) { var k = b.getAttribute('data-mbike'); if (V.BIKES[k].pro && !isPlus()) b.insertAdjacentHTML('beforeend', TAG); });
     el.querySelectorAll('[data-hap]').forEach(function (b) { b.onclick = function () { S.hap = +b.getAttribute('data-hap'); V.saveS(); hap('success'); V.showMenu(); }; });
     el.querySelectorAll('[data-night]').forEach(function (b) { b.onclick = function () { S.night = b.getAttribute('data-night'); V.saveS(); applyLook(); V.showMenu(); }; });
-    el.querySelectorAll('[data-theme]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-theme'); if (t !== 'mint' && !gate('Farbthemen')) return; S.theme = t; V.saveS(); applyLook(); V.showMenu(); }; });
-    el.querySelectorAll('[data-arrow]').forEach(function (b) { b.onclick = function () { var a = b.getAttribute('data-arrow'); if (a !== '3d' && !gate('Navigationspfeile')) return; S.arrow = a; V.saveS(); setArrowSkin(); V.showMenu(); }; });
-    el.querySelectorAll('[data-maxg]').forEach(function (b) { b.onclick = function () { if (!gate('Die Steigungsgrenze')) return; S.maxG = +b.getAttribute('data-maxg'); V.saveS(); V.computeCosts(); V.showMenu(); }; });
+    el.querySelectorAll('[data-theme]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-theme'); if (!themeFree(t) && !gate('Diese Farbe')) return; S.theme = t; V.saveS(); applyLook(); V.showMenu(); }; });
+    el.querySelectorAll('[data-arrow]').forEach(function (b) { b.onclick = function () { var a = b.getAttribute('data-arrow'); if (a !== '3d' && a !== 'pfeil' && !gate('Navigationspfeile')) return; S.arrow = a; V.saveS(); setArrowSkin(); V.showMenu(); }; });
+    el.querySelectorAll('[data-maxg]').forEach(function (b) { b.onclick = function () { S.maxG = +b.getAttribute('data-maxg'); V.saveS(); V.computeCosts(); V.showMenu(); }; });
     if ($('swGuide')) $('swGuide').onclick = function () { if (!gate('Juno als Reiseführer')) return; S.guide = !S.guide; V.saveS(); this.classList.toggle('on', S.guide); };
-    if ($('mSaved')) $('mSaved').onclick = function () { if (gate('Routen speichern')) showSaved(); };
+    if ($('mSaved')) $('mSaved').onclick = showSaved;
     if ($('mOffline')) $('mOffline').onclick = showOffline;
   };
   VX.back = function () {
@@ -831,7 +954,7 @@
   // =====================================================================
   function isNight() { try { var t = V.sunTimes(new Date()), n = Date.now(); return n < t.rise.getTime() - 15 * 60000 || n > t.set.getTime() + 20 * 60000; } catch (e) { return false; } }
   function applyLook() {
-    var theme = isPlus() || S.theme === 'mint' ? S.theme : 'mint';
+    var theme = isPlus() || themeFree(S.theme) ? S.theme : 'mint';
     if (theme === 'mint') document.body.removeAttribute('data-theme'); else document.body.setAttribute('data-theme', theme);
     var night = S.night === 'on' || (S.night === 'auto' && isNight());
     document.body.classList.toggle('night', night);

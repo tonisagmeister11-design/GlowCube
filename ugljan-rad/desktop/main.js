@@ -48,6 +48,6 @@ app.whenReady().then(() => {
   // Links (Website, Telefon) im Standardprogramm öffnen
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://')) { e.preventDefault(); shell.openExternal(url); } });
-  win.loadURL('app://ugljan/index.html');
+  win.loadURL('app://velora/index.html');
 });
 app.on('window-all-closed', () => app.quit());

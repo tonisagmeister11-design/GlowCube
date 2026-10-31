@@ -1,4 +1,4 @@
-package hr.ugljan.rad;
+package app.velora.bike;
 
 import android.Manifest;
 import android.app.Activity;
@@ -459,7 +459,7 @@ public class MainActivity extends Activity implements LocationListener {
                             try {
                                 HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
                                 c.setConnectTimeout(15000); c.setReadTimeout(20000);
-                                c.setRequestProperty("User-Agent", "Velora/5.4 (Android)");
+                                c.setRequestProperty("User-Agent", "Velora/6.0 (Android)");
                                 int code = c.getResponseCode();
                                 if (code == 200) {
                                     File tmp = new File(f.getPath() + ".tmp");

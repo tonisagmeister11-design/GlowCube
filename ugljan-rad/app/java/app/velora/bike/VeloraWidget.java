@@ -1,4 +1,4 @@
-package hr.ugljan.rad;
+package app.velora.bike;
 
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;

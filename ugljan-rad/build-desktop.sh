@@ -11,9 +11,9 @@ cp desktop/icon.png desktop/icon.ico "$W"/
 VER=$(grep -o 'versionName="[^"]*"' app/AndroidManifest.xml | cut -d'"' -f2)
 cat > "$W"/package.json <<JSON
 {
-  "name": "ugljan-rad", "productName": "Velora", "version": "$VER.0", "description": "Fahrrad-Navigation", "main": "main.js", "author": "Ugljan Rad",
+  "name": "velora", "productName": "Velora", "version": "$VER.0", "description": "Fahrrad-Navigation", "main": "main.js", "author": "Velora",
   "devDependencies": { "electron": "33.4.11", "electron-builder": "25.1.8" },
-  "build": { "appId": "hr.ugljan.rad", "files": ["main.js", "preload.js", "icon.png", "assets/**"], "directories": { "output": "out" },
+  "build": { "appId": "app.velora.bike", "files": ["main.js", "preload.js", "icon.png", "assets/**"], "directories": { "output": "out" },
     "win": { "target": [{ "target": "portable", "arch": ["x64"] }], "icon": "icon.ico", "signAndEditExecutable": false },
     "portable": { "artifactName": "Velora.exe" } }
 }

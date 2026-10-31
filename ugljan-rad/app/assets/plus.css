@@ -17,6 +17,9 @@ body[data-theme=ocean]{--lime:#5aa9ff;--acc:#1c64c4}
 body[data-theme=sunset]{--lime:#ffa94d;--acc:#d9480f}
 body[data-theme=lavender]{--lime:#b197fc;--acc:#6741d9}
 body[data-theme=forest]{--lime:#69db7c;--acc:#2b8a3e}
+body[data-theme=cherry]{--lime:#f783ac;--acc:#c2255c}
+body[data-theme=midnight]{--lime:#748ffc;--acc:#364fc7}
+body[data-theme=gold]{--lime:#fcc419;--acc:#c77700}
 
 /* Weiche Bedienung: Tasten geben nach, alles federt */
 button,.chip,.row,.card,.sw,.quick button{transition:transform .16s var(--ease),background-color .2s,box-shadow .2s,filter .2s}
@@ -199,3 +202,139 @@ body.fs #guide{top:46px}
 #vxm .mbox{background:var(--panel);border-radius:26px 26px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom));width:100%;max-height:86vh;overflow:auto;animation:upIn .4s var(--ease) both;text-align:left}
 @keyframes upIn{from{transform:translateY(60px);opacity:.3}to{transform:none;opacity:1}}
 .linkrow svg,.row .ico svg[stroke=currentColor],.pbox svg[stroke=currentColor]{color:var(--acc)}
+
+/* Velo, der Fuchs */
+.fxw{position:relative;flex:none;display:inline-block}
+.fxw svg{width:100%;height:100%;display:block;overflow:visible}
+.fox .a,.fox .e,.fox .mo,.fox .f-zzz,.fox .f-dots,.fox .f-medal,.fox .f-spark,.fox .f-tear{display:none}
+.fox .f-body,.fox .f-head,.fox .f-tail,.fox .f-earl,.fox .f-earr,.fox .f-wave,.fox .f-spin,.fox .f-crank,.fox .f-legf,.fox .f-legb,.fox .f-ride,.fox .f-shadow{transform-box:view-box}
+.fox .f-tail{transform-origin:104px 208px;animation:fxTail 1.6s ease-in-out infinite}
+.fox .f-head{transform-origin:126px 156px}
+.fox .f-earl{transform-origin:100px 82px}.fox .f-earr{transform-origin:152px 82px}
+.fox .f-body{transform-origin:126px 272px;animation:fxBreath 3s ease-in-out infinite}
+.fox .e-open{transform-origin:126px 110px;animation:fxBlink 4.5s infinite}
+.fx-idle .al-hip,.fx-idle .ar-down,.fx-idle .e-open,.fx-idle .mo-smile{display:block}
+.fx-thumbs .al-hip,.fx-thumbs .ar-thumb,.fx-thumbs .e-happy,.fx-thumbs .mo-laugh,.fx-thumbs .f-spark{display:block}
+.fx-thumbs .ar-thumb{transform-box:view-box;transform-origin:155px 168px;animation:fxThumb 1.4s var(--spring,ease) infinite}
+.fx-thumbs .f-spark{animation:fxSpark 1.4s ease-in-out infinite;transform-origin:205px 112px}
+.fx-wave .al-hip,.fx-wave .ar-wave,.fx-wave .e-open,.fx-wave .mo-laugh{display:block}
+.fx-wave .f-wave{transform-origin:155px 166px;animation:fxWave .7s ease-in-out infinite alternate}
+.fx-cheer .al-up,.fx-cheer .ar-up,.fx-cheer .e-happy,.fx-cheer .mo-laugh{display:block}
+.fx-cheer .f-body{animation:fxJump .9s cubic-bezier(.34,1.56,.64,1) infinite}
+.fx-cheer .f-shadow{transform-origin:126px 276px;animation:fxShadow .9s cubic-bezier(.34,1.56,.64,1) infinite}
+.fx-cheer .f-tail{animation-duration:.45s}
+.fx-sad .al-down,.fx-sad .ar-down,.fx-sad .e-sad,.fx-sad .mo-frown,.fx-sad .f-tear{display:block}
+.fx-sad .f-earl{transform:rotate(-28deg)}.fx-sad .f-earr{transform:rotate(28deg)}
+.fx-sad .f-tail{animation:none;transform:rotate(-24deg)}
+.fx-sad .f-head{animation:fxSad 3s ease-in-out infinite}
+.fx-sad .f-tear{animation:fxTear 2s ease-in infinite}
+.fx-sleep .al-down,.fx-sleep .ar-down,.fx-sleep .e-sleep,.fx-sleep .mo-o,.fx-sleep .f-zzz{display:block}
+.fx-sleep .f-head{transform:rotate(-8deg)}.fx-sleep .f-tail{animation-duration:4s}
+.fx-sleep .f-zzz text{animation:fxZ 2.4s ease-in-out infinite;opacity:0}
+.fx-sleep .f-zzz text:nth-child(2){animation-delay:.6s}.fx-sleep .f-zzz text:nth-child(3){animation-delay:1.2s}
+.fx-think .al-hip,.fx-think .ar-chin,.fx-think .e-open,.fx-think .mo-o,.fx-think .f-dots{display:block}
+.fx-think .f-head{animation:fxThink 3s ease-in-out infinite}
+.fx-think .e-open{transform:translate(3px,-3px);animation:none}
+.fx-think .f-dots circle{animation:fxDot 1.5s ease-in-out infinite;opacity:.2}
+.fx-think .f-dots circle:nth-child(2){animation-delay:.25s}.fx-think .f-dots circle:nth-child(3){animation-delay:.5s}
+.fx-trophy .al-up,.fx-trophy .ar-up,.fx-trophy .e-happy,.fx-trophy .mo-laugh,.fx-trophy .f-medal{display:block}
+.fx-trophy .f-body{animation:fxJump 1.1s cubic-bezier(.34,1.56,.64,1) infinite}
+.fx-trophy .f-medal{transform-box:view-box;transform-origin:126px 16px;animation:fxMedal 1.1s cubic-bezier(.34,1.56,.64,1) infinite}
+.fx-ride .e-happy,.fx-ride .mo-laugh{display:block}
+.fx-ride .f-ride{transform-origin:128px 270px;animation:fxBob .5s ease-in-out infinite}
+.fx-ride .f-spin{animation:fxSpin .55s linear infinite}
+.fx-ride .f-crank{animation:fxSpin .9s linear infinite}
+.fx-ride .f-legf{transform-origin:116px 214px;animation:fxPedal .9s ease-in-out infinite}
+.fx-ride .f-legb{transform-origin:116px 214px;animation:fxPedal .9s ease-in-out infinite reverse;opacity:.75}
+.fx-ride .f-lines path{stroke-dasharray:12 16;animation:fxLines .45s linear infinite}
+.fx-ride .f-tail{animation-duration:.5s}
+@keyframes fxTail{0%,100%{transform:rotate(0)}50%{transform:rotate(9deg)}}
+@keyframes fxBreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,.99)}}
+@keyframes fxBlink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes fxThumb{0%,100%{transform:rotate(0)}20%{transform:rotate(-12deg)}40%{transform:rotate(4deg)}55%{transform:rotate(0)}}
+@keyframes fxSpark{0%,100%{opacity:.3;transform:scale(.8)}30%{opacity:1;transform:scale(1.15)}}
+@keyframes fxWave{from{transform:rotate(-10deg)}to{transform:rotate(18deg)}}
+@keyframes fxJump{0%,100%{transform:translateY(0) scale(1,1)}15%{transform:translateY(3px) scale(1.06,.93)}50%{transform:translateY(-34px) scale(.97,1.04)}80%{transform:translateY(-4px)}}
+@keyframes fxShadow{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.55);opacity:.4}}
+@keyframes fxSad{0%,100%{transform:rotate(-3deg) translateY(4px)}50%{transform:rotate(3deg) translateY(6px)}}
+@keyframes fxTear{0%{transform:translateY(0);opacity:0}20%{opacity:1}100%{transform:translateY(22px);opacity:0}}
+@keyframes fxZ{0%{opacity:0;transform:translate(0,8px)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-14px)}}
+@keyframes fxThink{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(3deg)}}
+@keyframes fxDot{0%,100%{opacity:.2}50%{opacity:1}}
+@keyframes fxMedal{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-10px) rotate(6deg) scale(1.08)}}
+@keyframes fxBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes fxSpin{to{transform:rotate(360deg)}}
+@keyframes fxPedal{0%,100%{transform:rotate(-14deg)}50%{transform:rotate(12deg)}}
+@keyframes fxLines{to{stroke-dashoffset:-28}}
+
+/* Serie: Flamme entzuendet sich (wie bei Duolingo) */
+.c-streak{overflow:hidden}
+.flamebox{position:relative;width:120px;height:140px;margin:0 auto}
+.bflame{width:120px;height:150px;display:block;transform-origin:50% 95%;transform:scale(.25);filter:grayscale(1) brightness(1.2);opacity:.6;transition:transform .6s cubic-bezier(.34,1.56,.64,1),filter .5s,opacity .4s}
+.lit .bflame{transform:scale(1);filter:none;opacity:1}
+.bflame .bf-o,.bflame .bf-m,.bflame .bf-i{transform-box:fill-box;transform-origin:50% 100%}
+.lit .bflame .bf-o{animation:fl1 .9s ease-in-out infinite alternate}
+.lit .bflame .bf-m{animation:fl2 .6s ease-in-out infinite alternate}
+.lit .bflame .bf-i{animation:fl3 .45s ease-in-out infinite alternate}
+@keyframes fl1{from{transform:scale(1,1) skewX(-2deg)}to{transform:scale(1.04,.96) skewX(3deg)}}
+@keyframes fl2{from{transform:scale(1,1) skewX(3deg)}to{transform:scale(.95,1.06) skewX(-3deg)}}
+@keyframes fl3{from{transform:scale(1,1)}to{transform:scale(1.1,.9)}}
+.sparks b{position:absolute;left:50%;bottom:30px;width:6px;height:6px;border-radius:50%;background:#ffd43b;opacity:0}
+.lit .sparks b{animation:spk 1.1s ease-out infinite}
+.sparks b:nth-child(1){--x:-46px;animation-delay:.05s}.sparks b:nth-child(2){--x:40px;animation-delay:.2s}.sparks b:nth-child(3){--x:-20px;animation-delay:.35s}.sparks b:nth-child(4){--x:28px;animation-delay:.5s}.sparks b:nth-child(5){--x:-34px;animation-delay:.65s}.sparks b:nth-child(6){--x:12px;animation-delay:.8s}.sparks b:nth-child(7){--x:50px;animation-delay:.95s}.sparks b:nth-child(8){--x:-8px;animation-delay:.12s}.sparks b:nth-child(9){--x:-52px;animation-delay:.42s}
+@keyframes spk{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--x),-110px) scale(.3)}}
+.snum{position:relative;height:64px;overflow:hidden;font-size:58px;font-weight:800;letter-spacing:-.04em;color:#f76707;line-height:64px}
+.snum span{position:absolute;left:0;right:0;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .3s}
+.snum .new{transform:translateY(70px);opacity:0}
+.flip .snum .old{transform:translateY(-70px);opacity:0}
+.flip .snum .new{transform:none;opacity:1}
+.sweek{display:flex;justify-content:center;gap:6px;margin:12px 0 14px}
+.sd{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--mute)}
+.sd i{width:34px;height:34px;border-radius:50%;background:var(--panel2);display:flex;align-items:center;justify-content:center;border:2px solid var(--line)}
+.sd.on i{background:#fff4e6;border-color:#ffa94d}
+.sd.today i svg{opacity:0;transform:scale(0);transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .3s}
+.day .sd.today i{background:#fff4e6;border-color:#f76707;box-shadow:0 0 0 4px rgba(247,103,7,.18)}
+.day .sd.today i svg{opacity:1;transform:scale(1.15)}
+.sfox{position:absolute;right:10px;top:14px;opacity:0;transform:translateX(40px);transition:all .5s cubic-bezier(.34,1.56,.64,1) .2s}
+.day .sfox{opacity:1;transform:none}
+#cele .cbox{position:relative}
+
+/* Fahrt beendet */
+.rfox{display:flex;justify-content:center;animation:rideIn .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rideIn{from{transform:translateX(-160px)}to{transform:none}}
+.rstats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 6px}
+.rstats div{background:var(--panel2);border-radius:14px;padding:8px 2px}
+.rstats b{display:block;font-size:22px;font-weight:800;color:var(--acc);font-variant-numeric:tabular-nums}
+.rstats span{font-size:10.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.5px}
+
+/* Abzeichen */
+.bshow{position:relative;width:170px;height:180px;margin:0 auto}
+.bshow .bdg{position:relative;z-index:2;width:150px;height:168px;margin:6px auto 0;animation:bIn .9s cubic-bezier(.34,1.56,.64,1) both}
+.rays{position:absolute;inset:-30px;z-index:1;background:repeating-conic-gradient(rgba(255,212,59,.35) 0 10deg,transparent 10deg 20deg);border-radius:50%;-webkit-mask:radial-gradient(circle,#000 30%,transparent 70%);mask:radial-gradient(circle,#000 30%,transparent 70%);animation:raySpin 8s linear infinite}
+@keyframes bIn{0%{transform:scale(0) rotate(-200deg)}70%{transform:scale(1.12) rotate(8deg)}100%{transform:none}}
+@keyframes raySpin{to{transform:rotate(360deg)}}
+.bdg .shine{animation:shine 2.6s ease-in-out 1s infinite}
+@keyframes shine{0%{transform:skewX(-20deg) translateX(0)}60%,100%{transform:skewX(-20deg) translateX(190px)}}
+.btier{font-weight:800;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;margin-top:6px}
+.bfox{position:absolute;left:8px;top:12px}
+.badges{grid-template-columns:repeat(3,1fr)}
+.badge{cursor:pointer}
+.badge svg{width:76px;height:85px;filter:drop-shadow(0 3px 5px rgba(13,43,62,.18))}
+.badge:not(.got) svg{filter:none;opacity:.8}
+.badge b{display:block;font-size:12px;margin-top:2px}
+.bbar{height:5px;border-radius:3px;background:var(--panel3);margin:5px 10px 0;overflow:hidden}
+.bbar i{display:block;height:100%;background:linear-gradient(90deg,var(--lime),var(--acc))}
+.bdg.big{width:120px;height:134px;display:block;margin:0 auto}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.tiers div{font-size:11px;color:var(--mute);text-align:center;line-height:1.25}
+.tiers svg{width:58px;height:65px;display:block;margin:0 auto 3px}
+.tiers .got{color:var(--text);font-weight:600}
+
+/* Credits */
+.crhead{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(255,212,59,.18),rgba(255,146,43,.1));border-radius:14px;padding:8px 10px;margin:8px 0}
+.crhead b{font-size:13.5px}
+.crcost{font-size:11px;color:var(--mute);text-align:right;margin-top:4px}
+.velo-card .flame.off{color:var(--mute);filter:grayscale(1);opacity:.6}
+.flame.inl{display:inline-flex;align-items:center;gap:2px;font-weight:800;color:#f76707}
+.flame.inl svg{width:16px;height:16px}
+.velo-card{padding:8px 12px}

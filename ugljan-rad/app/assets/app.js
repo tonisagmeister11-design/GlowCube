@@ -1,4 +1,4 @@
-/* Ugljan Rad: Offline-Radkarte, Routing mit Höhen- und Fahrphysik, Navigation für die Insel Ugljan */
+/* Velora: Fahrrad-Navigation weltweit mit Höhen- und Fahrphysik, Touren und der KI Juno */
 (function () {
   'use strict';
   var D = window.UGLJAN;
@@ -81,7 +81,7 @@
   var FIT = { easy: { n: 'Gemütlich', f: 0.72 }, normal: { n: 'Normal', f: 1 }, sport: { n: 'Sportlich', f: 1.35 } };
   var STYLES = {
     fast: { n: 'Schnell & leicht', d: 'Kürzeste Fahrzeit mit möglichst wenig Anstrengung: steile Anstiege und grobe Wege werden gemieden, auch die Hauptstraße ist erlaubt.', cls: [0.92, 1, 1.05, 1.3, 1.7, 1, 1.05, 1.15, 1.25], route: 1, climb: 4, sc: 0 },
-    scenic: { n: 'Am schönsten', d: 'Die schönste Strecke: Radwege, beschilderte Radrouten und ruhige Wege statt Hauptstraße, auf Ugljan zusätzlich am Meer entlang, durch Wald und vorbei an Aussichtspunkten. Egal ob anstrengend oder leicht.', cls: [0.75, 1, 1, 1.2, 2, 1.8, 4.5, 5.5, 1.15], route: 0.8, climb: 0, sc: 1.0 }
+    scenic: { n: 'Am schönsten', d: 'Die schönste Strecke: Radwege, beschilderte Radrouten und ruhige Wege statt Hauptstraße, am Wasser entlang, durch Wald und vorbei an Aussichtspunkten. Egal ob anstrengend oder leicht.', cls: [0.75, 1, 1, 1.2, 2, 1.8, 4.5, 5.5, 1.15], route: 0.8, climb: 0, sc: 1.0 }
   };
   var CLS_CAP = [40, 35, 99, 99, 12, 99, 99, 99, 99];
   var S = load('settings', {});
@@ -816,7 +816,39 @@
   }
   function myRef() { return me && onIsland(me.lat, me.lon) && Date.now() - lastFix < 120000 ? me : null; } // auf Ugljan
   function meRef() { return me && Date.now() - lastFix < 120000 ? me : null; } // irgendwo
-  function startRef() { var r = meRef(); return r ? { lat: r.lat, lon: r.lon, name: 'Mein Standort' } : PREKO; }
+  function startRef() { var r = meRef(); if (r) return { lat: r.lat, lon: r.lon, name: 'Mein Standort' }; var c = map.getCenter(); return { lat: c.lat, lon: c.lng, name: 'Kartenmitte' }; }
+  // Offline-Daten der Testregion nur benutzen, wenn man wirklich dort ist
+  var ISL_C = [(D.bbox[0] + D.bbox[2]) / 2, (D.bbox[1] + D.bbox[3]) / 2];
+  function nearIsl(p) { return !!p && dist(p.lat, p.lon, ISL_C[0], ISL_C[1]) < 30000; }
+  function hereRef() { var r = meRef(); if (r) return r; var c = map.getCenter(); return { lat: c.lat, lon: c.lng }; }
+  // Orte aus der Online-Karte (weltweit), wenn die Offline-Daten nicht passen
+  var OCAT = { restaurant: 'food', fast_food: 'snack', bakery: 'snack', cafe: 'cafe', ice_cream: 'cafe', bar: 'bar', beer: 'bar', drinking_water: 'water', toilets: 'wc', bicycle: 'bike', attraction: 'sight', castle: 'sight', monument: 'sight', museum: 'sight', viewpoint: 'view', swimming: 'beach', beach: 'beach', grocery: 'shop', shop: 'shop', pharmacy: 'health', hospital: 'health', lodging: 'stay', campsite: 'stay', harbor: 'port', ferry_terminal: 'ferry' };
+  var extPois = [];
+  function onlinePois(lat, lon, cats, n, maxD) {
+    var out = [], seen = {};
+    try {
+      map.querySourceFeatures('ofm', { sourceLayer: 'poi' }).forEach(function (f) {
+        var pr = f.properties || {}, cat = OCAT[pr.subclass] || OCAT[pr['class']];
+        if (!cat || (cats && cats.indexOf(cat) < 0) || !f.geometry || f.geometry.type !== 'Point') return;
+        var g = f.geometry.coordinates, name = pr['name:de'] || pr['name:latin'] || pr.name;
+        if (!name) return;
+        var k = name + Math.round(g[1] * 2000) + Math.round(g[0] * 2000); if (seen[k]) return; seen[k] = 1;
+        var d = dist(lat, lon, g[1], g[0]); if (maxD && d > maxD) return;
+        out.push({ lat: g[1], lon: g[0], name: name, cat: cat, sub: CAT[cat].n, d: d });
+      });
+    } catch (e) {}
+    out.sort(function (a, b) { return a.d - b.d; });
+    return out.slice(0, n);
+  }
+  function extPoiRow(x) {
+    extPois.push(x); var c = CAT[x.cat];
+    return '<div class="row" data-xpoi="' + (extPois.length - 1) + '"><div class="ico">' + svg(x.cat, c.c, 18) + '</div><div class="grow"><div class="t ell">' + esc(x.name) + '</div><div class="s ell">' + esc(x.sub) + '</div></div><div class="r"><div class="s">' + fmtDist(x.d) + '</div></div></div>';
+  }
+  // Liste "in der Naehe": Offline-Daten nur in ihrer Region, sonst Online-Karte
+  function nearbyRows(base, cats, n, maxD) {
+    if (nearIsl(base)) return nearby(base.lat, base.lon, cats, n, maxD).map(poiRow).join('');
+    return onlinePois(base.lat, base.lon, cats, n, maxD || 5000).map(extPoiRow).join('');
+  }
 
   // Tempo zuverlaessig bestimmen: GPS-Messwert bevorzugen, sonst nur aus genauen Punkten rechnen,
   // Stillstand erkennen, unmoegliche Werte (Ortungsspruenge) verwerfen
@@ -870,6 +902,8 @@
       el.className = 'me';
       el.innerHTML = '<svg id="meArrow" width="34" height="34" viewBox="0 0 34 34" style="display:none"><path d="M17 0 24 10H10z" fill="#1aa874" stroke="#ffffff" stroke-width="2"/></svg><div class="dot"></div>';
       meMarker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'viewport' }).setLngLat([lon, lat]).addTo(map);
+      // erster GPS-Punkt: Karte springt zum eigenen Standort (weltweit)
+      if (!cur && !nav) { follow = true; map.jumpTo({ center: [lon, lat], zoom: 15 }); store('lastPos', { lat: +lat.toFixed(4), lon: +lon.toFixed(4) }); }
     }
     setSrc('acc', accPoly(lat, lon, Math.min(acc, 300)));
     sessPoint(lat, lon, acc, speed);
@@ -982,7 +1016,10 @@
     $('avg').textContent = a === null ? '-' : a.toFixed(1).replace('.', ',');
   }
   setInterval(updSpeedo, 2000);
-  $('btnIsland').onclick = function () { setFollow(false); map.easeTo({ bearing: 0, pitch: 0, duration: 0 }); fitTo(bounds); };
+  $('btnIsland').onclick = function () {
+    setFollow(false); map.easeTo({ bearing: 0, pitch: 0, duration: 0 });
+    if (cur) fitTo(boundsOf(routeLL(cur))); else { var h = hereRef(); view(h.lat, h.lon, Math.min(map.getZoom() - 2, 11)); }
+  };
   $('btnLayers').onclick = function () { if (!nav) showMenu('map'); };
 
   // ---------- Vollbild: nur Karte, Tempo unten links ----------
@@ -1081,18 +1118,18 @@
     state = 'home';
     var ref = myRef();
     homeDrawnWithGps = !!ref;
-    var base = ref || PREKO;
+    var base = hereRef(), hr = meRef(), z = hr ? eleAt(hr.lat, hr.lon) : null;
+    homeDrawnWithGps = !!hr; extPois = [];
+    var rows = nearbyRows(base, ['food', 'snack', 'cafe'], 4, 3000);
     var html = '<h2>Velora</h2><div class="sub">' +
-      (ref ? 'GPS aktiv &middot; ' + esc(nearestPlace(ref.lat, ref.lon, true)[0]) + ' &middot; ' + Math.round(demEle(ref.lat, ref.lon)) + ' m über dem Meer' :
-        me ? 'Du bist außerhalb von Ugljan. Suche einen Ort oder tippe auf die Karte: Karte und Route kommen dann online.' : 'Warte auf GPS. Tippe auf die Karte, um ein Ziel zu setzen.') + '</div>' +
+      (hr ? 'GPS aktiv' + (z != null ? ' &middot; ' + Math.round(z) + ' m über dem Meer' : '') + '. Suche ein Ziel oder tippe auf die Karte.' : 'Warte auf GPS. Suche ein Ziel oder tippe auf die Karte.') + '</div>' +
       wxHtml() + (HOOK('homeHtml') || '') +
       '<div class="quick">' +
       '<button data-act="juno">' + svg('juno', '#0fae73', 24, 2) + 'Juno</button>' +
       '<button data-act="loop">' + svg('loop', '#0fae73', 24, 2) + 'Tour-Idee</button>' +
       '<button data-act="near">' + svg('list', '#0fae73', 24, 2) + 'In der Nähe</button>' +
       '<button data-act="free">' + svg('rec', '#ff5a4e', 24, 2.4) + 'Fahrt starten</button></div>' +
-      '<h3>Essen in der Nähe' + (ref ? '' : ' von Preko') + '</h3><div class="list">' +
-      nearby(base.lat, base.lon, ['food', 'snack', 'cafe'], 4).map(poiRow).join('') + '</div>' +
+      '<h3>Essen in der Nähe</h3><div class="list">' + (rows || '<div class="empty">Noch nichts geladen. Mit GPS und Internet erscheinen hier Restaurants und Cafés in deiner Nähe.</div>') + '</div>' +
       '<h3>Kartenlegende</h3>' + legendHtml() +
       '<div class="sub" style="margin-top:12px;font-size:12px">Rad: ' + BIKES[S.bike].n + ' &middot; ' + FIT[S.fit].n + ' &middot; Stil ' + STYLES[S.style].n + ' (im Menü änderbar)</div>';
     sheet(html);
@@ -1116,6 +1153,8 @@
       else HOOK('act', act, a);
       return;
     }
+    var xp = e.target.closest('[data-xpoi]');
+    if (xp && !nav) { var o = extPois[+xp.getAttribute('data-xpoi')]; if (o) { setFollow(false); showExtPoint(o.lat, o.lon, o.name, o.sub); view(o.lat, o.lon, Math.max(map.getZoom(), 16)); } return; }
     var r = e.target.closest('[data-poi]');
     if (r && !nav) { var i = +r.getAttribute('data-poi'); setFollow(false); showPoi(i); view(D.pois[i][1], D.pois[i][2], Math.max(map.getZoom(), 16)); }
   });
@@ -1208,7 +1247,7 @@
   }
   function placeKindName(name) {
     var p = D.places.filter(function (x) { return x[0] === name; })[0];
-    return p ? ({ village: 'Dorf auf Ugljan', town: 'Ort auf Ugljan', hamlet: 'Weiler auf Ugljan', bay: 'Bucht', cape: 'Kap', peninsula: 'Halbinsel', locality: 'Flurname', island: 'Insel', islet: 'Inselchen', isolated_dwelling: 'Einzelgehöft' }[p[3]] || 'Ortsteil') : null;
+    return p ? ({ village: 'Dorf', town: 'Ort', hamlet: 'Weiler', bay: 'Bucht', cape: 'Kap', peninsula: 'Halbinsel', locality: 'Flurname', island: 'Insel', islet: 'Inselchen', isolated_dwelling: 'Einzelgehöft' }[p[3]] || 'Ortsteil') : null;
   }
   function showPoint(lat, lon, name) {
     state = 'point'; clearRoute(true);
@@ -1218,7 +1257,7 @@
     dest = { lat: lat, lon: lon, name: name || nm || ('Bei ' + place[0]) };
     setDestMarker(lat, lon);
     var near = nearby(lat, lon, null, 3, 500);
-    sheet('<h2>' + esc(dest.name) + '</h2><div class="sub">' + (name ? (placeKindName(name) || 'Ort auf Ugljan') : 'Punkt bei ' + esc(place[0])) + ' &middot; ' + z + ' m über dem Meer' + (dist(lat, lon, LAT[n], LON[n]) > 80 ? ' &middot; ' + fmtDist(dist(lat, lon, LAT[n], LON[n])) + ' abseits vom Weg' : '') + '</div>' +
+    sheet('<h2>' + esc(dest.name) + '</h2><div class="sub">' + (name ? (placeKindName(name) || 'Ort') : 'Punkt bei ' + esc(place[0])) + ' &middot; ' + z + ' m über dem Meer' + (dist(lat, lon, LAT[n], LON[n]) > 80 ? ' &middot; ' + fmtDist(dist(lat, lon, LAT[n], LON[n])) + ' abseits vom Weg' : '') + '</div>' +
       quickRouteInfo(lat, lon) +
       '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button>' + hereBtn() + '</div>' +
       (near.length ? '<h3>In der Nähe</h3><div class="list">' + near.map(poiRow).join('') + '</div>' : ''));
@@ -1231,9 +1270,9 @@
     setDestMarker(lat, lon);
     var s = startRef(), d = dist(s.lat, s.lon, lat, lon);
     sheet('<h2>' + esc(dest.name) + '</h2><div class="sub">' + (sub ? esc(sub) + ' &middot; ' : '') + fmtDist(d) + ' Luftlinie ' + (s === PREKO ? 'von Preko' : 'von dir') + '</div>' +
-      (navigator.onLine === false ? '<div class="sub bad" style="margin-top:8px">Kein Internet: Routen außerhalb von Ugljan gehen nur online.</div>' : '') +
+      (navigator.onLine === false ? '<div class="sub bad" style="margin-top:8px">Kein Internet: Routen werden online berechnet.</div>' : '') +
       '<div class="btns"><button class="go" id="goRoute">Hierhin fahren</button>' + hereBtn() + '</div>' +
-      '<div class="sub" style="font-size:12px;margin-top:10px">Außerhalb von Ugljan wird die Route online berechnet, mit Höhen, Radwegen und Radrouten. Fahrzeit für ' + BIKES[S.bike].n + ', ' + FIT[S.fit].n + '.</div>');
+      '<div class="sub" style="font-size:12px;margin-top:10px">Die Route wird online berechnet, mit Höhen, Radwegen und Radrouten. Fahrzeit für ' + BIKES[S.bike].n + ', ' + FIT[S.fit].n + '.</div>');
     $('goRoute').onclick = function () { planRoute([startRef(), dest], dest.name); };
     bindHere(lat, lon);
   }
@@ -1281,7 +1320,7 @@
   // ---------- Route planen und anzeigen ----------
   var plan = null, cur = null, routeLayer = null, hoverMarker = null;
   // Vor jeder Route: schnell & leicht oder am schoensten? Beide werden gerechnet und verglichen.
-  var NET_MSG = 'Für Ziele außerhalb von Ugljan braucht die App Internet. Bitte mobile Daten einschalten.';
+  var NET_MSG = 'Für die Route braucht die App Internet. Bitte mobile Daten einschalten.';
   function loadingSheet(t) { state = 'loading'; sheet('<h2>' + esc(t) + '</h2><div class="sub" style="margin:10px 0 6px">Route wird online berechnet ...</div><div class="mix"><div style="width:35%;background:var(--lime);animation:none"></div></div>'); }
   function planRoute(pts, title, opt) {
     opt = opt || {};
@@ -1373,7 +1412,7 @@
     }
     sheet('<h2>Wie willst du fahren?</h2><div class="sub">Nach ' + esc(title) + ' &middot; Start: ' + esc(pts[0].name || 'Start') + '</div>' +
         (same ? '<div class="sub" style="margin-top:6px">Hier ist die schnellste auch die schönste Strecke.</div>' : '') +
-      (res.fast && res.fast.ext ? '<div class="sub" style="margin-top:4px;font-size:12px">Online berechnet (außerhalb von Ugljan)</div>' : '') +
+      '' +
       '<div style="margin-top:12px">' + card('fast') + card('scenic') + '</div>' +
       '<div class="btns"><button class="go sec" id="cancel">Abbrechen</button></div>');
     sheetEl.querySelectorAll('[data-pick]').forEach(function (c) {
@@ -1567,7 +1606,7 @@
   var tourTab = 'loop', loopKm = load('loopKm', 20), loopRes = null, ideaCache = null;
   function showTours(tab) {
     tourTab = tab || tourTab; state = 'tours'; clearRoute(true);
-    var tsx = tourStart(), here = meRef() ? onIsland(tsx.lat, tsx.lon) : bounds.pad(0.25).contains([tsx.lat, tsx.lon]);
+    var here = false;
     if (!here) tourTab = 'loop';
     var head = here ? '<h2>Touren auf Ugljan</h2><div class="seg"><button data-tab="loop" class="' + (tourTab === 'loop' ? 'on' : '') + '">Vorschlag</button><button data-tab="official" class="' + (tourTab === 'official' ? 'on' : '') + '">Radrouten</button><button data-tab="ideas" class="' + (tourTab === 'ideas' ? 'on' : '') + '">Tourenideen</button></div>'
       : '<h2>Tour vorschlagen</h2>';
@@ -1807,10 +1846,10 @@
     var ref = myRef(), base = ref || (function () { var c = map.getCenter(); return { lat: c.lat, lon: c.lng }; })();
     var tabs = [['food', 'Essen', ['food', 'snack']], ['cafe', 'Cafe/Bar', ['cafe', 'bar']], ['beach', 'Baden', ['beach']], ['water', 'Wasser/WC', ['water', 'wc']], ['shop', 'Laden', ['shop', 'money', 'health']], ['view', 'Sehen', ['view', 'peak', 'sight']], ['bike', 'Rad', ['bike']], ['stay', 'Schlafen', ['stay']]];
     var t = tabs.filter(function (x) { return x[0] === nearTab; })[0];
-    var list = nearby(base.lat, base.lon, t[2], 40);
+    extPois = []; var rowsN = nearbyRows(base, t[2], 40, 8000);
     sheet('<h2>In der Nähe</h2><div class="sub">' + (ref ? 'Von deinem Standort aus' : 'Von der Kartenmitte aus') + ', Luftlinie</div>' +
       '<div class="hscroll">' + tabs.map(function (x) { return '<button class="chip sm' + (x[0] === nearTab ? ' on' : '') + '" data-near="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="list">' + (list.length ? list.map(poiRow).join('') : '<div class="empty">Nichts gefunden</div>') + '</div>');
+      '<div class="list">' + (rowsN || '<div class="empty">Nichts gefunden. Zoome näher an die Gegend heran (Internet nötig).</div>') + '</div>');
     sheetEl.querySelectorAll('[data-near]').forEach(function (b) { b.onclick = function () { showNearby(b.getAttribute('data-near')); }; });
   }
 
@@ -1840,7 +1879,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 5.4 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 6.0 mit der KI Juno. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1895,16 +1934,17 @@
       var cs = curSpeed(); if (cs && cs > rec.max && cs < 80) rec.max = cs;
     }
     var z = eleAt(lat, lon), hy = onIsland(lat, lon) ? 3 : 6;
+    if (z != null && (rec.top == null || z > rec.top)) rec.top = z;
     if (z != null) { if (rec.eref == null) rec.eref = z; else if (z - rec.eref > hy) { rec.asc += z - rec.eref; rec.eref = z; } else if (z < rec.eref - hy) rec.eref = z; }
     rec.last = [lat, lon]; rec.lastT = now;
-    rec.trk.push([Math.round(lat * 1e5) / 1e5, Math.round(lon * 1e5) / 1e5]); rec.tt.push(Math.round((now - rec.t) / 1000));
+    rec.trk.push([Math.round(lat * 1e5) / 1e5, Math.round(lon * 1e5) / 1e5]); rec.tt.push(Math.round((now - rec.t) / 1000)); (rec.ee = rec.ee || []).push(z == null ? null : Math.round(z));
     trackLayer.push([lat, lon]); if (trackLayer.length > 1) setSrc('track', fc([lineF(trackLayer)]));
   }
   function saveRide(r) {
     var l = load('rides', []);
     var trk = r.trk, stp = Math.max(1, Math.ceil(trk.length / 1500));
     var tt = r.tt || [];
-    var ride = { t: r.t, title: r.title, dist: r.dist, mv: r.mv, asc: r.asc, max: r.max, tot: ((r.lastT || Date.now()) - r.t) / 1000, trk: trk.filter(function (_, k) { return k % stp === 0; }), tt: tt.filter(function (_, k) { return k % stp === 0; }) };
+    var ride = { t: r.t, title: r.title, dist: r.dist, mv: r.mv, asc: r.asc, max: r.max, tot: ((r.lastT || Date.now()) - r.t) / 1000, trk: trk.filter(function (_, k) { return k % stp === 0; }), tt: tt.filter(function (_, k) { return k % stp === 0; }), ee: (r.ee || []).filter(function (_, k) { return k % stp === 0; }), top: r.top };
     l.unshift(ride);
     store('rides', l.slice(0, 30));
     HOOK('rideSaved', ride);
@@ -2113,7 +2153,7 @@
   function windName(d) { return d >= 15 && d <= 75 ? ' (Bura)' : d >= 105 && d <= 165 ? ' (Jugo)' : d >= 280 && d <= 330 ? ' (Maestral)' : ''; }
   var WCODE = { 0: 'Klar', 1: 'Überwiegend klar', 2: 'Teilweise bewölkt', 3: 'Bedeckt', 45: 'Nebel', 48: 'Nebel', 51: 'Nieselregen', 53: 'Nieselregen', 55: 'Nieselregen', 61: 'Leichter Regen', 63: 'Regen', 65: 'Starker Regen', 80: 'Regenschauer', 81: 'Regenschauer', 82: 'Heftige Schauer', 95: 'Gewitter', 96: 'Gewitter', 99: 'Gewitter' };
   function sunTimes(date) {
-    var lat = 44.08, lon = 15.17, rad = RAD;
+    var hp = typeof map !== 'undefined' && map.getCenter ? hereRef() : { lat: 48, lon: 13 }, lat = hp.lat, lon = hp.lon, rad = RAD;
     var start = new Date(date.getFullYear(), 0, 0), doy = Math.floor((date - start) / 864e5);
     var g = 2 * Math.PI / 365 * (doy - 1);
     var eq = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
@@ -2132,7 +2172,7 @@
   }
   function loadWeather() {
     if (!window.fetch) return;
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=' + (meRef() ? meRef().lat.toFixed(3) : '44.08') + '&longitude=' + (meRef() ? meRef().lon.toFixed(3) : '15.17') + '&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code&hourly=precipitation_probability&forecast_days=1&timezone=auto')
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=' + hereRef().lat.toFixed(3) + '&longitude=' + hereRef().lon.toFixed(3) + '&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code&hourly=precipitation_probability&forecast_days=1&timezone=auto')
       .then(function (r) { return r.json(); })
       .then(function (j) {
         var c = j.current, h = new Date().getHours();
@@ -2169,23 +2209,23 @@
     var raw = $('search').value.trim(), q = norm(raw), box = $('results');
     $('clr').style.display = raw ? 'block' : 'none';
     if (!q) { box.style.display = 'none'; return; }
-    var ref = myRef() || PREKO, res = [], catHit = null;
+    var ref = hereRef(), res = [], catHit = null, loc = nearIsl(ref);
     SYN.forEach(function (s) { if (s[1] && s[0].test(q)) catHit = s[1]; });
-    D.places.forEach(function (p, i) { var h = norm(p[0]); if ((h + ' ' + hrWords(h)).indexOf(q) >= 0) res.push({ k: 0, place: i, d: dist(ref.lat, ref.lon, p[1], p[2]) }); });
-    D.pois.forEach(function (p, i) {
+    if (loc) D.places.forEach(function (p, i) { var h = norm(p[0]); if ((h + ' ' + hrWords(h)).indexOf(q) >= 0) res.push({ k: 0, place: i, d: dist(ref.lat, ref.lon, p[1], p[2]) }); });
+    if (loc) D.pois.forEach(function (p, i) {
       var c = CAT[p[0]], hay = norm(p.label + ' ' + c.n + ' ' + (p[4].sub || '') + ' ' + (p[4].cu || '') + ' ' + p.village);
       hay += ' ' + hrWords(hay);
       var txt = hay.indexOf(q) >= 0;
       if (txt || (catHit && catHit.indexOf(p[0]) >= 0)) res.push({ k: norm(p[3]).indexOf(q) === 0 ? 1 : txt ? 1.5 : 2, i: i, d: dist(ref.lat, ref.lon, p[1], p[2]) });
     });
-    STREETS.forEach(function (s, i) { if (norm(s.name).indexOf(q) >= 0) res.push({ k: 3, street: i, d: dist(ref.lat, ref.lon, s.lat, s.lon) }); });
+    if (loc) STREETS.forEach(function (s, i) { if (norm(s.name).indexOf(q) >= 0) res.push({ k: 3, street: i, d: dist(ref.lat, ref.lon, s.lat, s.lon) }); });
     res.sort(function (a, b) { return a.k - b.k || a.d - b.d; });
     res = res.slice(0, 40);
     box.innerHTML = res.length ? res.map(function (x) {
       if (x.place != null) { var p = D.places[x.place]; return '<div class="row" data-place="' + x.place + '"><div class="ico">' + svg('pin', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + esc(p[0]) + '</div><div class="s">' + ({ village: 'Dorf', town: 'Ort', hamlet: 'Weiler', bay: 'Bucht', cape: 'Kap', peninsula: 'Halbinsel', locality: 'Flurname', island: 'Insel', islet: 'Inselchen', isolated_dwelling: 'Einzelgehöft' }[p[3]] || 'Ortsteil') + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
       if (x.street != null) { var s = STREETS[x.street]; return '<div class="row" data-street="' + x.street + '"><div class="ico">' + svg('road', '#9fb3c4', 18) + '</div><div class="grow"><div class="t">' + esc(s.name) + '</div><div class="s">Straße/Weg &middot; ' + esc(nearestPlace(s.lat, s.lon, true)[0]) + '</div></div><div class="s">' + fmtDist(x.d) + '</div></div>'; }
       return poiRow(x);
-    }).join('') : '<div class="row" id="noLocal"><div class="s">Auf Ugljan nichts gefunden. Tipp: auch "Strand", "Eis", "Wasser" oder "Pizza" geht.</div></div>';
+    }).join('') : '<div class="row" id="noLocal"><div class="s">Suche weltweit ...</div></div>';
     box.innerHTML += '<div id="extRes"></div>';
     box.style.display = 'block';
     extSearch(raw);
@@ -2216,10 +2256,11 @@
         })
         .then(function (j) {
           if (seq !== extSeq || !$('extRes')) return;
-          extList = (j.features || []).filter(function (f) { return !onIsland(f.geometry.coordinates[1], f.geometry.coordinates[0]); });
+          var nl = nearIsl(hereRef());
+          extList = (j.features || []).filter(function (f) { return !nl || !onIsland(f.geometry.coordinates[1], f.geometry.coordinates[0]); });
           if (!extList.length) return;
-          var ref = meRef() || PREKO;
-          $('extRes').innerHTML = '<div class="row" style="padding:8px 14px"><div class="s" style="text-transform:uppercase;letter-spacing:1px;font-size:11px">Europa und weltweit (online)</div></div>' +
+          var ref = hereRef();
+          $('extRes').innerHTML = '<div class="row" style="padding:8px 14px"><div class="s" style="text-transform:uppercase;letter-spacing:1px;font-size:11px">Orte weltweit</div></div>' +
             extList.map(function (f, i) {
               var p = f.properties, g = f.geometry.coordinates;
               var sub = [OSMV[p.osm_value] || '', p.city && p.city !== p.name ? p.city : '', p.state || '', p.country || ''].filter(Boolean).join(' · ');
@@ -2292,7 +2333,7 @@
     var k = {
       app: 'Velora', zeit: now.toLocaleDateString('de-DE') + ' ' + hhmm(now),
       position: { lat: +lat.toFixed(5), lon: +lon.toFixed(5), quelle: ref ? 'GPS' : 'Kartenmitte (kein GPS)', ort: placeNameAt(lat, lon) },
-      auf_ugljan: onIsland(lat, lon), rad: BIKES[S.bike].n, fitness: FIT[S.fit].n, routenstil: STYLES[S.style].n
+      rad: BIKES[S.bike].n, fitness: FIT[S.fit].n, routenstil: STYLES[S.style].n
     };
     var v = curSpeed(), a = avgSpeed(), z = ref ? eleAt(lat, lon) : null, o = rec || sess;
     if (v !== null) k.tempo_kmh = Math.round(v);
@@ -2339,7 +2380,7 @@
     state = 'ai'; sheetEl.classList.add('tall');
     var log = juno.map(function (m, i) {
       if (m.role === 'user') return '<div class="msg mine">' + esc(m.content) + '</div>';
-      var html = '<div class="msg ai' + (m.wait ? ' wait' : '') + '">' + (m.wait ? JUNO_LOAD : mdLite(m.content));
+      var html = '<div class="msg ai' + (m.wait ? ' wait' : '') + '">' + (m.wait ? JUNO_LOAD : mdLite(m.content)) + (m.cr ? '<div class="crcost">-' + m.cr + ' Credit' + (m.cr > 1 ? 's' : '') + '</div>' : '');
       // Orte nur anzeigen, wenn Juno keine Route geplant hat (sonst nur Doppelungen des Ziels)
       if (m.orte && m.orte.length && !(m.acts || []).some(function (x) { return x.typ === 'route_planen'; })) html += '<div class="places">' + m.orte.map(function (o, k) { return '<button data-jp="' + i + '_' + k + '">' + esc(o.name) + '</button>'; }).join('') + '</div>';
       if (m.acts && m.acts.length) html += m.acts.map(function (a, k) { return '<button class="act" data-ja="' + i + '_' + k + '">' + esc(actLabel(a)) + '</button>'; }).join('');
@@ -2348,6 +2389,7 @@
     var canMic = A && A.canListen && (function () { try { return A.canListen(); } catch (e) { return false; } })();
     sheet('<div style="display:flex;align-items:center;gap:10px"><div class="ico" style="width:42px;height:42px">' + svg('juno', '#0fae73', 24, 2) + '</div><div class="grow"><h2>Juno</h2><div class="sub" style="font-size:13px">Deine Rad-KI. Kennt deine Fahrdaten, sucht echte Orte, plant Routen.</div></div>' +
       (juno.length ? '<button class="chip sm" id="junoClear">Neu</button>' : '') + '</div>' +
+      (HOOK('junoHead') || '') +
       (juno.length ? '' : '<div class="sugg">' + JUNO_SUGG.map(function (q) { return '<button data-jq="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>') +
       '<div class="chatlog" id="chatlog">' + log + '</div>' +
       '<div class="chatin"><input id="chatIn" placeholder="Frag Juno ..." autocomplete="off" enterkeyhint="send">' +
@@ -2388,7 +2430,7 @@
         junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
         if (!d.antwort) { juno.push({ role: 'assistant', content: d.fehler || 'Juno ist gerade nicht erreichbar.' }); saveJuno(); if (state === 'ai') showJuno(); return; }
         var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [] };
-        HOOK('haptic', 'soft'); HOOK('junoUsed');
+        HOOK('haptic', 'soft'); HOOK('junoUsed', d.credits || 1); m.cr = d.credits || 1;
         juno.push(m); saveJuno(); junoLast = { text: d.antwort, t: Date.now() };
         if (nav || !$('chatlog')) say(plainText(d.antwort).slice(0, 400));
         // Aktionen sofort ausfuehren (Route, Tour, Anpassung); Orte nur anzeigen
@@ -2468,14 +2510,18 @@
   };
 
   drawChips(); updLayers(); drawHome();
-  setTimeout(fitIsland, 50);
+  (function () {
+    var lp = load('lastPos', null);
+    if (lp) map.jumpTo({ center: [lp.lon, lp.lat], zoom: 13 }); else map.jumpTo({ center: [12, 38], zoom: 2.2 });
+  })();
+  setInterval(function () { var r = meRef(); if (r) store('lastPos', { lat: +r.lat.toFixed(4), lon: +r.lon.toFixed(4) }); }, 30000);
   window.__show = showPoi;
   window.V = {
     D: D, A: A, S: S, saveS: saveS, BIKES: BIKES, FIT: FIT, STYLES: STYLES, CLASS: CLASS, CAT: CAT, IC: IC, LAT: LAT, LON: LON,
     map: map, sheet: sheet, sheetEl: sheetEl, toast: toast, say: say, svg: svg, esc: esc, $: $, store: store, load: load,
     dist: dist, bearing: bearing, fmtDist: fmtDist, fmtKm: fmtKm, fmtTime: fmtTime, hhmm: hhmm, clock: clock, demEle: demEle, eleAt: eleAt, onIsland: onIsland,
     nearestPlace: nearestPlace, nearestNode: nearestNode, nearby: nearby, routeVia: routeVia, planRoute: planRoute, startRef: startRef, meRef: meRef, myRef: myRef,
-    computeCosts: computeCosts, drawHome: drawHome, drawRouteSheet: drawRouteSheet, showMenu: showMenu, showJuno: showJuno, askJuno: askJuno, showTours: showTours, setSrc: setSrc, fc: fc, lineF: lineF, ptF: ptF,
+    computeCosts: computeCosts, drawHome: drawHome, drawRouteSheet: drawRouteSheet, fetchExt: fetchExt, isLocal: isLocal, showExtPoint: showExtPoint, onlinePois: onlinePois, hereRef: hereRef, nearIsl: nearIsl, showMenu: showMenu, showJuno: showJuno, askJuno: askJuno, showTours: showTours, setSrc: setSrc, fc: fc, lineF: lineF, ptF: ptF,
     fitTo: fitTo, boundsOf: boundsOf, view: view, setFollow: setFollow, padding: padding, sunTimes: sunTimes, idxAt: idxAt, routeLL: routeLL, profileSvg: profileSvg,
     get state() { return state; }, set state(v) { state = v; }, get nav() { return nav; }, get rec() { return rec; }, get cur() { return cur; }, get plan() { return plan; }, get me() { return me; }, get WX() { return WX; }, get mapReady() { return mapReady; },
     get lastSpeed() { return lastSpeed; }, meMarker: function () { return meMarker; }, DESKTOP: DESKTOP
