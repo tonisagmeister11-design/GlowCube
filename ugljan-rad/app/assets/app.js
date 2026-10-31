@@ -1826,7 +1826,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 5.2 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 5.3 mit der KI Juno. Ugljan funktioniert komplett offline, außerhalb kommen Karte und Routen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -2312,11 +2312,12 @@
   }
   function plainText(t) { return String(t).replace(/\*\*/g, '').replace(/^\s*[-*•]\s+/gm, '').replace(/\|/g, ' '); }
   var JUNO_SUGG = ['Wo gibt es hier etwas zu essen?', 'Schlag mir eine Tour von 2 Stunden vor', 'Wie weit ist es noch?', 'Lohnt sich die Gegend zum Radfahren?', 'Wird es heute regnen?'];
+  var JUNO_LOAD = '<div class="jl-orb">' + svg('juno', '#0c9a68', 18, 2.2) + '</div><div class="jl-txt"><div class="jl-lines"><span>Juno denkt nach</span><span>Schaut sich die Gegend an</span><span>Prüft echte Orte</span><span>Gleich fertig</span></div><div class="jl-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>';
   function showJuno() {
     state = 'ai'; sheetEl.classList.add('tall');
     var log = juno.map(function (m, i) {
       if (m.role === 'user') return '<div class="msg mine">' + esc(m.content) + '</div>';
-      var html = '<div class="msg ai' + (m.wait ? ' wait' : '') + '">' + (m.wait ? 'Juno denkt nach ...' : mdLite(m.content));
+      var html = '<div class="msg ai' + (m.wait ? ' wait' : '') + '">' + (m.wait ? JUNO_LOAD : mdLite(m.content));
       // Orte nur anzeigen, wenn Juno keine Route geplant hat (sonst nur Doppelungen des Ziels)
       if (m.orte && m.orte.length && !(m.acts || []).some(function (x) { return x.typ === 'route_planen'; })) html += '<div class="places">' + m.orte.map(function (o, k) { return '<button data-jp="' + i + '_' + k + '">' + esc(o.name) + '</button>'; }).join('') + '</div>';
       if (m.acts && m.acts.length) html += m.acts.map(function (a, k) { return '<button class="act" data-ja="' + i + '_' + k + '">' + esc(actLabel(a)) + '</button>'; }).join('');

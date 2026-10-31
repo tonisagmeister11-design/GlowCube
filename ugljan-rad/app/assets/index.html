@@ -156,7 +156,24 @@ a{color:var(--acc)}
 .msg.mine{align-self:flex-end;background:var(--lime);color:var(--ink);border-bottom-right-radius:4px}
 .msg.ai{align-self:flex-start;background:var(--panel2);border-bottom-left-radius:4px}
 .msg.ai ul{margin:4px 0;padding-left:18px}
-.msg.wait{color:var(--mute);font-style:italic}
+.msg.wait{color:var(--mute);display:flex;align-items:center;gap:12px;padding:10px 14px}
+.jl-orb{position:relative;width:34px;height:34px;flex:none}
+.jl-orb:before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#2fd59a,#2f80ed,#8b5cf6,#e8930c,#2fd59a);animation:jlspin 1.4s linear infinite;-webkit-mask:radial-gradient(circle,transparent 12px,#000 13px);mask:radial-gradient(circle,transparent 12px,#000 13px)}
+.jl-orb:after{content:"";position:absolute;inset:-4px;border-radius:50%;background:radial-gradient(circle,rgba(47,213,154,.35),transparent 70%);animation:jlpulse 1.6s ease-in-out infinite}
+.jl-orb svg{position:absolute;left:8px;top:8px;animation:jlpop 1.6s ease-in-out infinite}
+.jl-txt{display:flex;flex-direction:column;gap:5px;min-width:0}
+.jl-lines{position:relative;height:18px;width:205px;overflow:hidden;font-size:14px;font-weight:600;color:var(--text)}
+.jl-lines span{position:absolute;left:0;white-space:nowrap;opacity:0;animation:jlline 8s infinite}
+.jl-lines span:nth-child(2){animation-delay:2s}.jl-lines span:nth-child(3){animation-delay:4s}.jl-lines span:nth-child(4){animation-delay:6s}
+.jl-wave{display:flex;align-items:flex-end;gap:3px;height:12px}
+.jl-wave i{width:4px;border-radius:2px;background:linear-gradient(#2fd59a,#2f80ed);animation:jlwave 1s ease-in-out infinite}
+.jl-wave i:nth-child(2){animation-delay:.1s}.jl-wave i:nth-child(3){animation-delay:.2s}.jl-wave i:nth-child(4){animation-delay:.3s}.jl-wave i:nth-child(5){animation-delay:.4s}.jl-wave i:nth-child(6){animation-delay:.5s}.jl-wave i:nth-child(7){animation-delay:.6s}
+@keyframes jlspin{to{transform:rotate(360deg)}}
+@keyframes jlpulse{0%,100%{transform:scale(.85);opacity:.5}50%{transform:scale(1.15);opacity:1}}
+@keyframes jlpop{0%,100%{transform:scale(.9) rotate(0)}50%{transform:scale(1.1) rotate(15deg)}}
+@keyframes jlwave{0%,100%{height:3px}50%{height:12px}}
+@keyframes jlline{0%{opacity:0;transform:translateY(12px)}5%,22%{opacity:1;transform:none}27%,100%{opacity:0;transform:translateY(-12px)}}
+@media (prefers-reduced-motion:reduce){.jl-orb:before,.jl-orb:after,.jl-orb svg,.jl-wave i{animation:none}.jl-lines span{animation:none}.jl-lines span:first-child{opacity:1}}
 .msg .places{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .msg .places button,.msg .act{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:6px 9px;font-size:13px}
 .msg .act{display:block;margin-top:8px;color:var(--acc);border-color:rgba(47,213,154,.6)}
