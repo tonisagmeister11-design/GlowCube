@@ -177,7 +177,7 @@
   }
   VX.onPlus = function (on) { if (ACC) api('/me', 'POST', { plus: on }).then(function (j) { if (j.user) { ACC.user = j.user; save(); } refresh(); }).catch(function () {}); };
 
-  // ---------- Juno: Credits vom Server ----------
+  // ---------- Soul: Credits vom Server ----------
   var oldUsed = VX.junoUsed;
   VX.junoUsed = function (cr, left) {
     if (left != null) VX.srvCredits = { left: left, max: (VX.srvCredits && VX.srvCredits.max) || (ACC && ACC.user.plus ? 100 : 10) };

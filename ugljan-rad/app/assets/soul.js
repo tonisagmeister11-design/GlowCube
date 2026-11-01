@@ -1,0 +1,578 @@
+/* Soul: die eigene KI von Velora. Laeuft komplett in der App, ohne fremde KI und ohne Kosten.
+   Prinzip wie im Projekt "Soul": Absicht erkennen (mit Tippfehler-Korrektur), Orte/Zahlen/Zeiten herauslesen,
+   Werkzeuge der App ausfuehren, Antwort bauen, bei Wissensfragen im Hintergrund recherchieren
+   (Wikipedia, auf Android zusaetzlich DuckDuckGo ueber die App) und die passendsten Saetze auswaehlen. */
+(function () {
+  'use strict';
+  var V = window.V, VX = window.VX || {}; if (!V) return;
+  var A = V.A;
+
+  // ---------------------------------------------------------------------------------------------
+  // Text-Werkzeuge
+  // ---------------------------------------------------------------------------------------------
+  function norm(s) {
+    return String(s || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s.,%+\-*/:?']/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  function km(m) { return (m / 1000).toFixed(1).replace('.', ','); }
+  function kmE(m) { return (m / 1000).toFixed(1); }
+  function lev(a, b) {
+    if (Math.abs(a.length - b.length) > 2) return 9;
+    var d = []; for (var i = 0; i <= a.length; i++) { d[i] = [i]; }
+    for (var j = 1; j <= b.length; j++) d[0][j] = j;
+    for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  }
+  // Wortschatz der Absichten fuer die Tippfehler-Korrektur
+  var VOCAB = ('hallo servus wetter regen regnet wind temperatur morgen heute uebermorgen wochenende route strecke navigation starte fahren fahrt fahrten ' +
+    'restaurant essen pizza burger hunger kaffee cafe eis kuchen strand baden schwimmen aussicht aussichtspunkt wasser toilette radladen werkstatt ' +
+    'supermarkt apotheke unterkunft hotel sehenswuerdigkeit museum kirche tour runde ausflug kuerzer flacher schoener schneller laenger leichter ' +
+    'statistik kalorien abzeichen serie flamme rekord bestzeit woche monat insgesamt letzte geschwindigkeit tempo ankunft anstieg hoehe ' +
+    'reifen schlauch platten flicken luftdruck kette schaltung bremse sattel licht helm training trainieren ausdauer motivation danke witz ' +
+    'weather forecast restaurant nearby distance tomorrow today calories streak record speed tire chain brake helmet thanks joke').split(' ');
+  var VSET = {}; VOCAB.forEach(function (w) { VSET[w] = 1; });
+  function fix(t) {
+    return t.split(' ').map(function (w) {
+      if (w.length < 5 || VSET[w] || /\d/.test(w)) return w;
+      var best = null, bd = w.length >= 8 ? 2 : 1;
+      VOCAB.forEach(function (v) { var d = lev(w, v); if (d <= bd && (!best || d < best.d)) best = { v: v, d: d }; });
+      return best ? best.v : w;
+    }).join(' ');
+  }
+  function has(t, re) { return re.test(t); }
+
+  // Sprache: App-Sprache, ausser die Nachricht ist klar englisch
+  function langOf(raw) {
+    var app = window.I18N ? I18N.lang : 'de', t = ' ' + norm(raw) + ' ';
+    var en = (t.match(/ (the|is|are|what|where|how|can|you|my|please|show|me|weather|near|nearby|ride|route|thanks|thank|hello|hi|there|i|to|do|does|which|who|will|it|tomorrow|today|get|tell|joke|last|was|rain|good|morning|any|some|plan|take) /g) || []).length;
+    var de = (t.match(/ (der|die|das|ist|und|wie|wo|was|kannst|du|dir|mein|meine|bitte|zeig|mir|wetter|ich|zu|nach|wer|welche|hallo|danke|gibt|es|hier|heute|morgen|regnet|erzaehl|einen|eine|war|letzte|servus|gehts) /g) || []).length;
+    if (en > de) return 'en';
+    if (de > en) return 'de';
+    return app === 'de' ? 'de' : 'en';
+  }
+  var L = 'de';
+  function T(de, en) { return L === 'de' ? de : en; }
+
+  // ---------------------------------------------------------------------------------------------
+  // Gespraechsgedaechtnis
+  // ---------------------------------------------------------------------------------------------
+  var M = { last: null, place: null, list: [], offer: null, article: null, sentIdx: 0, name: null, turns: 0, lastTopic: null };
+  function userName() {
+    try { var a = VX.account && VX.account(); if (a && a.user && a.user.name) return a.user.name.split(' ')[0]; } catch (e) {}
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Hilfen: Netz (Hintergrund-Browser), Orte, Wetter
+  // ---------------------------------------------------------------------------------------------
+  var pend = {}, pid = 0;
+  // Auf Android holt die App Seiten selbst (ohne Browser-Sperren), sonst normales fetch
+  function getText(url) {
+    if (A && A.fetchText) return new Promise(function (res, rej) { var id = 'f' + (++pid); pend[id] = { res: res, rej: rej }; setTimeout(function () { if (pend[id]) { delete pend[id]; rej(new Error('timeout')); } }, 15000); A.fetchText(id, url); });
+    return fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); });
+  }
+  function getJSON(url) { return fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  function here(k) { return k && k.position ? { lat: k.position.lat, lon: k.position.lon, gps: k.position.quelle === 'GPS' } : null; }
+  function geocode(q, k) {
+    var h = here(k), u = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&limit=5&lang=' + (L === 'de' ? 'de' : 'en') + (h ? '&lat=' + h.lat + '&lon=' + h.lon : '');
+    return getJSON(u).then(function (j) {
+      var f = (j.features || [])[0]; if (!f) throw new Error('none');
+      var p = f.properties, g = f.geometry.coordinates;
+      return { name: p.name || q, lat: g[1], lon: g[0], sub: [p.city && p.city !== p.name ? p.city : '', p.country || ''].filter(Boolean).join(', ') };
+    }).catch(function () {
+      return getJSON('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(q)).then(function (l) {
+        if (!l.length) throw new Error('none'); return { name: String(l[0].display_name).split(',')[0], lat: +l[0].lat, lon: +l[0].lon, sub: String(l[0].display_name).split(',').slice(1, 3).join(',') };
+      });
+    });
+  }
+  var WC = { 0: ['klar', 'clear'], 1: ['überwiegend klar', 'mostly clear'], 2: ['teilweise bewölkt', 'partly cloudy'], 3: ['bedeckt', 'overcast'], 45: ['Nebel', 'fog'], 48: ['Nebel', 'fog'], 51: ['Nieselregen', 'drizzle'], 53: ['Nieselregen', 'drizzle'], 55: ['Nieselregen', 'drizzle'], 61: ['leichter Regen', 'light rain'], 63: ['Regen', 'rain'], 65: ['starker Regen', 'heavy rain'], 71: ['leichter Schnee', 'light snow'], 73: ['Schnee', 'snow'], 75: ['starker Schnee', 'heavy snow'], 80: ['Regenschauer', 'showers'], 81: ['Regenschauer', 'showers'], 82: ['heftige Schauer', 'heavy showers'], 95: ['Gewitter', 'thunderstorm'], 96: ['Gewitter mit Hagel', 'thunderstorm with hail'], 99: ['Gewitter mit Hagel', 'thunderstorm with hail'] };
+  function wcode(c) { var w = WC[c] || WC[Math.floor(c / 10) * 10] || ['wechselhaft', 'changeable']; return L === 'de' ? w[0] : w[1]; }
+  function weather(h) {
+    return getJSON('https://api.open-meteo.com/v1/forecast?latitude=' + h.lat.toFixed(3) + '&longitude=' + h.lon.toFixed(3) +
+      '&current=temperature_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation&hourly=precipitation_probability,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,sunset&forecast_days=4&timezone=auto');
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Absichten
+  // ---------------------------------------------------------------------------------------------
+  var CATS = [
+    ['food', /\b(essen|restaurant|restaurants|pizza|pizzeria|burger|hunger|hungrig|mittagessen|abendessen|gasthaus|gasthof|wirtshaus|konoba|food|eat|lunch|dinner|schnitzel|pasta|sushi|kebab|doener)\b/],
+    ['cafe', /\b(cafe|cafes|kaffee|coffee|eis|eisdiele|kuchen|baeckerei|bakery|ice cream|gelato|fruehstueck|breakfast)\b/],
+    ['bar', /\b(bar|bars|bier|beer|drink|cocktail|pub|kneipe)\b/],
+    ['beach', /\b(strand|straende|baden|schwimmen|badesee|see zum baden|beach|swim|swimming|badestelle)\b/],
+    ['view', /\b(aussicht|aussichtspunkt|panorama|ausblick|view|viewpoint|sonnenuntergang schauen)\b/],
+    ['water', /\b(trinkwasser|wasser auffuellen|brunnen|water|trinken)\b/],
+    ['wc', /\b(wc|toilette|toiletten|klo|toilet|restroom)\b/],
+    ['bike', /\b(radladen|fahrradladen|radgeschaeft|werkstatt|reparatur|bike shop|repair|fahrradwerkstatt)\b/],
+    ['shop', /\b(supermarkt|einkaufen|laden|shop|groceries|spar|billa|lidl|hofer|aldi)\b/],
+    ['health', /\b(apotheke|arzt|krankenhaus|pharmacy|doctor|hospital)\b/],
+    ['stay', /\b(hotel|unterkunft|uebernachten|pension|camping|zelten|hostel)\b/],
+    ['sight', /\b(sehenswuerdigkeit|sehenswuerdigkeiten|museum|kirche|burg|schloss|denkmal|sightseeing|attraction|castle)\b/]
+  ];
+  var CAT_N = { food: ['Restaurants', 'restaurants'], cafe: ['Cafés', 'cafés'], bar: ['Bars', 'bars'], beach: ['Badestellen', 'swimming spots'], view: ['Aussichtspunkte', 'viewpoints'], water: ['Trinkwasser-Stellen', 'drinking water'], wc: ['Toiletten', 'toilets'], bike: ['Radwerkstätten', 'bike shops'], shop: ['Läden', 'shops'], health: ['Apotheken und Ärzte', 'pharmacies and doctors'], stay: ['Unterkünfte', 'places to stay'], sight: ['Sehenswürdigkeiten', 'sights'] };
+  var CAT_EMO = { food: '🍽️', cafe: '☕', bar: '🍺', beach: '🏖️', view: '🌄', water: '💧', wc: '🚻', bike: '🔧', shop: '🛒', health: '💊', stay: '🛏️', sight: '🏰' };
+  var OSMTAG = { food: 'amenity=restaurant', cafe: 'amenity~"cafe|ice_cream"', bar: 'amenity~"bar|pub|biergarten"', beach: 'leisure=bathing_place', view: 'tourism=viewpoint', water: 'amenity=drinking_water', wc: 'amenity=toilets', bike: 'shop=bicycle', shop: 'shop~"supermarket|convenience"', health: 'amenity~"pharmacy|doctors|hospital"', stay: 'tourism~"hotel|guest_house|hostel|camp_site"', sight: 'tourism~"attraction|museum"' };
+  var KCAT = { food: ['restaurant', 'fast_food', 'food', 'snack', 'pizza'], cafe: ['cafe', 'ice_cream', 'bakery', 'konditorei'], bar: ['bar', 'pub', 'beer', 'biergarten'], beach: ['beach', 'swimming', 'bathing', 'strand'], view: ['viewpoint', 'aussicht', 'view'], water: ['drinking_water', 'wasser', 'trinkwasser'], wc: ['toilets', 'wc', 'toilette'], bike: ['bicycle', 'fahrrad'], shop: ['grocery', 'supermarket', 'shop', 'convenience'], health: ['pharmacy', 'doctors', 'hospital', 'gesundheit'], stay: ['lodging', 'hotel', 'campsite', 'unterkunft'], sight: ['attraction', 'museum', 'castle', 'monument', 'sehenswuerdigkeit'] };
+
+  function catOf(t) { for (var i = 0; i < CATS.length; i++) if (CATS[i][1].test(t)) return CATS[i][0]; return null; }
+  var Q = /^(wer|was|wann|wo|wie|warum|wieso|weshalb|welche|welcher|welches|wieviel|wieviele|woher|wohin|kann|kannst|ist|sind|gibt|hat|haben|soll|darf|weisst|who|what|when|where|why|how|which|is|are|can|does|do|did|should|will)\b/;
+  function isQuestion(raw, t) { return /\?\s*$/.test(raw) || Q.test(t); }
+
+  function durationOf(t) {
+    var m = t.match(/(\d+(?:[.,]\d+)?)\s*(stunden|stunde|std|h|hours|hour)\b/); if (m) return Math.round(parseFloat(m[1].replace(',', '.')) * 60);
+    m = t.match(/(\d+)\s*(minuten|min|minutes)\b/); if (m) return +m[1];
+    if (/halbe stunde|half an hour/.test(t)) return 30;
+    if (/eineinhalb|anderthalb|1 1\/2/.test(t)) return 90;
+    if (/(eine|ein|one|an) (stunde|hour)/.test(t)) return 60;
+    if (/(zwei|two) (stunden|hours)/.test(t)) return 120;
+    if (/(drei|three) (stunden|hours)/.test(t)) return 180;
+    if (/halben tag|half a day|half day/.test(t)) return 240;
+    if (/ganzen tag|whole day|full day|tagestour/.test(t)) return 360;
+    return null;
+  }
+  function distanceOf(t) { var m = t.match(/(\d+(?:[.,]\d+)?)\s*(km|kilometer)\b/); return m ? parseFloat(m[1].replace(',', '.')) : null; }
+  // Ziel aus "nach X", "zu X", "to X"; Grossschreibung aus dem Original behalten
+  function targetOf(raw) {
+    var r = raw.replace(/[?!.]+$/, '');
+    var m = r.match(/\b(?:nach|zum|zur|zu|bis|ins|in den|in die|richtung|to|towards)\s+(.{2,60}?)(?:\s+(?:fahren|radeln|navigieren|planen|bitte|please|mit dem rad|with the bike|route)\b|$)/i);
+    if (!m) m = r.match(/\b(?:route|weg|strecke|radweg)\s+(?:nach|zu|zum|zur|to)?\s*(.{2,60})$/i);
+    if (!m) return null;
+    var x = m[1].replace(/^(der|die|das|dem|den|the)\s+/i, '').trim();
+    if (/^(hause|haus|home)$/i.test(x)) return { home: true };
+    if (/^(dort|da|dahin|dorthin|there|it|this place)$/i.test(x)) return { there: true };
+    return x.length >= 2 ? { q: x } : null;
+  }
+
+  function detect(raw, t) {
+    var q = isQuestion(raw, t);
+    if (/^[\d\s+\-*/().,x:^%=]+$/.test(t.replace(/\b(mal|plus|minus|geteilt durch|durch|times|divided by|ist|=)\b/g, ' ').replace(/(was ist|rechne|berechne|what is|calculate)/, '')) && /\d/.test(t) && /[+\-*/x:]|mal|plus|minus|geteilt|times|divided/.test(t)) return 'math';
+    if (/^(ja|jo|jep|jup|gerne|gern|klar|ok|okay|passt|mach (das|mal|es)|bitte|yes|yeah|yep|sure|go|los|na klar|unbedingt|auf jeden fall)\b/.test(t) && t.split(' ').length <= 5) return 'yes';
+    if (/^(nein|nee|ne|no|nope|lieber nicht|doch nicht|nicht noetig|passt schon)\b/.test(t) && t.split(' ').length <= 5) return 'no';
+    if (/\b(starte?|beginne?|start|begin)\b.*\b(navigation|route|fahrt|navi)\b|\b(navigation|route) (starten|start)\b|\blass uns (los|fahren|losfahren)\b|\blets go\b|\bfahr los\b/.test(t)) return 'nav_start';
+    if (/\b(wie (werde|wird) (ich|man)|werden|trainier|training|fitter|ausdauer|kondition|abnehmen|get faster|get fitter)\b/.test(t) && /\b(schneller|fitter|besser|staerker|ausdauer|kondition|bergauf|berg|abnehmen|faster|fitter|stronger)\b/.test(t)) return 'training';
+    if (/\b(kuerzer|flacher|leichter|einfacher|schoener|schneller|laenger|weniger (steil|berge?|hoehenmeter|anstieg)|ohne (berge?|anstiege)|nicht so (steil|lang|weit)|zu (steil|lang|weit)|shorter|flatter|easier|nicer|faster|longer|less (steep|climbing)|too (steep|long|far))\b/.test(t) && !/\bwarum\b/.test(t)) return 'adjust';
+    var tg = targetOf(raw);
+    if (tg && /\b(route|weg|fahr|fahre|fahren|radeln|navigier|bring|komme|kommen|plan|zeig mir den weg|get to|ride|cycle|directions|way|navigate|take me|wie weit)\b/i.test(t) && !/\b(wetter|weather)\b/.test(t)) return 'route';
+    if (/\b(wie schnell (bin|fahre) ich|mein tempo|wie weit (noch|ist es noch)|wann (bin ich|komme ich) (da|an)|restzeit|wie lange noch|wie viele? (km|kilometer) noch|naechste (abbiegung|anweisung)|naechster anstieg|wie hoch bin ich|auf welcher hoehe|how fast am i|how far (is it )?(left|to go)|when will i arrive|eta)\b/.test(t)) return 'live';
+    if (/\b(anziehen|kleidung|jacke mitnehmen|regenjacke|what (should i )?wear|clothes)\b/.test(t)) return 'wear';
+    if (/\b(wetter|regen|regnet|regnen|wind|windig|temperatur|grad|sonnig|sonne scheint|gewitter|schnee|wie warm|wie kalt|weather|rain|raining|forecast|windy|temperature|sunny)\b/.test(t)) return 'weather';
+    if (/\b(statistik|kalorien|abzeichen|serie|flamme|streak|rekord|rekorde|bestzeit|bestzeiten|wochenziel|meine (fahrt|fahrten|woche|leistung|kilometer|km)|letzte(n)? fahrt|wie (gut|weit|viel|oft|schnell) bin ich (gefahren|geradelt|unterwegs)|wie war (meine|die|meine letzte) (fahrt|woche|tour)|wie viele? (km|kilometer|hoehenmeter|fahrten)|insgesamt gefahren|diese woche gefahren|letzten monat|bin ich besser|fortschritt|my (ride|rides|stats|week|streak|badges|progress)|how (far|much|often) (did|have) i|calories|last ride)\b/.test(t)) return 'stats';
+    if (/\b(tour|touren|runde|rundtour|rundfahrt|ausflug|ausfahrt|radtour|vorschlag|vorschlagen|idee|ideen|loop|ride idea|where (should|can) i ride|wohin (soll|kann) ich (fahren|radeln))\b/.test(t) && !catOf(t)) return 'tour';
+    var c = catOf(t);
+    if (c && (/\b(in der naehe|hier|nearby|um mich|in meiner naehe|wo (gibt|ist|kann|finde|bekomme)|naechste|naechstes|naechsten|gibt es|irgendwo|zeig|zeige|suche|such|find|where|any|around|hungrig|hunger|durst)\b/.test(t) || t.split(' ').length <= 3)) return 'nearby';
+    if (/\b(platten|platter reifen|reifen|schlauch|flicken|luftdruck|reifendruck|kette|kettenoel|schaltung|gaenge|gang springt|bremse|bremsen|quietscht|knackt|sattel|sattelhoehe|licht|beleuchtung|oelen|schmieren|wartung|putzen|flat tire|puncture|tyre|tire pressure|chain|gears|brakes?|saddle|squeak|maintenance)\b/.test(t)) return 'bike';
+    if (/\b(schneller werden|fitter|fit werden|trainier|training|ausdauer|kondition|berg ?hoch|bergauf (besser|leichter)|abnehmen|trittfrequenz|kadenz|intervall|get faster|get fitter|climb better|lose weight|cadence)\b/.test(t)) return 'training';
+    if (/\b(helm|sicherheit|sicher fahren|unfall|im dunkeln|nachts fahren|verkehrsregel|handzeichen|safety|helmet|accident|at night)\b/.test(t)) return 'safety';
+    if (/\b(velora plus|plus|premium|abo|preis|kostet die app|wochenziel|offline.?karte|live.?standort|live teilen|gpx|tagesplaner|widget|abzeichen|velo|fuchs|rueckenwind|vibration|nachtmodus)\b/.test(t) && /\b(wie|was|wozu|erklaer|funktioniert|bedeutet|kann ich|wo finde|how|what|explain)\b/.test(t)) return 'apphelp';
+    if (/\b(wie spaet|uhrzeit|wie viel uhr|welcher tag|welches datum|datum heute|what time|what day)\b/.test(t)) return 'time';
+    if (/^(hallo|hi|hey|servus|moin|gruess gott|griass di|gruezi|guten (morgen|tag|abend)|hello|good (morning|afternoon|evening)|yo|na du|huhu|hallihallo)\b/.test(t)) return t.split(' ').length <= 4 ? 'greet' : (q ? 'greetq' : 'greet');
+    if (/\b(wie geht( es|s)?( dir)?|wie gehts|was geht|alles (gut|klar) bei dir|how are you|hows it going|whats up)\b/.test(t)) return 'howru';
+    if (/\b(wer bist du|was bist du|wie heisst du|bist du (eine |ein )?(ki|bot|mensch|roboter)|who are you|what are you|your name|are you (a |an )?(ai|bot|human))\b/.test(t)) return 'who';
+    if (/\b(was kannst du|was kann ich (dich )?fragen|wobei hilfst du|hilfe|help|what can you do)\b/.test(t)) return 'can';
+    if (/\b(danke|dankeschoen|vielen dank|merci|thx|thanks|thank you|grazie|gracias)\b/.test(t)) return 'thanks';
+    if (/\b(tschuess|tschau|ciao|bye|bis (bald|spaeter|dann|morgen)|gute nacht|baba|servas|see you|good night)\b/.test(t)) return 'bye';
+    if (/\b(witz|witze|joke|jokes|bring mich zum lachen|was lustiges|funny)\b/.test(t)) return 'joke';
+    if (/\b(du bist (so |echt |wirklich )?(toll|super|cool|klasse|lieb|die beste|genial|nett|hilfreich|schlau)|ich mag dich|ich liebe dich|gut gemacht|love you|you are (great|awesome|cool|the best)|good job)\b/.test(t)) return 'compliment';
+    if (/\b(du bist (so |echt )?(dumm|bloed|doof|schlecht|nutzlos|langweilig)|halt die klappe|stupid|useless|shut up)\b/.test(t)) return 'insult';
+    if (/\b(keine lust|bin (so |sehr |total )?(muede|faul|kaputt|erschoepft)|motivier|motivation|schaffe (es|das) nicht|zu anstrengend|bin traurig|schlechter tag|no motivation|tired|lazy)\b/.test(t)) return 'lowmood';
+    if (/\b(war|bin) (heute |gestern |gerade |eben )?(radeln|radfahren|rad fahren|gefahren|geradelt|unterwegs|biken)\b|\b(i (went|was) (cycling|riding)|i rode)\b/.test(t)) return 'rode';
+    if (/\b(bin (gut drauf|happy|gluecklich|stolz|froh)|super tag|geschafft|ich habe es geschafft|feeling great|i did it)\b/.test(t)) return 'goodmood';
+    if (/\b(wie alt bist du|how old are you)\b/.test(t)) return 'age';
+    if (/\b(magst du|was magst du|lieblings|favorite|favourite|do you like)\b/.test(t)) return 'likes';
+    if (q) return 'knowledge';
+    return 'chat';
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Wissen: Wikipedia (und auf Android DuckDuckGo) im Hintergrund, beste Saetze auswaehlen
+  // ---------------------------------------------------------------------------------------------
+  var STOP = ' der die das ein eine einer eines einem einen und oder ist sind war waren wird werden wer was wann wo wie warum wieso weshalb welche welcher welches wieviel wieviele woher wohin kann kannst koennen ich du er sie es wir ihr mir mich dir dich uns euch mein dein sein ihr auf in im an am zu zum zur von vom mit bei fuer ueber unter aus nach vor seit bis hat haben gibt gab es den dem des denn dann doch mal noch schon so sehr auch nur nicht kein keine bitte sag sage mir erklaer erklaere erzaehl weisst du eigentlich genau eigentlich viel viele the a an of to in on at for is are was were who what when where why how which do does did can could you me tell about please '.split(' ');
+  var SW = {}; STOP.forEach(function (w) { if (w) SW[w] = 1; });
+  function content(t) { return t.split(' ').filter(function (w) { return w.length > 2 && !SW[w]; }); }
+  function qtype(t) {
+    if (/\b(wann|when|jahr|year|seit wann)\b/.test(t)) return 'year';
+    if (/\b(wie hoch|hoehe|how high|how tall|height)\b/.test(t)) return 'height';
+    if (/\b(wie lang|wie weit|laenge|how long|how far|length)\b/.test(t)) return 'length';
+    if (/\b(wie viele|wieviele|wie viel|anzahl|einwohner|how many|how much|population)\b/.test(t)) return 'count';
+    if (/\b(wo liegt|wo ist|where is|where are)\b/.test(t)) return 'where';
+    if (/\b(wer|who)\b/.test(t)) return 'who';
+    return 'what';
+  }
+  // Saetze trennen, aber nicht nach Abkuerzungen (z. B., v. Chr., ü. A., Nr., Zahlen wie "1. Januar")
+  var ABBR = { bzw: 1, ca: 1, etc: 1, usw: 1, inkl: 1, evtl: 1, ggf: 1, vgl: 1, chr: 1, jh: 1, jhd: 1, nr: 1, st: 1, dr: 1, prof: 1, mio: 1, mrd: 1, bspw: 1, sog: 1, gem: 1, hl: 1, ev: 1, kath: 1, eig: 1, mr: 1, mrs: 1, vs: 1, approx: 1, est: 1, jr: 1, sr: 1 };
+  function sentences(txt) {
+    var t = String(txt).replace(/\s+/g, ' ').replace(/\s*\([^)]{0,80}\)/g, ''), out = [], start = 0, re = /[.!?]\s+(?=[A-ZÄÖÜ0-9„"])/g, m;
+    while ((m = re.exec(t))) {
+      var before = t.slice(start, m.index), w = (before.match(/(\S+)$/) || ['', ''])[1].replace(/^[„"(]/, '');
+      if (m[0][0] === '.' && (w.length <= 2 || /^\d+$/.test(w) || ABBR[w.toLowerCase()])) continue;
+      out.push(t.slice(start, m.index + 1).trim()); start = m.index + m[0].length;
+    }
+    out.push(t.slice(start).trim());
+    return out.filter(function (s) { return s.length > 25 && s.length < 450; });
+  }
+  function rank(sents, t) {
+    var cw = content(fix(t)), ty = qtype(t);
+    return sents.map(function (s, i) {
+      var n = norm(s), sc = 0;
+      cw.forEach(function (w) { if (n.indexOf(w.slice(0, Math.max(4, w.length - 2))) >= 0) sc += 2; });
+      if (ty === 'year' && /\b1\d{3}|20\d{2}\b/.test(s)) sc += 3;
+      if (ty === 'height' && /\d[\d.,]*\s*(m|meter|metern)\b/.test(s)) sc += 4;
+      if (ty === 'length' && /\d[\d.,]*\s*(km|kilometer|m|meter)\b/.test(s)) sc += 4;
+      if (ty === 'count' && /\d[\d.,]*/.test(s)) sc += 3;
+      if (ty === 'where' && /\b(liegt|befindet|located|lies|im|in der|in den)\b/.test(n)) sc += 2;
+      sc += Math.max(0, 3 - i) * (ty === 'what' || ty === 'who' ? 1.2 : 0.4);
+      return { s: s, sc: sc, i: i };
+    }).sort(function (a, b) { return b.sc - a.sc; });
+  }
+  function wikiLang() { return L === 'de' ? 'de' : 'en'; }
+  function wikiSearch(query, lang) {
+    return getJSON('https://' + lang + '.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=3&srsearch=' + encodeURIComponent(query))
+      .then(function (j) { return ((j.query && j.query.search) || []).map(function (x) { return x.title; }); });
+  }
+  function wikiText(title, lang) {
+    return getJSON('https://' + lang + '.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&format=json&origin=*&redirects=1&titles=' + encodeURIComponent(title))
+      .then(function (j) { var p = j.query && j.query.pages, k = p && Object.keys(p)[0]; return k && p[k].extract ? { title: p[k].title, text: p[k].extract.slice(0, 20000) } : null; });
+  }
+  function ddg(query) {
+    if (!(A && A.fetchText)) return Promise.reject(new Error('no bridge'));
+    return getText('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query)).then(function (h) {
+      var out = [], re = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g, m;
+      while ((m = re.exec(h)) && out.length < 6) out.push(m[1].replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/\s+/g, ' ').trim());
+      return out;
+    });
+  }
+  function knowledge(raw, t) {
+    var cw = content(fix(t));
+    // Suchbegriff aus den Originalwoertern (mit Umlauten und ß), ohne Fragewoerter
+    var QW = { hoch: 1, lang: 1, gross: 1, alt: 1, weit: 1, viele: 1, gegruendet: 0, high: 1, tall: 1, long: 1, old: 1, big: 1, many: 1 };
+    var orig = String(raw).replace(/[?!.,;:„“"()]/g, ' ').split(/\s+/).filter(function (w) { var n = norm(w); return n.length > 2 && !SW[n] && !QW[n]; });
+    var query = orig.join(' ') || cw.join(' ') || raw;
+    var lang = wikiLang();
+    return wikiSearch(query, lang).then(function (titles) {
+      if (!titles.length && lang !== 'en') return wikiSearch(query, 'en').then(function (t2) { lang = 'en'; return t2; });
+      return titles;
+    }).then(function (titles) {
+      if (!titles.length) throw new Error('nothing');
+      // Titel bevorzugen, der die Suchwoerter enthaelt
+      var best = titles[0], bs = -1;
+      titles.forEach(function (ti) { var n = norm(ti), s = cw.filter(function (w) { return n.indexOf(w) >= 0; }).length; if (s > bs) { bs = s; best = ti; } });
+      return wikiText(best, lang);
+    }).then(function (a) {
+      if (!a) throw new Error('nothing');
+      var ss = sentences(a.text); if (!ss.length) throw new Error('nothing');
+      var r = rank(ss, t), first = ss[0], top = r[0];
+      var pickS = qtype(t) === 'what' || qtype(t) === 'who' ? [first].concat(top.s !== first ? [top.s] : []) : [top.s].concat(top.s !== first && r[0].sc < 5 ? [first] : []);
+      M.article = { title: a.title, sents: ss, used: pickS.slice(), lang: lang }; M.lastTopic = a.title;
+      var txt = pickS.slice(0, 2).join(' ');
+      if (lang === 'en' && L === 'de') txt = 'Auf Deutsch habe ich nichts gefunden, hier aus der englischen Wikipedia: ' + txt;
+      return txt + ' 📚\n\n' + T('Quelle: Wikipedia (' + a.title + '). Sag „mehr“, wenn du mehr wissen willst.', 'Source: Wikipedia (' + a.title + '). Say "more" to learn more.');
+    }).catch(function () {
+      return ddg(query).then(function (sn) {
+        if (!sn.length) throw new Error('nothing');
+        var r = rank(sn.map(function (x) { return x.split(/(?<=[.!?])\s+/)[0]; }), t);
+        return r[0].s + ' 🔎\n\n' + T('(aus einer Websuche)', '(from a web search)');
+      });
+    }).catch(function () {
+      return pick([T('Hm, dazu habe ich gerade nichts Verlässliches gefunden 🤔 Magst du die Frage anders stellen?', 'Hm, I could not find anything reliable on that 🤔 Could you ask it differently?'),
+        T('Da muss ich passen, dazu finde ich nichts Sicheres 🙈 Frag mich gern etwas zum Radfahren, da bin ich richtig gut!', 'I have to pass on that one 🙈 Ask me anything about cycling, that is my thing!')]);
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Antworten pro Absicht
+  // ---------------------------------------------------------------------------------------------
+  function R(text, extra) { var o = { antwort: text, aktionen: [], orte: [] }; if (extra) for (var k in extra) o[k] = extra[k]; return Promise.resolve(o); }
+  var JOKES = {
+    de: ['Warum fahren Fahrräder nie alleine? Weil sie zwei-reifig sind! 🚲😄', 'Was sagt ein Fahrrad zum anderen? „Reifen wir mal zusammen ab!“ 😂', 'Mein Fahrrad und ich haben eine feste Beziehung. Es ist immer für mich da, nur beim Bergauffahren lässt es mich hängen 😅', 'Warum ist das Fahrrad umgefallen? Es war zwei-müde! 😴🚲', 'Ich wollte einen Witz über Kettenschaltungen erzählen, aber ich komme einfach nicht in den richtigen Gang 🤭'],
+    en: ['Why can\'t a bicycle stand up by itself? Because it\'s two-tired! 🚲😄', 'I wanted to tell a joke about gears, but I couldn\'t shift into the right mood 🤭', 'What do you call a cyclist who doesn\'t like hills? Flat-out honest 😂']
+  };
+  function chain(t, k) {
+    var name = userName(), hr = new Date().getHours(), d = L === 'de';
+    var I = intentCache;
+    switch (I) {
+      case 'greet': case 'greetq':
+        return R(pick(d ? [(hr < 11 ? 'Guten Morgen' : hr < 18 ? 'Hallo' : 'Guten Abend') + (name ? ' ' + name : '') + '! 👋 Was darf es heute sein: eine schöne Tour, das Wetter oder ein Café in der Nähe? ☕',
+          'Hey' + (name ? ' ' + name : '') + '! 😊 Schön, dass du da bist. Wobei kann ich dir helfen?', 'Servus' + (name ? ' ' + name : '') + '! 🚴 Lust auf eine Runde?']
+          : ['Hi' + (name ? ' ' + name : '') + '! 👋 What can I do for you: a nice tour, the weather or a café nearby? ☕', 'Hey' + (name ? ' ' + name : '') + '! 😊 Ready to ride?']));
+      case 'howru':
+        return R(pick(d ? ['Mir geht\'s super, danke! 😄 Ich hab heute schon Routen in Gedanken geplant. Und dir? Lust auf eine Runde? 🚴', 'Bestens! ☀️ Wie geht\'s dir denn? Fährst du heute noch?', 'Gut, danke der Nachfrage! 😊 Wie war dein Tag bisher?']
+          : ['Great, thanks! 😄 And you? Fancy a ride today? 🚴', 'All good here! ☀️ How about you?']));
+      case 'who':
+        return R(d ? 'Ich bin **Soul**, die KI von Velora 🦊✨ Ich laufe direkt hier in der App, ohne fremde KI. Ich plane Routen und Touren, kenne das Wetter, finde schöne Orte in der Nähe, werte deine Fahrten aus und recherchiere für dich, wenn du etwas wissen willst.'
+          : 'I\'m **Soul**, Velora\'s AI 🦊✨ I run right here in the app, no external AI. I plan routes and tours, know the weather, find nice places nearby, analyse your rides and look things up for you.');
+      case 'can':
+        return R(d ? 'Ich kann dir helfen bei:\n- 🗺️ **Routen**: „Plan mir eine Route nach Melk“, danach „flacher“ oder „kürzer“\n- 🔄 **Touren**: „Schlag mir eine 2-Stunden-Tour vor“\n- 📍 **In der Nähe**: „Wo gibt es hier Pizza?“, „Aussichtspunkte in der Nähe“\n- ☀️ **Wetter**: „Regnet es morgen?“, „Was soll ich anziehen?“\n- 📊 **Deine Fahrten**: „Wie war meine Woche?“, „Wie viele Kalorien?“\n- 🔧 **Rad-Hilfe**: „Wie flicke ich einen Reifen?“\n- 📚 **Wissen**: „Wie hoch ist der Großglockner?“\n- 😄 Und einfach plaudern!'
+          : 'I can help with:\n- 🗺️ **Routes**: "Plan a route to Vienna", then "flatter" or "shorter"\n- 🔄 **Tours**: "Suggest a 2-hour tour"\n- 📍 **Nearby**: "Where can I get pizza?"\n- ☀️ **Weather**: "Will it rain tomorrow?"\n- 📊 **Your rides**: "How was my week?"\n- 🔧 **Bike help**: "How do I fix a flat?"\n- 📚 **Knowledge**: "How high is Mont Blanc?"\n- 😄 And just chatting!');
+      case 'thanks':
+        return R(pick(d ? ['Sehr gern! 😊', 'Immer wieder gern! 🦊', 'Gerne doch! Gute Fahrt 🚴💨', 'Dafür bin ich da! ✨'] : ['You\'re welcome! 😊', 'Anytime! 🦊', 'Happy to help! Enjoy the ride 🚴💨']));
+      case 'bye':
+        return R(pick(d ? ['Bis bald' + (name ? ', ' + name : '') + '! 👋 Gute Fahrt!', 'Tschüss! 🦊 Melde dich, wenn du eine Tour brauchst.', hr >= 20 ? 'Gute Nacht! 🌙 Morgen wartet die nächste Runde.' : 'Bis später! 🚴'] : ['See you' + (name ? ', ' + name : '') + '! 👋 Ride safe!', 'Bye! 🦊']));
+      case 'joke': return R(pick(JOKES[d ? 'de' : 'en']));
+      case 'compliment': return R(pick(d ? ['Oh, danke! 🥰 Das geht runter wie ein frisch geöltes Kettenblatt.', 'Du bist aber auch toll! 😊 Zusammen sind wir ein starkes Team 🚴🦊', 'Danke! ✨ Das motiviert mich richtig.'] : ['Aww, thank you! 🥰', 'You\'re great too! 😊 We make a good team 🚴🦊']));
+      case 'insult': return R(pick(d ? ['Autsch 😅 Ich gebe mein Bestes und lerne dazu. Sag mir, was nicht gepasst hat, dann versuche ich es nochmal.', 'Okay, das war wohl nichts 🙈 Wie kann ich es besser machen?'] : ['Ouch 😅 I\'m doing my best. Tell me what went wrong and I\'ll try again.']));
+      case 'lowmood':
+        return R(pick(d ? ['Kenn ich 😊 Weißt du was? Schon 20 Minuten auf dem Rad machen den Kopf frei. Soll ich dir eine kurze, flache Runde raussuchen? 🌿', 'Keine Sorge, jeder hat solche Tage 💛 Wie wäre es mit einer gemütlichen Runde zu einem Café? ☕ Ich such dir eine raus, wenn du willst.']
+          : ['I get it 😊 Even 20 minutes on the bike clear your head. Want me to find a short, flat loop? 🌿']), { _offer: 'tour_easy' });
+      case 'rode': return R(T('Wie cool! 🎉 Wie war es? Wenn du die Fahrt mit Velora aufgezeichnet hast, sag „Wie war meine letzte Fahrt?“ und ich werte sie dir aus 📊', 'Nice! 🎉 How was it? Ask "How was my last ride?" and I\'ll analyse it 📊'));
+      case 'goodmood': return R(pick(d ? ['Wie cool! 🎉 Das freut mich richtig.', 'Stark! 💪 Weiter so!', 'Yes! 🔥 So muss das sein.'] : ['How cool! 🎉', 'Awesome! 💪 Keep it up!']));
+      case 'age': return R(d ? 'Ich bin noch ganz frisch 🦊 Aber ich lerne jeden Tag dazu!' : 'I\'m brand new 🦊 but I learn every day!');
+      case 'likes': return R(d ? 'Ich liebe ruhige Radwege am Wasser, Sonnenuntergänge vom Aussichtspunkt und ein gutes Stück Kuchen nach der Tour 🍰🌅 Und du?' : 'I love quiet bike paths by the water, sunsets from a viewpoint and cake after a ride 🍰🌅 And you?');
+      case 'time': var now = new Date(); return R(d ? 'Es ist ' + V.hhmm(now) + ' Uhr, ' + now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }) + ' 🕒' : 'It\'s ' + V.hhmm(now) + ', ' + now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ' 🕒');
+    }
+    return null;
+  }
+  var intentCache = null;
+
+  function doMath(t) {
+    var e = t.replace(/(was ist|rechne|berechne|what is|calculate|=|\?)/g, ' ').replace(/geteilt durch|durch|divided by|:/g, '/').replace(/\bmal\b|\btimes\b|x/g, '*').replace(/\bplus\b/g, '+').replace(/\bminus\b/g, '-').replace(/,/g, '.').replace(/\s+/g, '');
+    if (!/^[\d+\-*/().%^]+$/.test(e)) return null;
+    try { var v = Function('"use strict";return (' + e.replace(/\^/g, '**') + ')')(); if (typeof v === 'number' && isFinite(v)) return Math.round(v * 1e6) / 1e6; } catch (x) {}
+    return null;
+  }
+
+  function doRoute(raw, t, k) {
+    var tg = targetOf(raw) || {};
+    if (tg.there && M.place) tg = { place: M.place };
+    if (tg.home) { var hc = V.load('homeCell', null); return R(T('Ein Zuhause habe ich noch nicht gespeichert 🏠 Sag mir einfach die Adresse, zum Beispiel „Route zur Hauptstraße 5 in Graz“.', 'I don\'t know your home yet 🏠 Just tell me the address.')); }
+    var style = /\b(schnell|fast|direkt|kuerzeste|quick)\b/.test(t) ? 'schnell' : 'schoen';
+    var go = function (p) {
+      M.place = p;
+      var a = { typ: 'route_planen', lat: p.lat, lon: p.lon, ziel_name: p.name, stil: style };
+      var h = here(k), dd = h ? V.dist(h.lat, h.lon, p.lat, p.lon) : null;
+      var txt = T('Alles klar, ich plane dir die Route nach **' + p.name + '** 🗺️' + (dd ? ' (Luftlinie ' + km(dd) + ' km)' : '') + '. ' + (style === 'schoen' ? 'Ich nehme die schönere Strecke mit Radwegen und ruhigen Wegen 🌿' : 'Ich nehme die schnelle Variante ⚡') + ' Danach kannst du „flacher“, „kürzer“ oder „schöner“ sagen.',
+        'Sure, planning your route to **' + p.name + '** 🗺️' + (dd ? ' (' + kmE(dd) + ' km as the crow flies)' : '') + '. You can then say "flatter", "shorter" or "nicer".');
+      return { antwort: txt, aktionen: [a], orte: [] };
+    };
+    if (tg.place) return Promise.resolve(go(tg.place));
+    if (!tg.q) return R(T('Wohin soll es gehen? 🚴 Sag mir einfach das Ziel, zum Beispiel „Route nach Krems“.', 'Where do you want to go? 🚴 Just tell me, e.g. "route to Salzburg".'));
+    // erst in der letzten Liste suchen ("zum ersten", Name aus der Liste)
+    var li = M.list.filter(function (o) { return norm(o.name).indexOf(norm(tg.q)) >= 0; })[0];
+    if (li) return Promise.resolve(go(li));
+    return geocode(tg.q, k).then(go).catch(function () { return { antwort: T('Den Ort „' + tg.q + '“ finde ich leider nicht 🤔 Magst du ihn genauer schreiben, zum Beispiel mit Stadt?', 'I can\'t find "' + tg.q + '" 🤔 Could you be more specific?'), aktionen: [], orte: [] }; });
+  }
+
+  function doAdjust(t, k) {
+    var w = /\b(kuerzer|shorter|nicht so (lang|weit)|zu (lang|weit))\b/.test(t) ? 'kuerzer' : /\b(flacher|leichter|einfacher|weniger|ohne|steil|flatter|easier|less)\b/.test(t) ? 'flacher' : /\b(schoener|nicer)\b/.test(t) ? 'schoener' : /\b(schneller|faster)\b/.test(t) ? 'schneller' : 'laenger';
+    if (!k.route) return R(T('Gerade ist keine Route offen 🗺️ Sag mir zuerst ein Ziel oder lass dir eine Tour vorschlagen.', 'There\'s no route open yet 🗺️ Tell me a destination first.'));
+    var N = { kuerzer: ['kürzer', 'shorter'], flacher: ['flacher', 'flatter'], schoener: ['schöner', 'nicer'], schneller: ['schneller', 'faster'], laenger: ['länger', 'longer'] }[w];
+    return R(T('Okay, ich mache die Route ' + N[0] + ' 🔄 Bisher: ' + String(k.route.km).replace('.', ',') + ' km mit ' + k.route.bergauf_m + ' Höhenmetern. Gleich siehst du die neue Variante.', 'Okay, making the route ' + N[1] + ' 🔄 Currently ' + k.route.km + ' km with ' + k.route.bergauf_m + ' m climbing.'), { aktionen: [{ typ: 'route_anpassen', wunsch: w }] });
+  }
+
+  function doTour(t, k) {
+    var dur = durationOf(t), dist = distanceOf(t);
+    if (!dur && dist) dur = Math.round(dist / 16 * 60);
+    var diff = /\b(leicht|einfach|gemuetlich|flach|locker|easy|flat|relaxed)\b/.test(t) ? 'leicht' : /\b(schwer|anstrengend|sportlich|knackig|hart|berg|bergig|hard|tough|hilly)\b/.test(t) ? 'schwer' : /\b(mittel|medium)\b/.test(t) ? 'mittel' : null;
+    var beau = /\b(schoen|schoenste|traumhaft|landschaft|aussicht|natur|beautiful|scenic|nice)\b/.test(t) ? 'sehr_schoen' : null;
+    if (!dur && !diff && !beau && M.offer !== 'tour_easy') {
+      M.offer = 'tour_ask';
+      return R(T('Gern! 🔄 Wie lange willst du ungefähr fahren? Zum Beispiel „1 Stunde“, „2 Stunden locker“ oder „halber Tag, sportlich“.', 'Sure! 🔄 How long do you want to ride? E.g. "1 hour", "2 hours easy" or "half a day, hard".'));
+    }
+    var a = { typ: 'tour_vorschlagen', dauer_min: dur || 90 };
+    if (diff) a.schwierigkeit = diff; if (beau) a.schoenheit = beau;
+    var d = dur || 90;
+    return R(T('Ich suche dir eine ' + (d >= 60 ? (d / 60).toString().replace('.', ',') + '-Stunden' : d + '-Minuten') + '-Runde' + (diff ? ', ' + (diff === 'leicht' ? 'schön locker' : diff === 'schwer' ? 'mit ordentlich Bergen 💪' : 'mittelschwer') : '') + (beau ? ', besonders schön 🌄' : '') + ' ab deinem Standort. Gleich siehst du die Vorschläge 🦊',
+      'Looking for a ' + (d >= 60 ? d / 60 + '-hour' : d + '-minute') + ' loop' + (diff ? ' (' + diff + ')' : '') + ' from where you are 🦊'), { aktionen: [a] });
+  }
+
+  function overpassNear(cat, h, r) {
+    var q = '[out:json][timeout:20];nwr[' + OSMTAG[cat] + ']["name"](around:' + r + ',' + h.lat.toFixed(5) + ',' + h.lon.toFixed(5) + ');out center 40;';
+    return fetch('https://overpass-api.de/api/interpreter', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q) }).then(function (x) { return x.json(); })
+      .then(function (j) { return (j.elements || []).map(function (e) { var la = e.lat != null ? e.lat : e.center && e.center.lat, lo = e.lon != null ? e.lon : e.center && e.center.lon; return la == null ? null : { name: e.tags['name:' + L] || e.tags.name, lat: la, lon: lo, d: V.dist(h.lat, h.lon, la, lo), cu: e.tags.cuisine, oh: e.tags.opening_hours }; }).filter(Boolean); });
+  }
+  function doNearby(t, k) {
+    var cat = catOf(t) || 'food', h = here(k);
+    if (!h) return R(T('Dafür brauche ich deinen Standort 📍 Schalte bitte GPS ein.', 'I need your location for that 📍 Please turn on GPS.'));
+    var keys = KCAT[cat];
+    var list = (k.orte_in_der_naehe || []).filter(function (o) { var c = norm(o.kategorie || ''); return keys.some(function (x) { return c.indexOf(x) >= 0; }); })
+      .map(function (o) { return { name: o.name, lat: o.lat, lon: o.lon, d: o.km * 1000, cu: o.kueche, open: o.jetzt_offen }; });
+    var p = list.length >= 3 ? Promise.resolve(list) : overpassNear(cat, h, 3000).then(function (l) { return l.length ? l : overpassNear(cat, h, 8000); }).catch(function () { return list; });
+    return p.then(function (l) {
+      if (/\bpizza\b/.test(t)) l = l.filter(function (o) { return /pizza/i.test((o.cu || '') + o.name); }).concat(l.filter(function (o) { return !/pizza/i.test((o.cu || '') + o.name); }));
+      else l.sort(function (a, b) { return a.d - b.d; });
+      l = l.filter(function (o, i, a) { return o.name && a.findIndex(function (x) { return x.name === o.name; }) === i; }).slice(0, 5);
+      if (!l.length) return { antwort: T('In deiner Nähe finde ich gerade keine ' + CAT_N[cat][0] + ' 😕 Soll ich etwas weiter weg suchen? Schreib zum Beispiel den Ort dazu.', 'I can\'t find any ' + CAT_N[cat][1] + ' nearby 😕'), aktionen: [], orte: [] };
+      M.list = l; M.place = l[0]; M.offer = 'route_first';
+      var lines = l.map(function (o, i) { return (i + 1) + '. **' + o.name + '**, ' + (o.d < 1000 ? Math.round(o.d / 10) * 10 + ' m' : km(o.d) + ' km') + (o.cu ? ' (' + String(o.cu).replace(/;/g, ', ') + ')' : '') + (o.open === true ? T(', jetzt offen', ', open now') : o.open === false ? T(', gerade zu', ', closed now') : ''); });
+      return { antwort: T(CAT_EMO[cat] + ' ' + cap(CAT_N[cat][0]) + ' in deiner Nähe:\n' + lines.join('\n') + '\n\nSoll ich dich zu **' + l[0].name + '** bringen? 🚴', CAT_EMO[cat] + ' ' + cap(CAT_N[cat][1]) + ' near you:\n' + lines.join('\n') + '\n\nShall I take you to **' + l[0].name + '**? 🚴'),
+        aktionen: [], orte: l.map(function (o) { return { name: o.name, lat: o.lat, lon: o.lon }; }) };
+    });
+  }
+
+  function doWeather(t, k, wear) {
+    var h = here(k); if (!h) { var c = V.map.getCenter(); h = { lat: c.lat, lon: c.lng }; }
+    var day = /\buebermorgen|day after tomorrow\b/.test(t) ? 2 : /\b(morgen|tomorrow)\b/.test(t) && !/\bheute morgen\b/.test(t) ? 1 : /\b(wochenende|weekend)\b/.test(t) ? 'we' : 0;
+    return weather(h).then(function (w) {
+      var D = w.daily, cu = w.current, i = day === 'we' ? Math.max(1, (6 - new Date().getDay() + 7) % 7) : day;
+      if (i > 3) i = 3;
+      var tmax = Math.round(D.temperature_2m_max[i]), tmin = Math.round(D.temperature_2m_min[i]), pr = D.precipitation_probability_max[i], wind = Math.round(D.wind_speed_10m_max[i]), code = D.weather_code[i];
+      var good = pr < 40 && wind < 35 && tmax >= 8 && code < 61;
+      var dayN = T(['heute', 'morgen', 'übermorgen', 'in drei Tagen'][i], ['today', 'tomorrow', 'the day after tomorrow', 'in three days'][i]);
+      if (wear) {
+        var tt = i === 0 ? Math.round(cu.temperature_2m) : tmax, list = [];
+        if (tt < 5) list = T(['Winterjacke oder Thermojacke', 'Handschuhe und Mütze unter dem Helm', 'lange Hose'], ['winter jacket', 'gloves and a cap under the helmet', 'long trousers']);
+        else if (tt < 12) list = T(['warme Jacke', 'leichte Handschuhe', 'lange Hose'], ['warm jacket', 'light gloves', 'long trousers']);
+        else if (tt < 18) list = T(['Langarmshirt oder leichte Jacke', 'eine Weste zum Wegpacken'], ['long sleeves or a light jacket', 'a packable vest']);
+        else list = T(['T-Shirt und kurze Hose', 'Sonnencreme und Sonnenbrille 😎', 'genug Wasser'], ['t-shirt and shorts', 'sunscreen and sunglasses 😎', 'enough water']);
+        if (pr >= 40) list.push(T('Regenjacke 🌧️', 'rain jacket 🌧️'));
+        if (wind >= 30) list.push(T('etwas Winddichtes 💨', 'something windproof 💨'));
+        return { antwort: T('Bei ' + tt + ' °C ' + dayN + ' würde ich anziehen: ' + list.join(', ') + '. 🧥', 'At ' + tt + ' °C ' + dayN + ' I\'d wear: ' + list.join(', ') + '. 🧥'), aktionen: [], orte: [] };
+      }
+      var emo = code >= 95 ? '⛈️' : code >= 71 && code < 80 ? '❄️' : code >= 51 ? '🌧️' : code >= 3 ? '☁️' : code >= 1 ? '🌤️' : '☀️';
+      var txt;
+      if (i === 0) txt = T(emo + ' Gerade ' + Math.round(cu.temperature_2m) + ' °C, ' + wcode(cu.weather_code) + ', Wind ' + Math.round(cu.wind_speed_10m) + ' km/h. Heute bis ' + tmax + ' °C, Regenrisiko ' + pr + ' %.', emo + ' Right now ' + Math.round(cu.temperature_2m) + ' °C, ' + wcode(cu.weather_code) + ', wind ' + Math.round(cu.wind_speed_10m) + ' km/h. Today up to ' + tmax + ' °C, ' + pr + ' % chance of rain.');
+      else txt = T(emo + ' ' + cap(dayN) + ': ' + wcode(code) + ', ' + tmin + ' bis ' + tmax + ' °C, Regenrisiko ' + pr + ' %, Wind bis ' + wind + ' km/h.', emo + ' ' + cap(dayN) + ': ' + wcode(code) + ', ' + tmin + ' to ' + tmax + ' °C, ' + pr + ' % chance of rain, wind up to ' + wind + ' km/h.');
+      if (/\b(regen|regnet|regnen|rain)\b/.test(t)) txt = (pr >= 50 ? T('Ja, ' + dayN + ' sieht es nach Regen aus 🌧️ (' + pr + ' %). ', 'Yes, rain is likely ' + dayN + ' 🌧️ (' + pr + ' %). ') : pr >= 25 ? T('Vielleicht, das Regenrisiko liegt ' + dayN + ' bei ' + pr + ' % 🌦️. ', 'Maybe, ' + pr + ' % chance ' + dayN + ' 🌦️. ') : T('Eher nicht, nur ' + pr + ' % Regenrisiko ' + dayN + ' ☀️. ', 'Probably not, only ' + pr + ' % ' + dayN + ' ☀️. ')) + txt;
+      txt += good ? T(' Perfektes Radwetter! 🚴', ' Perfect cycling weather! 🚴') : pr >= 60 ? T(' Eher ein Tag für drinnen, oder mit Regenjacke 😉', ' Better pack a rain jacket 😉') : wind >= 35 ? T(' Achtung, ganz schön windig 💨', ' Watch out, quite windy 💨') : '';
+      return { antwort: txt, aktionen: [], orte: [] };
+    }).catch(function () { return { antwort: T('Das Wetter kann ich gerade nicht abrufen 📡 Hast du Internet?', 'I can\'t get the weather right now 📡'), aktionen: [], orte: [] }; });
+  }
+
+  function doLive(t, k) {
+    var n = k.navigation, txt = [];
+    if (/\b(wie schnell|tempo|how fast)\b/.test(t)) txt.push(k.tempo_kmh != null ? T('Du fährst gerade ' + k.tempo_kmh + ' km/h' + (k.schnitt_kmh ? ', im Schnitt ' + String(k.schnitt_kmh).replace('.', ',') + ' km/h' : '') + ' 💨', 'You\'re doing ' + k.tempo_kmh + ' km/h' + (k.schnitt_kmh ? ', average ' + k.schnitt_kmh : '') + ' 💨') : T('Gerade messe ich kein Tempo, bist du in Bewegung? 🤔', 'I can\'t measure speed right now 🤔'));
+    if (/\b(hoch|hoehe|high)\b/.test(t)) txt.push(k.hoehe_m != null ? T('Du bist auf ' + k.hoehe_m + ' m über dem Meer ⛰️', 'You\'re at ' + k.hoehe_m + ' m above sea level ⛰️') : T('Die Höhe kenne ich gerade nicht.', 'I don\'t know your altitude right now.'));
+    if (/\b(weit|wann|lange|ankunft|km noch|kilometer noch|far|arrive|eta|left)\b/.test(t) || !txt.length) {
+      if (n && n.aktiv) txt.push(n.angekommen ? T('Du bist angekommen! 🎉', 'You\'ve arrived! 🎉') : T('Noch ' + String(n.rest_km).replace('.', ',') + ' km, etwa ' + n.rest_min + ' Minuten. Ankunft gegen ' + n.ankunft + ' Uhr 🏁', String(n.rest_km) + ' km to go, about ' + n.rest_min + ' min. ETA ' + n.ankunft + ' 🏁'));
+      else txt.push(T('Gerade läuft keine Navigation. Sag mir ein Ziel und ich führe dich hin 🗺️', 'No navigation running. Tell me a destination 🗺️'));
+    }
+    if (/\b(anstieg|steigung|berg|climb)\b/.test(t) && n && n.naechster_anstieg) txt.push(T('Der nächste Anstieg kommt in ' + n.naechster_anstieg.in_m + ' m: ' + n.naechster_anstieg.laenge_m + ' m mit ' + n.naechster_anstieg.prozent + ' % 💪', 'Next climb in ' + n.naechster_anstieg.in_m + ' m: ' + n.naechster_anstieg.laenge_m + ' m at ' + n.naechster_anstieg.prozent + ' % 💪'));
+    if (/\b(abbiegung|anweisung|turn)\b/.test(t) && n) txt.push(T('Als Nächstes: ' + n.naechste_anweisung + ' ➡️', 'Next: ' + n.naechste_anweisung + ' ➡️'));
+    return R(txt.join('\n'));
+  }
+
+  function doStats(t) {
+    var s = VX.statsData ? VX.statsData() : null;
+    if (!s || !s.n) return R(T('Du hast noch keine Fahrt aufgezeichnet 🚴 Starte eine Navigation oder „Fahrt starten“, dann kann ich dir alles auswerten!', 'No rides recorded yet 🚴 Start one and I can analyse everything!'));
+    var st = s.streak, F = function (n) { return n + T(n === 1 ? ' Fahrt' : ' Fahrten', n === 1 ? ' ride' : ' rides'); }, kmS = function (m) { return T(km(m), kmE(m)); };
+    if (/\b(serie|flamme|streak)\b/.test(t)) return R(st.cur ? T('🔥 Deine Flamme brennt seit **' + st.cur + (st.cur === 1 ? ' Woche' : ' Wochen') + '**! Diese Woche: ' + st.week + ' von ' + F(st.target) + '. ' + (st.done ? 'Wochenziel schon geschafft 💪' : 'Noch ' + F(st.left) + ' bis Sonntag.') + ' Deine Bestmarke: ' + st.best + (st.best === 1 ? ' Woche.' : ' Wochen.'), '🔥 Your streak: **' + st.cur + ' weeks**! This week ' + st.week + '/' + st.target + ' rides.') : T('Gerade brennt keine Flamme 🕯️ Schaff ' + F(st.target) + ' diese Woche, dann zünde ich sie an! (Diese Woche: ' + st.week + ')', 'No streak right now 🕯️ Do ' + st.target + ' rides this week!'));
+    if (/\b(abzeichen|badges?)\b/.test(t)) return R(T('🏅 Du hast ' + s.badges.got + ' von ' + s.badges.all + ' Abzeichen-Stufen. ' + (s.badges.next.length ? 'Am nächsten dran: **' + s.badges.next[0].name + '** (' + s.badges.next[0].text + ', ' + s.badges.next[0].pct + ' %).' : ''), '🏅 You have ' + s.badges.got + ' of ' + s.badges.all + ' badge levels.'));
+    if (/\b(rekord|rekorde|bestzeit|bestzeiten|record)\b/.test(t)) return R(s.bests.length ? T('⏱️ Deine stärksten Anstiege:\n' + s.bests.map(function (b) { return '- ' + b.name + ': ' + Math.floor(b.t / 60) + ':' + ('0' + Math.round(b.t % 60)).slice(-2) + ' min'; }).join('\n'), '⏱️ Your best climbs:\n' + s.bests.map(function (b) { return '- ' + b.name + ': ' + Math.round(b.t / 60) + ' min'; }).join('\n')) : T('Noch keine Bestzeiten 😊 Fahr einen Anstieg hoch, dann messe ich deine Zeit (Plus).', 'No records yet 😊'));
+    if (/\b(kalorien|calories|kcal)\b/.test(t)) return R(T('🔥 Diese Woche hast du rund **' + s.week.kcal + ' kcal** verbrannt' + (s.last ? ', bei der letzten Fahrt etwa ' + s.last.kcal + ' kcal' : '') + '. Das sind ungefähr ' + Math.max(1, Math.round(s.week.kcal / 250)) + ' Stück Kuchen 🍰😄', '🔥 This week about **' + s.week.kcal + ' kcal** burned. That\'s ~' + Math.max(1, Math.round(s.week.kcal / 250)) + ' slices of cake 🍰😄'));
+    if (/\b(letzte|last|zuletzt)\b/.test(t) && s.last) {
+      var l = s.last, v = l.mv ? l.d / l.mv * 3.6 : 0, p = s.prev, pv = p && p.mv ? p.d / p.mv * 3.6 : null;
+      return R(T('🚴 Deine letzte Fahrt (' + new Date(l.t).toLocaleDateString('de-DE', { weekday: 'long' }) + '): **' + km(l.d) + ' km** in ' + Math.round(l.mv / 60) + ' Minuten, ' + Math.round(l.asc) + ' Höhenmeter, Schnitt ' + v.toFixed(1).replace('.', ',') + ' km/h' + (l.max ? ', Spitze ' + Math.round(l.max) + ' km/h' : '') + ', etwa ' + l.kcal + ' kcal.' + (pv ? (v > pv * 1.03 ? ' Schneller als davor 📈 Stark!' : v < pv * 0.97 ? ' Etwas gemütlicher als davor, auch gut 😊' : ' Ungefähr so schnell wie davor 👍') : ''),
+        '🚴 Your last ride: **' + kmE(l.d) + ' km** in ' + Math.round(l.mv / 60) + ' min, ' + Math.round(l.asc) + ' m climbing, avg ' + v.toFixed(1) + ' km/h, ~' + l.kcal + ' kcal.'));
+    }
+    if (/\b(monat|month)\b/.test(t)) { var df = s.lastMonth.d ? Math.round((s.month.d - s.lastMonth.d) / s.lastMonth.d * 100) : null; return R(T('📅 Diesen Monat: **' + km(s.month.d) + ' km** in ' + F(s.month.n) + ', ' + Math.round(s.month.asc) + ' Höhenmeter.' + (df != null ? ' Letzten Monat waren es ' + km(s.lastMonth.d) + ' km (' + (df >= 0 ? '+' : '') + df + ' %).' : ''), '📅 This month: **' + kmE(s.month.d) + ' km** in ' + s.month.n + ' rides.')); }
+    if (/\b(insgesamt|gesamt|alle|total|overall|jahr|year)\b/.test(t)) return R(T('🌍 Insgesamt bist du **' + km(s.all.d) + ' km** gefahren, in ' + F(s.all.n) + ' mit ' + Math.round(s.all.asc) + ' Höhenmetern. Dieses Jahr: ' + km(s.year.d) + ' km. Längste Fahrt: ' + (s.longest ? km(s.longest.d) : '0') + ' km 💪', '🌍 In total **' + kmE(s.all.d) + ' km** in ' + s.all.n + ' rides.'));
+    var w = s.week, lw = s.lastWeek, diff = lw.d ? Math.round((w.d - lw.d) / lw.d * 100) : null;
+    var verdict = !w.n ? T('Diese Woche bist du noch nicht gefahren, wie wäre es mit einer kleinen Runde? 😊', 'No rides this week yet, fancy a short loop? 😊') : diff == null ? T('Guter Start! 💪', 'Good start! 💪') : diff >= 20 ? T('Deutlich mehr als letzte Woche, richtig stark! 🔥', 'Way more than last week, awesome! 🔥') : diff >= 0 ? T('Etwas mehr als letzte Woche 📈', 'A bit more than last week 📈') : T('Etwas weniger als letzte Woche, da geht noch was 😉', 'A bit less than last week 😉');
+    return R(T('📊 Diese Woche: **' + km(w.d) + ' km** in ' + F(w.n) + ', ' + Math.round(w.asc) + ' Höhenmeter, rund ' + w.kcal + ' kcal.' + (lw.n ? ' Letzte Woche: ' + km(lw.d) + ' km.' : '') + ' ' + verdict + (st.cur ? '\n🔥 Serie: ' + st.cur + (st.cur === 1 ? ' Woche' : ' Wochen') + '.' : ''),
+      '📊 This week: **' + kmE(w.d) + ' km** in ' + w.n + ' rides, ' + Math.round(w.asc) + ' m climbing, ~' + w.kcal + ' kcal. ' + verdict));
+  }
+
+  var BIKE = {
+    de: [
+      [/\b(platten|platter|flicken|schlauch|loch|puncture|flat)\b/, '🔧 **Platten flicken:**\n1. Laufrad ausbauen, Luft ganz rauslassen.\n2. Reifen mit zwei Reifenhebern an einer Seite von der Felge ziehen, Schlauch rausnehmen.\n3. Schlauch aufpumpen und das Loch suchen (Zischen hören oder im Wasser Blasen sehen).\n4. Stelle anrauen, Vulkanisierflüssigkeit drauf, kurz trocknen lassen, Flicken fest andrücken.\n5. Reifen innen mit der Hand abtasten (steckt noch ein Splitter?), Schlauch rein, Reifen aufziehen, aufpumpen.\nTipp: Ein Ersatzschlauch ist unterwegs oft schneller als Flicken 😉'],
+      [/\b(luftdruck|reifendruck|pressure|aufpumpen)\b/, '🛞 **Reifendruck** steht immer auf der Reifenflanke (z. B. „3,5–5 bar“). Faustregel: Rennrad 6–8 bar, City/Trekking 3,5–5 bar, Mountainbike 1,8–2,5 bar, Gravel 2,5–3,5 bar. Schwerere Fahrer etwas mehr, auf Schotter etwas weniger. Einmal pro Woche prüfen!'],
+      [/\b(kette|kettenoel|oelen|schmieren|chain)\b/, '⛓️ **Kette pflegen:** Mit einem Lappen abwischen, dann auf jedes Kettenglied einen kleinen Tropfen Kettenöl geben, die Kurbel ein paar Mal rückwärts drehen und überschüssiges Öl abwischen. Je nach Wetter alle 200–300 km. Quietscht sie, ist es höchste Zeit 😄'],
+      [/\b(schaltung|gaenge|gang springt|gears|schalten)\b/, '⚙️ **Schaltung springt?** Oft ist der Schaltzug ein bisschen gelängt. Am Schaltwerk oder Schalthebel sitzt eine kleine Einstellschraube: Springt die Kette schlecht auf größere Ritzel, die Schraube eine halbe Umdrehung gegen den Uhrzeigersinn drehen und testen. Hilft das nicht, kurz in eine Werkstatt, die richten das in fünf Minuten 🔧'],
+      [/\b(bremse|bremsen|quietscht|brake)\b/, '🛑 **Bremsen:** Quietschen kommt meist von Schmutz oder Öl. Felgenbremse: Felge und Beläge mit Alkohol reinigen. Scheibenbremse: Scheibe mit Bremsenreiniger säubern, niemals Öl drauf! Sind die Beläge dünner als ca. 1 mm, unbedingt tauschen. Bremsen sind das Wichtigste am Rad, im Zweifel lieber in die Werkstatt.'],
+      [/\b(sattel|sattelhoehe|saddle)\b/, '🪑 **Sattelhöhe:** Setz dich drauf und stell die Ferse aufs Pedal ganz unten: Das Bein sollte dann gerade sein. Beim normalen Treten (Fußballen auf dem Pedal) bleibt das Knie leicht gebeugt. Zu tief belastet die Knie, zu hoch lässt die Hüfte wackeln.'],
+      [/\b(licht|beleuchtung|light)\b/, '💡 **Licht:** Vorne weiß, hinten rot, dazu Reflektoren an Pedalen und Speichen. In der Dämmerung und nachts immer einschalten, auch auf beleuchteten Straßen. Akku-Lampen vor längeren Abendtouren laden 🔋'],
+      [/./, '🔧 Bei Rad-Problemen helfe ich gern! Sag mir genauer, was los ist: Platten, Reifendruck, Kette, Schaltung, Bremsen, Sattel oder Licht?']
+    ],
+    en: [
+      [/\b(flat|puncture|tube|patch)\b/, '🔧 **Fixing a flat:** remove the wheel, lever one side of the tyre off, pull out the tube, find the hole (listen or use water), roughen, glue, wait, patch. Check the inside of the tyre for thorns, refit and pump up. A spare tube is often quicker on the road 😉'],
+      [/\b(pressure|pump)\b/, '🛞 Tyre pressure is printed on the sidewall. Roughly: road 6–8 bar, city 3.5–5, MTB 1.8–2.5, gravel 2.5–3.5. Check weekly!'],
+      [/\b(chain|lube|oil)\b/, '⛓️ Wipe the chain, one drop of oil per link, spin backwards, wipe off the excess. Every 200–300 km.'],
+      [/./, '🔧 Happy to help! Is it a flat, tyre pressure, chain, gears, brakes, saddle or lights?']
+    ]
+  };
+  function doBike(t) { var l = BIKE[L === 'de' ? 'de' : 'en']; for (var i = 0; i < l.length; i++) if (l[i][0].test(t)) return R(l[i][1]); }
+  function doTraining(t) {
+    return R(T(/\b(berg|bergauf|climb)\b/.test(t) ? '⛰️ **Besser bergauf:** Früh in einen leichten Gang schalten, gleichmäßig treten statt mit Kraft (ca. 70–90 Umdrehungen pro Minute), im Sitzen bleiben und ruhig atmen. Trainiere einmal pro Woche einen Anstieg in deiner Nähe mehrmals hintereinander. Die Bestzeiten an Anstiegen zeige ich dir in der Statistik 💪'
+      : /\b(abnehmen|lose weight)\b/.test(t) ? '⚖️ **Abnehmen mit dem Rad:** Am besten mehrere lockere Fahrten pro Woche von 45–90 Minuten, bei denen du dich noch unterhalten könntest. Das verbrennt viel Fett. Deine Kalorien siehst du in der Statistik. Und: genug trinken 💧'
+      : '💪 **Schneller und fitter werden:**\n- 2–3 Fahrten pro Woche, die meisten locker (unterhalten geht noch)\n- einmal pro Woche Intervalle: 4 × 4 Minuten zügig, dazwischen 3 Minuten locker\n- leichte Gänge und hohe Trittfrequenz (80–90/min)\n- Ruhetage gehören dazu 😴\nMit deinem Wochenziel und der Flamme bleibst du dran 🔥',
+      '💪 **Get faster:** 2–3 rides a week, mostly easy; once a week intervals (4 × 4 min hard, 3 min easy); spin light gears (80–90 rpm); rest days matter 😴'));
+  }
+  function doSafety() { return R(T('🪖 **Sicher unterwegs:**\n- Helm tragen, auch auf kurzen Strecken\n- Licht vorne weiß, hinten rot, bei Dämmerung immer an\n- Handzeichen beim Abbiegen, Blickkontakt mit Autofahrern\n- Abstand zu parkenden Autos (Türen!)\n- Bei Live-Standort teilen sieht deine Familie, wo du bist 📍', '🪖 **Stay safe:** wear a helmet, lights on at dusk, hand signals, keep clear of parked car doors, and share your live location 📍'));}
+  var HELP = [
+    [/\b(serie|flamme|wochenziel|streak)\b/, ['🔥 Die **Serie** zählt Wochen: Du wählst, wie oft du pro Woche fahren willst (1–4 Mal). Schaffst du das bis Sonntag, brennt die Flamme eine Woche weiter. Ändern kannst du das Ziel in der Statistik.', '🔥 The **streak** counts weeks: pick 1–4 rides per week; reach it by Sunday and the flame keeps burning.']],
+    [/\b(plus|premium|abo|preis)\b/, ['✨ **Velora Plus** kostet 2,99 € im Monat oder 19,99 € im Jahr. Dazu gehören Reiseführer, Tagesplaner, Gravel- und Familienprofil, E-Bike-Akkuplaner, Regenwarnung, Bestzeiten, GPX, mehr Offline-Karten, Farben und Pfeile. Mich gibt es für alle kostenlos 🦊', '✨ **Velora Plus**: €2.99/month or €19.99/year. I\'m free for everyone 🦊']],
+    [/\b(offline)\b/, ['📴 **Offline-Karten:** Menü → Offline-Karten → Karte auf das Gebiet schieben → speichern. Gratis ein Gebiet, mit Plus beliebig viele.', '📴 Menu → Offline maps → move the map → save.']],
+    [/\b(live)\b/, ['📍 **Live teilen:** Während einer Navigation unten auf „Live-Standort teilen“ tippen und den Link schicken. Er endet automatisch mit der Fahrt.', '📍 During navigation tap "Share live location" and send the link.']],
+    [/\b(gpx)\b/, ['📁 **GPX:** In jeder Route gibt es „GPX“ zum Exportieren, unter Menü → Meine Routen kannst du GPX-Dateien importieren (Plus).', '📁 Export via "GPX" in a route, import under Menu → My routes (Plus).']],
+    [/\b(tagesplaner)\b/, ['🗓️ Der **Tagesplaner** (Plus) baut dir einen ganzen Tag mit Aussicht, Mittagessen und Baden als eine Runde mit Uhrzeiten: Menü → Tagesplaner.', '🗓️ Menu → Day planner (Plus).']],
+    [/\b(abzeichen)\b/, ['🏅 Es gibt 18 Abzeichen-Familien mit bis zu 10 Stufen, von Bronze bis Legende. Tippe in der Statistik auf ein Abzeichen, dann siehst du, was dir zur nächsten Stufe fehlt.', '🏅 18 badge families with up to 10 levels. Tap one in the stats to see your progress.']],
+    [/\b(widget)\b/, ['📱 Das **Widget**: Startbildschirm lange drücken → Widgets → Velora. Es zeigt deine Wochenkilometer und die Serie.', '📱 Long-press the home screen → Widgets → Velora.']],
+    [/\b(velo|fuchs)\b/, ['🦊 **Velo** ist dein Fuchs-Maskottchen. Er feiert deine Fahrten und zündet die Flamme an. Ich bin Soul, die KI. Wir sind ein Team 😄', '🦊 **Velo** is the fox mascot who celebrates your rides. I\'m Soul, the AI. We\'re a team 😄']],
+    [/\b(rueckenwind)\b/, ['💨 Bei Tour-Vorschlägen kannst du „Rückenwind auf dem Heimweg“ einschalten. Dann lege ich die Runde so, dass dich der Wind zurückschiebt.', '💨 Turn on "Tailwind on the way home" in tour suggestions.']],
+    [/./, ['Frag mich ruhig genauer, zum Beispiel „Wie funktioniert die Serie?“ oder „Was kann Plus?“ 😊', 'Ask me more specifically, e.g. "How does the streak work?" 😊']]
+  ];
+  function doHelp(t) { for (var i = 0; i < HELP.length; i++) if (HELP[i][0].test(t)) return R(T(HELP[i][1][0], HELP[i][1][1])); }
+
+  function chat(raw, t) {
+    var tg = targetOf(raw);
+    if (tg && tg.q && /\b(fahre|fahren|radle|radeln|will|moechte|wuerde gern|going|want)\b/.test(t)) { M.offer = 'route_to:' + tg.q; return R(T('Klingt nach einem Plan! 🚴 Soll ich dir eine Route nach **' + tg.q + '** planen?', 'Sounds like a plan! 🚴 Shall I plan a route to **' + tg.q + '**?')); }
+    if (/\b(gefahren|geradelt|war radeln|tour gemacht|rode|cycled)\b/.test(t)) return R(T('Wie cool! 🎉 Wie war es? Wenn du die Fahrt aufgezeichnet hast, kann ich dir sagen, wie gut sie war, frag einfach „Wie war meine letzte Fahrt?“', 'Nice! 🎉 How was it? Ask me "How was my last ride?"'));
+    if (/\b(hunger|hungrig|durst)\b/.test(t)) return doNearby('essen', window.__ugljan.kontext());
+    if (/\b(langweilig|bored)\b/.test(t)) return R(T('Langeweile? Perfekte Ausrede für eine Runde! 😄 Soll ich dir eine Tour vorschlagen?', 'Bored? Perfect excuse for a ride! 😄 Want a tour idea?'), { _offer: 'tour_easy' });
+    if (/\b(ich heisse|mein name ist|my name is)\b/.test(t)) { var nm = raw.replace(/.*(ich heisse|ich heiße|mein name ist|my name is)\s+/i, '').split(/[\s,.!]/)[0]; M.name = nm; return R(T('Freut mich, ' + nm + '! 😊🦊', 'Nice to meet you, ' + nm + '! 😊🦊')); }
+    return R(pick(T(['Verstehe 😊 Erzähl mir mehr, oder soll ich dir bei einer Tour, dem Wetter oder einem Ziel helfen?', 'Spannend! 🦊 Womit kann ich dir helfen? Route, Tour, Wetter, Orte in der Nähe oder deine Fahrten?', 'Okay! 👍 Wenn du eine Frage hast, frag einfach drauf los.'],
+      ['I see 😊 Want help with a tour, the weather or a destination?', 'Interesting! 🦊 What can I do for you?'])));
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Einstieg
+  // ---------------------------------------------------------------------------------------------
+  function ask(raw, k) {
+    k = k || (window.__ugljan && __ugljan.kontext ? __ugljan.kontext() : {});
+    L = langOf(raw);
+    var t = fix(norm(raw)), I = detect(raw, t);
+    M.turns++;
+    // Folgefragen und Bestaetigungen
+    if (/^(mehr|weiter|erzaehl mehr|und weiter|more|tell me more|go on)\b/.test(t) && M.article) {
+      var rest = M.article.sents.filter(function (s) { return M.article.used.indexOf(s) < 0; }).slice(0, 2);
+      if (rest.length) { M.article.used = M.article.used.concat(rest); return finish(R(rest.join(' ') + ' 📖'), 'more'); }
+    }
+    var ord = t.match(/\b(das |der |die |zum |zur |zu dem )?(erste|ersten|zweite|zweiten|dritte|dritten|vierte|fuenfte|first|second|third)\b/);
+    if (ord && M.list.length) { var ix = { erste: 0, ersten: 0, first: 0, zweite: 1, zweiten: 1, second: 1, dritte: 2, dritten: 2, third: 2, vierte: 3, fuenfte: 4 }[ord[2]]; if (M.list[ix]) { M.place = M.list[ix]; if (I !== 'knowledge') return finish(doRoute('zu dort', t, k), 'route'); } }
+    if (/\b(wie weit (ist|sind) (das|es|die|der)|how far is (it|that))\b/.test(t) && M.place) { var h0 = here(k); if (h0) return finish(R(T('📍 **' + M.place.name + '** ist ' + km(V.dist(h0.lat, h0.lon, M.place.lat, M.place.lon)) + ' km Luftlinie entfernt. Soll ich dich hinbringen?', '📍 **' + M.place.name + '** is ' + kmE(V.dist(h0.lat, h0.lon, M.place.lat, M.place.lon)) + ' km away. Want me to take you there?')), 'live'); }
+    if (/\b(wie weit (ist|sind) (das|es)|how far is (it|that))\b/.test(t) && !M.place && !(k.navigation && k.navigation.aktiv)) return finish(R(T('Wohin genau meinst du? 🤔 Nenn mir den Ort, dann sage ich dir, wie weit es ist.', 'Where exactly do you mean? 🤔')), 'chat');
+    if (/\b(dorthin|dahin|da hin|hin bringen|hinbringen|bring mich (hin|dahin|dorthin)|take me there)\b/.test(t) && M.place) return finish(doRoute('zu dort', t, k), 'route');
+    if (I === 'yes' && M.offer) {
+      var o = M.offer; M.offer = null;
+      if (o === 'route_first' && M.place) return finish(doRoute('zu dort', t, k), 'route');
+      if (o === 'tour_easy') return finish(doTour('1 stunde leicht', k), 'tour');
+      if (o.indexOf('route_to:') === 0) return finish(doRoute('nach ' + o.slice(9), 'route nach ' + norm(o.slice(9)), k), 'route');
+    }
+    if (I === 'yes') return finish(R(pick(T(['Super! 😊 Was machen wir?', 'Klar! Wobei kann ich helfen? 🦊'], ['Great! 😊 What shall we do?']))), 'yes');
+    if (I === 'no') { M.offer = null; return finish(R(pick(T(['Alles klar 👍 Sag Bescheid, wenn du etwas brauchst.', 'Okay, kein Problem 😊'], ['Alright 👍', 'No problem 😊']))), 'no'); }
+    if (M.offer === 'tour_ask' && (durationOf(t) || /\b(leicht|schwer|mittel|easy|hard)\b/.test(t))) { M.offer = null; return finish(doTour(t, k), 'tour'); }
+    intentCache = I;
+    var r = chain(t, k);
+    if (r) return finish(r, I);
+    switch (I) {
+      case 'math': var v = doMath(t); return finish(R(v == null ? T('Das kann ich nicht ausrechnen 🤔', 'I can\'t calculate that 🤔') : '🧮 ' + String(v).replace('.', L === 'de' ? ',' : '.')), I);
+      case 'route': return finish(doRoute(raw, t, k), I);
+      case 'adjust': return finish(doAdjust(t, k), I);
+      case 'nav_start': return finish(k.route ? R(T('Los geht\'s! 🚴💨 Gute Fahrt!', 'Let\'s go! 🚴💨'), { aktionen: [{ typ: 'navigation_starten' }] }) : R(T('Es ist noch keine Route offen. Wohin willst du? 🗺️', 'No route open yet. Where to? 🗺️')), I);
+      case 'tour': return finish(doTour(t, k), I);
+      case 'nearby': return finish(doNearby(t, k), I);
+      case 'weather': return finish(doWeather(t, k, false), I);
+      case 'wear': return finish(doWeather(t, k, true), I);
+      case 'live': return finish(doLive(t, k), I);
+      case 'stats': return finish(doStats(t), I);
+      case 'bike': return finish(doBike(t), I);
+      case 'training': return finish(doTraining(t), I);
+      case 'safety': return finish(doSafety(), I);
+      case 'apphelp': return finish(doHelp(t), I);
+      case 'knowledge': return finish(knowledge(raw, t).then(function (x) { return { antwort: x, aktionen: [], orte: [] }; }), I);
+    }
+    return finish(chat(raw, t), 'chat');
+  }
+  function finish(p, intent) {
+    if (VX.track) try { VX.track('soul_' + intent); } catch (e) {}
+    return Promise.resolve(p).then(function (o) {
+      if (o._offer) { M.offer = o._offer; delete o._offer; }
+      o.credits = 0;
+      return o;
+    });
+  }
+  // Antwort der App auf Hintergrund-Abrufe (Android)
+  function got(id, text, err) { var p = pend[id]; if (!p) return; delete pend[id]; if (err) p.rej(new Error(err)); else p.res(text); }
+  window.Soul = { ask: ask, _got: got, _detect: function (s) { L = langOf(s); return detect(s, fix(norm(s))); } };
+})();

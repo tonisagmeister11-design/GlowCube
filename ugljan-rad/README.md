@@ -12,7 +12,15 @@ Karte und Routen kommen online: OpenFreeMap (OpenMapTiles), AWS Terrain Tiles, w
 Ortssuche Photon/Nominatim, Tagesplaner-Orte über Overpass (OpenStreetMap). `app/assets/data.js` enthält eine kleine Offline-Testregion
 (Daten-Werkzeuge in `tools/`), die nur benutzt wird, wenn man sich dort befindet.
 
-## KI "Juno"
+## KI "Soul" (ab 6.4, in der App)
+
+`app/assets/soul.js` ist die eigene KI von Velora, nach dem Prinzip des Projekts "Soul": Absichten erkennen (Deutsch und Englisch,
+mit Tippfehler-Korrektur), Orte, Zeiten und Zahlen herauslesen, Werkzeuge der App ausführen (Route, Anpassen, Tour, Navigation),
+Fahrten auswerten, Wetter (Open-Meteo), Orte in der Nähe (Karte, Overpass), Rad-Hilfe, Training, Plaudern mit Emojis und
+Gesprächskontext. Wissensfragen recherchiert sie im Hintergrund (Wikipedia, auf Android zusätzlich DuckDuckGo über `fetchText`)
+und wählt die passendsten Sätze aus. Kein Server, keine fremde KI, keine Kosten. Der frühere Server-Weg (unten) bleibt nur für alte App-Versionen.
+
+## KI "Juno" (Server, alt)
 
 Der Server liegt in `server/` (Cloudflare Workers AI, Modell GPT-OSS 120B, Ersatzmodell Llama 3.3 70B).
 Juno bekommt die Live-Daten der App (Standort, Tempo, Höhe, Route, Navigation, Wetter, echte Orte in der Nähe)

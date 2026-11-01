@@ -1,4 +1,4 @@
-/* Velora: Fahrrad-Navigation weltweit mit Höhen- und Fahrphysik, Touren und der KI Juno */
+/* Velora: Fahrrad-Navigation weltweit mit Höhen- und Fahrphysik, Touren und der KI Soul */
 (function () {
   'use strict';
   var D = window.UGLJAN;
@@ -566,7 +566,7 @@
       setTimeout(function () { toast('Dieses Gerät unterstützt keine 3D-Grafik (WebGL). Die Karte kann nicht gezeichnet werden.'); }, 500);
     }
   })();
-  // Ohne 3D-Grafik keine Karte: dann mit einem Platzhalter weiterlaufen, damit Juno, Suche und Listen trotzdem gehen
+  // Ohne 3D-Grafik keine Karte: dann mit einem Platzhalter weiterlaufen, damit Soul, Suche und Listen trotzdem gehen
   function fakeMap() {
     var c = { lng: 15.17, lat: 44.075 }, noop = function () {}, ctl = { enable: noop, disable: noop };
     var api = {
@@ -591,7 +591,7 @@
     NO_MAP = true; map = fakeMap();
     maplibregl.Marker = function () { this.setLngLat = function () { return this; }; this.addTo = function () { return this; }; this.remove = function () {}; this.setRotation = function () { return this; }; };
     maplibregl.AttributionControl = maplibregl.ScaleControl = function () {};
-    $('map').innerHTML = '<div style="padding:120px 24px;color:#93a0ad;text-align:center;font-size:15px;line-height:1.5">Die Karte kann auf diesem Gerät nicht angezeigt werden (keine 3D-Grafik).<br>Juno, Suche, Touren und Listen funktionieren trotzdem.</div>';
+    $('map').innerHTML = '<div style="padding:120px 24px;color:#93a0ad;text-align:center;font-size:15px;line-height:1.5">Die Karte kann auf diesem Gerät nicht angezeigt werden (keine 3D-Grafik).<br>Soul, Suche, Touren und Listen funktionieren trotzdem.</div>';
   }
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Daten &copy; OpenStreetMap-Mitwirkende, Höhen: Copernicus DEM / AWS Terrain Tiles, Karte: OpenFreeMap &copy; OpenMapTiles, Radrouten: waymarkedtrails.org, Routing: BRouter' }), 'bottom-right');
   // Online-Karte: sobald Kacheln ankommen, Hintergrund auf Land umstellen (Meer kommt dann aus den Kacheln)
@@ -1125,7 +1125,7 @@
       (hr ? 'GPS aktiv' + (z != null ? ' &middot; ' + Math.round(z) + ' m über dem Meer' : '') + '. Suche ein Ziel oder tippe auf die Karte.' : 'Warte auf GPS. Suche ein Ziel oder tippe auf die Karte.') + '</div>' +
       wxHtml() + (HOOK('homeHtml') || '') +
       '<div class="quick">' +
-      '<button data-act="juno">' + svg('juno', '#0fae73', 24, 2) + 'Juno</button>' +
+      '<button data-act="juno">' + svg('juno', '#0fae73', 24, 2) + 'Soul</button>' +
       '<button data-act="loop">' + svg('loop', '#0fae73', 24, 2) + 'Tour-Idee</button>' +
       '<button data-act="near">' + svg('list', '#0fae73', 24, 2) + 'In der Nähe</button>' +
       '<button data-act="free">' + svg('rec', '#ff5a4e', 24, 2.4) + 'Fahrt starten</button></div>' +
@@ -1879,7 +1879,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 6.3 mit der KI Juno. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 6.4 mit der KI Soul. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -2129,7 +2129,7 @@
     sheet('<div class="stats" style="margin-top:0"><div class="stat"><b>' + fmtDist(remain) + '</b><span>Noch</span></div><div class="stat"><b>' + fmtTime(secs) + '</b><span>Restzeit</span></div><div class="stat"><b>' + clock(secs) + '</b><span>Ankunft</span></div></div>' +
       '<div class="prof" id="prof">' + profileSvg(r, 340, 64, false, along) + '</div>' +
       '<div class="stats four"><div class="stat w"><b>' + Math.round(r.ele[k]) + ' m</b><span>Höhe</span></div><div class="stat w"><b>' + Math.round(ascLeft) + ' m</b><span>Noch hoch</span></div><div class="stat w"><b>' + (rec ? fmtKm(rec.dist) : '0,0') + '</b><span>km gefahren</span></div><div class="stat w"><b>' + (rec ? Math.round(rec.asc) : 0) + ' m</b><span>Geklettert</span></div></div>' +
-      '<div class="btns">' + (nav.arrived ? '<button class="go" id="stopNav">Fahrt beenden und speichern</button>' : '<button class="go sec" id="stopNav">Navigation beenden</button>') + '<button class="go sec" id="navJuno" style="flex:0 0 120px">Juno</button></div>', true);
+      '<div class="btns">' + (nav.arrived ? '<button class="go" id="stopNav">Fahrt beenden und speichern</button>' : '<button class="go sec" id="stopNav">Navigation beenden</button>') + '<button class="go sec" id="navJuno" style="flex:0 0 120px">Soul</button></div>', true);
     $('navJuno').onclick = showJuno;
     $('stopNav').onclick = stopNav;
     HOOK('navSheet');
@@ -2288,7 +2288,7 @@
   });
 
   // =====================================================================
-  // Juno: die KI von Velora (Cloudflare Workers AI, echte Daten ueber Werkzeuge)
+  // Soul: die KI von Velora (Cloudflare Workers AI, echte Daten ueber Werkzeuge)
   // =====================================================================
   var KI_URL = 'https://velora-ki.toni-sagmeister11.workers.dev/chat', KI_ID = 'velora-2026';
   var juno = load('juno', []), junoBusy = false, junoLast = null;
@@ -2374,25 +2374,25 @@
     return out.replace(/(<br>)+$/, '');
   }
   function plainText(t) { return String(t).replace(/\*\*/g, '').replace(/^\s*[-*•]\s+/gm, '').replace(/\|/g, ' '); }
-  var JUNO_SUGG = ['Wo gibt es hier etwas zu essen?', 'Schlag mir eine Tour von 2 Stunden vor', 'Wie weit ist es noch?', 'Lohnt sich die Gegend zum Radfahren?', 'Wird es heute regnen?'];
-  var JUNO_LOAD = '<div class="jl-orb">' + svg('juno', '#0c9a68', 18, 2.2) + '</div><div class="jl-txt"><div class="jl-lines"><span>Juno denkt nach</span><span>Schaut sich die Gegend an</span><span>Prüft echte Orte</span><span>Gleich fertig</span></div><div class="jl-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>';
+  var JUNO_SUGG = ['Wo gibt es hier Pizza?', 'Schlag mir eine 2-Stunden-Tour vor', 'Regnet es morgen?', 'Wie war meine Woche?', 'Wie flicke ich einen Platten?', 'Erzähl mir einen Witz']
+  var JUNO_LOAD = '<div class="jl-orb">' + svg('juno', '#0c9a68', 18, 2.2) + '</div><div class="jl-txt"><div class="jl-lines"><span>Soul denkt nach</span><span>Schaut sich die Gegend an</span><span>Prüft echte Orte</span><span>Gleich fertig</span></div><div class="jl-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>';
   function showJuno() {
     state = 'ai'; sheetEl.classList.add('tall');
     var log = juno.map(function (m, i) {
       if (m.role === 'user') return '<div class="msg mine">' + esc(m.content) + '</div>';
       var html = '<div class="msg ai' + (m.wait ? ' wait' : '') + '">' + (m.wait ? JUNO_LOAD : mdLite(m.content)) + (m.cr ? '<div class="crcost">-' + m.cr + ' Credit' + (m.cr > 1 ? 's' : '') + '</div>' : '');
-      // Orte nur anzeigen, wenn Juno keine Route geplant hat (sonst nur Doppelungen des Ziels)
+      // Orte nur anzeigen, wenn Soul keine Route geplant hat (sonst nur Doppelungen des Ziels)
       if (m.orte && m.orte.length && !(m.acts || []).some(function (x) { return x.typ === 'route_planen'; })) html += '<div class="places">' + m.orte.map(function (o, k) { return '<button data-jp="' + i + '_' + k + '">' + esc(o.name) + '</button>'; }).join('') + '</div>';
       if (m.acts && m.acts.length) html += m.acts.map(function (a, k) { return '<button class="act" data-ja="' + i + '_' + k + '">' + esc(actLabel(a)) + '</button>'; }).join('');
       return html + '</div>';
     }).join('');
     var canMic = A && A.canListen && (function () { try { return A.canListen(); } catch (e) { return false; } })();
-    sheet('<div style="display:flex;align-items:center;gap:10px"><div class="ico" style="width:42px;height:42px">' + svg('juno', '#0fae73', 24, 2) + '</div><div class="grow"><h2>Juno</h2><div class="sub" style="font-size:13px">Deine Rad-KI. Kennt deine Fahrdaten, sucht echte Orte, plant Routen.</div></div>' +
+    sheet('<div style="display:flex;align-items:center;gap:10px"><div class="ico" style="width:42px;height:42px">' + svg('juno', '#0fae73', 24, 2) + '</div><div class="grow"><h2>Soul</h2><div class="sub" style="font-size:13px">Deine Rad-KI. Kennt deine Fahrdaten, sucht echte Orte, plant Routen.</div></div>' +
       (juno.length ? '<button class="chip sm" id="junoClear">Neu</button>' : '') + '</div>' +
       (HOOK('junoHead') || '') +
       (juno.length ? '' : '<div class="sugg">' + JUNO_SUGG.map(function (q) { return '<button data-jq="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>') +
       '<div class="chatlog" id="chatlog">' + log + '</div>' +
-      '<div class="chatin"><input id="chatIn" placeholder="Frag Juno ..." autocomplete="off" enterkeyhint="send">' +
+      '<div class="chatin"><input id="chatIn" placeholder="Frag Soul ..." autocomplete="off" enterkeyhint="send">' +
       (canMic ? '<button class="mic" id="chatMic">' + svg('mic', '#eef2f5', 22, 2.2) + '</button>' : '') +
       '<button id="chatSend">' + svg('send', '#14181d', 22, 2.4) + '</button></div>');
     sheetEl.classList.add('tall');
@@ -2418,21 +2418,22 @@
   function askJuno(q) {
     q = String(q || '').trim(); if (!q || junoBusy) return;
     if (HOOK('junoGate') === false) return;
-    if (navigator.onLine === false) { toast('Juno braucht Internet.'); return; }
+    if (!window.Soul && navigator.onLine === false) { toast('Soul braucht Internet.'); return; }
     juno.push({ role: 'user', content: q });
     var wait = { role: 'assistant', wait: true }; juno.push(wait);
     junoBusy = true;
     if (state === 'ai') showJuno();
     var verlauf = juno.filter(function (m) { return !m.wait && m.content; }).slice(-12).map(function (m) { return { role: m.role, content: m.content }; });
     var hd = { 'Content-Type': 'application/json', 'X-App-Id': KI_ID }, tk = HOOK('token'); if (tk) hd.Authorization = 'Bearer ' + tk;
-    fetch(KI_URL, { method: 'POST', headers: hd, body: JSON.stringify({ verlauf: verlauf, kontext: buildKontext(), sprache: window.I18N ? I18N.lang : 'de' }) })
-      .then(function (r) { return r.json(); })
+    // Soul: die eigene KI laeuft direkt in der App (kein Server, keine Kosten); ohne Soul der alte Server
+    (window.Soul ? Soul.ask(q, buildKontext()) : fetch(KI_URL, { method: 'POST', headers: hd, body: JSON.stringify({ verlauf: verlauf, kontext: buildKontext(), sprache: window.I18N ? I18N.lang : 'de' }) })
+      .then(function (r) { return r.json(); }))
       .then(function (d) {
         junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
         if (!d.antwort && d.left === 0 && window.VX) VX.srvCredits = { left: 0, max: (VX.srvCredits && VX.srvCredits.max) || 10 };
-        if (!d.antwort) { juno.push({ role: 'assistant', content: d.fehler || 'Juno ist gerade nicht erreichbar.' }); saveJuno(); if (state === 'ai') showJuno(); return; }
+        if (!d.antwort) { juno.push({ role: 'assistant', content: d.fehler || 'Soul ist gerade nicht erreichbar.' }); saveJuno(); if (state === 'ai') showJuno(); return; }
         var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [] };
-        HOOK('haptic', 'soft'); HOOK('junoUsed', d.credits || 1, d.left); m.cr = d.credits || 1;
+        HOOK('haptic', 'soft'); HOOK('junoUsed', d.credits || 0, d.left); m.cr = d.credits || 0;
         juno.push(m); saveJuno(); junoLast = { text: d.antwort, t: Date.now() };
         if (nav || !$('chatlog')) say(plainText(d.antwort).slice(0, 400));
         // Aktionen sofort ausfuehren (Route, Tour, Anpassung); Orte nur anzeigen
@@ -2441,14 +2442,14 @@
       })
       .catch(function () {
         junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
-        juno.push({ role: 'assistant', content: 'Keine Verbindung zu Juno. Bitte Internet prüfen.' });
+        juno.push({ role: 'assistant', content: 'Keine Verbindung zu Soul. Bitte Internet prüfen.' });
         if (state === 'ai') showJuno();
       });
   }
-  // Notiz von Juno oben im Routen- oder Tourenblatt, damit man ihre Antwort auch dort sieht
+  // Notiz von Soul oben im Routen- oder Tourenblatt, damit man ihre Antwort auch dort sieht
   function junoNote() {
     if (!junoLast || Date.now() - junoLast.t > 120000) return '';
-    return '<div class="junonote"><b class="j">Juno:</b> ' + mdLite(junoLast.text) + '<div style="margin-top:6px"><button class="chip sm" data-act="juno">Weiter mit Juno</button></div></div>';
+    return '<div class="junonote"><b class="j">Soul:</b> ' + mdLite(junoLast.text) + '<div style="margin-top:6px"><button class="chip sm" data-act="juno">Weiter mit Soul</button></div></div>';
   }
   function runAction(a) {
     sheetEl.classList.remove('tall');

@@ -459,7 +459,7 @@ public class MainActivity extends Activity implements LocationListener {
                             try {
                                 HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
                                 c.setConnectTimeout(15000); c.setReadTimeout(20000);
-                                c.setRequestProperty("User-Agent", "Velora/6.3 (Android)");
+                                c.setRequestProperty("User-Agent", "Velora/6.4 (Android)");
                                 int code = c.getResponseCode();
                                 if (code == 200) {
                                     File tmp = new File(f.getPath() + ".tmp");
@@ -482,6 +482,31 @@ public class MainActivity extends Activity implements LocationListener {
 
         @JavascriptInterface
         public void stopDownload() { dlStop = true; }
+
+        // Hintergrund-Browser fuer die KI Soul: Seite laden und als Text an Soul._got(id, text) geben
+        @JavascriptInterface
+        public void fetchText(final String id, final String url) {
+            new Thread(() -> {
+                String out = null, err = null;
+                try {
+                    URL u = new URL(url);
+                    String host = u.getHost().toLowerCase();
+                    if (!"https".equals(u.getProtocol()) || host.equals("localhost") || host.endsWith(".local") || host.matches("^(10|127|192\\.168|172\\.(1[6-9]|2\\d|3[01]))\\..*")) throw new Exception("blocked");
+                    HttpURLConnection c = (HttpURLConnection) u.openConnection();
+                    c.setConnectTimeout(10000); c.setReadTimeout(12000);
+                    c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36");
+                    c.setRequestProperty("Accept-Language", "de,en;q=0.8");
+                    try (InputStream in = c.getInputStream()) {
+                        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                        byte[] buf = new byte[16384]; int n;
+                        while ((n = in.read(buf)) > 0 && bo.size() < 800000) bo.write(buf, 0, n);
+                        out = bo.toString("UTF-8");
+                    }
+                    c.disconnect();
+                } catch (Exception e) { err = String.valueOf(e.getMessage()); }
+                js("window.Soul&&Soul._got(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(out == null ? "" : out) + "," + (err == null ? "null" : org.json.JSONObject.quote(err)) + ")");
+            }).start();
+        }
 
         @JavascriptInterface
         public void shareText(String title, String text) {
