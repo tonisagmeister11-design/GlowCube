@@ -89,7 +89,7 @@
     bike: BIKES[S.bike] ? S.bike : 'city', fit: FIT[S.fit] ? S.fit : 'normal', style: STYLES[S.style] ? S.style : 'scenic', headUp: !!S.headUp,
     voice: S.voice !== false, wind: S.wind !== false, relief: S.relief !== false, contours: S.contours !== false,
     routes: S.routes !== false, labels: S.labels !== false,
-    maxG: S.maxG || 0, hap: S.hap != null ? S.hap : 2, night: S.night || 'auto', theme: S.theme || 'mint', arrow: S.arrow || '3d', goalKm: S.goalKm || 30, weight: S.weight || 75,
+    maxG: S.maxG || 0, wkGoal: S.wkGoal || 0, hap: S.hap != null ? S.hap : 2, night: S.night || 'auto', theme: S.theme || 'mint', arrow: S.arrow || '3d', goalKm: S.goalKm || 30, weight: S.weight || 75,
     guide: S.guide !== false, tailwind: !!S.tailwind, batt: S.batt || 500, assist: S.assist || 'tour', hu2: !!S.hu2,
     tourDur: S.tourDur || 120, tourDiff: S.tourDiff != null ? S.tourDiff : 1, tourBeauty: S.tourBeauty != null ? S.tourBeauty : 2
   };
@@ -1879,7 +1879,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 6.2 mit der KI Juno. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 6.3 mit der KI Juno. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });

@@ -183,15 +183,12 @@
 
   // Serie: Velo rennt mit der Fackel herein, holt aus und zuendet die Flamme mit voller Wucht
   function streakHtml(o) {
-    var names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], ws = weekStart(Date.now()), today = (new Date().getDay() + 6) % 7;
-    var days = names.map(function (n, i) {
-      var on = rodeOn(ws + i * 864e5), isT = i === today;
-      return '<div class="sd' + (on && !isT ? ' on' : '') + (isT ? ' today' : '') + '"><i>' + (on || isT ? FLAME : '') + '</i><span>' + n + '</span></div>';
-    }).join('');
+    var st = streak(), days = '';
+    for (var i = 0; i < st.target; i++) days += '<div class="sd' + (i < st.target - 1 ? ' on' : ' today') + '"><i>' + FLAME + '</i><span>' + (i + 1) + '. Fahrt</span></div>';
     return '<div class="sscene"><div class="sglow"></div>' + LOGS + '<div class="sflame">' + bigFlame() + '</div><div class="sring"></div><div class="sring r2"></div><div class="sbits"></div>' +
       '<div class="sfox">' + mascot('torch', 140) + '</div><div class="sflash"></div></div>' +
       '<div class="snum"><span class="old">' + o.from + '</span><span class="new">' + o.to + '</span></div>' +
-      '<div class="slate"><h2>' + (o.to === 1 ? 'Serie gestartet!' : o.to + ' Tage in Folge!') + '</h2><div class="sub">' + esc(o.text) + '</div><div class="sweek">' + days + '</div></div>';
+      '<div class="slate"><h2>' + (o.to === 1 ? 'Wochenziel geschafft!' : o.to + ' Wochen in Folge!') + '</h2><div class="sub">' + esc(o.text) + '</div><div class="sweek">' + days + '</div></div>';
   }
   function runStreak(el) {
     var box = el.querySelector('.cbox'), sc = el.querySelector('.sscene'), fw = sc.querySelector('.sfox'), fx = fw.querySelector('.fxw');
@@ -281,15 +278,19 @@
     return Math.round(met * S.weight * h + r.asc * S.weight * 9.81 / 4184 / 0.24 * 0.3);
   }
   function rodeOn(t0) { return LOG.some(function (r) { return r.d >= 1000 && r.t >= t0 && r.t < t0 + 864e5; }); }
+  // Serie in Wochen: eine Woche zaehlt, wenn man sein Wochenziel (Fahrten pro Woche, selbst gewaehlt) erreicht.
+  // Die laufende Woche bricht die Serie nie, sie kann sie nur verlaengern.
+  function wkTarget() { return S.wkGoal || 2; }
   function streak() {
-    var days = {}; LOG.forEach(function (r) { if (r.d >= 1000) days[dayKey(r.t)] = 1; });
-    var now = Date.now(), cur = 0, t = dayStart(now);
-    if (!days[dayKey(t)]) t -= 864e5; // heute noch nicht gefahren: Serie bis gestern zaehlt
-    while (days[dayKey(t)]) { cur++; t -= 864e5; }
-    var best = 0, run = 0, keys = Object.keys(days).sort(), prev = null;
-    keys.forEach(function (k) { var d = new Date(k + 'T12:00:00').getTime(); run = prev && Math.round((d - prev) / 864e5) === 1 ? run + 1 : 1; prev = d; if (run > best) best = run; });
-    var last = keys.length ? new Date(keys[keys.length - 1] + 'T12:00:00').getTime() : 0;
-    return { cur: cur, best: best, today: !!days[dayKey(now)], lost: !cur && best > 1 && now - last < 7 * 864e5 };
+    var tg = wkTarget(), now = Date.now(), ws = weekStart(now), wk = {};
+    LOG.forEach(function (r) { if (r.d >= 1000) { var w = weekStart(r.t); wk[w] = (wk[w] || 0) + 1; } });
+    var thisW = wk[ws] || 0, done = thisW >= tg, cur = 0, w = done ? ws : weekStart(ws - 3 * 864e5);
+    while ((wk[w] || 0) >= tg) { cur++; w = weekStart(w - 3 * 864e5); }
+    var best = 0, run = 0, keys = Object.keys(wk).map(Number).sort(function (a, b) { return a - b; }), prev = null;
+    keys.forEach(function (k) { if (wk[k] < tg) { run = 0; prev = null; return; } run = prev != null && Math.round((k - prev) / 864e5) <= 8 ? run + 1 : 1; prev = k; if (run > best) best = run; });
+    var lastW = weekStart(ws - 3 * 864e5), lost = !cur && best > 0 && (wk[lastW] || 0) < tg && (wk[weekStart(lastW - 3 * 864e5)] || 0) >= tg;
+    var dow = (new Date().getDay() + 6) % 7; // 0 = Montag
+    return { cur: cur, best: best, week: thisW, target: tg, done: done, left: Math.max(0, tg - thisW), daysLeft: 7 - dow, lost: lost, today: rodeOn(dayStart(now)) };
   }
   function sumSince(t0, t1) {
     var o = { d: 0, mv: 0, asc: 0, kcal: 0, n: 0, maxD: 0 };
@@ -308,7 +309,7 @@
     ['km', 'Kilometerfresser', 'road', [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000], function (c) { return c.tot / 1000; }, function (x) { return x + ' km insgesamt'; }],
     ['hm', 'Bergziege', 'up', [500, 1000, 2500, 5000, 8849, 15000, 25000, 50000, 100000], function (c) { return c.asc; }, function (x) { return (x === 8849 ? '8849 m (einmal Mount Everest)' : x + ' Höhenmeter') + ' insgesamt'; }],
     ['rides', 'Stammgast', 'bike', [1, 10, 25, 50, 100, 250, 500, 1000], function (c) { return c.n; }, function (x) { return x === 1 ? 'Erste Fahrt' : x + ' Fahrten'; }],
-    ['streak', 'Feuer und Flamme', 'sun', [3, 7, 14, 30, 60, 100, 200, 365], function (c) { return c.best; }, function (x) { return x + ' Tage in Folge gefahren'; }],
+    ['streak', 'Feuer und Flamme', 'sun', [2, 4, 8, 12, 26, 52, 104, 156], function (c) { return c.best; }, function (x) { return x + ' Wochen in Folge das Wochenziel geschafft'; }],
     ['long', 'Langstrecke', 'flag', [25, 50, 75, 100, 150, 200], function (c) { return c.maxD / 1000; }, function (x) { return x + ' km an einem Tag'; }],
     ['climbday', 'Gipfelstürmer', 'up', [250, 500, 1000, 1500, 2000, 3000], function (c) { return c.maxAsc; }, function (x) { return x + ' Höhenmeter an einem Tag'; }],
     ['top', 'Höhenluft', 'peak', [500, 1000, 1500, 2000, 2500], function (c) { return c.top; }, function (x) { return 'Auf ' + x + ' m über dem Meer geradelt'; }],
@@ -442,21 +443,28 @@
     var after = streak();
     if (ride.dist >= 1000) {
       var first = LOG.filter(function (r) { return r.d >= 1000; }).length === 1;
-      celebrate({ kind: 'ride', title: first ? 'Deine erste Fahrt!' : 'Fahrt geschafft!', km: Math.round(ride.dist / 100) / 10, min: Math.round(ride.mv / 60), asc: Math.round(ride.asc), kcal: kcal({ d: ride.dist, mv: ride.mv, asc: ride.asc }), text: first ? 'Ich bin Velo und feiere ab jetzt jede Fahrt mit dir.' : 'Gut gemacht!' });
-      if (!before.today) celebrate({ kind: 'streak', from: Math.max(0, after.cur - 1), to: after.cur, text: after.cur === 1 ? 'Fahr morgen wieder, dann brennt die Flamme weiter.' : after.cur >= after.best ? 'Deine längste Serie bisher. Morgen wieder fahren!' : 'Deine Bestmarke sind ' + after.best + ' Tage. Bleib dran!', say: after.cur > 1 ? after.cur + ' Tage in Folge!' : 'Serie gestartet!' });
+      var prog = after.done ? (before.done ? 'Wochenziel schon geschafft, jede Fahrt extra ist ein Bonus!' : '') : 'Fahrt ' + after.week + ' von ' + after.target + ' diese Woche. Noch ' + after.left + (after.left === 1 ? ' Fahrt' : ' Fahrten') + ' bis Sonntag für deine Flamme.';
+      celebrate({ kind: 'ride', title: first ? 'Deine erste Fahrt!' : 'Fahrt geschafft!', km: Math.round(ride.dist / 100) / 10, min: Math.round(ride.mv / 60), asc: Math.round(ride.asc), kcal: kcal({ d: ride.dist, mv: ride.mv, asc: ride.asc }), text: (first ? 'Ich bin Velo und feiere ab jetzt jede Fahrt mit dir. ' : '') + (prog || 'Gut gemacht!') });
+      if (!before.done && after.done) celebrate({ kind: 'streak', from: Math.max(0, after.cur - 1), to: after.cur, text: after.cur === 1 ? after.target + (after.target === 1 ? ' Fahrt' : ' Fahrten') + ' diese Woche geschafft. Nächste Woche wieder, dann brennt die Flamme weiter.' : after.cur >= after.best ? 'Deine längste Serie bisher. Weiter so!' : 'Deine Bestmarke sind ' + after.best + ' Wochen. Bleib dran!', say: after.cur > 1 ? after.cur + ' Wochen in Folge!' : 'Wochenziel geschafft!' });
     }
     checkBests(ride);
     checkBadges(true);
     updWidget();
   };
   checkBadges(false);
+  function askWeekGoal() {
+    var m = modal('<div style="text-align:center">' + mascot('thumbs', 120) + '<h2>Wie oft willst du pro Woche fahren?</h2><div class="sub">Schaffst du dein Ziel jede Woche, brennt deine Flamme weiter. Du kannst es jederzeit in der Statistik ändern.</div>' +
+      '<div class="wkpick">' + [1, 2, 3, 4].map(function (g) { return '<button data-wg="' + g + '"><b>' + g + '</b><span>' + (g === 1 ? 'Fahrt' : 'Fahrten') + '</span></button>'; }).join('') + '</div></div>');
+    m.querySelectorAll('[data-wg]').forEach(function (b) { b.onclick = function () { S.wkGoal = +b.getAttribute('data-wg'); V.saveS(); hap('success'); closeModal(); V.drawHome(); updWidget(); }; });
+  }
+  VX.askWeekGoal = askWeekGoal;
 
   // ---------- Startbildschirm-Widget (kostenlos) ----------
   function updWidget() {
     if (!A || !A.setWidget) return;
     try {
       var wk = sumSince(weekStart(Date.now())), st = streak();
-      A.setWidget(km(wk.d) + ' km', 'diese Woche' + (st.cur ? ' · Serie ' + st.cur + ' ' + (st.cur === 1 ? 'Tag' : 'Tage') : ''), wk.d >= S.goalKm * 1000 ? 'Wochenziel geschafft' : 'Noch ' + km(Math.max(0, S.goalKm * 1000 - wk.d)) + ' km bis zum Wochenziel');
+      A.setWidget(km(wk.d) + ' km', 'diese Woche · ' + st.week + '/' + st.target + ' Fahrten' + (st.cur ? ' · Serie ' + st.cur + (st.cur === 1 ? ' Woche' : ' Wochen') : ''), wk.d >= S.goalKm * 1000 ? 'Wochenziel geschafft' : 'Noch ' + km(Math.max(0, S.goalKm * 1000 - wk.d)) + ' km bis zum Wochenziel');
     } catch (e) {}
   }
   updWidget();
@@ -465,14 +473,16 @@
   VX.homeHtml = function () {
     var st = streak(), wk = sumSince(weekStart(Date.now())), goal = S.goalKm * 1000, mood, head, txt;
     var hr = new Date().getHours();
-    if (!LOG.length) { mood = 'wave'; head = 'Hallo, ich bin Velo!'; txt = 'Starte deine erste Fahrt. Ich zähle mit und feiere jede Serie mit dir.'; }
-    else if (st.today) { mood = 'thumbs'; head = st.cur > 1 ? st.cur + ' Tage in Folge!' : 'Heute schon gefahren!'; txt = 'Diese Woche: ' + km(wk.d) + ' km. ' + (st.cur > 1 ? 'Morgen geht die Serie weiter.' : 'Fahr morgen wieder für eine Serie.'); }
-    else if (hr >= 22 || hr < 6) { mood = 'sleep'; head = 'Gute Nacht!'; txt = st.cur ? 'Morgen fahren, sonst erlischt deine Flamme (' + st.cur + ' Tage).' : 'Morgen ist ein guter Tag für eine Runde.'; }
-    else if (st.cur > 0) { mood = 'wave'; head = 'Serie: ' + st.cur + (st.cur === 1 ? ' Tag' : ' Tage'); txt = hr >= 18 ? 'Heute noch eine kleine Runde? Sonst erlischt die Flamme.' : 'Fahr heute, damit deine Flamme weiterbrennt.'; }
-    else if (st.lost) { mood = 'sad'; head = 'Die Flamme ist aus'; txt = 'Deine Serie von ' + st.best + ' Tagen ist vorbei. Eine Fahrt heute zündet sie neu an!'; }
-    else { mood = 'idle'; head = (hr < 11 ? 'Guten Morgen!' : hr < 18 ? 'Lust auf eine Runde?' : 'Guten Abend!'); txt = 'Diese Woche: ' + km(wk.d) + ' km. Eine kurze Tour bringt dich in Schwung.'; }
+    var W = function (n) { return n + (n === 1 ? ' Woche' : ' Wochen'); }, F = function (n) { return n + (n === 1 ? ' Fahrt' : ' Fahrten'); };
+    if (!LOG.length) { mood = 'wave'; head = 'Hallo, ich bin Velo!'; txt = 'Fahr ' + F(st.target) + ' pro Woche, dann zünde ich deine Flamme an.'; }
+    else if (st.done) { mood = 'thumbs'; head = st.cur > 1 ? W(st.cur) + ' in Folge!' : 'Wochenziel geschafft!'; txt = 'Diese Woche: ' + F(st.week) + ', ' + km(wk.d) + ' km. Die Flamme brennt bis nächste Woche.'; }
+    else if (hr >= 22 || hr < 6) { mood = 'sleep'; head = 'Gute Nacht!'; txt = 'Diese Woche noch ' + F(st.left) + ' für deine Flamme' + (st.cur ? ' (' + W(st.cur) + ')' : '') + '.'; }
+    else if (st.left >= st.daysLeft) { mood = 'sad'; head = 'Jetzt wird es knapp!'; txt = 'Noch ' + F(st.left) + ' bis Sonntag, sonst geht die Flamme aus.'; }
+    else if (st.daysLeft <= 3) { mood = 'wave'; head = 'Noch ' + F(st.left) + ' bis Sonntag'; txt = st.cur ? 'Deine Flamme brennt seit ' + W(st.cur) + '. Halte sie am Leben!' : 'Dann brennt deine Flamme.'; }
+    else if (st.lost) { mood = 'sad'; head = 'Die Flamme ist aus'; txt = 'Letzte Woche hat es nicht gereicht. Schaff ' + F(st.target) + ' diese Woche und sie brennt wieder!'; }
+    else { mood = st.week ? 'thumbs' : 'idle'; head = st.cur ? 'Serie: ' + W(st.cur) : (hr < 11 ? 'Guten Morgen!' : hr < 18 ? 'Lust auf eine Runde?' : 'Guten Abend!'); txt = 'Diese Woche: ' + st.week + ' von ' + F(st.target) + ', ' + km(wk.d) + ' km.'; }
     return '<div class="velo-card" data-act="stats">' + mascot(mood, 74) + '<div class="bubble"><b>' + esc(head) + '</b><span>' + esc(txt) + '</span>' +
-      '<div class="goalbar"><i style="width:' + Math.min(100, wk.d / goal * 100).toFixed(1) + '%"></i></div></div>' +
+      '<div class="wkdots">' + (function () { var o = ''; for (var i = 0; i < st.target; i++) o += '<i class="' + (i < st.week ? 'on' : '') + '">' + (i < st.week ? FLAME : '') + '</i>'; return o; })() + '</div></div>' +
       '<div class="flame' + (st.cur ? '' : ' off') + '">' + FLAME + st.cur + '</div></div>';
   };
   VX.act = function (act) {
@@ -489,9 +499,11 @@
     var mon = sumSince(mo.getTime()), yr = sumSince(new Date(new Date().getFullYear(), 0, 1).getTime()), all = sumSince(0);
     var names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], c = badgeCtx(), goal = S.goalKm * 1000, diff = lastWk.d ? Math.round((wk.d - lastWk.d) / lastWk.d * 100) : null;
     var nGot = FAM.reduce(function (a, f) { return a + tierOf(f, c).t; }, 0), nAll = FAM.reduce(function (a, f) { return a + f[3].length; }, 0);
-    var html = '<div style="display:flex;align-items:center;gap:12px">' + mascot(st.today ? 'thumbs' : 'wave', 84) + '<div class="grow"><h2>Deine Fahrten</h2><div class="sub"><span class="flame inl">' + FLAME + st.cur + '</span> Serie &middot; Bestmarke ' + st.best + ' Tage</div></div></div>' +
+    var html = '<div style="display:flex;align-items:center;gap:12px">' + mascot(st.today ? 'thumbs' : 'wave', 84) + '<div class="grow"><h2>Deine Fahrten</h2><div class="sub"><span class="flame inl">' + FLAME + st.cur + '</span> ' + (st.cur === 1 ? 'Woche' : 'Wochen') + ' Serie &middot; Bestmarke ' + st.best + '</div></div></div>' +
+      '<div class="pbox"><div class="t">Fahrten pro Woche: ' + st.week + ' von ' + st.target + '</div><div class="meter"><i style="width:' + Math.min(100, st.week / st.target * 100) + '%;background:linear-gradient(90deg,#ffa94d,#f76707)"></i></div><div class="sub">Deine Flamme brennt weiter, wenn du jede Woche dein Ziel schaffst.</div>' +
+      '<div class="seg">' + [1, 2, 3, 4].map(function (g) { return '<button data-wkg="' + g + '" class="' + (st.target === g ? 'on' : '') + '">' + g + ' pro Woche</button>'; }).join('') + '</div></div>' +
       '<h3>Diese Woche</h3><div class="weekbars">' + days.map(function (d, i) { var h = d / mx * 100; return '<div><em>' + (d ? km(d) : '') + '</em><i class="' + (d ? '' : 'zero') + '" style="height:' + Math.max(4, h) + '%;animation-delay:' + i * 0.05 + 's"></i><span>' + names[i] + '</span></div>'; }).join('') + '</div>' +
-      '<div class="pbox"><div class="t">Wochenziel ' + S.goalKm + ' km</div><div class="meter"><i style="width:' + Math.min(100, wk.d / goal * 100) + '%;background:linear-gradient(90deg,var(--lime),var(--acc))"></i></div><div class="sub">' + km(wk.d) + ' von ' + S.goalKm + ' km' + (wk.d >= goal ? ' &middot; geschafft' : '') + '</div>' +
+      '<div class="pbox"><div class="t">Kilometer-Ziel ' + S.goalKm + ' km pro Woche</div><div class="meter"><i style="width:' + Math.min(100, wk.d / goal * 100) + '%;background:linear-gradient(90deg,var(--lime),var(--acc))"></i></div><div class="sub">' + km(wk.d) + ' von ' + S.goalKm + ' km' + (wk.d >= goal ? ' &middot; geschafft' : '') + '</div>' +
       '<div class="seg">' + [20, 30, 50, 80, 120, 200].map(function (g) { return '<button data-goal="' + g + '" class="' + (S.goalKm === g ? 'on' : '') + '">' + g + '</button>'; }).join('') + '</div></div>' +
       '<div class="stats"><div class="stat"><b>' + km(wk.d) + '</b><span>km Woche</span></div><div class="stat"><b>' + km(mon.d) + '</b><span>km Monat</span></div><div class="stat"><b>' + km(yr.d) + '</b><span>km Jahr</span></div></div>' +
       '<div class="stats"><div class="stat w"><b>' + wk.kcal + '</b><span>kcal Woche</span></div><div class="stat w"><b>' + Math.round(wk.asc) + ' m</b><span>Höhe Woche</span></div><div class="stat w"><b>' + (all.mv ? num((all.d / all.mv * 3.6).toFixed(1)) : '0') + '</b><span>km/h Schnitt</span></div></div>' +
@@ -503,6 +515,7 @@
       : bl.length ? bl.slice(0, 10).map(function (b) { return '<div class="row"><div class="ico">' + svg('up', '#e8590c', 18) + '</div><div class="grow"><div class="t ell">' + esc(b.name) + '</div><div class="s">' + new Date(b.when).toLocaleDateString('de-DE') + (b.prev ? ' &middot; vorher ' + fmtMin(b.prev) : '') + '</div></div><div class="r"><b>' + fmtMin(b.t) + '</b></div></div>'; }).join('') : '<div class="empty sub">Fahr einen Anstieg hoch, dann misst Velo deine Zeit.</div>') +
       '<div class="btns"><button class="go sec" id="stBack">Zurück</button></div>';
     V.sheet(html); V.sheetEl.classList.add('tall');
+    V.sheetEl.querySelectorAll('[data-wkg]').forEach(function (b) { b.onclick = function () { S.wkGoal = +b.getAttribute('data-wkg'); V.saveS(); updWidget(); showStats(); }; });
     V.sheetEl.querySelectorAll('[data-goal]').forEach(function (b) { b.onclick = function () { S.goalKm = +b.getAttribute('data-goal'); V.saveS(); updWidget(); showStats(); }; });
     V.sheetEl.querySelectorAll('[data-fam]').forEach(function (b) { b.onclick = function () { showFamily(+b.getAttribute('data-fam')); }; });
     V.sheetEl.querySelectorAll('[data-lock]').forEach(function (b) { b.onclick = function () { gate(b.getAttribute('data-lock')); }; });
@@ -512,7 +525,7 @@
     if (!wk.n && !lw.n) return 'Diese Woche noch keine Fahrt. Schon 20 Minuten auf dem Rad machen den Kopf frei!';
     var t = 'Diese Woche ' + km(wk.d) + ' km in ' + wk.n + (wk.n === 1 ? ' Fahrt' : ' Fahrten') + ', ' + Math.round(wk.asc) + ' Höhenmeter und rund ' + wk.kcal + ' kcal.';
     if (diff != null) t += diff >= 0 ? ' Das sind ' + diff + ' % mehr als letzte Woche, stark!' : ' Letzte Woche waren es ' + km(lw.d) + ' km, da geht noch was.';
-    if (st.cur >= 3) t += ' Deine Flamme brennt seit ' + st.cur + ' Tagen.';
+    if (st.cur >= 2) t += ' Deine Flamme brennt seit ' + st.cur + ' Wochen.';
     return t;
   }
 

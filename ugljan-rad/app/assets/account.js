@@ -33,6 +33,9 @@
     guest: ['Ohne Konto ansehen (Vorschau)', 'Look around without account (preview)', 'Voir sans compte (aperçu)', 'Guarda senza account (anteprima)', 'Ver sin cuenta (vista previa)'],
     termsReq: ['Bitte der Datenschutzerklärung zustimmen.', 'Please accept the privacy policy.', 'Merci d\'accepter la politique.', 'Accetta l\'informativa.', 'Acepta la política de privacidad.'],
     delQ: ['Konto wirklich löschen? Das kann man nicht rückgängig machen.', 'Really delete your account? This cannot be undone.', 'Supprimer vraiment le compte ?', 'Eliminare davvero l\'account?', '¿Eliminar la cuenta de verdad?'],
+    wkq: ['Wie oft willst du pro Woche fahren?', 'How often do you want to ride per week?', 'Combien de fois par semaine veux-tu rouler ?', 'Quante volte a settimana vuoi pedalare?', '¿Cuántas veces por semana quieres ir en bici?'],
+    wkt: ['Schaffst du dein Ziel jede Woche, brennt deine Flamme weiter. Du kannst es später ändern.', 'Reach your goal every week and your flame keeps burning. You can change it later.', 'Atteins ton objectif chaque semaine et ta flamme continue de brûler.', 'Raggiungi il tuo obiettivo ogni settimana e la tua fiamma resta accesa.', 'Cumple tu objetivo cada semana y tu llama seguirá encendida.'],
+    rides: ['Fahrten', 'rides', 'sorties', 'giri', 'salidas'], ride1: ['Fahrt', 'ride', 'sortie', 'giro', 'salida'],
     signedIn: ['Angemeldet als', 'Signed in as', 'Connecté en tant que', 'Accesso come', 'Sesión de']
   };
   var LI = { de: 0, en: 1, fr: 2, it: 3, es: 4 };
@@ -54,10 +57,10 @@
   VX.account = function () { return ACC; };
 
   // ---------- Anmeldebildschirm ----------
-  var F = { mode: 'new', lang: V.load('lang', null) || (LI[(navigator.language || 'de').slice(0, 2)] != null ? (navigator.language || 'de').slice(0, 2) : 'en'), cc: guessCC(), name: '', email: '', pw: '', terms: false, anon: false };
+  var F = { mode: 'new', lang: V.load('lang', null) || (LI[(navigator.language || 'de').slice(0, 2)] != null ? (navigator.language || 'de').slice(0, 2) : 'en'), cc: guessCC(), name: '', email: '', pw: '', terms: false, anon: false, wk: 2 };
   function onboard(step) {
     var el = $('onb'); if (!el) { el = document.createElement('div'); el.id = 'onb'; document.body.appendChild(el); }
-    var dots = '<div class="ob-dots">' + [0, 1, 2, 3].map(function (i) { return '<i class="' + (i <= step ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+    var dots = '<div class="ob-dots">' + [0, 1, 2, 3, 4].map(function (i) { return '<i class="' + (i <= step ? 'on' : '') + '"></i>'; }).join('') + '</div>';
     var h = '';
     if (step === 0) {
       h = '<div class="ob-hero">' + mascot('wave', 170) + '</div><h1>' + tx('welcome') + '</h1><p>' + tx('hello') + '</p><div class="ob-langs">' +
@@ -74,6 +77,9 @@
     } else if (step === 2) {
       h = '<h1 style="margin-top:6px">' + tx('country') + '</h1><input class="ob-in" id="obQ" placeholder="' + tx('search') + '"><div class="ob-list" id="obList"></div><button class="ob-go" id="obNext">' + tx('next') + '</button>';
     } else if (step === 3) {
+      h = '<div class="ob-hero sm">' + mascot('torch', 130) + '</div><h1>' + tx('wkq') + '</h1><p>' + tx('wkt') + '</p><div class="wkpick">' +
+        [1, 2, 3, 4].map(function (g) { return '<button data-wg="' + g + '" class="' + (F.wk === g ? 'on' : '') + '"><b>' + g + '</b><span>' + (g === 1 ? tx('ride1') : tx('rides')) + '</span></button>'; }).join('') + '</div><button class="ob-go" id="obNext">' + tx('next') + '</button>';
+    } else if (step === 4) {
       h = '<div class="ob-hero sm">' + mascot('think', 110) + '</div><h1>' + tx('privacy') + '</h1>' +
         '<label class="ob-chk"><input type="checkbox" id="obTerms"' + (F.terms ? ' checked' : '') + '><span>' + tx('terms') + ' <a href="' + BASE + '/datenschutz" target="_blank" rel="noopener">' + tx('readp') + '</a></span></label>' +
         '<label class="ob-chk"><input type="checkbox" id="obAnon"' + (F.anon ? ' checked' : '') + '><span>' + tx('anon') + '</span></label>' +
@@ -81,9 +87,9 @@
     } else {
       h = '<div class="ob-hero big">' + mascot('cheer', 190) + '</div><h1>' + tx('hi') + ' ' + esc(ACC.user.name) + '!</h1><p>' + tx('ready') + '</p><button class="ob-go" id="obNext">' + tx('done') + '</button>';
     }
-    el.innerHTML = '<div class="ob-box">' + (step < 4 ? dots : '') + h + '</div>';
+    el.innerHTML = '<div class="ob-box">' + (step < 5 ? dots : '') + h + '</div>';
     el.querySelector('.ob-box').classList.add('ob-in-anim');
-    if (step === 4) { hap('celebrate'); if (VX.celebrate) {} }
+    if (step === 5) hap('celebrate');
     bindStep(step);
   }
   function err(t) { var e = $('obErr'); if (e) { e.textContent = t; hap('warn'); } }
@@ -111,7 +117,7 @@
         api('/auth/login', 'POST', { email: F.email, password: F.pw }).then(function (j) {
           busy(false);
           if (!j.token) return err(j.fehler || 'Fehler');
-          ACC = { token: j.token, user: j.user }; save(); applyUser(); hap('success'); onboard(4);
+          ACC = { token: j.token, user: j.user }; save(); applyUser(); hap('success'); onboard(5);
         }).catch(function () { busy(false); err(tx('noNet')); });
       };
     }
@@ -128,6 +134,10 @@
       $('obNext').onclick = function () { onboard(3); };
     }
     if (step === 3) {
+      el.querySelectorAll('[data-wg]').forEach(function (b) { b.onclick = function () { F.wk = +b.getAttribute('data-wg'); hap('click'); onboard(3); }; });
+      $('obNext').onclick = function () { V.S.wkGoal = F.wk; V.saveS(); onboard(4); };
+    }
+    if (step === 4) {
       $('obNext').onclick = function () {
         F.terms = $('obTerms').checked; F.anon = $('obAnon').checked;
         if (!F.terms) return err(tx('termsReq'));
@@ -135,16 +145,17 @@
         api('/auth/register', 'POST', { name: F.name, email: F.email, password: F.pw, country: F.cc, lang: F.lang, terms: true, anon: F.anon }).then(function (j) {
           busy(false);
           if (!j.token) { if (j._s === 409) { F.mode = 'login'; onboard(1); setTimeout(function () { err(j.fehler); }, 50); return; } return err(j.fehler || 'Fehler'); }
-          F.pw = ''; ACC = { token: j.token, user: j.user }; save(); applyUser(); hap('success'); onboard(4);
+          F.pw = ''; ACC = { token: j.token, user: j.user }; save(); applyUser(); hap('success'); onboard(5);
         }).catch(function () { busy(false); err(tx('noNet')); });
       };
     }
-    if (step === 4) $('obNext').onclick = close;
+    if (step === 5) $('obNext').onclick = close;
   }
   function close() {
     var el = $('onb'); if (!el) return;
     el.classList.add('out'); setTimeout(function () { el.remove(); }, 350);
     V.drawHome();
+    if (ACC && !V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 600);
   }
 
   // ---------- Konto anwenden und mit dem Server abgleichen ----------
@@ -244,7 +255,7 @@
 
   // ---------- Start ----------
   I.set(V.load('lang', null) || (ACC && ACC.user && ACC.user.lang) || F.lang);
-  if (ACC) { applyUser(); refresh(); sendFeats(); }
+  if (ACC) { applyUser(); refresh(); sendFeats(); if (!V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 1500); }
   else if (!(TESTER && !REAL && V.load('guest', 0))) setTimeout(function () { onboard(0); }, TESTER ? 950 : 1150);
   V.drawHome();
 })();

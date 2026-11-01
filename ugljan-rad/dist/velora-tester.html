@@ -472,6 +472,16 @@ body.night #onb{background:radial-gradient(circle at 50% 0%,#1d2a37,#0f1720 60%)
 .acc-card{display:flex;align-items:center;gap:12px;background:var(--panel2);border-radius:18px;padding:12px;margin:4px 0 6px}
 .acc-av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--acc));color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;flex:none}
 .acc-card b{display:block;font-size:16px}.acc-card span{font-size:13px;color:var(--mute)}
+/* Wochenziel */
+.wkpick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 16px}
+.wkpick button{border:2px solid var(--line);background:var(--panel);border-radius:18px;padding:14px 4px;color:var(--text);box-shadow:var(--sh1)}
+.wkpick button.on{border-color:#ff922b;background:linear-gradient(180deg,#fff4e6,var(--panel))}
+body.night .wkpick button.on{background:var(--panel2)}
+.wkpick b{display:block;font-size:30px;font-weight:800;color:#f76707;line-height:1.1}.wkpick span{font-size:12px;color:var(--mute)}
+.wkdots{display:flex;gap:5px;margin-top:6px}
+.wkdots i{width:24px;height:24px;border-radius:50%;background:var(--panel3);display:flex;align-items:center;justify-content:center}
+.wkdots i.on{background:#fff4e6;box-shadow:0 0 0 2px #ffa94d inset}
+.wkdots i svg{width:15px;height:15px}
 </style>
 <meta name="theme-color" content="#ffffff">
 <style>
@@ -1094,7 +1104,7 @@ return maplibregl$1;
     bike: BIKES[S.bike] ? S.bike : 'city', fit: FIT[S.fit] ? S.fit : 'normal', style: STYLES[S.style] ? S.style : 'scenic', headUp: !!S.headUp,
     voice: S.voice !== false, wind: S.wind !== false, relief: S.relief !== false, contours: S.contours !== false,
     routes: S.routes !== false, labels: S.labels !== false,
-    maxG: S.maxG || 0, hap: S.hap != null ? S.hap : 2, night: S.night || 'auto', theme: S.theme || 'mint', arrow: S.arrow || '3d', goalKm: S.goalKm || 30, weight: S.weight || 75,
+    maxG: S.maxG || 0, wkGoal: S.wkGoal || 0, hap: S.hap != null ? S.hap : 2, night: S.night || 'auto', theme: S.theme || 'mint', arrow: S.arrow || '3d', goalKm: S.goalKm || 30, weight: S.weight || 75,
     guide: S.guide !== false, tailwind: !!S.tailwind, batt: S.batt || 500, assist: S.assist || 'tour', hu2: !!S.hu2,
     tourDur: S.tourDur || 120, tourDiff: S.tourDiff != null ? S.tourDiff : 1, tourBeauty: S.tourBeauty != null ? S.tourBeauty : 2
   };
@@ -2884,7 +2894,7 @@ return maplibregl$1;
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 6.2 mit der KI Juno. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 6.3 mit der KI Juno. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -3722,15 +3732,12 @@ return maplibregl$1;
 
   // Serie: Velo rennt mit der Fackel herein, holt aus und zuendet die Flamme mit voller Wucht
   function streakHtml(o) {
-    var names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], ws = weekStart(Date.now()), today = (new Date().getDay() + 6) % 7;
-    var days = names.map(function (n, i) {
-      var on = rodeOn(ws + i * 864e5), isT = i === today;
-      return '<div class="sd' + (on && !isT ? ' on' : '') + (isT ? ' today' : '') + '"><i>' + (on || isT ? FLAME : '') + '</i><span>' + n + '</span></div>';
-    }).join('');
+    var st = streak(), days = '';
+    for (var i = 0; i < st.target; i++) days += '<div class="sd' + (i < st.target - 1 ? ' on' : ' today') + '"><i>' + FLAME + '</i><span>' + (i + 1) + '. Fahrt</span></div>';
     return '<div class="sscene"><div class="sglow"></div>' + LOGS + '<div class="sflame">' + bigFlame() + '</div><div class="sring"></div><div class="sring r2"></div><div class="sbits"></div>' +
       '<div class="sfox">' + mascot('torch', 140) + '</div><div class="sflash"></div></div>' +
       '<div class="snum"><span class="old">' + o.from + '</span><span class="new">' + o.to + '</span></div>' +
-      '<div class="slate"><h2>' + (o.to === 1 ? 'Serie gestartet!' : o.to + ' Tage in Folge!') + '</h2><div class="sub">' + esc(o.text) + '</div><div class="sweek">' + days + '</div></div>';
+      '<div class="slate"><h2>' + (o.to === 1 ? 'Wochenziel geschafft!' : o.to + ' Wochen in Folge!') + '</h2><div class="sub">' + esc(o.text) + '</div><div class="sweek">' + days + '</div></div>';
   }
   function runStreak(el) {
     var box = el.querySelector('.cbox'), sc = el.querySelector('.sscene'), fw = sc.querySelector('.sfox'), fx = fw.querySelector('.fxw');
@@ -3820,15 +3827,19 @@ return maplibregl$1;
     return Math.round(met * S.weight * h + r.asc * S.weight * 9.81 / 4184 / 0.24 * 0.3);
   }
   function rodeOn(t0) { return LOG.some(function (r) { return r.d >= 1000 && r.t >= t0 && r.t < t0 + 864e5; }); }
+  // Serie in Wochen: eine Woche zaehlt, wenn man sein Wochenziel (Fahrten pro Woche, selbst gewaehlt) erreicht.
+  // Die laufende Woche bricht die Serie nie, sie kann sie nur verlaengern.
+  function wkTarget() { return S.wkGoal || 2; }
   function streak() {
-    var days = {}; LOG.forEach(function (r) { if (r.d >= 1000) days[dayKey(r.t)] = 1; });
-    var now = Date.now(), cur = 0, t = dayStart(now);
-    if (!days[dayKey(t)]) t -= 864e5; // heute noch nicht gefahren: Serie bis gestern zaehlt
-    while (days[dayKey(t)]) { cur++; t -= 864e5; }
-    var best = 0, run = 0, keys = Object.keys(days).sort(), prev = null;
-    keys.forEach(function (k) { var d = new Date(k + 'T12:00:00').getTime(); run = prev && Math.round((d - prev) / 864e5) === 1 ? run + 1 : 1; prev = d; if (run > best) best = run; });
-    var last = keys.length ? new Date(keys[keys.length - 1] + 'T12:00:00').getTime() : 0;
-    return { cur: cur, best: best, today: !!days[dayKey(now)], lost: !cur && best > 1 && now - last < 7 * 864e5 };
+    var tg = wkTarget(), now = Date.now(), ws = weekStart(now), wk = {};
+    LOG.forEach(function (r) { if (r.d >= 1000) { var w = weekStart(r.t); wk[w] = (wk[w] || 0) + 1; } });
+    var thisW = wk[ws] || 0, done = thisW >= tg, cur = 0, w = done ? ws : weekStart(ws - 3 * 864e5);
+    while ((wk[w] || 0) >= tg) { cur++; w = weekStart(w - 3 * 864e5); }
+    var best = 0, run = 0, keys = Object.keys(wk).map(Number).sort(function (a, b) { return a - b; }), prev = null;
+    keys.forEach(function (k) { if (wk[k] < tg) { run = 0; prev = null; return; } run = prev != null && Math.round((k - prev) / 864e5) <= 8 ? run + 1 : 1; prev = k; if (run > best) best = run; });
+    var lastW = weekStart(ws - 3 * 864e5), lost = !cur && best > 0 && (wk[lastW] || 0) < tg && (wk[weekStart(lastW - 3 * 864e5)] || 0) >= tg;
+    var dow = (new Date().getDay() + 6) % 7; // 0 = Montag
+    return { cur: cur, best: best, week: thisW, target: tg, done: done, left: Math.max(0, tg - thisW), daysLeft: 7 - dow, lost: lost, today: rodeOn(dayStart(now)) };
   }
   function sumSince(t0, t1) {
     var o = { d: 0, mv: 0, asc: 0, kcal: 0, n: 0, maxD: 0 };
@@ -3847,7 +3858,7 @@ return maplibregl$1;
     ['km', 'Kilometerfresser', 'road', [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000], function (c) { return c.tot / 1000; }, function (x) { return x + ' km insgesamt'; }],
     ['hm', 'Bergziege', 'up', [500, 1000, 2500, 5000, 8849, 15000, 25000, 50000, 100000], function (c) { return c.asc; }, function (x) { return (x === 8849 ? '8849 m (einmal Mount Everest)' : x + ' Höhenmeter') + ' insgesamt'; }],
     ['rides', 'Stammgast', 'bike', [1, 10, 25, 50, 100, 250, 500, 1000], function (c) { return c.n; }, function (x) { return x === 1 ? 'Erste Fahrt' : x + ' Fahrten'; }],
-    ['streak', 'Feuer und Flamme', 'sun', [3, 7, 14, 30, 60, 100, 200, 365], function (c) { return c.best; }, function (x) { return x + ' Tage in Folge gefahren'; }],
+    ['streak', 'Feuer und Flamme', 'sun', [2, 4, 8, 12, 26, 52, 104, 156], function (c) { return c.best; }, function (x) { return x + ' Wochen in Folge das Wochenziel geschafft'; }],
     ['long', 'Langstrecke', 'flag', [25, 50, 75, 100, 150, 200], function (c) { return c.maxD / 1000; }, function (x) { return x + ' km an einem Tag'; }],
     ['climbday', 'Gipfelstürmer', 'up', [250, 500, 1000, 1500, 2000, 3000], function (c) { return c.maxAsc; }, function (x) { return x + ' Höhenmeter an einem Tag'; }],
     ['top', 'Höhenluft', 'peak', [500, 1000, 1500, 2000, 2500], function (c) { return c.top; }, function (x) { return 'Auf ' + x + ' m über dem Meer geradelt'; }],
@@ -3981,21 +3992,28 @@ return maplibregl$1;
     var after = streak();
     if (ride.dist >= 1000) {
       var first = LOG.filter(function (r) { return r.d >= 1000; }).length === 1;
-      celebrate({ kind: 'ride', title: first ? 'Deine erste Fahrt!' : 'Fahrt geschafft!', km: Math.round(ride.dist / 100) / 10, min: Math.round(ride.mv / 60), asc: Math.round(ride.asc), kcal: kcal({ d: ride.dist, mv: ride.mv, asc: ride.asc }), text: first ? 'Ich bin Velo und feiere ab jetzt jede Fahrt mit dir.' : 'Gut gemacht!' });
-      if (!before.today) celebrate({ kind: 'streak', from: Math.max(0, after.cur - 1), to: after.cur, text: after.cur === 1 ? 'Fahr morgen wieder, dann brennt die Flamme weiter.' : after.cur >= after.best ? 'Deine längste Serie bisher. Morgen wieder fahren!' : 'Deine Bestmarke sind ' + after.best + ' Tage. Bleib dran!', say: after.cur > 1 ? after.cur + ' Tage in Folge!' : 'Serie gestartet!' });
+      var prog = after.done ? (before.done ? 'Wochenziel schon geschafft, jede Fahrt extra ist ein Bonus!' : '') : 'Fahrt ' + after.week + ' von ' + after.target + ' diese Woche. Noch ' + after.left + (after.left === 1 ? ' Fahrt' : ' Fahrten') + ' bis Sonntag für deine Flamme.';
+      celebrate({ kind: 'ride', title: first ? 'Deine erste Fahrt!' : 'Fahrt geschafft!', km: Math.round(ride.dist / 100) / 10, min: Math.round(ride.mv / 60), asc: Math.round(ride.asc), kcal: kcal({ d: ride.dist, mv: ride.mv, asc: ride.asc }), text: (first ? 'Ich bin Velo und feiere ab jetzt jede Fahrt mit dir. ' : '') + (prog || 'Gut gemacht!') });
+      if (!before.done && after.done) celebrate({ kind: 'streak', from: Math.max(0, after.cur - 1), to: after.cur, text: after.cur === 1 ? after.target + (after.target === 1 ? ' Fahrt' : ' Fahrten') + ' diese Woche geschafft. Nächste Woche wieder, dann brennt die Flamme weiter.' : after.cur >= after.best ? 'Deine längste Serie bisher. Weiter so!' : 'Deine Bestmarke sind ' + after.best + ' Wochen. Bleib dran!', say: after.cur > 1 ? after.cur + ' Wochen in Folge!' : 'Wochenziel geschafft!' });
     }
     checkBests(ride);
     checkBadges(true);
     updWidget();
   };
   checkBadges(false);
+  function askWeekGoal() {
+    var m = modal('<div style="text-align:center">' + mascot('thumbs', 120) + '<h2>Wie oft willst du pro Woche fahren?</h2><div class="sub">Schaffst du dein Ziel jede Woche, brennt deine Flamme weiter. Du kannst es jederzeit in der Statistik ändern.</div>' +
+      '<div class="wkpick">' + [1, 2, 3, 4].map(function (g) { return '<button data-wg="' + g + '"><b>' + g + '</b><span>' + (g === 1 ? 'Fahrt' : 'Fahrten') + '</span></button>'; }).join('') + '</div></div>');
+    m.querySelectorAll('[data-wg]').forEach(function (b) { b.onclick = function () { S.wkGoal = +b.getAttribute('data-wg'); V.saveS(); hap('success'); closeModal(); V.drawHome(); updWidget(); }; });
+  }
+  VX.askWeekGoal = askWeekGoal;
 
   // ---------- Startbildschirm-Widget (kostenlos) ----------
   function updWidget() {
     if (!A || !A.setWidget) return;
     try {
       var wk = sumSince(weekStart(Date.now())), st = streak();
-      A.setWidget(km(wk.d) + ' km', 'diese Woche' + (st.cur ? ' · Serie ' + st.cur + ' ' + (st.cur === 1 ? 'Tag' : 'Tage') : ''), wk.d >= S.goalKm * 1000 ? 'Wochenziel geschafft' : 'Noch ' + km(Math.max(0, S.goalKm * 1000 - wk.d)) + ' km bis zum Wochenziel');
+      A.setWidget(km(wk.d) + ' km', 'diese Woche · ' + st.week + '/' + st.target + ' Fahrten' + (st.cur ? ' · Serie ' + st.cur + (st.cur === 1 ? ' Woche' : ' Wochen') : ''), wk.d >= S.goalKm * 1000 ? 'Wochenziel geschafft' : 'Noch ' + km(Math.max(0, S.goalKm * 1000 - wk.d)) + ' km bis zum Wochenziel');
     } catch (e) {}
   }
   updWidget();
@@ -4004,14 +4022,16 @@ return maplibregl$1;
   VX.homeHtml = function () {
     var st = streak(), wk = sumSince(weekStart(Date.now())), goal = S.goalKm * 1000, mood, head, txt;
     var hr = new Date().getHours();
-    if (!LOG.length) { mood = 'wave'; head = 'Hallo, ich bin Velo!'; txt = 'Starte deine erste Fahrt. Ich zähle mit und feiere jede Serie mit dir.'; }
-    else if (st.today) { mood = 'thumbs'; head = st.cur > 1 ? st.cur + ' Tage in Folge!' : 'Heute schon gefahren!'; txt = 'Diese Woche: ' + km(wk.d) + ' km. ' + (st.cur > 1 ? 'Morgen geht die Serie weiter.' : 'Fahr morgen wieder für eine Serie.'); }
-    else if (hr >= 22 || hr < 6) { mood = 'sleep'; head = 'Gute Nacht!'; txt = st.cur ? 'Morgen fahren, sonst erlischt deine Flamme (' + st.cur + ' Tage).' : 'Morgen ist ein guter Tag für eine Runde.'; }
-    else if (st.cur > 0) { mood = 'wave'; head = 'Serie: ' + st.cur + (st.cur === 1 ? ' Tag' : ' Tage'); txt = hr >= 18 ? 'Heute noch eine kleine Runde? Sonst erlischt die Flamme.' : 'Fahr heute, damit deine Flamme weiterbrennt.'; }
-    else if (st.lost) { mood = 'sad'; head = 'Die Flamme ist aus'; txt = 'Deine Serie von ' + st.best + ' Tagen ist vorbei. Eine Fahrt heute zündet sie neu an!'; }
-    else { mood = 'idle'; head = (hr < 11 ? 'Guten Morgen!' : hr < 18 ? 'Lust auf eine Runde?' : 'Guten Abend!'); txt = 'Diese Woche: ' + km(wk.d) + ' km. Eine kurze Tour bringt dich in Schwung.'; }
+    var W = function (n) { return n + (n === 1 ? ' Woche' : ' Wochen'); }, F = function (n) { return n + (n === 1 ? ' Fahrt' : ' Fahrten'); };
+    if (!LOG.length) { mood = 'wave'; head = 'Hallo, ich bin Velo!'; txt = 'Fahr ' + F(st.target) + ' pro Woche, dann zünde ich deine Flamme an.'; }
+    else if (st.done) { mood = 'thumbs'; head = st.cur > 1 ? W(st.cur) + ' in Folge!' : 'Wochenziel geschafft!'; txt = 'Diese Woche: ' + F(st.week) + ', ' + km(wk.d) + ' km. Die Flamme brennt bis nächste Woche.'; }
+    else if (hr >= 22 || hr < 6) { mood = 'sleep'; head = 'Gute Nacht!'; txt = 'Diese Woche noch ' + F(st.left) + ' für deine Flamme' + (st.cur ? ' (' + W(st.cur) + ')' : '') + '.'; }
+    else if (st.left >= st.daysLeft) { mood = 'sad'; head = 'Jetzt wird es knapp!'; txt = 'Noch ' + F(st.left) + ' bis Sonntag, sonst geht die Flamme aus.'; }
+    else if (st.daysLeft <= 3) { mood = 'wave'; head = 'Noch ' + F(st.left) + ' bis Sonntag'; txt = st.cur ? 'Deine Flamme brennt seit ' + W(st.cur) + '. Halte sie am Leben!' : 'Dann brennt deine Flamme.'; }
+    else if (st.lost) { mood = 'sad'; head = 'Die Flamme ist aus'; txt = 'Letzte Woche hat es nicht gereicht. Schaff ' + F(st.target) + ' diese Woche und sie brennt wieder!'; }
+    else { mood = st.week ? 'thumbs' : 'idle'; head = st.cur ? 'Serie: ' + W(st.cur) : (hr < 11 ? 'Guten Morgen!' : hr < 18 ? 'Lust auf eine Runde?' : 'Guten Abend!'); txt = 'Diese Woche: ' + st.week + ' von ' + F(st.target) + ', ' + km(wk.d) + ' km.'; }
     return '<div class="velo-card" data-act="stats">' + mascot(mood, 74) + '<div class="bubble"><b>' + esc(head) + '</b><span>' + esc(txt) + '</span>' +
-      '<div class="goalbar"><i style="width:' + Math.min(100, wk.d / goal * 100).toFixed(1) + '%"></i></div></div>' +
+      '<div class="wkdots">' + (function () { var o = ''; for (var i = 0; i < st.target; i++) o += '<i class="' + (i < st.week ? 'on' : '') + '">' + (i < st.week ? FLAME : '') + '</i>'; return o; })() + '</div></div>' +
       '<div class="flame' + (st.cur ? '' : ' off') + '">' + FLAME + st.cur + '</div></div>';
   };
   VX.act = function (act) {
@@ -4028,9 +4048,11 @@ return maplibregl$1;
     var mon = sumSince(mo.getTime()), yr = sumSince(new Date(new Date().getFullYear(), 0, 1).getTime()), all = sumSince(0);
     var names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], c = badgeCtx(), goal = S.goalKm * 1000, diff = lastWk.d ? Math.round((wk.d - lastWk.d) / lastWk.d * 100) : null;
     var nGot = FAM.reduce(function (a, f) { return a + tierOf(f, c).t; }, 0), nAll = FAM.reduce(function (a, f) { return a + f[3].length; }, 0);
-    var html = '<div style="display:flex;align-items:center;gap:12px">' + mascot(st.today ? 'thumbs' : 'wave', 84) + '<div class="grow"><h2>Deine Fahrten</h2><div class="sub"><span class="flame inl">' + FLAME + st.cur + '</span> Serie &middot; Bestmarke ' + st.best + ' Tage</div></div></div>' +
+    var html = '<div style="display:flex;align-items:center;gap:12px">' + mascot(st.today ? 'thumbs' : 'wave', 84) + '<div class="grow"><h2>Deine Fahrten</h2><div class="sub"><span class="flame inl">' + FLAME + st.cur + '</span> ' + (st.cur === 1 ? 'Woche' : 'Wochen') + ' Serie &middot; Bestmarke ' + st.best + '</div></div></div>' +
+      '<div class="pbox"><div class="t">Fahrten pro Woche: ' + st.week + ' von ' + st.target + '</div><div class="meter"><i style="width:' + Math.min(100, st.week / st.target * 100) + '%;background:linear-gradient(90deg,#ffa94d,#f76707)"></i></div><div class="sub">Deine Flamme brennt weiter, wenn du jede Woche dein Ziel schaffst.</div>' +
+      '<div class="seg">' + [1, 2, 3, 4].map(function (g) { return '<button data-wkg="' + g + '" class="' + (st.target === g ? 'on' : '') + '">' + g + ' pro Woche</button>'; }).join('') + '</div></div>' +
       '<h3>Diese Woche</h3><div class="weekbars">' + days.map(function (d, i) { var h = d / mx * 100; return '<div><em>' + (d ? km(d) : '') + '</em><i class="' + (d ? '' : 'zero') + '" style="height:' + Math.max(4, h) + '%;animation-delay:' + i * 0.05 + 's"></i><span>' + names[i] + '</span></div>'; }).join('') + '</div>' +
-      '<div class="pbox"><div class="t">Wochenziel ' + S.goalKm + ' km</div><div class="meter"><i style="width:' + Math.min(100, wk.d / goal * 100) + '%;background:linear-gradient(90deg,var(--lime),var(--acc))"></i></div><div class="sub">' + km(wk.d) + ' von ' + S.goalKm + ' km' + (wk.d >= goal ? ' &middot; geschafft' : '') + '</div>' +
+      '<div class="pbox"><div class="t">Kilometer-Ziel ' + S.goalKm + ' km pro Woche</div><div class="meter"><i style="width:' + Math.min(100, wk.d / goal * 100) + '%;background:linear-gradient(90deg,var(--lime),var(--acc))"></i></div><div class="sub">' + km(wk.d) + ' von ' + S.goalKm + ' km' + (wk.d >= goal ? ' &middot; geschafft' : '') + '</div>' +
       '<div class="seg">' + [20, 30, 50, 80, 120, 200].map(function (g) { return '<button data-goal="' + g + '" class="' + (S.goalKm === g ? 'on' : '') + '">' + g + '</button>'; }).join('') + '</div></div>' +
       '<div class="stats"><div class="stat"><b>' + km(wk.d) + '</b><span>km Woche</span></div><div class="stat"><b>' + km(mon.d) + '</b><span>km Monat</span></div><div class="stat"><b>' + km(yr.d) + '</b><span>km Jahr</span></div></div>' +
       '<div class="stats"><div class="stat w"><b>' + wk.kcal + '</b><span>kcal Woche</span></div><div class="stat w"><b>' + Math.round(wk.asc) + ' m</b><span>Höhe Woche</span></div><div class="stat w"><b>' + (all.mv ? num((all.d / all.mv * 3.6).toFixed(1)) : '0') + '</b><span>km/h Schnitt</span></div></div>' +
@@ -4042,6 +4064,7 @@ return maplibregl$1;
       : bl.length ? bl.slice(0, 10).map(function (b) { return '<div class="row"><div class="ico">' + svg('up', '#e8590c', 18) + '</div><div class="grow"><div class="t ell">' + esc(b.name) + '</div><div class="s">' + new Date(b.when).toLocaleDateString('de-DE') + (b.prev ? ' &middot; vorher ' + fmtMin(b.prev) : '') + '</div></div><div class="r"><b>' + fmtMin(b.t) + '</b></div></div>'; }).join('') : '<div class="empty sub">Fahr einen Anstieg hoch, dann misst Velo deine Zeit.</div>') +
       '<div class="btns"><button class="go sec" id="stBack">Zurück</button></div>';
     V.sheet(html); V.sheetEl.classList.add('tall');
+    V.sheetEl.querySelectorAll('[data-wkg]').forEach(function (b) { b.onclick = function () { S.wkGoal = +b.getAttribute('data-wkg'); V.saveS(); updWidget(); showStats(); }; });
     V.sheetEl.querySelectorAll('[data-goal]').forEach(function (b) { b.onclick = function () { S.goalKm = +b.getAttribute('data-goal'); V.saveS(); updWidget(); showStats(); }; });
     V.sheetEl.querySelectorAll('[data-fam]').forEach(function (b) { b.onclick = function () { showFamily(+b.getAttribute('data-fam')); }; });
     V.sheetEl.querySelectorAll('[data-lock]').forEach(function (b) { b.onclick = function () { gate(b.getAttribute('data-lock')); }; });
@@ -4051,7 +4074,7 @@ return maplibregl$1;
     if (!wk.n && !lw.n) return 'Diese Woche noch keine Fahrt. Schon 20 Minuten auf dem Rad machen den Kopf frei!';
     var t = 'Diese Woche ' + km(wk.d) + ' km in ' + wk.n + (wk.n === 1 ? ' Fahrt' : ' Fahrten') + ', ' + Math.round(wk.asc) + ' Höhenmeter und rund ' + wk.kcal + ' kcal.';
     if (diff != null) t += diff >= 0 ? ' Das sind ' + diff + ' % mehr als letzte Woche, stark!' : ' Letzte Woche waren es ' + km(lw.d) + ' km, da geht noch was.';
-    if (st.cur >= 3) t += ' Deine Flamme brennt seit ' + st.cur + ' Tagen.';
+    if (st.cur >= 2) t += ' Deine Flamme brennt seit ' + st.cur + ' Wochen.';
     return t;
   }
 
@@ -4654,6 +4677,9 @@ return maplibregl$1;
     guest: ['Ohne Konto ansehen (Vorschau)', 'Look around without account (preview)', 'Voir sans compte (aperçu)', 'Guarda senza account (anteprima)', 'Ver sin cuenta (vista previa)'],
     termsReq: ['Bitte der Datenschutzerklärung zustimmen.', 'Please accept the privacy policy.', 'Merci d\'accepter la politique.', 'Accetta l\'informativa.', 'Acepta la política de privacidad.'],
     delQ: ['Konto wirklich löschen? Das kann man nicht rückgängig machen.', 'Really delete your account? This cannot be undone.', 'Supprimer vraiment le compte ?', 'Eliminare davvero l\'account?', '¿Eliminar la cuenta de verdad?'],
+    wkq: ['Wie oft willst du pro Woche fahren?', 'How often do you want to ride per week?', 'Combien de fois par semaine veux-tu rouler ?', 'Quante volte a settimana vuoi pedalare?', '¿Cuántas veces por semana quieres ir en bici?'],
+    wkt: ['Schaffst du dein Ziel jede Woche, brennt deine Flamme weiter. Du kannst es später ändern.', 'Reach your goal every week and your flame keeps burning. You can change it later.', 'Atteins ton objectif chaque semaine et ta flamme continue de brûler.', 'Raggiungi il tuo obiettivo ogni settimana e la tua fiamma resta accesa.', 'Cumple tu objetivo cada semana y tu llama seguirá encendida.'],
+    rides: ['Fahrten', 'rides', 'sorties', 'giri', 'salidas'], ride1: ['Fahrt', 'ride', 'sortie', 'giro', 'salida'],
     signedIn: ['Angemeldet als', 'Signed in as', 'Connecté en tant que', 'Accesso come', 'Sesión de']
   };
   var LI = { de: 0, en: 1, fr: 2, it: 3, es: 4 };
@@ -4675,10 +4701,10 @@ return maplibregl$1;
   VX.account = function () { return ACC; };
 
   // ---------- Anmeldebildschirm ----------
-  var F = { mode: 'new', lang: V.load('lang', null) || (LI[(navigator.language || 'de').slice(0, 2)] != null ? (navigator.language || 'de').slice(0, 2) : 'en'), cc: guessCC(), name: '', email: '', pw: '', terms: false, anon: false };
+  var F = { mode: 'new', lang: V.load('lang', null) || (LI[(navigator.language || 'de').slice(0, 2)] != null ? (navigator.language || 'de').slice(0, 2) : 'en'), cc: guessCC(), name: '', email: '', pw: '', terms: false, anon: false, wk: 2 };
   function onboard(step) {
     var el = $('onb'); if (!el) { el = document.createElement('div'); el.id = 'onb'; document.body.appendChild(el); }
-    var dots = '<div class="ob-dots">' + [0, 1, 2, 3].map(function (i) { return '<i class="' + (i <= step ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+    var dots = '<div class="ob-dots">' + [0, 1, 2, 3, 4].map(function (i) { return '<i class="' + (i <= step ? 'on' : '') + '"></i>'; }).join('') + '</div>';
     var h = '';
     if (step === 0) {
       h = '<div class="ob-hero">' + mascot('wave', 170) + '</div><h1>' + tx('welcome') + '</h1><p>' + tx('hello') + '</p><div class="ob-langs">' +
@@ -4695,6 +4721,9 @@ return maplibregl$1;
     } else if (step === 2) {
       h = '<h1 style="margin-top:6px">' + tx('country') + '</h1><input class="ob-in" id="obQ" placeholder="' + tx('search') + '"><div class="ob-list" id="obList"></div><button class="ob-go" id="obNext">' + tx('next') + '</button>';
     } else if (step === 3) {
+      h = '<div class="ob-hero sm">' + mascot('torch', 130) + '</div><h1>' + tx('wkq') + '</h1><p>' + tx('wkt') + '</p><div class="wkpick">' +
+        [1, 2, 3, 4].map(function (g) { return '<button data-wg="' + g + '" class="' + (F.wk === g ? 'on' : '') + '"><b>' + g + '</b><span>' + (g === 1 ? tx('ride1') : tx('rides')) + '</span></button>'; }).join('') + '</div><button class="ob-go" id="obNext">' + tx('next') + '</button>';
+    } else if (step === 4) {
       h = '<div class="ob-hero sm">' + mascot('think', 110) + '</div><h1>' + tx('privacy') + '</h1>' +
         '<label class="ob-chk"><input type="checkbox" id="obTerms"' + (F.terms ? ' checked' : '') + '><span>' + tx('terms') + ' <a href="' + BASE + '/datenschutz" target="_blank" rel="noopener">' + tx('readp') + '</a></span></label>' +
         '<label class="ob-chk"><input type="checkbox" id="obAnon"' + (F.anon ? ' checked' : '') + '><span>' + tx('anon') + '</span></label>' +
@@ -4702,9 +4731,9 @@ return maplibregl$1;
     } else {
       h = '<div class="ob-hero big">' + mascot('cheer', 190) + '</div><h1>' + tx('hi') + ' ' + esc(ACC.user.name) + '!</h1><p>' + tx('ready') + '</p><button class="ob-go" id="obNext">' + tx('done') + '</button>';
     }
-    el.innerHTML = '<div class="ob-box">' + (step < 4 ? dots : '') + h + '</div>';
+    el.innerHTML = '<div class="ob-box">' + (step < 5 ? dots : '') + h + '</div>';
     el.querySelector('.ob-box').classList.add('ob-in-anim');
-    if (step === 4) { hap('celebrate'); if (VX.celebrate) {} }
+    if (step === 5) hap('celebrate');
     bindStep(step);
   }
   function err(t) { var e = $('obErr'); if (e) { e.textContent = t; hap('warn'); } }
@@ -4732,7 +4761,7 @@ return maplibregl$1;
         api('/auth/login', 'POST', { email: F.email, password: F.pw }).then(function (j) {
           busy(false);
           if (!j.token) return err(j.fehler || 'Fehler');
-          ACC = { token: j.token, user: j.user }; save(); applyUser(); hap('success'); onboard(4);
+          ACC = { token: j.token, user: j.user }; save(); applyUser(); hap('success'); onboard(5);
         }).catch(function () { busy(false); err(tx('noNet')); });
       };
     }
@@ -4749,6 +4778,10 @@ return maplibregl$1;
       $('obNext').onclick = function () { onboard(3); };
     }
     if (step === 3) {
+      el.querySelectorAll('[data-wg]').forEach(function (b) { b.onclick = function () { F.wk = +b.getAttribute('data-wg'); hap('click'); onboard(3); }; });
+      $('obNext').onclick = function () { V.S.wkGoal = F.wk; V.saveS(); onboard(4); };
+    }
+    if (step === 4) {
       $('obNext').onclick = function () {
         F.terms = $('obTerms').checked; F.anon = $('obAnon').checked;
         if (!F.terms) return err(tx('termsReq'));
@@ -4756,16 +4789,17 @@ return maplibregl$1;
         api('/auth/register', 'POST', { name: F.name, email: F.email, password: F.pw, country: F.cc, lang: F.lang, terms: true, anon: F.anon }).then(function (j) {
           busy(false);
           if (!j.token) { if (j._s === 409) { F.mode = 'login'; onboard(1); setTimeout(function () { err(j.fehler); }, 50); return; } return err(j.fehler || 'Fehler'); }
-          F.pw = ''; ACC = { token: j.token, user: j.user }; save(); applyUser(); hap('success'); onboard(4);
+          F.pw = ''; ACC = { token: j.token, user: j.user }; save(); applyUser(); hap('success'); onboard(5);
         }).catch(function () { busy(false); err(tx('noNet')); });
       };
     }
-    if (step === 4) $('obNext').onclick = close;
+    if (step === 5) $('obNext').onclick = close;
   }
   function close() {
     var el = $('onb'); if (!el) return;
     el.classList.add('out'); setTimeout(function () { el.remove(); }, 350);
     V.drawHome();
+    if (ACC && !V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 600);
   }
 
   // ---------- Konto anwenden und mit dem Server abgleichen ----------
@@ -4865,7 +4899,7 @@ return maplibregl$1;
 
   // ---------- Start ----------
   I.set(V.load('lang', null) || (ACC && ACC.user && ACC.user.lang) || F.lang);
-  if (ACC) { applyUser(); refresh(); sendFeats(); }
+  if (ACC) { applyUser(); refresh(); sendFeats(); if (!V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 1500); }
   else if (!(TESTER && !REAL && V.load('guest', 0))) setTimeout(function () { onboard(0); }, TESTER ? 950 : 1150);
   V.drawHome();
 })();
