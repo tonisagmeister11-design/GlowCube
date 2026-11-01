@@ -45,9 +45,8 @@
   }
   function sleeve(x) { return '<ellipse cx="' + x + '" cy="168" rx="12" ry="10.5" fill="' + BL + '" stroke="' + DK + '" stroke-width="3"/>'; }
   function legs() {
-    return '<g class="f-legs"><path d="M106 224 L100 262 L119 262 L123 226 Z" fill="' + O + '" stroke="' + DK + '" stroke-width="3.5" stroke-linejoin="round"/>' +
-      '<path d="M131 226 L135 262 L154 262 L148 224 Z" fill="' + O + '" stroke="' + DK + '" stroke-width="3.5" stroke-linejoin="round"/>' +
-      '<rect x="93" y="256" width="31" height="15" rx="7.5" fill="' + PAW + '" stroke="' + DK + '" stroke-width="3"/><rect x="131" y="256" width="31" height="15" rx="7.5" fill="' + PAW + '" stroke="' + DK + '" stroke-width="3"/></g>';
+    return '<g class="f-legs"><g class="f-legl"><path d="M106 224 L100 262 L119 262 L123 226 Z" fill="' + O + '" stroke="' + DK + '" stroke-width="3.5" stroke-linejoin="round"/><rect x="93" y="256" width="31" height="15" rx="7.5" fill="' + PAW + '" stroke="' + DK + '" stroke-width="3"/></g>' +
+      '<g class="f-legr"><path d="M131 226 L135 262 L154 262 L148 224 Z" fill="' + O + '" stroke="' + DK + '" stroke-width="3.5" stroke-linejoin="round"/><rect x="131" y="256" width="31" height="15" rx="7.5" fill="' + PAW + '" stroke="' + DK + '" stroke-width="3"/></g></g>';
   }
   function arms() {
     return '' +
@@ -61,7 +60,10 @@
       arm('M155 166 Q184 146 200 108', 'a ar-up') + paw(202, 103) + '</g>' +
       arm('M155 166 Q166 120 142 74', 'a ar-hold') + paw(140, 70) + '</g>' +
       '<g class="a ar-wave"><g class="f-wave">' + arm('M155 166 Q172 142 180 114', 'x').replace('<g class="x">', '') + '<ellipse cx="182" cy="104" rx="11" ry="13" fill="' + PAW + '" stroke="' + DK + '" stroke-width="2.5"/><path d="M175 94 v-6 M182 92 v-7 M189 94 v-6" stroke="' + PAW + '" stroke-width="5" stroke-linecap="round"/></g></g>' +
-      arm('M155 170 Q176 162 150 146', 'a ar-chin') + paw(148, 145) + '</g>';
+      arm('M155 170 Q176 162 150 146', 'a ar-chin') + paw(148, 145) + '</g>' +
+      '<g class="a ar-torch">' + '<path d="M196 126 L214 86" stroke="#7a4a2a" stroke-width="7" stroke-linecap="round"/><path d="M210 92 L218 76" stroke="#5a3418" stroke-width="9" stroke-linecap="round"/>' +
+      '<g class="f-tfire"><path d="M219 50 C224 62 234 66 232 78 A12 12 0 0 1 208 78 C207 70 212 66 214 62 C215 68 218 70 220 70 C218 64 217 57 219 50 Z" fill="#ff922b"/><path d="M220 64 C223 70 227 73 226 79 A6 6 0 0 1 214 79 C214 75 217 73 218 71 Z" fill="#ffd43b"/></g>' +
+      arm('M155 168 Q180 156 194 128', 'x').replace('<g class="x">', '') + paw(196, 125, 10) + '</g>';
   }
   function extras(id) {
     return '<g class="f-zzz" fill="#5f7184" font-family="Inter,sans-serif" font-weight="800"><text x="170" y="60" font-size="18">z</text><text x="184" y="42" font-size="24">z</text><text x="200" y="20" font-size="30">Z</text></g>' +

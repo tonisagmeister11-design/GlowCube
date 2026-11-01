@@ -47,21 +47,35 @@
   }
   function closeModal() { var m = $('vxm'); if (m) m.remove(); }
   function paywall(why) {
-    var inModal = !!V.nav;
-    if (!inModal) V.state = 'plus';
-    var html = '<div class="plus-hero"><h2>Velora Plus</h2><div class="sub" style="max-width:68%">' + (why ? esc(why) + ' ist Teil von Velora Plus.' : 'Mehr Touren, mehr Juno, mehr Spaß auf dem Rad.') + '</div>' + mascot('cheer', 92) + '</div>' +
-      FEATS.map(function (f) { return '<div class="feat"><div class="ico">' + svg(f[0], '#6b4dff', 18, 2.2) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') +
-      '<div class="sub" style="margin-top:10px">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und 10 Juno-Credits am Tag.</div>' +
-      '<div class="price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><b>2,99 €</b><span>pro Monat</span></button><button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '"><em>-44 %</em><b>19,99 €</b><span>pro Jahr</span></button></div>' +
-      (isPlus() ? '<div class="pbox ok"><div class="t">' + svg('flag', '#0c9a68', 18) + 'Plus ist aktiv</div><div class="sub">Danke! Alle Funktionen sind freigeschaltet.</div></div><div class="btns"><button class="go sec" id="plusOff">Plus beenden (Test)</button></div>'
-        : '<div class="btns"><button class="go plus" id="plusGo">Plus freischalten</button></div><div class="sub" style="font-size:12px;margin-top:8px;text-align:center">Testversion: Die Bezahlung über Google Play wird mit der Veröffentlichung eingebaut. Bis dahin wird Plus hier kostenlos zum Ausprobieren freigeschaltet.</div>') +
-      '<div class="btns"><button class="go sec" id="plusBack">Zurück</button></div>';
-    var root = inModal ? modal(html) : (V.sheet(html), V.sheetEl);
-    if (!inModal) V.sheetEl.classList.add('tall');
-    root.querySelectorAll('[data-price]').forEach(function (b) { b.onclick = function () { PRICE = b.getAttribute('data-price'); V.store('price', PRICE); paywall(why); }; });
-    if ($('plusGo')) $('plusGo').onclick = function () { setPlus(true); if (inModal) closeModal(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (!inModal) paywall(why); };
-    if ($('plusOff')) $('plusOff').onclick = function () { setPlus(false); paywall(why); };
-    $('plusBack').onclick = function () { if (inModal) closeModal(); else V.showMenu(); };
+    if (isPlus()) { plusActive(); return; }
+    closeModal(); var old = $('plusx'); if (old) old.remove();
+    var el = document.createElement('div'); el.id = 'plusx';
+    var stars = ''; for (var i = 0; i < 26; i++) stars += '<i style="left:' + Math.round(Math.random() * 100) + '%;top:' + Math.round(Math.random() * 100) + '%;animation-delay:' + (Math.random() * 3).toFixed(2) + 's;transform:scale(' + (0.4 + Math.random()).toFixed(2) + ')"></i>';
+    el.innerHTML = '<div class="px-aurora"></div><div class="px-stars">' + stars + '</div>' +
+      '<button class="px-close" id="pxClose" aria-label="Schließen"><svg width="22" height="22" viewBox="0 0 24 24" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>' +
+      '<div class="px-scroll"><div class="px-hero"><div class="px-ring"></div>' + mascot('cheer', 150) + '</div>' +
+      '<div class="px-logo">VELORA <span class="px-rb">PLUS</span></div>' +
+      '<div class="px-sub">' + (why ? esc(why) + ' gehört zu Velora Plus.' : 'Mehr Juno, mehr Touren, mehr Abenteuer.') + '</div>' +
+      '<div class="px-feats">' + FEATS.map(function (f, i) { return '<div class="px-card" style="animation-delay:' + (0.15 + i * 0.06).toFixed(2) + 's"><div class="px-ic">' + svg(f[0], '#ffffff', 20, 2.3) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') + '</div>' +
+      '<div class="px-price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><span class="px-pl">Monatlich</span><b>2,99 €</b><span>pro Monat</span></button>' +
+      '<button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '"><em>Spare 44 %</em><span class="px-pl">Jährlich</span><b>19,99 €</b><span>nur 1,67 € im Monat</span></button></div>' +
+      '<button class="px-cta" id="plusGo"><span>Plus freischalten</span></button>' +
+      '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und 10 Juno-Credits am Tag.</div>' +
+      '<div class="px-note">Testversion: Die Bezahlung über Google Play kommt mit der Veröffentlichung. Bis dahin wird Plus hier kostenlos zum Ausprobieren freigeschaltet.</div></div>';
+    document.body.appendChild(el);
+    hap('soft');
+    function close() { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); }
+    $('pxClose').onclick = close;
+    el.querySelectorAll('[data-price]').forEach(function (b) { b.onclick = function () { PRICE = b.getAttribute('data-price'); V.store('price', PRICE); el.querySelectorAll('[data-price]').forEach(function (x) { x.classList.toggle('on', x === b); }); hap('click'); }; });
+    $('plusGo').onclick = function () { setPlus(true); close(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
+  }
+  // Plus aktiv: schlicht
+  function plusActive() {
+    var m = modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('thumbs', 70) + '<div class="grow"><h2>Velora Plus</h2><div class="sub">Plus ist aktiv. Danke für deine Unterstützung!</div></div></div>' +
+      '<div class="pbox ok"><div class="sub">' + CR_PLUS + ' Juno-Credits am Tag, Reiseführer, Tagesplaner, Akkuplaner, Regenwarnung, Bestzeiten, GPX, Offline-Karten ohne Grenze, alle Farben und Pfeile.</div></div>' +
+      '<div class="btns"><button class="go sec" id="plusOff">Plus beenden (Test)</button><button class="go" id="plusOk">Schließen</button></div>');
+    $('plusOff').onclick = function () { setPlus(false); closeModal(); if (V.state === 'menu') V.showMenu(); };
+    $('plusOk').onclick = closeModal;
   }
   // true = darf; sonst Paywall
   function gate(name) { if (isPlus()) return true; hap('tick'); paywall(name); return false; }
@@ -99,7 +113,7 @@
   // Maskottchen Velo, der Fuchs (fox.js) und seine Animationen
   // =====================================================================
   function mascot(mood, size) {
-    var m = { idle: 'idle', wave: 'wave', cheer: 'cheer', sad: 'sad', ride: 'ride', think: 'think', thumbs: 'thumbs', sleep: 'sleep', trophy: 'trophy' }[mood] || 'idle';
+    var m = { idle: 'idle', wave: 'wave', cheer: 'cheer', sad: 'sad', ride: 'ride', think: 'think', thumbs: 'thumbs', sleep: 'sleep', trophy: 'trophy', torch: 'torch' }[mood] || 'idle';
     return '<div class="fxw fx-' + m + '" style="width:' + Math.round(size * 0.87) + 'px;height:' + size + 'px">' + (window.Fox ? Fox.svg(m) : '') + '</div>';
   }
   VX.mascot = mascot;
@@ -137,11 +151,11 @@
     var body = o.kind === 'streak' ? streakHtml(o) : o.kind === 'ride' ? rideHtml(o) : o.kind === 'badge' ? badgeHtml(o) : genericHtml(o);
     el.innerHTML = '<div class="cbox c-' + (o.kind || 'gen') + '">' + body + '<button class="go" id="celeOk">' + esc(o.btn || 'Weiter') + '</button></div>';
     document.body.appendChild(el);
-    if (o.kind !== 'streak') { confetti(el, o.kind === 'ride' ? 40 : 70); hap('celebrate'); }
-    if (o.say && S.voice) V.say(o.say);
+    if (!o.kind) { confetti(el, 70); hap('celebrate'); anim(el.querySelector('.cbox .fxw'), [{ transform: 'translateY(120px) scale(.5)' }, { transform: 'translateY(-20px) scale(1.1)', offset: .6 }, { transform: 'none' }], { duration: 650, easing: 'cubic-bezier(.3,1.3,.5,1)' }); }
+    if (o.say && S.voice) setTimeout(function () { V.say(o.say); }, o.kind === 'streak' ? 1600 : 300);
     if (o.kind === 'streak') runStreak(el, o);
     if (o.kind === 'ride') runRide(el, o);
-    if (o.kind === 'badge') setTimeout(function () { hap('success'); }, 450);
+    if (o.kind === 'badge') runBadge(el, o);
     function close() { el.style.transition = 'opacity .25s'; el.style.opacity = 0; setTimeout(function () { el.remove(); nextCele(); }, 250); }
     $('celeOk').onclick = close;
     el.onclick = function (e) { if (e.target === el) close(); };
@@ -150,41 +164,108 @@
   function genericHtml(o) {
     return mascot(o.mood || 'cheer', 150) + (o.big != null ? '<div class="big acc">' + o.big + '</div>' : '') + '<h2>' + esc(o.title) + '</h2><div class="sub">' + esc(o.text || '') + '</div>';
   }
-  // Serie: wie bei Duolingo entzuendet sich die Flamme und die Zahl springt hoch
+  // Hilfen fuer die Szenen
+  var TS = function () { return window.__ts || 1; }; // Zeitlupe nur fuer Tests
+  function anim(el, kf, o) { if (!el || !el.animate) return; o = Object.assign({ fill: 'forwards' }, o); o.duration *= TS(); if (o.delay) o.delay *= TS(); return el.animate(kf, o); }
+  function at(ms, f) { return setTimeout(f, ms * TS()); }
+  function sparkBurst(el, n, cols, dist) {
+    if (!el) return;
+    for (var i = 0; i < n; i++) {
+      var b = document.createElement('b'); b.className = 'spk2'; el.appendChild(b);
+      var a = Math.random() * Math.PI * 2, d = (dist || 120) * (0.5 + Math.random() * 0.7), sz = 4 + Math.random() * 7;
+      b.style.width = b.style.height = sz + 'px'; b.style.background = cols[i % cols.length];
+      anim(b, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(calc(-50% + ' + Math.round(Math.cos(a) * d) + 'px),calc(-50% + ' + Math.round(Math.sin(a) * d - 30) + 'px)) scale(.2)', opacity: 0 }], { duration: 600 + Math.random() * 500, easing: 'cubic-bezier(.1,.8,.3,1)' });
+    }
+  }
+  function shake(el, f) { anim(el, [{ transform: 'translate(0,0)' }, { transform: 'translate(-' + f + 'px,' + f / 2 + 'px)' }, { transform: 'translate(' + f + 'px,-' + f / 2 + 'px)' }, { transform: 'translate(-' + f / 2 + 'px,' + f / 3 + 'px)' }, { transform: 'translate(' + f / 3 + 'px,0)' }, { transform: 'translate(0,0)' }], { duration: 420, easing: 'ease-out', fill: 'none' }); }
+  var LOGS = '<svg class="slogs" viewBox="0 0 120 50"><path d="M14 38 L104 18" stroke="#7a4a2a" stroke-width="13" stroke-linecap="round"/><path d="M16 18 L106 40" stroke="#8b5a35" stroke-width="13" stroke-linecap="round"/><circle cx="104" cy="18" r="6" fill="#c08a5a"/><circle cx="106" cy="40" r="6" fill="#c08a5a"/><g class="ember"><ellipse cx="60" cy="27" rx="14" ry="6" fill="#868e96"/><ellipse cx="60" cy="25" rx="6" ry="3" fill="#adb5bd"/></g></svg>';
+
+  // Serie: Velo rennt mit der Fackel herein, holt aus und zuendet die Flamme mit voller Wucht
   function streakHtml(o) {
     var names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'], ws = weekStart(Date.now()), today = (new Date().getDay() + 6) % 7;
     var days = names.map(function (n, i) {
       var on = rodeOn(ws + i * 864e5), isT = i === today;
       return '<div class="sd' + (on && !isT ? ' on' : '') + (isT ? ' today' : '') + '"><i>' + (on || isT ? FLAME : '') + '</i><span>' + n + '</span></div>';
     }).join('');
-    return '<div class="flamebox">' + bigFlame('ign') + '<div class="sparks">' + new Array(10).join('<b></b>') + '</div></div>' +
+    return '<div class="sscene"><div class="sglow"></div>' + LOGS + '<div class="sflame">' + bigFlame() + '</div><div class="sring"></div><div class="sring r2"></div><div class="sbits"></div>' +
+      '<div class="sfox">' + mascot('torch', 140) + '</div><div class="sflash"></div></div>' +
       '<div class="snum"><span class="old">' + o.from + '</span><span class="new">' + o.to + '</span></div>' +
-      '<h2>' + (o.to === 1 ? 'Serie gestartet!' : o.to + ' Tage in Folge!') + '</h2><div class="sub">' + esc(o.text) + '</div><div class="sweek">' + days + '</div>' +
-      '<div class="sfox">' + mascot('thumbs', 86) + '</div>';
+      '<div class="slate"><h2>' + (o.to === 1 ? 'Serie gestartet!' : o.to + ' Tage in Folge!') + '</h2><div class="sub">' + esc(o.text) + '</div><div class="sweek">' + days + '</div></div>';
   }
   function runStreak(el) {
-    var box = el.querySelector('.cbox');
-    setTimeout(function () { box.classList.add('lit'); hap('success'); }, 700);
-    setTimeout(function () { box.classList.add('flip'); hap('click'); }, 1250);
-    setTimeout(function () { box.classList.add('day'); hap('celebrate'); confetti(el, 50); }, 1750);
+    var box = el.querySelector('.cbox'), sc = el.querySelector('.sscene'), fw = sc.querySelector('.sfox'), fx = fw.querySelector('.fxw');
+    var flame = sc.querySelector('.sflame'), ok = el.querySelector('#celeOk');
+    ok.style.opacity = 0; ok.style.pointerEvents = 'none';
+    fx.classList.add('st-run');
+    anim(fw, [{ transform: 'translateX(-260px)' }, { transform: 'translateX(0)' }], { duration: 650, easing: 'cubic-bezier(.2,.7,.3,1)' });
+    at(150, function () { hap('tick'); }); at(400, function () { hap('tick'); });
+    at(660, function () { fx.classList.remove('st-run'); anim(fx, [{ transform: 'scale(1.08,.9)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'cubic-bezier(.3,1.6,.5,1)', fill: 'none' }); });
+    at(760, function () { fx.classList.add('st-raise'); hap('soft'); });
+    at(1080, function () { fx.classList.add('st-wind'); });
+    at(1420, function () {
+      fx.classList.remove('st-wind'); fx.classList.add('st-strike');
+      anim(fw, [{ transform: 'translateX(0)' }, { transform: 'translateX(58px)' }], { duration: 110, easing: 'cubic-bezier(.5,0,1,.5)' });
+    });
+    at(1530, function () { // Aufprall
+      hap('warn'); box.classList.add('lit');
+      anim(sc.querySelector('.sflash'), [{ opacity: 0 }, { opacity: .95, offset: .15 }, { opacity: 0 }], { duration: 420, easing: 'ease-out' });
+      shake(box, 12);
+      anim(flame, [{ transform: 'translateX(-50%) scale(0)', opacity: 0 }, { transform: 'translateX(-50%) scale(1.45)', opacity: 1, offset: .45 }, { transform: 'translateX(-50%) scale(.9)', offset: .7 }, { transform: 'translateX(-50%) scale(1)', opacity: 1 }], { duration: 750, easing: 'cubic-bezier(.2,.9,.3,1)' });
+      sc.querySelectorAll('.sring').forEach(function (r, i) { anim(r, [{ transform: 'translate(-50%,-50%) scale(.1)', opacity: .9 }, { transform: 'translate(-50%,-50%) scale(' + (i ? 3.4 : 2.4) + ')', opacity: 0 }], { duration: 650 + i * 200, delay: i * 70, easing: 'cubic-bezier(.1,.7,.3,1)' }); });
+      sparkBurst(sc.querySelector('.sbits'), 36, ['#ffd43b', '#ff922b', '#fff3bf', '#ff6b6b'], 150);
+      anim(sc.querySelector('.ember'), [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
+      anim(fw, [{ transform: 'translateX(58px)' }, { transform: 'translateX(0)' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.3,1)' });
+    });
+    at(1950, function () { // Zahl knallt herein
+      box.classList.add('flip'); hap('click');
+      anim(el.querySelector('.snum .new'), [{ transform: 'scale(3.2)', opacity: 0 }, { transform: 'scale(.85)', opacity: 1, offset: .6 }, { transform: 'scale(1)', opacity: 1 }], { duration: 480, easing: 'cubic-bezier(.3,1.4,.5,1)' });
+      at(170, function () { shake(box, 6); });
+    });
+    at(2250, function () { fw.innerHTML = mascot('cheer', 140); anim(el.querySelector('.slate'), [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' }); hap('celebrate'); confetti(el, 60); });
+    at(2700, function () { box.classList.add('day'); var t = el.querySelector('.sd.today i'); if (t) sparkBurst(t, 12, ['#ffd43b', '#ff922b'], 40); hap('success'); });
+    at(3100, function () { ok.style.transition = 'opacity .3s'; ok.style.opacity = 1; ok.style.pointerEvents = ''; });
   }
-  // Fahrt beendet: Velo faehrt ins Bild, dann zaehlen die Werte hoch
+  // Fahrt beendet: Velo rast herein, bremst mit Staubwolke, springt ab und zeigt den Daumen
   function rideHtml(o) {
-    return '<div class="rfox">' + mascot('ride', 120) + '</div><h2>' + esc(o.title) + '</h2>' +
+    return '<div class="rscene"><div class="rroad"></div><div class="rdust"></div><div class="rfox">' + mascot('ride', 130) + '</div></div><div class="rlate"><h2>' + esc(o.title) + '</h2>' +
       '<div class="rstats"><div><b data-cu="' + o.km + '" data-f="km">0</b><span>km</span></div><div><b data-cu="' + o.min + '" data-f="int">0</b><span>Minuten</span></div><div><b data-cu="' + o.asc + '" data-f="int">0</b><span>Höhenmeter</span></div><div><b data-cu="' + o.kcal + '" data-f="int">0</b><span>kcal</span></div></div>' +
-      '<div class="sub">' + esc(o.text || '') + '</div>';
+      '<div class="sub">' + esc(o.text || '') + '</div></div>';
   }
   function runRide(el) {
+    var fw = el.querySelector('.rfox'), dust = el.querySelector('.rdust');
+    anim(fw, [{ transform: 'translateX(-340px)' }, { transform: 'translateX(12px)', offset: .82 }, { transform: 'translateX(0)' }], { duration: 900, easing: 'cubic-bezier(.15,.8,.3,1)' });
+    at(620, function () { // Bremsen
+      hap('warn'); anim(fw.firstChild, [{ transform: 'rotate(0)' }, { transform: 'rotate(-9deg)' }, { transform: 'rotate(2deg)' }, { transform: 'rotate(0)' }], { duration: 500, easing: 'ease-out', fill: 'none' });
+      sparkBurst(dust, 16, ['#ced4da', '#adb5bd', '#e9ecef'], 70);
+    });
+    at(1150, function () { // absteigen, Daumen hoch
+      fw.innerHTML = mascot('thumbs', 130);
+      anim(fw.firstChild, [{ transform: 'translateY(0) scale(1,1)' }, { transform: 'translateY(-38px) scale(.95,1.05)', offset: .45 }, { transform: 'translateY(0) scale(1.08,.92)', offset: .8 }, { transform: 'none' }], { duration: 520, easing: 'ease-out', fill: 'none' });
+      hap('success');
+    });
+    at(1300, function () { anim(el.querySelector('.rlate'), [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 400, easing: 'cubic-bezier(.2,.8,.2,1)' }); });
     el.querySelectorAll('[data-cu]').forEach(function (b, i) {
       var to = +b.getAttribute('data-cu'), f = b.getAttribute('data-f') === 'km' ? function (v) { return num(v.toFixed(1)); } : function (v) { return String(Math.round(v)); };
-      setTimeout(function () { countUp(b, to, 900, f); }, 500 + i * 180);
+      at(1450 + i * 220, function () { countUp(b, to, 800, f); anim(b, [{ transform: 'scale(1.5)' }, { transform: 'scale(1)' }], { duration: 400, easing: 'cubic-bezier(.3,1.6,.5,1)', fill: 'none' }); hap('tick'); });
     });
-    setTimeout(function () { var w = el.querySelector('.rfox .fxw'); if (w) { w.outerHTML = mascot('thumbs', 120); } hap('success'); }, 1900);
+    at(2500, function () { confetti(el, 40); hap('celebrate'); });
   }
+  // Abzeichen: faellt wirbelnd vom Himmel, Velo faengt es, Lichtstrahlen
   function badgeHtml(o) {
-    return '<div class="bshow"><div class="rays"></div>' + badgeSvg(o.fam, o.tier, false, true) + '</div>' +
-      '<div class="btier" style="color:' + TIERS[o.tier - 1][2] + '">' + TIERS[o.tier - 1][0] + '</div><h2>' + esc(o.fam[1]) + '</h2><div class="sub">' + esc(o.text) + '</div>' +
-      '<div class="bfox">' + mascot('trophy', 80) + '</div>';
+    return '<div class="bscene"><div class="rays"></div><div class="bdrop">' + badgeSvg(o.fam, o.tier, false, true) + '</div><div class="sbits"></div><div class="bfox2">' + mascot('cheer', 92) + '</div></div>' +
+      '<div class="blate"><div class="btier" style="color:' + TIERS[o.tier - 1][2] + '">' + TIERS[o.tier - 1][0] + '</div><h2>' + esc(o.fam[1]) + '</h2><div class="sub">' + esc(o.text) + '</div></div>';
+  }
+  function runBadge(el) {
+    var box = el.querySelector('.cbox'), d = el.querySelector('.bdrop'), rays = el.querySelector('.rays');
+    rays.style.opacity = 0;
+    anim(d, [{ transform: 'translate(-50%,-260px) rotateY(0deg) scale(.6)' }, { transform: 'translate(-50%,0) rotateY(1080deg) scale(1.15)', offset: .78 }, { transform: 'translate(-50%,0) rotateY(1080deg) scale(1)' }], { duration: 950, easing: 'cubic-bezier(.4,0,.2,1)' });
+    at(740, function () {
+      hap('warn'); shake(box, 9);
+      anim(rays, [{ opacity: 0, transform: 'scale(.3) rotate(0)' }, { opacity: 1, transform: 'scale(1) rotate(30deg)' }], { duration: 500, easing: 'ease-out' });
+      sparkBurst(el.querySelector('.bscene .sbits'), 30, ['#ffd43b', '#fff', '#74c0fc', '#ff8787'], 130);
+      anim(el.querySelector('.bfox2'), [{ transform: 'translateX(-50%) scale(1.15,.82)' }, { transform: 'translateX(-50%) scale(1)' }], { duration: 380, easing: 'cubic-bezier(.3,1.6,.5,1)', fill: 'none' });
+    });
+    at(950, function () { anim(el.querySelector('.blate'), [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 400, easing: 'cubic-bezier(.2,.8,.2,1)' }); confetti(el, 50); hap('celebrate'); });
   }
 
   // =====================================================================
@@ -944,7 +1025,8 @@
     if ($('cele')) { $('cele').querySelector('#celeOk').click(); return true; }
     if ($('vxm')) { closeModal(); return true; }
     var st = V.state;
-    if (st === 'plus' || st === 'saved' || st === 'dayplan' || st === 'offline') { V.showMenu(); return true; }
+    if ($('plusx')) { $('pxClose').click(); return true; }
+    if (st === 'saved' || st === 'dayplan' || st === 'offline') { V.showMenu(); return true; }
     if (st === 'stats') { V.drawHome(); return true; }
     return false;
   };
