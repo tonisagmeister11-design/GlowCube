@@ -6,6 +6,8 @@
   var A = V.A, S = V.S, $ = V.$, esc = V.esc, svg = V.svg, map = V.map;
   var VX = window.VX = {};
   var TESTER = !!window.__TESTER;
+  // Kauf ueber Google Play Billing: erst aktiv, wenn die App die Bezahl-Schnittstelle mitbringt (siehe RELEASE.md)
+  var BILLING = !!(A && A.billingAvailable && (function () { try { return A.billingAvailable(); } catch (e) { return false; } })());
   var KI_BASE = 'https://velora-ki.toni-sagmeister11.workers.dev', KI_ID = 'velora-2026';
 
   function dayKey(t) { var d = new Date(t); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
@@ -59,22 +61,25 @@
       '<div class="px-feats">' + FEATS.map(function (f, i) { return '<div class="px-card" style="animation-delay:' + (0.15 + i * 0.06).toFixed(2) + 's"><div class="px-ic">' + svg(f[0], '#ffffff', 20, 2.3) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') + '</div>' +
       '<div class="px-price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><span class="px-pl">Monatlich</span><b>2,99 €</b><span>pro Monat</span></button>' +
       '<button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '"><em>Spare 44 %</em><span class="px-pl">Jährlich</span><b>19,99 €</b><span>nur 1,67 € im Monat</span></button></div>' +
-      '<button class="px-cta" id="plusGo"><span>Plus freischalten</span></button>' +
-      '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und die KI Soul ohne Limit.</div>' +
-      '<div class="px-note">Testversion: Die Bezahlung über Google Play kommt mit der Veröffentlichung. Bis dahin wird Plus hier kostenlos zum Ausprobieren freigeschaltet.</div></div>';
+      (BILLING || TESTER ? '<button class="px-cta" id="plusGo"><span>' + (BILLING ? 'Plus kaufen' : 'Zum Ausprobieren freischalten (Test)') + '</span></button>' : '<button class="px-cta soon" id="plusGo" disabled><span>Bald über Google Play</span></button>') +
+      '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und die KI Soul.</div>' +
+      '<div class="px-note">' + (BILLING ? 'Bezahlung und Kündigung über dein Google-Play-Konto.' : TESTER ? 'Testversion: Plus wird hier nur zum Ausprobieren freigeschaltet.' : 'Velora Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.') + '</div></div>';
     document.body.appendChild(el);
     hap('soft');
     function close() { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); }
     $('pxClose').onclick = close;
     el.querySelectorAll('[data-price]').forEach(function (b) { b.onclick = function () { PRICE = b.getAttribute('data-price'); V.store('price', PRICE); el.querySelectorAll('[data-price]').forEach(function (x) { x.classList.toggle('on', x === b); }); hap('click'); }; });
-    $('plusGo').onclick = function () { setPlus(true); close(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
+    $('plusGo').onclick = function () {
+      if (BILLING) { try { A.buyPlus(PRICE); } catch (e) { V.toast('Der Kauf ist gerade nicht möglich.'); } return; }
+      if (!TESTER) return;
+      setPlus(true); close(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
   }
   // Plus aktiv: schlicht
   function plusActive() {
     var m = modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('thumbs', 70) + '<div class="grow"><h2>Velora Plus</h2><div class="sub">Plus ist aktiv. Danke für deine Unterstützung!</div></div></div>' +
       '<div class="pbox ok"><div class="sub">' + 'Reiseführer, Tagesplaner, Akkuplaner, Regenwarnung, Bestzeiten, GPX, Offline-Karten ohne Grenze, alle Farben und Pfeile.</div></div>' +
-      '<div class="btns"><button class="go sec" id="plusOff">Plus beenden (Test)</button><button class="go" id="plusOk">Schließen</button></div>');
-    $('plusOff').onclick = function () { setPlus(false); closeModal(); if (V.state === 'menu') V.showMenu(); };
+      '<div class="btns">' + (TESTER ? '<button class="go sec" id="plusOff">Plus beenden (Test)</button>' : '') + '<button class="go" id="plusOk">Schließen</button></div>');
+    if ($('plusOff')) $('plusOff').onclick = function () { setPlus(false); closeModal(); if (V.state === 'menu') V.showMenu(); };
     $('plusOk').onclick = closeModal;
   }
   // true = darf; sonst Paywall
@@ -117,6 +122,30 @@
     return '<div class="fxw fx-' + m + '" style="width:' + Math.round(size * 0.87) + 'px;height:' + size + 'px">' + (window.Fox ? Fox.svg(m) : '') + '</div>';
   }
   VX.mascot = mascot;
+  // Velo reagiert: kurzer Auftritt mit 3D-Drehung oben links, nie waehrend der Navigation, nie aufdringlich
+  var popT = null, lastPop = V.load('foxPops', {});
+  function foxSay(mood, text, opt) {
+    opt = opt || {};
+    if (V.state === 'nav' || document.getElementById('onb') || document.getElementById('plusx')) return false;
+    if (opt.key) { if (lastPop[opt.key] && Date.now() - lastPop[opt.key] < (opt.every || 0)) return false; lastPop[opt.key] = Date.now(); V.store('foxPops', lastPop); }
+    var old = $('foxpop'); if (old) old.remove();
+    var el = document.createElement('div'); el.id = 'foxpop'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    el.innerHTML = '<div class="fp-fox">' + mascot(mood, 76) + '</div><div class="fp-bub">' + esc(text) + '</div>';
+    document.body.appendChild(el);
+    function hide() { if (!el.parentNode) return; el.classList.add('out'); setTimeout(function () { el.remove(); }, 320); }
+    el.onclick = hide;
+    clearTimeout(popT); popT = setTimeout(hide, opt.ms || 2600);
+    if (!opt.quiet) hap(mood === 'sad' ? 'warn' : 'soft');
+    return true;
+  }
+  VX.foxSay = foxSay;
+  // Begruessung: einmal am Tag beim Oeffnen
+  setTimeout(function () {
+    var d = new Date().toDateString(); if (V.load('greetDay', '') === d || V.state !== 'home') return;
+    var a = VX.account && VX.account(), nm = a && a.user && a.user.name ? a.user.name.split(' ')[0] : '';
+    var h = new Date().getHours(), g = h < 11 ? 'Guten Morgen' : h < 18 ? 'Hallo' : 'Guten Abend';
+    if (foxSay('wave', g + (nm ? ', ' + nm : '') + '! Wohin fahren wir heute?', { ms: 3200, quiet: true })) V.store('greetDay', d);
+  }, 2600);
   var FLAME = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-4-1-6 1-9z" fill="#ff922b"/><path d="M12 12c1 2 3 3 3 5a3 3 0 0 1-6 0c0-1 1-2 1-3 1 1 2 0 2-2z" fill="#ffd43b"/></svg>';
   // grosse Flamme fuer die Serie, in drei Schichten (flackert ueber CSS)
   function bigFlame(cls) {
@@ -645,7 +674,7 @@
   function saveRoute(r, plan) {
     if (SAVED.some(function (x) { return x.title === plan.title && Math.abs(x.len - r.len) < 50; })) { V.toast('Diese Route ist schon gespeichert'); return; }
     SAVED.unshift({ t: Date.now(), title: plan.title, len: r.len, asc: r.asc, secs: r.secs, opt: { loop: !!plan.opt.loop, tour: !!plan.opt.tour, style: plan.opt.style || S.style }, pts: plan.pts.map(function (p) { return { lat: p.lat, lon: p.lon, name: p.name || '' }; }) });
-    V.store('saved', SAVED.slice(0, 50)); hap('success'); V.toast('Route gespeichert');
+    V.store('saved', SAVED.slice(0, 50)); hap('success'); if (!foxSay('thumbs', 'Route gespeichert! Du findest sie unter „Meine Routen“.')) V.toast('Route gespeichert');
   }
   function showSaved() {
     V.state = 'saved';
@@ -1085,7 +1114,7 @@
       clearTimeout(enterT); enterT = setTimeout(function () { V.sheetEl.classList.remove('enter'); }, 700);
     }
     lastState = st;
-    if (st === 'loading' && !V.sheetEl.querySelector('.m-load')) V.sheetEl.insertAdjacentHTML('beforeend', '<div class="m-load">' + mascot('ride', 74) + '</div><div class="skel"></div><div class="skel s2"></div>');
+    if (st === 'loading' && !V.sheetEl.querySelector('.m-load, .ldg')) V.sheetEl.insertAdjacentHTML('beforeend', '<div class="m-load">' + mascot('ride', 74) + '</div><div class="skel"></div><div class="skel s2"></div>');
   }).observe(V.sheetEl, { childList: true });
 
   // Blatt mit dem Finger hoch- und runterziehen

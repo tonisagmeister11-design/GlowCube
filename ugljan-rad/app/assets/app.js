@@ -334,9 +334,17 @@
   function fetchExt(pts, style, profile) {
     var url = 'https://brouter.de/brouter?lonlats=' + pts.map(function (p) { return p.lon.toFixed(6) + ',' + p.lat.toFixed(6); }).join('|') +
       '&profile=' + (profile || brProfile(style)) + '&alternativeidx=0&format=geojson&timode=2';
-    return fetch(url).then(function (res) {
-      return res.text().then(function (t) { if (!res.ok) throw new Error(t || res.status); return buildExt(JSON.parse(t), pts); });
-    });
+    // Zeitlimit, damit bei schlechtem Netz nichts ewig "laedt"; Serverantwort ohne Route != kein Internet
+    var ctl = window.AbortController ? new AbortController() : null, to = setTimeout(function () { if (ctl) ctl.abort(); }, 25000);
+    return fetch(url, ctl ? { signal: ctl.signal } : undefined).then(function (res) {
+      return res.text().then(function (t) {
+        clearTimeout(to);
+        if (!res.ok) { var e = new Error(t || res.status); e.route = true; throw e; }
+        var j; try { j = JSON.parse(t); } catch (x) { var e2 = new Error('bad'); e2.route = true; throw e2; }
+        if (!j.features || !j.features.length || !j.features[0].geometry.coordinates.length) { var e3 = new Error('empty'); e3.route = true; throw e3; }
+        return buildExt(j, pts);
+      });
+    }, function (e) { clearTimeout(to); throw e; });
   }
   function buildExt(j, pts) {
     var f = j.features[0], co = f.geometry.coordinates, p = f.properties;
@@ -516,7 +524,7 @@
       { id: 'o-main', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'class'], 'motorway', '#e0533f', '#f28c5b'], 'line-width': wz(4) } },
       { id: 'o-cycleway', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 10, filter: ['all', ['==', ['get', 'class'], 'path'], ['==', ['get', 'subclass'], 'cycleway']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0fae73', 'line-width': wz(3.4) } },
       { id: 'o-routes', type: 'raster', source: 'wmt', minzoom: 6, paint: { 'raster-opacity': 0.6, 'raster-fade-duration': 0 } },
-      { id: 'o-poi', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['restaurant', 'fast_food', 'cafe', 'ice_cream', 'bakery', 'bar', 'beer', 'drinking_water', 'toilets', 'bicycle', 'attraction', 'castle', 'monument', 'museum', 'grocery', 'pharmacy', 'hospital', 'ferry_terminal', 'lodging', 'campsite']]], layout: { 'icon-image': ['match', ['get', 'class'], 'restaurant', 'poi-food', 'fast_food', 'poi-snack', 'cafe', 'poi-cafe', 'ice_cream', 'poi-cafe', 'bakery', 'poi-cafe', 'bar', 'poi-bar', 'beer', 'poi-bar', 'drinking_water', 'poi-water', 'toilets', 'poi-wc', 'bicycle', 'poi-bike', 'grocery', 'poi-shop', 'pharmacy', 'poi-health', 'hospital', 'poi-health', 'ferry_terminal', 'poi-ferry', 'lodging', 'poi-stay', 'campsite', 'poi-stay', 'poi-sight'], 'icon-allow-overlap': false } },
+      { id: 'o-poi', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['restaurant', 'fast_food', 'cafe', 'ice_cream', 'bakery', 'bar', 'beer', 'drinking_water', 'toilets', 'bicycle', 'attraction', 'castle', 'monument', 'museum', 'grocery', 'pharmacy', 'hospital', 'ferry_terminal', 'lodging', 'campsite']]], layout: { 'icon-image': ['match', ['get', 'class'], 'restaurant', 'poi-food', 'fast_food', 'poi-snack', 'cafe', 'poi-cafe', 'ice_cream', 'poi-cafe', 'bakery', 'poi-cafe', 'bar', 'poi-bar', 'beer', 'poi-bar', 'drinking_water', 'poi-water', 'toilets', 'poi-wc', 'bicycle', 'poi-bike', 'grocery', 'poi-shop', 'pharmacy', 'poi-health', 'hospital', 'poi-health', 'ferry_terminal', 'poi-ferry', 'lodging', 'poi-stay', 'campsite', 'poi-stay', 'poi-sight'], 'icon-allow-overlap': false, 'icon-padding': 9, 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.82, 17, 1] } },
       { id: 'o-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11, layout: { 'text-field': ['concat', ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], ['case', ['has', 'ele'], ['concat', ' ', ['to-string', ['get', 'ele']], ' m'], '']], 'text-font': ['NotoSansMedium'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#6b4f2a' }) },
       { id: 'o-water-name', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 4, layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansItalic'], 'text-size': 12, 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#2a6f9e' }) },
       { id: 'o-place-small', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['village', 'hamlet', 'suburb', 'neighbourhood', 'isolated_dwelling', 'quarter']]], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 11.5, 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#3b4d5e' }) },
@@ -737,9 +745,13 @@
     { id: 'stay', n: 'Unterkunft', cats: ['stay'] },
     { id: 'more', n: 'Fähre, Hafen, Bus', cats: ['ferry', 'port', 'bus', 'fuel', 'parking'] }
   ];
-  var active = load('filters', { food: 1, beach: 1, view: 1, water: 1, bike: 1 });
+  var active = load('filters', { food: 1, cafe: 1, beach: 1, view: 1, water: 1, bike: 1 });
+  // Klassen der weltweiten Karte (OpenFreeMap) je Kategorie, damit die Knoepfe ueberall wirken
+  var OFMC = { food: ['restaurant', 'fast_food'], cafe: ['cafe', 'ice_cream', 'bakery', 'bar', 'beer'], view: ['attraction', 'castle', 'monument', 'museum'],
+    water: ['drinking_water', 'toilets'], shop: ['grocery', 'pharmacy', 'hospital'], bike: ['bicycle'], stay: ['lodging', 'campsite'], more: ['ferry_terminal'] };
+  function chipList() { var r = hereRef(); return FILTERS.filter(function (f) { return f.id !== 'beach' || nearIsl(r); }); }
   function drawChips() {
-    $('chips').innerHTML = FILTERS.map(function (f) { return '<button class="chip' + (active[f.id] ? ' on' : '') + '" data-f="' + f.id + '">' + esc(f.n) + '</button>'; }).join('');
+    $('chips').innerHTML = chipList().map(function (f) { return '<button class="chip' + (active[f.id] ? ' on' : '') + '" data-f="' + f.id + '">' + esc(f.n) + '</button>'; }).join('');
     updPois();
   }
   function updPois() {
@@ -748,6 +760,8 @@
     FILTERS.forEach(function (f) { if (active[f.id]) cats = cats.concat(f.cats); });
     map.setFilter('pois', ['all', ['in', ['get', 'cat'], ['literal', cats]], ['!', ['in', ['get', 'cat'], ['literal', ['bus', 'parking']]]]]);
     map.setFilter('pois-minor', ['all', ['in', ['get', 'cat'], ['literal', cats]], ['in', ['get', 'cat'], ['literal', ['bus', 'parking']]]]);
+    var oc = []; FILTERS.forEach(function (f) { if (active[f.id] && OFMC[f.id]) oc = oc.concat(OFMC[f.id]); });
+    if (map.getLayer('o-poi')) map.setFilter('o-poi', ['in', ['get', 'class'], ['literal', oc]]);
   }
   $('chips').addEventListener('click', function (e) {
     var b = e.target.closest('.chip'); if (!b) return;
@@ -845,6 +859,7 @@
     return '<div class="row" data-xpoi="' + (extPois.length - 1) + '"><div class="ico">' + svg(x.cat, c.c, 18) + '</div><div class="grow"><div class="t ell">' + esc(x.name) + '</div><div class="s ell">' + esc(x.sub) + '</div></div><div class="r"><div class="s">' + fmtDist(x.d) + '</div></div></div>';
   }
   // Liste "in der Naehe": Offline-Daten nur in ihrer Region, sonst Online-Karte
+  var homeTries = 0;
   function nearbyRows(base, cats, n, maxD) {
     if (nearIsl(base)) return nearby(base.lat, base.lon, cats, n, maxD).map(poiRow).join('');
     return onlinePois(base.lat, base.lon, cats, n, maxD || 5000).map(extPoiRow).join('');
@@ -904,6 +919,7 @@
       meMarker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'viewport' }).setLngLat([lon, lat]).addTo(map);
       // erster GPS-Punkt: Karte springt zum eigenen Standort (weltweit)
       if (!cur && !nav) { follow = true; map.jumpTo({ center: [lon, lat], zoom: 15 }); store('lastPos', { lat: +lat.toFixed(4), lon: +lon.toFixed(4) }); }
+      drawChips();
     }
     setSrc('acc', accPoly(lat, lon, Math.min(acc, 300)));
     sessPoint(lat, lon, acc, speed);
@@ -928,6 +944,24 @@
     $('gpswarnText').textContent = txt;
   }
   $('gpswarnBtn').onclick = function () { if (A) A.openLocationSettings(); };
+  // Waehrend einer Fahrt: GPS-Ausfall erkennen (Tunnel, Wald, Hochhaeuser) und ehrlich anzeigen
+  var gpsLost = false;
+  setInterval(function () {
+    if (!nav) { if (gpsLost) { gpsLost = false; var e0 = $('gpslost'); if (e0) e0.remove(); } return; }
+    var lost = !lastFix || Date.now() - lastFix > 12000;
+    if (lost === gpsLost) return;
+    gpsLost = lost;
+    var el = $('gpslost');
+    if (lost) {
+      if (!el) { el = document.createElement('div'); el.id = 'gpslost'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+      el.innerHTML = svg('pin', '#b54708', 18) + '<span>GPS-Signal verloren. Die letzte bekannte Position wird angezeigt.</span>';
+      lastSpeed = -1; updSpeedo(); HOOK('haptic', 'warn'); HOOK('gpsLost', true);
+      if (!nav.free) say('GPS-Signal verloren');
+    } else {
+      if (el) el.remove();
+      toast('GPS wieder da'); HOOK('gpsLost', false);
+    }
+  }, 3000);
   setInterval(checkGps, 5000); setTimeout(checkGps, 1500);
   $('btnLoc').onclick = function () {
     if (!me) { toast('Noch kein GPS-Signal. Kurz warten oder GPS einschalten.'); return; }
@@ -1041,18 +1075,68 @@
     var d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d);
     setTimeout(function () { d.remove(); }, 3200);
   }
+  // Ansagen in der App-Sprache: die Saetze entstehen auf Deutsch und werden hier uebersetzt
+  var VLANG = { de: 'de-DE', en: 'en-GB', fr: 'fr-FR', it: 'it-IT', es: 'es-ES' };
+  var VPH = [ // [Deutsch, en, fr, it, es] - laengere Ausdruecke zuerst
+    ['scharf links abbiegen', 'turn sharp left', 'tournez fortement à gauche', 'svolta stretta a sinistra', 'gira bruscamente a la izquierda'],
+    ['scharf rechts abbiegen', 'turn sharp right', 'tournez fortement à droite', 'svolta stretta a destra', 'gira bruscamente a la derecha'],
+    ['leicht links halten', 'keep slightly left', 'restez légèrement à gauche', 'tieniti leggermente a sinistra', 'mantente ligeramente a la izquierda'],
+    ['leicht rechts halten', 'keep slightly right', 'restez légèrement à droite', 'tieniti leggermente a destra', 'mantente ligeramente a la derecha'],
+    ['links abbiegen', 'turn left', 'tournez à gauche', 'svolta a sinistra', 'gira a la izquierda'],
+    ['rechts abbiegen', 'turn right', 'tournez à droite', 'svolta a destra', 'gira a la derecha'],
+    ['links halten', 'keep left', 'restez à gauche', 'tieniti a sinistra', 'mantente a la izquierda'],
+    ['rechts halten', 'keep right', 'restez à droite', 'tieniti a destra', 'mantente a la derecha'],
+    ['geradeaus weiterfahren', 'continue straight ahead', 'continuez tout droit', 'prosegui dritto', 'sigue recto'],
+    ['wenden', 'make a U-turn', 'faites demi-tour', 'fai inversione', 'da la vuelta'],
+    ['Du hast dein Ziel erreicht', 'You have arrived at your destination', 'Vous êtes arrivé à destination', 'Sei arrivato a destinazione', 'Has llegado a tu destino'],
+    ['Route wird neu berechnet', 'Recalculating route', 'Recalcul de l\'itinéraire', 'Ricalcolo del percorso', 'Recalculando la ruta'],
+    ['GPS-Signal verloren', 'GPS signal lost', 'Signal GPS perdu', 'Segnale GPS perso', 'Señal GPS perdida'],
+    ['Keine Verbindung. Ich versuche es gleich nochmal.', 'No connection. I will try again shortly.', 'Pas de connexion. Je réessaie dans un instant.', 'Nessuna connessione. Riprovo tra poco.', 'Sin conexión. Lo intento de nuevo enseguida.'],
+    ['Sprachansagen eingeschaltet', 'Voice guidance on', 'Guidage vocal activé', 'Guida vocale attiva', 'Guía por voz activada'],
+    ['Ansagen an', 'Voice guidance on', 'Guidage vocal activé', 'Guida vocale attiva', 'Guía por voz activada'],
+    ['Aufzeichnung gestartet', 'Recording started', 'Enregistrement démarré', 'Registrazione avviata', 'Grabación iniciada']
+  ];
+  function sayLang() { var l = window.I18N && I18N.lang; return VLANG[l] ? l : 'de'; }
+  function sayTr(t) {
+    var l = sayLang(), k = { en: 1, fr: 2, it: 3, es: 4 }[l]; if (!k) return t;
+    var U = { m: ['meters', 'mètres', 'metri', 'metros'], km: ['kilometers', 'kilomètres', 'chilometri', 'kilómetros'], min: ['minutes', 'minutes', 'minuti', 'minutos'] };
+    t = t.replace(/(\d+),(\d)/g, l === 'en' ? '$1.$2' : '$1,$2');
+    t = t.replace(/ Kilometer\b/g, ' ' + U.km[k - 1]).replace(/ Meter\b/g, ' ' + U.m[k - 1]);
+    var m;
+    if ((m = t.match(/^Los gehts\. (.+?) bis zum Ziel, etwa (\d+) Minuten(?:, (\d+) Höhenmeter)?\.?$/))) {
+      return [null, "Let's go. " + m[1] + ' to your destination, about ' + m[2] + ' minutes' + (m[3] ? ', ' + m[3] + ' metres of climbing.' : '.'),
+        'C\'est parti. ' + m[1] + ' jusqu\'à destination, environ ' + m[2] + ' minutes' + (m[3] ? ', ' + m[3] + ' mètres de dénivelé.' : '.'),
+        'Si parte. ' + m[1] + ' alla destinazione, circa ' + m[2] + ' minuti' + (m[3] ? ', ' + m[3] + ' metri di salita.' : '.'),
+        'Vamos. ' + m[1] + ' hasta el destino, unos ' + m[2] + ' minutos' + (m[3] ? ', ' + m[3] + ' metros de subida.' : '.')][k];
+    }
+    if ((m = t.match(/^Achtung, Anstieg in (.+?): (.+?) mit (\d+) Prozent$/))) {
+      return [null, 'Caution, climb in ' + m[1] + ': ' + m[2] + ' at ' + m[3] + ' percent', 'Attention, montée dans ' + m[1] + ' : ' + m[2] + ' à ' + m[3] + ' pour cent',
+        'Attenzione, salita tra ' + m[1] + ': ' + m[2] + ' al ' + m[3] + ' per cento', 'Atención, subida en ' + m[1] + ': ' + m[2] + ' al ' + m[3] + ' por ciento'][k];
+    }
+    t = t.replace(/im Kreisverkehr die (\d+)\. Ausfahrt nehmen/, function (x, n) { return [null, 'at the roundabout take exit ' + n, 'au rond-point, prenez la sortie ' + n, 'alla rotonda prendi l\'uscita ' + n, 'en la rotonda toma la salida ' + n][k]; });
+    VPH.forEach(function (p) { if (t.indexOf(p[0]) >= 0) t = t.split(p[0]).join(p[k]); });
+    t = t.replace(/^In ([\d.,]+ \S+) /, function (x, d) { return [null, 'In ' + d + ', ', 'Dans ' + d + ', ', 'Tra ' + d + ', ', 'En ' + d + ', '][k]; });
+    t = t.replace(/^Jetzt /, [null, 'Now ', 'Maintenant, ', 'Ora ', 'Ahora '][k]);
+    t = t.replace(/ in (?=[A-ZÄÖÜ0-9])/, [null, ' onto ', ' sur ', ' in ', ' por '][k]);
+    return t;
+  }
+  var lastVoiceLang = null;
   function say(t) {
     if (!S.voice) return;
-    if (A) { try { A.speak(t); } catch (e) {} return; }
+    var l = sayLang(); t = sayTr(String(t));
+    if (A) {
+      try { if (l !== lastVoiceLang && A.setVoiceLang) { A.setVoiceLang(VLANG[l]); lastVoiceLang = l; } A.speak(t); } catch (e) {}
+      return;
+    }
     // am Computer: Sprachausgabe des Systems
-    try { var u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+    try { var u = new SpeechSynthesisUtterance(t); u.lang = VLANG[l]; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
   }
   var DESKTOP = !!window.__desktop;
   // Am Computer ohne GPS: Testhilfen
-  function hereBtn() { return DESKTOP ? '<button class="go sec" id="hereTest">Hier bin ich (Test)</button>' : ''; }
+  function hereBtn() { return DESKTOP ? '<button class="go sec" id="hereTest">Hier bin ich</button>' : ''; }
   function bindHere(lat, lon) {
     if (!$('hereTest')) return;
-    $('hereTest').onclick = function () { onGps(lat, lon, 5, 0, -1, -1, 1, null); toast('Test-Standort gesetzt'); setFollow(true); view(lat, lon, Math.max(map.getZoom(), 15)); drawHome(); };
+    $('hereTest').onclick = function () { onGps(lat, lon, 5, 0, -1, -1, 1, null); toast('Standort gesetzt'); setFollow(true); view(lat, lon, Math.max(map.getZoom(), 15)); drawHome(); };
   }
   var simT = null;
   function simulateRide() {
@@ -1121,6 +1205,11 @@
     var base = hereRef(), hr = meRef(), z = hr ? eleAt(hr.lat, hr.lon) : null;
     homeDrawnWithGps = !!hr; extPois = [];
     var rows = nearbyRows(base, ['food', 'snack', 'cafe'], 4, 3000);
+    // Orte kommen aus den Kartenkacheln: sind sie noch nicht geladen, nach dem Laden erneut zeichnen (hoechstens 3-mal)
+    if (!rows && mapReady && !nearIsl(base)) {
+      homeTries = (homeTries || 0) + 1;
+      if (homeTries <= 3) map.once('idle', function () { if (state === 'home') drawHome(); });
+    } else homeTries = 0;
     var html = '<h2>Velora</h2><div class="sub">' +
       (hr ? 'GPS aktiv' + (z != null ? ' &middot; ' + Math.round(z) + ' m über dem Meer' : '') + '. Suche ein Ziel oder tippe auf die Karte.' : 'Warte auf GPS. Suche ein Ziel oder tippe auf die Karte.') + '</div>' +
       wxHtml() + (HOOK('homeHtml') || '') +
@@ -1129,7 +1218,7 @@
       '<button data-act="loop">' + svg('loop', '#0fae73', 24, 2) + 'Tour-Idee</button>' +
       '<button data-act="near">' + svg('list', '#0fae73', 24, 2) + 'In der Nähe</button>' +
       '<button data-act="free">' + svg('rec', '#ff5a4e', 24, 2.4) + 'Fahrt starten</button></div>' +
-      '<h3>Essen in der Nähe</h3><div class="list">' + (rows || '<div class="empty">Noch nichts geladen. Mit GPS und Internet erscheinen hier Restaurants und Cafés in deiner Nähe.</div>') + '</div>' +
+      '<h3>Essen in der Nähe</h3><div class="list">' + (rows || '<div class="empty">' + (navigator.onLine === false ? 'Ohne Internet können keine Orte geladen werden.' : homeTries && homeTries <= 3 ? 'Suche Restaurants und Cafés in der Nähe ...' : 'Hier in der Nähe ist nichts eingetragen. Tippe auf „In der Nähe“ für mehr.') + '</div>') + '</div>' +
       '<h3>Kartenlegende</h3>' + legendHtml() +
       '<div class="sub" style="margin-top:12px;font-size:12px">Rad: ' + BIKES[S.bike].n + ' &middot; ' + FIT[S.fit].n + ' &middot; Stil ' + STYLES[S.style].n + ' (im Menü änderbar)</div>';
     sheet(html);
@@ -1321,7 +1410,15 @@
   var plan = null, cur = null, routeLayer = null, hoverMarker = null;
   // Vor jeder Route: schnell & leicht oder am schoensten? Beide werden gerechnet und verglichen.
   var NET_MSG = 'Für die Route braucht die App Internet. Bitte mobile Daten einschalten.';
-  function loadingSheet(t) { state = 'loading'; sheet('<h2>' + esc(t) + '</h2><div class="sub" style="margin:10px 0 6px">Route wird online berechnet ...</div><div class="mix"><div style="width:35%;background:var(--lime);animation:none"></div></div>'); }
+  var ROUTE_MSG = 'Für dieses Ziel wurde keine Fahrradroute gefunden. Wähle einen Punkt näher an einer Straße oder einem Weg.';
+  function routeErr(e) { return e && e.route ? ROUTE_MSG : NET_MSG; }
+  function loadingSheet(t) {
+    state = 'loading';
+    sheet('<div class="ldg"><div class="ldg-fox">' + (HOOK('mascot', 'ride', 92) || '') + '</div><div class="grow"><h2 class="ell">' + esc(t) + '</h2>' +
+      '<div class="sub">Route wird berechnet ...</div><div class="ldbar" role="progressbar" aria-label="Route wird berechnet"><i></i></div></div></div>' +
+      '<div class="btns"><button class="go sec" id="ldCancel">Abbrechen</button></div>');
+    $('ldCancel').onclick = function () { chooseRoute.token = {}; clearRoute(); };
+  }
   function planRoute(pts, title, opt) {
     opt = opt || {};
     if (!opt.picked) { chooseRoute(pts, title, opt); return; }
@@ -1330,12 +1427,15 @@
     if (pre) { showRoute(pts, title, opt, pre); return; }
     if (isLocal(pts)) { showRoute(pts, title, opt, routeVia(pts, opt)); return; }
     loadingSheet(title);
-    fetchExt(pts, opt.style || S.style).then(function (r) { showRoute(pts, title, opt, r); }, function () { toast(NET_MSG); clearRoute(); });
+    fetchExt(pts, opt.style || S.style).then(function (r) { showRoute(pts, title, opt, r); }, function (e) { if (HOOK('foxSay', 'sad', routeErr(e), { ms: 4200 }) !== true) toast(routeErr(e)); clearRoute(); });
   }
   function showRoute(pts, title, opt, r) {
     if (!r) { toast('Keine Route gefunden.'); return; }
     plan = { pts: pts, title: title, opt: opt, desc: opt.desc || '' };
     cur = r; state = 'route';
+    // Velo freut sich erst, wenn die Karte zur Route geschwenkt ist (sonst ruckelt die Animation)
+    var popped = false, pop = function () { if (popped || state !== 'route' || cur !== r) return; popped = true; HOOK('foxSay', 'thumbs', 'Route steht: ' + fmtDist(r.len) + ', etwa ' + fmtTime(r.secs) + '.', { key: 'route', every: 600000, quiet: true }); };
+    setTimeout(function () { map.once('idle', pop); setTimeout(pop, 4000); }, 300);
     drawRoute(r);
     clearMarkers();
     var last = pts[pts.length - 1];
@@ -1358,11 +1458,11 @@
     // Online: beide Varianten gleichzeitig anfragen
     loadingSheet(title);
     var token = {}; chooseRoute.token = token;
-    var keys = Object.keys(STYLES), left = keys.length, failed = 0;
+    var keys = Object.keys(STYLES), left = keys.length, failed = 0, lastErr = null;
     keys.forEach(function (k) {
-      fetchExt(pts, k).then(function (r) { res[k] = r; }, function () { failed++; }).then(function () {
+      fetchExt(pts, k).then(function (r) { res[k] = r; }, function (e) { failed++; lastErr = e; }).then(function () {
         if (--left || chooseRoute.token !== token || state !== 'loading') return;
-        if (failed === keys.length) { toast(NET_MSG); clearRoute(); return; }
+        if (failed === keys.length) { clearRoute(); if (HOOK('foxSay', 'sad', routeErr(lastErr), { ms: 4200 }) !== true) toast(routeErr(lastErr)); return; }
         showChoice(pts, title, opt, res);
       });
     });
@@ -1383,6 +1483,8 @@
     });
     setSrc('cand', fc(feats));
     var f = res.fast, sc = res.scenic, same = sameRoute(f, sc);
+    // Beide Varianten gleich (oder nur eine da): keine Auswahl noetig, direkt die Route zeigen
+    if (same || !f || !sc) { var k0 = f && sc ? S.style : (f ? 'fast' : 'scenic'); planRoute(pts, title, L2(opt, { style: k0, picked: true, pre: res[k0] })); return; }
     function card(k) {
       var r = res[k]; if (!r) return '';
       var other = res[k === 'fast' ? 'scenic' : 'fast'], hint = '';
@@ -1480,7 +1582,7 @@
       settingsChips() + routeStatsHtml(r) + (HOOK('routeHtml', r, plan) || '') +
       '<div class="prof" id="prof">' + profileSvg(r, 340, 120, true) + '</div><div class="sub" id="profInfo" style="font-size:12px;min-height:16px">Finger auf das Profil legen, um den Punkt auf der Karte zu sehen.</div>' +
       '<div class="btns"><button class="go sec" id="cancel">Abbrechen</button><button class="go" id="start">Los fahren</button></div>' +
-      (DESKTOP ? '<div class="btns"><button class="go sec" id="simRide">Fahrt simulieren (Test am PC)</button></div>' : '') +
+      (window.__TESTER ? '<div class="btns"><button class="go sec" id="simRide">Fahrt simulieren (Test)</button></div>' : '') +
       '<h3>Belag</h3>' + mixBar(r.mixS, SURF, r.len, [0, 1, 2, 3, 4, 5]) +
       '<h3>Wegart</h3>' + mixBar(r.mixC, CLASS, r.len, [0, 1, 5, 2, 8, 3, 4, 6]) +
       (r.walk > 30 ? '<div class="sub" style="margin-top:8px">Ca. ' + fmtDist(r.walk) + ' zu steil oder zu grob zum Fahren: dort wird Schieben eingerechnet.</div>' : '') +
@@ -1879,7 +1981,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 6.7 mit der KI Soul (echtes Sprachmodell über den Velora-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 7.0 mit der KI Soul (echtes Sprachmodell über den Velora-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -2059,10 +2161,10 @@
     var r = cur, along = nav.lastAlong;
     if (ref) {
       var pr = project(r, ref.lat, ref.lon, nav.lastAlong);
-      if (pr.d > 35 + Math.min(ref.acc, 30)) {
+      if (!nav.arrived && pr.d > 35 + Math.min(ref.acc, 30)) {
         nav.off++;
         if (nav.off === 2) HOOK('haptic', 'warn');
-        if (nav.off >= 3) {
+        if (nav.off >= 3 && Date.now() >= (nav.retryAt || 0)) {
           nav.off = 0;
           // verbleibende Wegpunkte behalten
           var rest = plan.pts.filter(function (p, k) { return k > 0 && r.legEnds[k - 1] > nav.lastAlong + 30; });
@@ -2071,18 +2173,28 @@
           if (!isLocal(pts)) {
             // online neu berechnen, waehrenddessen weiter auf der alten Route anzeigen
             if (!nav.fetching) {
-              nav.fetching = true; say('Route wird neu berechnet');
+              nav.fetching = true;
+              if (!nav.rerouteSaid) { say('Route wird neu berechnet'); nav.rerouteSaid = true; }
+              HOOK('rerouting', true);
               fetchExt(pts, plan.opt.style || S.style).then(function (nr2) {
                 nav.fetching = false; if (!nav || nav.free) return;
-                cur = nr2; plan.pts = pts; drawRoute(nr2); nav.said = {}; nav.climbSaid = {}; nav.lastAlong = 0; toast('Neue Route');
-              }, function () { if (nav) nav.fetching = false; });
+                cur = nr2; plan.pts = pts; drawRoute(nr2); nav.said = {}; nav.climbSaid = {}; nav.lastAlong = 0; nav.rerouteSaid = false; nav.netFail = 0; nav.retryAt = 0;
+                toast('Neue Route'); HOOK('rerouting', false);
+              }, function () {
+                if (!nav) return;
+                // ohne Netz: nicht im Sekundentakt neu versuchen und nicht dauernd ansagen
+                nav.fetching = false; nav.netFail = (nav.netFail || 0) + 1;
+                nav.retryAt = Date.now() + Math.min(60000, 15000 * nav.netFail);
+                if (nav.netFail === 1) { toast('Keine Verbindung: Neue Route folgt, sobald Internet da ist. Die alte Route bleibt sichtbar.'); say('Keine Verbindung. Ich versuche es gleich nochmal.'); }
+                HOOK('rerouting', false, true);
+              });
             }
           } else {
             var nr = routeVia(pts, { style: plan.opt.style });
             if (nr) { cur = r = nr; plan.pts = pts; drawRoute(r); nav.said = {}; nav.climbSaid = {}; say('Route wird neu berechnet'); toast('Neue Route'); pr = project(r, ref.lat, ref.lon, 0); }
           }
         }
-      } else nav.off = 0;
+      } else { nav.off = 0; if (!nav.fetching) nav.rerouteSaid = false; }
       along = pr.along; nav.lastAlong = along;
     }
     var remain = Math.max(0, r.len - along);
@@ -2383,6 +2495,7 @@
       var html = '<div class="msg ai' + (m.wait ? ' wait' : '') + '">' + (m.wait ? JUNO_LOAD : mdLite(m.content)) + (m.cr ? '<div class="crcost">-' + m.cr + ' Credit' + (m.cr > 1 ? 's' : '') + '</div>' : '');
       // Orte nur anzeigen, wenn Soul keine Route geplant hat (sonst nur Doppelungen des Ziels)
       if (m.orte && m.orte.length && !(m.acts || []).some(function (x) { return x.typ === 'route_planen'; })) html += '<div class="places">' + m.orte.map(function (o, k) { return '<button data-jp="' + i + '_' + k + '">' + esc(o.name) + '</button>'; }).join('') + '</div>';
+      if (m.llm) html += '<button class="jrep" data-jr="' + i + '"' + (m.rep ? ' disabled' : '') + '>' + (m.rep ? 'Gemeldet' : 'Antwort melden') + '</button>';
       if (m.acts && m.acts.length) html += m.acts.map(function (a, k) { return '<button class="act" data-ja="' + i + '_' + k + '">' + esc(actLabel(a)) + '</button>'; }).join('');
       return html + '</div>';
     }).join('');
@@ -2403,6 +2516,16 @@
     if ($('junoClear')) $('junoClear').onclick = function () { juno = []; saveJuno(); if (window.Soul && Soul.reset) Soul.reset(); if (window.SoulLLM) SoulLLM.stop(); showJuno(); };
     sheetEl.querySelectorAll('[data-jq]').forEach(function (b) { b.onclick = function () { askJuno(b.getAttribute('data-jq')); }; });
     sheetEl.querySelectorAll('[data-jp]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-jp').split('_'), o = juno[+ij[0]].orte[+ij[1]]; runAction({ typ: 'ort_zeigen', name: o.name, lat: o.lat, lon: o.lon }); }; });
+    // KI-Antwort melden (Google-Play-Regel fuer generative KI): geht an den Velora-Server zur Pruefung
+    sheetEl.querySelectorAll('[data-jr]').forEach(function (b) {
+      b.onclick = function () {
+        var m = juno[+b.getAttribute('data-jr')]; if (!m || m.rep) return;
+        b.disabled = true;
+        fetch('https://velora-ki.toni-sagmeister11.workers.dev/soul/report', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-App-Id': KI_ID }, body: JSON.stringify({ q: m.q || '', a: m.content }) })
+          .then(function (r) { if (!r.ok) throw 0; m.rep = true; saveJuno(); toast('Danke! Die Antwort wird geprüft.'); b.textContent = 'Gemeldet'; })
+          .catch(function () { b.disabled = false; toast('Melden geht gerade nicht. Bitte Internet prüfen.'); });
+      };
+    });
     sheetEl.querySelectorAll('[data-ja]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-ja').split('_'); runAction(juno[+ij[0]].acts[+ij[1]]); }; });
   }
   function actLabel(a) {
@@ -2441,7 +2564,7 @@
         junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
         if (!d.antwort && d.left === 0 && window.VX) VX.srvCredits = { left: 0, max: (VX.srvCredits && VX.srvCredits.max) || 10 };
         if (!d.antwort) { juno.push({ role: 'assistant', content: d.fehler || 'Soul ist gerade nicht erreichbar.' }); saveJuno(); if (state === 'ai') showJuno(); return; }
-        var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [] };
+        var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [], llm: !!d.llm, q: q };
         HOOK('haptic', 'soft'); HOOK('junoUsed', d.credits || 0, d.left); m.cr = d.credits || 0;
         juno.push(m); saveJuno(); junoLast = { text: d.antwort, t: Date.now() };
         if (nav || !$('chatlog')) say(plainText(d.antwort).slice(0, 400));
@@ -2530,7 +2653,7 @@
   window.__show = showPoi;
   window.V = {
     D: D, A: A, S: S, saveS: saveS, BIKES: BIKES, FIT: FIT, STYLES: STYLES, CLASS: CLASS, CAT: CAT, IC: IC, LAT: LAT, LON: LON,
-    map: map, sheet: sheet, sheetEl: sheetEl, toast: toast, say: say, svg: svg, esc: esc, $: $, store: store, load: load,
+    map: map, sheet: sheet, sheetEl: sheetEl, toast: toast, say: say, _sayTr: sayTr, svg: svg, esc: esc, $: $, store: store, load: load,
     dist: dist, bearing: bearing, fmtDist: fmtDist, fmtKm: fmtKm, fmtTime: fmtTime, hhmm: hhmm, clock: clock, demEle: demEle, eleAt: eleAt, onIsland: onIsland,
     nearestPlace: nearestPlace, nearestNode: nearestNode, nearby: nearby, routeVia: routeVia, planRoute: planRoute, startRef: startRef, meRef: meRef, myRef: myRef,
     computeCosts: computeCosts, drawHome: drawHome, drawRouteSheet: drawRouteSheet, fetchExt: fetchExt, isLocal: isLocal, showExtPoint: showExtPoint, onlinePois: onlinePois, hereRef: hereRef, nearIsl: nearIsl, showMenu: showMenu, showJuno: showJuno, askJuno: askJuno, showTours: showTours, setSrc: setSrc, fc: fc, lineF: lineF, ptF: ptF,

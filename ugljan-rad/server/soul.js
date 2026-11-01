@@ -64,6 +64,20 @@ const s = (x, n) => String(x == null ? '' : x).slice(0, n);
 const estTok = t => Math.ceil(String(t).length / 2.6);
 const neurons = (pin, pout) => (pin * N_IN + pout * N_OUT) / 1e6;
 
+// Meldung einer KI-Antwort (Google-Play-Regel fuer generative KI): wird 90 Tage fuer die Pruefung gespeichert
+export async function soulReport(req, env) {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+  if (req.method !== 'POST' || req.headers.get('X-App-Id') !== env.APP_ID) return json({ fehler: 'Nicht erlaubt' }, 403);
+  const ip = req.headers.get('CF-Connecting-IP') || 'x';
+  const { success } = await env.LIMIT.limit({ key: 'rep:' + ip });
+  if (!success) return json({ fehler: 'Zu viele Meldungen.' }, 429);
+  let b; try { b = await req.json(); } catch { return json({ fehler: 'Ungültige Anfrage' }, 400); }
+  const r = { t: Date.now(), q: s(b.q, 600), a: s(b.a, 1500), grund: s(b.grund, 200) };
+  if (!r.a) return json({ fehler: 'Leer' }, 400);
+  await env.USERS.put('rep:' + r.t + ':' + (await sha(ip + r.t)).slice(0, 8), JSON.stringify(r), { expirationTtl: 90 * 86400 });
+  return json({ ok: true });
+}
+
 export async function soul(req, env, ctx) {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
   if (req.method !== 'POST') return json({ fehler: 'Nicht gefunden' }, 404);

@@ -82,6 +82,27 @@
   function rideLeg(cls) {
     return '<g class="' + cls + '"><path d="M116 214 L136 236 L128 262" stroke="' + DK + '" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M116 214 L136 236 L128 262" stroke="' + O + '" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><ellipse cx="129" cy="264" rx="11" ry="6.5" fill="' + PAW + '" stroke="' + DK + '" stroke-width="2.5"/></g>';
   }
+
+  // Plastische Wirkung ohne teure Filter: Licht von links oben, Schatten an den Raendern (nur Verlaeufe)
+  var HEAD_P = 'M126 62 C164 62 182 88 187 116 L172 123 C164 146 146 157 126 157 C106 157 88 146 80 123 L65 116 C70 88 88 62 126 62 Z', TORSO_P = 'M98 160 C93 186 93 208 97 228 L155 228 C159 208 159 186 154 160 C142 153 110 153 98 160 Z';
+  function volDefs(id) {
+    return '<radialGradient id="' + id + 'hl" cx="50%" cy="45%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="' + id + 'sh" cx="40%" cy="34%" r="72%"><stop offset=".52" stop-color="#4a1600" stop-opacity="0"/><stop offset="1" stop-color="#4a1600" stop-opacity=".32"/></radialGradient>' +
+      '<radialGradient id="' + id + 'tb" cx="38%" cy="30%" r="78%"><stop offset=".45" stop-color="#0b1d3a" stop-opacity="0"/><stop offset="1" stop-color="#0b1d3a" stop-opacity=".34"/></radialGradient>' +
+      '<clipPath id="' + id + 'hc"><path d="' + HEAD_P + '"/></clipPath><clipPath id="' + id + 'tc"><path d="' + TORSO_P + '"/></clipPath>';
+  }
+  function headVol(id) {
+    return '<g clip-path="url(#' + id + 'hc)" pointer-events="none"><path d="' + HEAD_P + '" fill="url(#' + id + 'sh)"/><ellipse cx="108" cy="84" rx="58" ry="40" fill="url(#' + id + 'hl)"/></g>';
+  }
+  function torsoVol(id) {
+    return '<g clip-path="url(#' + id + 'tc)" pointer-events="none"><path d="' + TORSO_P + '" fill="url(#' + id + 'tb)"/><ellipse cx="112" cy="170" rx="30" ry="18" fill="url(#' + id + 'hl)" opacity=".7"/></g>';
+  }
+  function vol(svgStr, id) {
+    // nach dem Rumpf und am Ende des Kopfes einhaengen, damit Licht und Schatten mitwackeln
+    return svgStr.replace('<defs>', '<defs>' + volDefs(id))
+      .replace(/(<path d="M99 221 H153")/, torsoVol(id) + '$1')
+      .replace(/(<g class="f-head">[\s\S]*?)(<g class="f-eyes">)/, function (m, a, b) { return a + headVol(id) + b; });
+  }
   function svg(pose) {
     var id = 'fx' + (++n);
     var defs = '<defs><radialGradient id="' + id + 'g" cx="40%" cy="35%"><stop offset="0" stop-color="#fff3b0"/><stop offset=".55" stop-color="#ffcf33"/><stop offset="1" stop-color="#e09a00"/></radialGradient></defs>';
@@ -94,5 +115,5 @@
     }
     return '<svg viewBox="0 0 252 290" class="fox">' + defs + shadow + '<g class="f-body">' + tail() + legs() + torso() + sleeve(97) + sleeve(155) + arms() + head() + '</g>' + extras(id) + '</svg>';
   }
-  window.Fox = { svg: svg };
+  window.Fox = { svg: function (pose) { var r = svg(pose), id = 'fx' + n; return vol(r, id); } };
 })();

@@ -1,5 +1,19 @@
 # Velora
 
+## Version 7.0: Release-Kandidat für Google Play
+
+Store-Veröffentlichung, Signatur, Play-Console-Angaben und offene Punkte: siehe **RELEASE.md**. Store-Texte und Grafiken: `store/`.
+Wichtigste Änderungen in 7.0:
+- Navigation: keine Neuberechnung mehr nach der Ankunft, ohne Netz nur eine Ansage statt Dauerschleife, Hinweis bei GPS-Ausfall,
+  Zeitlimit beim Routing, eigene Meldung „keine Fahrradroute gefunden“, Abbrechen beim Berechnen
+- Ansagen in Deutsch, Englisch, Französisch, Italienisch und Spanisch (Stimme folgt der App-Sprache)
+- Ohne Konto nutzbar, verständliche Fehlermeldungen bei der Anmeldung, Konto-Löschung wartet auf den Server, Web-Löschseite
+- Plus wird nicht mehr gratis freigeschaltet (Kauf über Google Play folgt), Server ignoriert Plus-Anfragen der App
+- Soul: „Antwort melden“ unter KI-Antworten (Google-Play-Regel für generative KI)
+- Velo, der Fuchs: plastischer (Licht und Schatten), reagiert kurz mit 3D-Drehung (Begrüßung, Route fertig, Fehler, Speichern), nie während der Navigation
+- Kategorien wirken weltweit, Startseite lädt Orte nach, ruhigere Karte, kleine Bildschirme und Tablets
+- Android: Absturz beim Vibrieren auf Android 7 behoben, Startbildschirm (Splash) für Android 12+, Symbol für einfarbige Themes
+
 Fahrrad-Navigation weltweit für Android (APK) und Windows (EXE), mit der KI Soul (echtes Sprachmodell direkt auf dem Gerät) und dem Maskottchen Velo (Fuchs).
 
 - Fertige Dateien: `dist/Velora.apk` (`./build.sh`, braucht Android SDK mit build-tools 36.1.0 und platform android-36, JDK 17+) und `dist/Velora.exe` (`./build-desktop.sh`)

@@ -30,7 +30,11 @@
     done: ['Los geht\'s', 'Let\'s go', 'C\'est parti', 'Andiamo', 'Vamos'], hi: ['Hallo', 'Hi', 'Salut', 'Ciao', 'Hola'],
     ready: ['Dein Konto ist bereit. Ich feiere ab jetzt jede Fahrt mit dir!', 'Your account is ready. From now on I celebrate every ride with you!', 'Ton compte est prêt. Je fête chaque sortie avec toi !', 'Il tuo account è pronto. Festeggio ogni giro con te!', 'Tu cuenta está lista. ¡Celebraré cada ruta contigo!'],
     noNet: ['Keine Verbindung zum Server. Bitte Internet prüfen.', 'No connection to the server. Please check your internet.', 'Pas de connexion au serveur.', 'Nessuna connessione al server.', 'Sin conexión con el servidor.'],
-    guest: ['Ohne Konto ansehen (Vorschau)', 'Look around without account (preview)', 'Voir sans compte (aperçu)', 'Guarda senza account (anteprima)', 'Ver sin cuenta (vista previa)'],
+    guest: ['Ohne Konto weiter', 'Continue without account', 'Continuer sans compte', 'Continua senza account', 'Continuar sin cuenta'],
+    guestNote: ['Alles Wichtige geht auch ohne Konto. Mit Konto werden Einstellungen gesichert und Soul antwortet öfter.', 'Everything important works without an account. With an account your settings are backed up and Soul answers more often.', 'L\'essentiel fonctionne sans compte. Avec un compte, tes réglages sont sauvegardés et Soul répond plus souvent.', 'Le funzioni principali vanno anche senza account. Con un account le impostazioni sono salvate e Soul risponde più spesso.', 'Lo importante funciona sin cuenta. Con cuenta se guardan tus ajustes y Soul responde más a menudo.'],
+    errName: ['Bitte gib deinen Namen ein (mindestens 2 Zeichen).', 'Please enter your name (at least 2 characters).', 'Entre ton nom (2 caractères min.).', 'Inserisci il tuo nome (almeno 2 caratteri).', 'Escribe tu nombre (mín. 2 caracteres).'],
+    errMail: ['Bitte gib eine gültige E-Mail-Adresse ein.', 'Please enter a valid email address.', 'Entre une adresse e-mail valide.', 'Inserisci un indirizzo e-mail valido.', 'Escribe un correo válido.'],
+    errPw: ['Das Passwort braucht mindestens 8 Zeichen.', 'The password needs at least 8 characters.', 'Le mot de passe doit avoir 8 caractères min.', 'La password deve avere almeno 8 caratteri.', 'La contraseña necesita 8 caracteres mín.'],
     termsReq: ['Bitte der Datenschutzerklärung zustimmen.', 'Please accept the privacy policy.', 'Merci d\'accepter la politique.', 'Accetta l\'informativa.', 'Acepta la política de privacidad.'],
     delQ: ['Konto wirklich löschen? Das kann man nicht rückgängig machen.', 'Really delete your account? This cannot be undone.', 'Supprimer vraiment le compte ?', 'Eliminare davvero l\'account?', '¿Eliminar la cuenta de verdad?'],
     wkq: ['Wie oft willst du pro Woche fahren?', 'How often do you want to ride per week?', 'Combien de fois par semaine veux-tu rouler ?', 'Quante volte a settimana vuoi pedalare?', '¿Cuántas veces por semana quieres ir en bici?'],
@@ -73,7 +77,7 @@
         '<input class="ob-in" id="obMail" type="email" autocomplete="email" inputmode="email" placeholder="' + tx('mail') + '" value="' + esc(F.email) + '">' +
         '<div class="ob-pw"><input class="ob-in" id="obPw" type="password" autocomplete="' + (reg ? 'new-password' : 'current-password') + '" placeholder="' + (reg ? tx('pw') : tx('pw1')) + '"><button id="obEye" aria-label="Passwort zeigen">' + V.svg('view', '#5f7184', 20) + '</button></div>' +
         '<div class="ob-err" id="obErr"></div><button class="ob-go" id="obNext">' + (reg ? tx('next') : tx('login')) + '</button>' +
-        (TESTER && !REAL ? '<button class="ob-link" id="obGuest">' + tx('guest') + '</button>' : '');
+        '<button class="ob-link" id="obGuest">' + tx('guest') + '</button><div class="ob-note">' + tx('guestNote') + ' <a href="' + BASE + '/datenschutz" target="_blank" rel="noopener">' + tx('readp') + '</a></div>';
     } else if (step === 2) {
       h = '<h1 style="margin-top:6px">' + tx('country') + '</h1><input class="ob-in" id="obQ" placeholder="' + tx('search') + '"><div class="ob-list" id="obList"></div><button class="ob-go" id="obNext">' + tx('next') + '</button>';
     } else if (step === 3) {
@@ -108,9 +112,9 @@
       $('obNext').onclick = function () {
         keep();
         if (F.mode === 'new') {
-          if (F.name.length < 2) return err(tx('name'));
-          if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(F.email)) return err(tx('mail'));
-          if (F.pw.length < 8) return err(tx('pw'));
+          if (F.name.length < 2) return err(tx('errName'));
+          if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(F.email)) return err(tx('errMail'));
+          if (F.pw.length < 8) return err(tx('errPw'));
           onboard(2); return;
         }
         busy(true);
@@ -155,7 +159,7 @@
     var el = $('onb'); if (!el) return;
     el.classList.add('out'); setTimeout(function () { el.remove(); }, 350);
     V.drawHome();
-    if (ACC && !V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 600);
+    if (!V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 600);
   }
 
   // ---------- Konto anwenden und mit dem Server abgleichen ----------
@@ -215,7 +219,7 @@
     if (u) {
       h = '<div class="acc-card"><div class="acc-av">' + esc((u.name || '?').slice(0, 1).toUpperCase()) + '</div><div class="grow"><b>' + esc(u.name) + '</b><span>' + esc(u.email) + '</span></div><span class="fl big">' + (u.country ? flag(u.country) : '') + '</span></div>';
     } else {
-      h = '<div class="acc-card" id="accLogin"><div class="acc-av">?</div><div class="grow"><b>' + tx('acct') + '</b><span>' + tx('login') + '</span></div></div>';
+      h = '<div class="acc-card" id="accLogin"><div class="acc-av"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div><div class="grow"><b>' + tx('acct') + '</b><span>' + tx('login') + '</span></div></div>';
     }
     h += '<h3>' + I.t('Sprache') + '</h3><div class="hscroll" style="flex-wrap:wrap;overflow:visible">' + I.LANGS.map(function (l) { return '<button class="chip' + (I.lang === l[0] ? ' on' : '') + '" data-lang="' + l[0] + '"><span class="fl">' + flag(l[2]) + '</span>' + l[1] + '</button>'; }).join('') + '</div>';
     if (u) h += '<div class="linkrow"><button id="accCountry"><span class="fl">' + (u.country ? flag(u.country) : '') + '</span>' + esc(u.country ? cname(u.country) : I.t('Land')) + '</button><button id="accOut">' + I.t('Abmelden') + '</button></div>' +
@@ -250,12 +254,19 @@
     m.innerHTML = '<div class="cbox mbox"><div style="display:flex;gap:12px;align-items:center">' + mascot('sad', 80) + '<div class="grow"><h2>' + I.t('Konto löschen') + '</h2><div class="sub">' + tx('delQ') + '</div></div></div><div class="btns"><button class="go sec" id="dNo">' + I.t('Abbrechen') + '</button><button class="go red" id="dYes">' + I.t('Löschen') + '</button></div></div>';
     document.body.appendChild(m);
     $('dNo').onclick = function () { m.remove(); };
-    $('dYes').onclick = function () { api('/me', 'DELETE').then(function () {}).catch(function () {}); ACC = null; save(); m.remove(); onboard(0); };
+    // Erst nach Bestaetigung vom Server abmelden, sonst bliebe das Konto unbemerkt bestehen
+    $('dYes').onclick = function () {
+      var b = $('dYes'); b.disabled = true; b.textContent = I.t('Wird gelöscht ...');
+      api('/me', 'DELETE').then(function (j) {
+        if (!j.ok && j._s !== 401) throw new Error('fail');
+        ACC = null; save(); V.store('guest', 0); m.remove(); V.toast(I.t('Dein Konto wurde gelöscht.')); onboard(0);
+      }).catch(function () { b.disabled = false; b.textContent = I.t('Löschen'); V.toast(tx('noNet')); });
+    };
   }
 
   // ---------- Start ----------
   I.set(V.load('lang', null) || (ACC && ACC.user && ACC.user.lang) || F.lang);
   if (ACC) { applyUser(); refresh(); sendFeats(); if (!V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 1500); }
-  else if (!(TESTER && !REAL && V.load('guest', 0))) setTimeout(function () { onboard(0); }, TESTER ? 950 : 1150);
+  else if (!V.load('guest', 0)) setTimeout(function () { onboard(0); }, TESTER ? 950 : 1150);
   V.drawHome();
 })();

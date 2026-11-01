@@ -5,7 +5,7 @@ SDK=${ANDROID_HOME:-/opt/android-sdk}
 BT=$SDK/build-tools/36.1.0
 JAR=$SDK/platforms/android-36/android.jar
 cd "$(dirname "$0")"
-rm -rf build && mkdir -p build/classes build/dex
+rm -rf build/classes build/dex build/gen build/res.zip build/*.apk && mkdir -p build/classes build/dex
 $BT/aapt2 compile --dir app/res -o build/res.zip
 mkdir -p build/gen
 $BT/aapt2 link -o build/base.apk -I $JAR --manifest app/AndroidManifest.xml -A app/assets build/res.zip --java build/gen

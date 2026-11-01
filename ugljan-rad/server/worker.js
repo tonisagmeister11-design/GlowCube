@@ -1,6 +1,6 @@
 import TESTER from './public/index.html';
 import { accounts, userFromReq, creditsLeft, addCredits } from './accounts.js';
-import { soul, SoulBudget } from './soul.js';
+import { soul, soulReport, SoulBudget } from './soul.js';
 export { SoulBudget };
 // Velora KI-Server ("Juno") auf Cloudflare Workers.
 // Die App schickt den Chatverlauf und ihre Live-Daten (Standort, Tempo, Höhe, Route, Navigation ...) an POST /chat.
@@ -244,9 +244,10 @@ export default {
     const url = new URL(req.url);
     if (url.pathname === '/live' || url.pathname.startsWith('/live/') || url.pathname.startsWith('/l/')) return live(req, env, url);
     if (url.pathname === '/soul') return soul(req, env, ctx);
+    if (url.pathname === '/soul/report') return soulReport(req, env);
     // Alter Juno-Weg (teures Modell, ohne Kostenbremse): abgeschaltet, die App nutzt /soul
     if (url.pathname === '/chat' || url.pathname === '/ki') return json({ fehler: 'Bitte Velora aktualisieren.' }, 410);
-    if (/^\/(auth|me|stats|admin|datenschutz)(\/|$)/.test(url.pathname)) { const r = await accounts(req, env, url); if (r) return r; }
+    if (/^\/(auth|me|stats|admin|datenschutz|konto-loeschen)(\/|$)/.test(url.pathname)) { const r = await accounts(req, env, url); if (r) return r; }
     if (req.method !== 'POST' || (url.pathname !== '/chat' && url.pathname !== '/ki' && url.pathname !== '/werkzeug')) return json({ fehler: 'Nicht gefunden' }, 404);
     if (req.headers.get('X-App-Id') !== env.APP_ID) return json({ fehler: 'Nicht erlaubt' }, 403);
     // Werkzeug direkt testen (nur mit App-Kennung)

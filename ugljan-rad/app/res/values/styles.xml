@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="splash_bg">#F3F6FA</color>
+    <!-- Helles Theme ohne Leiste; der Hintergrund passt zum Startbild der App, damit beim Start nichts aufblitzt -->
+    <style name="Velora" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_bg</item>
+        <item name="android:statusBarColor">#FFFFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFFFF</item>
+    </style>
+</resources>

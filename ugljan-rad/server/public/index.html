@@ -433,6 +433,8 @@ body.fs #guide{top:46px}
 .px-price button.on{border-color:transparent;background:linear-gradient(#1a1735,#1a1735) padding-box,conic-gradient(from var(--pa),#ff3b6b,#ffe14d,#2ee59d,#2fb5ff,#7c5cff,#ff3bd4,#ff3b6b) border-box;animation:pxAng 3s linear infinite;box-shadow:0 0 28px rgba(124,92,255,.45);transform:scale(1.03)}
 .px-price em{position:absolute;top:-11px;left:50%;transform:translateX(-50%);white-space:nowrap;font-style:normal;font-size:11px;font-weight:800;padding:3px 9px;border-radius:9px;color:#1a1735;background:linear-gradient(90deg,#ffe14d,#2ee59d);box-shadow:0 2px 10px rgba(46,229,157,.5)}
 .px-cta{position:relative;width:100%;height:60px;border:0;border-radius:20px;font-size:19px;font-weight:800;color:#fff;letter-spacing:.3px;overflow:hidden;background:linear-gradient(90deg,#ff3b6b,#ff9f1c,#ffe14d,#2ee59d,#2fb5ff,#7c5cff,#ff3bd4,#ff3b6b);background-size:300% 100%;animation:glide 3s linear infinite,ctaPulse 1.8s ease-in-out infinite;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+.px-cta.soon{filter:saturate(.35) brightness(.92);cursor:default;animation:none}
+.px-cta.soon span{opacity:.9}
 .px-cta span{position:relative;z-index:2}
 .px-cta:after{content:"";position:absolute;top:0;left:-50%;width:35%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);animation:sweep 2.2s ease-in-out infinite}
 @keyframes ctaPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.0),0 8px 30px rgba(124,92,255,.5)}50%{box-shadow:0 0 0 8px rgba(255,255,255,.08),0 8px 40px rgba(255,59,212,.6)}}
@@ -458,6 +460,8 @@ body.night #onb{background:radial-gradient(circle at 50% 0%,#1d2a37,#0f1720 60%)
 .ob-go{margin-top:auto;height:56px;border:0;border-radius:18px;background:var(--lime);color:var(--ink);font-size:18px;font-weight:800;box-shadow:0 4px 0 rgba(13,43,62,.15)}
 .ob-go:active{transform:translateY(2px)}.ob-go.busy{opacity:.6}
 .ob-link{border:0;background:none;color:var(--mute);margin-top:12px;font-size:14px;text-decoration:underline}
+.ob-note{color:var(--mute);font-size:12.5px;line-height:1.45;text-align:center;margin:6px 8px 0}
+.ob-note a{color:inherit}
 .ob-seg{margin:6px 0 12px}
 .ob-in{width:100%;height:52px;border-radius:14px;border:2px solid var(--line);background:var(--panel);color:var(--text);padding:0 14px;font-size:16px;margin-bottom:10px;outline:none;font-family:inherit}
 .ob-in:focus{border-color:var(--lime)}
@@ -500,6 +504,51 @@ body.night .wkpick button.on{background:var(--panel2)}
 @keyframes sllmPulse{50%{transform:scale(.6)}}
 .msg.ai .caret{display:inline-block;width:7px;height:15px;margin-left:2px;vertical-align:-2px;border-radius:2px;background:#0fae73;animation:sllmBlink .8s steps(2) infinite}
 @keyframes sllmBlink{50%{opacity:0}}
+
+/* GPS-Ausfall waehrend der Fahrt */
+#gpslost{position:absolute;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 112px);z-index:1001;display:flex;align-items:center;gap:10px;
+  background:#fff7e6;border:1px solid #f5c26b;color:#7a4300;border-radius:14px;padding:9px 12px;font-size:13.5px;font-weight:600;box-shadow:var(--sh1);animation:gpslIn .3s var(--ease)}
+body.night #gpslost{background:#3a2a10;border-color:#7a5418;color:#ffd9a0}
+@keyframes gpslIn{from{opacity:0;transform:translateY(-8px)}}
+
+/* Ladeanzeige beim Routenplanen: radelnder Fuchs und fliessender Balken */
+.ldg{display:flex;align-items:center;gap:12px;min-height:96px}
+.ldg-fox{flex:none;width:92px;height:92px;animation:ldgBob 1.1s ease-in-out infinite}
+.ldg-fox svg{width:100%;height:100%}
+.ldbar{position:relative;height:6px;border-radius:3px;background:var(--panel3);overflow:hidden;margin-top:12px}
+.ldbar i{position:absolute;top:0;bottom:0;width:38%;border-radius:3px;background:linear-gradient(90deg,transparent,var(--lime),transparent);animation:ldbarRun 1.15s var(--ease) infinite}
+@keyframes ldbarRun{from{transform:translateX(-110%)}to{transform:translateX(280%)}}
+@keyframes ldgBob{50%{transform:translateY(-3px) rotate(-1.5deg)}}
+@media (prefers-reduced-motion:reduce){.ldg-fox,.ldbar i{animation:none}.ldbar i{width:100%;opacity:.5}}
+
+/* Velo reagiert: kurzer Auftritt mit 3D-Drehung (nur transform/opacity, laeuft auch auf schwachen Geraeten fluessig) */
+#foxpop{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 108px);z-index:1500;display:flex;align-items:flex-end;gap:4px;perspective:700px;max-width:calc(100vw - 80px);cursor:pointer}
+#foxpop .fp-fox{flex:none;transform-origin:50% 92%;animation:fpIn .6s var(--spring) both,fpSway 2.6s ease-in-out .6s infinite;filter:drop-shadow(0 6px 8px rgba(13,43,62,.18))}
+#foxpop .fp-bub{position:relative;margin-bottom:22px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px 16px 16px 5px;padding:9px 12px;font-size:14px;font-weight:600;line-height:1.35;box-shadow:var(--sh2);animation:fpBub .45s .18s var(--spring) both}
+#foxpop.out{animation:fpOut .3s ease-in forwards}
+@keyframes fpIn{from{opacity:0;transform:translateY(18px) rotateY(-80deg) scale(.55)}60%{opacity:1}}
+@keyframes fpSway{0%,100%{transform:rotateY(0) translateY(0)}50%{transform:rotateY(16deg) translateY(-3px)}}
+@keyframes fpBub{from{opacity:0;transform:translateX(-10px) scale(.88)}}
+@keyframes fpOut{to{opacity:0;transform:translateY(-12px) scale(.92)}}
+@media (prefers-reduced-motion:reduce){#foxpop .fp-fox,#foxpop .fp-bub{animation:none}}
+
+/* Kleine Bildschirme (unter 360 px Breite): Suchfeld bekommt Platz, Kacheln bleiben lesbar */
+@media (max-width:359px){
+  #top{gap:6px;left:8px;right:8px}
+  #top .btn{min-width:42px;width:42px;height:44px;border-radius:13px}
+  #search{height:44px;padding:0 34px 0 38px;font-size:15px}
+  .sbox .si{left:12px;top:12px}
+  .stat b{font-size:18px}
+  .stat span{font-size:10px;letter-spacing:.3px}
+}
+/* Tablets: Blatt nicht ueber die ganze Breite ziehen */
+@media (min-width:820px){
+  #sheet{max-width:560px;left:16px;right:auto;border-radius:22px 22px 0 0}
+}
+
+/* KI-Antwort melden: dezent unter Soul-Antworten */
+.msg.ai .jrep{display:block;margin-top:6px;border:0;background:none;padding:2px 0;color:var(--mute);font-size:12px;text-decoration:underline;text-underline-offset:2px}
+.msg.ai .jrep:disabled{text-decoration:none;opacity:.8}
 </style>
 <meta name="theme-color" content="#ffffff">
 <style>
@@ -697,7 +746,7 @@ a{color:var(--acc)}
 <div id="top">
   <div class="sbox">
     <svg class="si" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#93a0ad" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
-    <input id="search" placeholder="Ort, Strand, Restaurant, Straße" autocomplete="off" spellcheck="false">
+    <input id="search" placeholder="Ort, Adresse oder Restaurant" autocomplete="off" spellcheck="false">
     <button id="clr"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </div>
   <button class="btn" id="btnAi" title="Soul fragen"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0c9a68" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5l2.2 6.3 6.3 2.2-6.3 2.2L12 19.5l-2.2-6.3L3.5 11l6.3-2.2z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9z"/></svg></button>
@@ -842,7 +891,7 @@ return maplibregl$1;
   });
   addEventListener('load', function () {
     var bar = document.createElement('div');
-    bar.textContent = window.__REAL_KI ? 'Testversion: echte Juno-KI' : 'Chat-Vorschau: Demo-Gebiet offline, Juno mit Beispielantworten';
+    bar.textContent = window.__REAL_KI ? 'Testversion: echte Soul-KI' : 'Chat-Vorschau: Demo-Gebiet offline, Soul mit Beispielantworten';
     bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(6px + env(safe-area-inset-bottom));z-index:9999;background:#0d2b3e;color:#fff;font:600 11px system-ui;padding:4px 10px;border-radius:10px;opacity:.85;pointer-events:none;white-space:nowrap';
     document.body.appendChild(bar);
     setTimeout(function () { bar.remove(); }, 7000);
@@ -859,7 +908,7 @@ return maplibregl$1;
   var LANGS = [['de', 'Deutsch', 'DE'], ['en', 'English', 'GB'], ['fr', 'Français', 'FR'], ['it', 'Italiano', 'IT'], ['es', 'Español', 'ES']];
   // [Deutsch, Englisch, Franzoesisch, Italienisch, Spanisch]
   var T = [
-    ['Ort, Strand, Restaurant, Straße', 'Place, beach, restaurant, street', 'Lieu, plage, restaurant, rue', 'Luogo, spiaggia, ristorante, via', 'Lugar, playa, restaurante, calle'],
+    ['Ort, Adresse oder Restaurant', 'Place, address or restaurant', 'Lieu, adresse ou restaurant', 'Luogo, indirizzo o ristorante', 'Lugar, dirección o restaurante'],
     ['Essen', 'Food', 'Manger', 'Cibo', 'Comida'], ['Cafe und Bar', 'Café and bar', 'Café et bar', 'Caffè e bar', 'Café y bar'], ['Strände', 'Beaches', 'Plages', 'Spiagge', 'Playas'],
     ['Aussicht', 'Viewpoints', 'Points de vue', 'Panorami', 'Miradores'], ['Wasser und WC', 'Water and WC', 'Eau et WC', 'Acqua e WC', 'Agua y WC'], ['Einkaufen', 'Shopping', 'Courses', 'Negozi', 'Compras'],
     ['Rad', 'Bike', 'Vélo', 'Bici', 'Bici'], ['Unterkunft', 'Stay', 'Hébergement', 'Alloggio', 'Alojamiento'], ['Fähre, Hafen, Bus', 'Ferry, port, bus', 'Ferry, port, bus', 'Traghetto, porto, bus', 'Ferry, puerto, bus'],
@@ -906,6 +955,27 @@ return maplibregl$1;
     ['Klüger und natürlicher, braucht ein starkes Gerät. 2,5 GB', 'Smarter and more natural, needs a strong device. 2.5 GB', 'Plus intelligent et naturel, demande un appareil puissant. 2,5 Go', 'Più intelligente e naturale, serve un dispositivo potente. 2,5 GB', 'Más listo y natural, necesita un dispositivo potente. 2,5 GB'],
     ['Offline-Modus', 'Offline mode', 'Mode hors ligne', 'Modalità offline', 'Modo sin conexión'], ['Schließen', 'Close', 'Fermer', 'Chiudi', 'Cerrar'],
     ['Soul antwortet normalerweise über das Internet. Für unterwegs ohne Netz kannst du zusätzlich ein Sprachmodell auf dein Gerät laden. Das braucht viel Speicher und ein starkes Gerät. WLAN empfohlen.', 'Soul normally answers over the internet. For rides without signal you can also download a language model to your device. It needs a lot of storage and a strong device. Wi-Fi recommended.', 'Soul répond normalement via internet. Pour rouler sans réseau, tu peux aussi télécharger un modèle sur ton appareil. Il faut beaucoup d\'espace et un appareil puissant. Wi-Fi conseillé.', 'Soul di solito risponde via internet. Per i giri senza rete puoi scaricare anche un modello sul dispositivo. Serve molto spazio e un dispositivo potente. Consigliato il Wi-Fi.', 'Soul normalmente responde por internet. Para salir sin cobertura puedes descargar también un modelo en tu dispositivo. Necesita mucho espacio y un dispositivo potente. Se recomienda Wi-Fi.'],
+    ['Für dieses Ziel wurde keine Fahrradroute gefunden. Wähle einen Punkt näher an einer Straße oder einem Weg.', 'No bike route was found for this destination. Choose a point closer to a road or path.', 'Aucun itinéraire vélo trouvé pour cette destination. Choisis un point plus proche d\'une route ou d\'un chemin.', 'Nessun percorso in bici trovato per questa destinazione. Scegli un punto più vicino a una strada o un sentiero.', 'No se encontró ruta en bici para este destino. Elige un punto más cerca de una calle o camino.'],
+    ['Für die Route braucht die App Internet. Bitte mobile Daten einschalten.', 'The app needs internet for the route. Please turn on mobile data.', 'L\'app a besoin d\'internet pour l\'itinéraire. Active les données mobiles.', 'Per il percorso serve internet. Attiva i dati mobili.', 'La app necesita internet para la ruta. Activa los datos móviles.'],
+    ['GPS-Signal verloren. Die letzte bekannte Position wird angezeigt.', 'GPS signal lost. Showing the last known position.', 'Signal GPS perdu. Dernière position connue affichée.', 'Segnale GPS perso. Viene mostrata l\'ultima posizione nota.', 'Señal GPS perdida. Se muestra la última posición conocida.'],
+    ['GPS wieder da', 'GPS is back', 'GPS retrouvé', 'GPS di nuovo attivo', 'GPS recuperado'],
+    ['Keine Verbindung: Neue Route folgt, sobald Internet da ist. Die alte Route bleibt sichtbar.', 'No connection: a new route follows once you are online. The old route stays visible.', 'Pas de connexion : nouvel itinéraire dès le retour d\'internet. L\'ancien reste affiché.', 'Nessuna connessione: il nuovo percorso arriva appena c\'è internet. Quello vecchio resta visibile.', 'Sin conexión: la nueva ruta llegará cuando haya internet. La anterior sigue visible.'],
+    ['Neue Route', 'New route', 'Nouvel itinéraire', 'Nuovo percorso', 'Nueva ruta'],
+    ['Route wird berechnet ...', 'Calculating route ...', 'Calcul de l\'itinéraire ...', 'Calcolo del percorso ...', 'Calculando la ruta ...'],
+    ['Suche Restaurants und Cafés in der Nähe ...', 'Looking for restaurants and cafés nearby ...', 'Recherche de restaurants et cafés à proximité ...', 'Cerco ristoranti e caffè nei dintorni ...', 'Buscando restaurantes y cafés cerca ...'],
+    ['Ohne Internet können keine Orte geladen werden.', 'Places cannot be loaded without internet.', 'Impossible de charger les lieux sans internet.', 'Senza internet non si possono caricare i luoghi.', 'Sin internet no se pueden cargar lugares.'],
+    ['Hier in der Nähe ist nichts eingetragen. Tippe auf „In der Nähe“ für mehr.', 'Nothing listed nearby. Tap “Nearby” for more.', 'Rien à proximité. Touche « À proximité » pour plus.', 'Niente nei dintorni. Tocca «Nei dintorni» per altro.', 'Nada cerca. Toca «Cerca» para más.'],
+    ['Route gespeichert! Du findest sie unter „Meine Routen“.', 'Route saved! You can find it under “My routes”.', 'Itinéraire enregistré ! Retrouve-le dans « Mes itinéraires ».', 'Percorso salvato! Lo trovi in «I miei percorsi».', '¡Ruta guardada! La encontrarás en «Mis rutas».'],
+    ['Bald über Google Play', 'Coming soon on Google Play', 'Bientôt sur Google Play', 'Presto su Google Play', 'Pronto en Google Play'],
+    ['Velora Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.', 'Velora Plus will soon be available on Google Play. Everything else is free.', 'Velora Plus sera bientôt disponible sur Google Play. Tout le reste est gratuit.', 'Velora Plus sarà presto acquistabile su Google Play. Tutto il resto è gratis.', 'Velora Plus pronto estará en Google Play. Todo lo demás es gratis.'],
+    ['Wird gelöscht ...', 'Deleting ...', 'Suppression ...', 'Eliminazione ...', 'Eliminando ...'],
+    ['Dein Konto wurde gelöscht.', 'Your account has been deleted.', 'Ton compte a été supprimé.', 'Il tuo account è stato eliminato.', 'Tu cuenta ha sido eliminada.'],
+    ['Hier bin ich', 'I am here', 'Je suis ici', 'Sono qui', 'Estoy aquí'],
+    ['Standort gesetzt', 'Location set', 'Position définie', 'Posizione impostata', 'Ubicación fijada'],
+    ['Antwort melden', 'Report answer', 'Signaler la réponse', 'Segnala risposta', 'Denunciar respuesta'],
+    ['Gemeldet', 'Reported', 'Signalé', 'Segnalata', 'Denunciada'],
+    ['Danke! Die Antwort wird geprüft.', 'Thanks! The answer will be reviewed.', 'Merci ! La réponse va être vérifiée.', 'Grazie! La risposta verrà controllata.', '¡Gracias! Revisaremos la respuesta.'],
+    ['Melden geht gerade nicht. Bitte Internet prüfen.', 'Reporting is not possible right now. Please check your internet.', 'Signalement impossible pour le moment. Vérifie internet.', 'Segnalazione non possibile ora. Controlla internet.', 'No se puede denunciar ahora. Revisa internet.'],
     ['Soul denkt nach', 'Soul is thinking', 'Soul réfléchit', 'Soul sta pensando', 'Soul está pensando'], ['Schaut sich die Gegend an', 'Looking at the area', 'Regarde les environs', 'Guarda la zona', 'Mira la zona'], ['Prüft echte Orte', 'Checking real places', 'Vérifie les lieux', 'Controlla i luoghi', 'Comprueba lugares'], ['Gleich fertig', 'Almost done', 'Presque fini', 'Quasi fatto', 'Casi listo'],
     ['Mehr mit Plus', 'More with Plus', 'Plus avec Plus', 'Di più con Plus', 'Más con Plus'], ['Plus freischalten', 'Unlock Plus', 'Débloquer Plus', 'Sblocca Plus', 'Desbloquear Plus'], ['pro Monat', 'per month', 'par mois', 'al mese', 'al mes'], ['pro Jahr', 'per year', 'par an', 'all\'anno', 'al año'],
     ['Wie willst du fahren?', 'How do you want to ride?', 'Comment veux-tu rouler ?', 'Come vuoi pedalare?', '¿Cómo quieres ir?'], ['Konto', 'Account', 'Compte', 'Account', 'Cuenta'], ['Sprache', 'Language', 'Langue', 'Lingua', 'Idioma'], ['Land', 'Country', 'Pays', 'Paese', 'País'],
@@ -1027,6 +1097,27 @@ return maplibregl$1;
   function rideLeg(cls) {
     return '<g class="' + cls + '"><path d="M116 214 L136 236 L128 262" stroke="' + DK + '" stroke-width="17" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M116 214 L136 236 L128 262" stroke="' + O + '" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><ellipse cx="129" cy="264" rx="11" ry="6.5" fill="' + PAW + '" stroke="' + DK + '" stroke-width="2.5"/></g>';
   }
+
+  // Plastische Wirkung ohne teure Filter: Licht von links oben, Schatten an den Raendern (nur Verlaeufe)
+  var HEAD_P = 'M126 62 C164 62 182 88 187 116 L172 123 C164 146 146 157 126 157 C106 157 88 146 80 123 L65 116 C70 88 88 62 126 62 Z', TORSO_P = 'M98 160 C93 186 93 208 97 228 L155 228 C159 208 159 186 154 160 C142 153 110 153 98 160 Z';
+  function volDefs(id) {
+    return '<radialGradient id="' + id + 'hl" cx="50%" cy="45%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".42"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="' + id + 'sh" cx="40%" cy="34%" r="72%"><stop offset=".52" stop-color="#4a1600" stop-opacity="0"/><stop offset="1" stop-color="#4a1600" stop-opacity=".32"/></radialGradient>' +
+      '<radialGradient id="' + id + 'tb" cx="38%" cy="30%" r="78%"><stop offset=".45" stop-color="#0b1d3a" stop-opacity="0"/><stop offset="1" stop-color="#0b1d3a" stop-opacity=".34"/></radialGradient>' +
+      '<clipPath id="' + id + 'hc"><path d="' + HEAD_P + '"/></clipPath><clipPath id="' + id + 'tc"><path d="' + TORSO_P + '"/></clipPath>';
+  }
+  function headVol(id) {
+    return '<g clip-path="url(#' + id + 'hc)" pointer-events="none"><path d="' + HEAD_P + '" fill="url(#' + id + 'sh)"/><ellipse cx="108" cy="84" rx="58" ry="40" fill="url(#' + id + 'hl)"/></g>';
+  }
+  function torsoVol(id) {
+    return '<g clip-path="url(#' + id + 'tc)" pointer-events="none"><path d="' + TORSO_P + '" fill="url(#' + id + 'tb)"/><ellipse cx="112" cy="170" rx="30" ry="18" fill="url(#' + id + 'hl)" opacity=".7"/></g>';
+  }
+  function vol(svgStr, id) {
+    // nach dem Rumpf und am Ende des Kopfes einhaengen, damit Licht und Schatten mitwackeln
+    return svgStr.replace('<defs>', '<defs>' + volDefs(id))
+      .replace(/(<path d="M99 221 H153")/, torsoVol(id) + '$1')
+      .replace(/(<g class="f-head">[\s\S]*?)(<g class="f-eyes">)/, function (m, a, b) { return a + headVol(id) + b; });
+  }
   function svg(pose) {
     var id = 'fx' + (++n);
     var defs = '<defs><radialGradient id="' + id + 'g" cx="40%" cy="35%"><stop offset="0" stop-color="#fff3b0"/><stop offset=".55" stop-color="#ffcf33"/><stop offset="1" stop-color="#e09a00"/></radialGradient></defs>';
@@ -1039,7 +1130,7 @@ return maplibregl$1;
     }
     return '<svg viewBox="0 0 252 290" class="fox">' + defs + shadow + '<g class="f-body">' + tail() + legs() + torso() + sleeve(97) + sleeve(155) + arms() + head() + '</g>' + extras(id) + '</svg>';
   }
-  window.Fox = { svg: svg };
+  window.Fox = { svg: function (pose) { var r = svg(pose), id = 'fx' + n; return vol(r, id); } };
 })();
 </script>
 <script>/* Velora: Fahrrad-Navigation weltweit mit Höhen- und Fahrphysik, Touren und der KI Soul */
@@ -1378,9 +1469,17 @@ return maplibregl$1;
   function fetchExt(pts, style, profile) {
     var url = 'https://brouter.de/brouter?lonlats=' + pts.map(function (p) { return p.lon.toFixed(6) + ',' + p.lat.toFixed(6); }).join('|') +
       '&profile=' + (profile || brProfile(style)) + '&alternativeidx=0&format=geojson&timode=2';
-    return fetch(url).then(function (res) {
-      return res.text().then(function (t) { if (!res.ok) throw new Error(t || res.status); return buildExt(JSON.parse(t), pts); });
-    });
+    // Zeitlimit, damit bei schlechtem Netz nichts ewig "laedt"; Serverantwort ohne Route != kein Internet
+    var ctl = window.AbortController ? new AbortController() : null, to = setTimeout(function () { if (ctl) ctl.abort(); }, 25000);
+    return fetch(url, ctl ? { signal: ctl.signal } : undefined).then(function (res) {
+      return res.text().then(function (t) {
+        clearTimeout(to);
+        if (!res.ok) { var e = new Error(t || res.status); e.route = true; throw e; }
+        var j; try { j = JSON.parse(t); } catch (x) { var e2 = new Error('bad'); e2.route = true; throw e2; }
+        if (!j.features || !j.features.length || !j.features[0].geometry.coordinates.length) { var e3 = new Error('empty'); e3.route = true; throw e3; }
+        return buildExt(j, pts);
+      });
+    }, function (e) { clearTimeout(to); throw e; });
   }
   function buildExt(j, pts) {
     var f = j.features[0], co = f.geometry.coordinates, p = f.properties;
@@ -1560,7 +1659,7 @@ return maplibregl$1;
       { id: 'o-main', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'class'], 'motorway', '#e0533f', '#f28c5b'], 'line-width': wz(4) } },
       { id: 'o-cycleway', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 10, filter: ['all', ['==', ['get', 'class'], 'path'], ['==', ['get', 'subclass'], 'cycleway']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0fae73', 'line-width': wz(3.4) } },
       { id: 'o-routes', type: 'raster', source: 'wmt', minzoom: 6, paint: { 'raster-opacity': 0.6, 'raster-fade-duration': 0 } },
-      { id: 'o-poi', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['restaurant', 'fast_food', 'cafe', 'ice_cream', 'bakery', 'bar', 'beer', 'drinking_water', 'toilets', 'bicycle', 'attraction', 'castle', 'monument', 'museum', 'grocery', 'pharmacy', 'hospital', 'ferry_terminal', 'lodging', 'campsite']]], layout: { 'icon-image': ['match', ['get', 'class'], 'restaurant', 'poi-food', 'fast_food', 'poi-snack', 'cafe', 'poi-cafe', 'ice_cream', 'poi-cafe', 'bakery', 'poi-cafe', 'bar', 'poi-bar', 'beer', 'poi-bar', 'drinking_water', 'poi-water', 'toilets', 'poi-wc', 'bicycle', 'poi-bike', 'grocery', 'poi-shop', 'pharmacy', 'poi-health', 'hospital', 'poi-health', 'ferry_terminal', 'poi-ferry', 'lodging', 'poi-stay', 'campsite', 'poi-stay', 'poi-sight'], 'icon-allow-overlap': false } },
+      { id: 'o-poi', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['restaurant', 'fast_food', 'cafe', 'ice_cream', 'bakery', 'bar', 'beer', 'drinking_water', 'toilets', 'bicycle', 'attraction', 'castle', 'monument', 'museum', 'grocery', 'pharmacy', 'hospital', 'ferry_terminal', 'lodging', 'campsite']]], layout: { 'icon-image': ['match', ['get', 'class'], 'restaurant', 'poi-food', 'fast_food', 'poi-snack', 'cafe', 'poi-cafe', 'ice_cream', 'poi-cafe', 'bakery', 'poi-cafe', 'bar', 'poi-bar', 'beer', 'poi-bar', 'drinking_water', 'poi-water', 'toilets', 'poi-wc', 'bicycle', 'poi-bike', 'grocery', 'poi-shop', 'pharmacy', 'poi-health', 'hospital', 'poi-health', 'ferry_terminal', 'poi-ferry', 'lodging', 'poi-stay', 'campsite', 'poi-stay', 'poi-sight'], 'icon-allow-overlap': false, 'icon-padding': 9, 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.82, 17, 1] } },
       { id: 'o-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11, layout: { 'text-field': ['concat', ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], ['case', ['has', 'ele'], ['concat', ' ', ['to-string', ['get', 'ele']], ' m'], '']], 'text-font': ['NotoSansMedium'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#6b4f2a' }) },
       { id: 'o-water-name', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 4, layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansItalic'], 'text-size': 12, 'text-letter-spacing': 0.1 }, paint: L_({ 'text-color': '#2a6f9e' }) },
       { id: 'o-place-small', type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['village', 'hamlet', 'suburb', 'neighbourhood', 'isolated_dwelling', 'quarter']]], layout: { 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], 'text-font': ['NotoSansMedium'], 'text-size': 11.5, 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: L_({ 'text-color': '#3b4d5e' }) },
@@ -1781,9 +1880,13 @@ return maplibregl$1;
     { id: 'stay', n: 'Unterkunft', cats: ['stay'] },
     { id: 'more', n: 'Fähre, Hafen, Bus', cats: ['ferry', 'port', 'bus', 'fuel', 'parking'] }
   ];
-  var active = load('filters', { food: 1, beach: 1, view: 1, water: 1, bike: 1 });
+  var active = load('filters', { food: 1, cafe: 1, beach: 1, view: 1, water: 1, bike: 1 });
+  // Klassen der weltweiten Karte (OpenFreeMap) je Kategorie, damit die Knoepfe ueberall wirken
+  var OFMC = { food: ['restaurant', 'fast_food'], cafe: ['cafe', 'ice_cream', 'bakery', 'bar', 'beer'], view: ['attraction', 'castle', 'monument', 'museum'],
+    water: ['drinking_water', 'toilets'], shop: ['grocery', 'pharmacy', 'hospital'], bike: ['bicycle'], stay: ['lodging', 'campsite'], more: ['ferry_terminal'] };
+  function chipList() { var r = hereRef(); return FILTERS.filter(function (f) { return f.id !== 'beach' || nearIsl(r); }); }
   function drawChips() {
-    $('chips').innerHTML = FILTERS.map(function (f) { return '<button class="chip' + (active[f.id] ? ' on' : '') + '" data-f="' + f.id + '">' + esc(f.n) + '</button>'; }).join('');
+    $('chips').innerHTML = chipList().map(function (f) { return '<button class="chip' + (active[f.id] ? ' on' : '') + '" data-f="' + f.id + '">' + esc(f.n) + '</button>'; }).join('');
     updPois();
   }
   function updPois() {
@@ -1792,6 +1895,8 @@ return maplibregl$1;
     FILTERS.forEach(function (f) { if (active[f.id]) cats = cats.concat(f.cats); });
     map.setFilter('pois', ['all', ['in', ['get', 'cat'], ['literal', cats]], ['!', ['in', ['get', 'cat'], ['literal', ['bus', 'parking']]]]]);
     map.setFilter('pois-minor', ['all', ['in', ['get', 'cat'], ['literal', cats]], ['in', ['get', 'cat'], ['literal', ['bus', 'parking']]]]);
+    var oc = []; FILTERS.forEach(function (f) { if (active[f.id] && OFMC[f.id]) oc = oc.concat(OFMC[f.id]); });
+    if (map.getLayer('o-poi')) map.setFilter('o-poi', ['in', ['get', 'class'], ['literal', oc]]);
   }
   $('chips').addEventListener('click', function (e) {
     var b = e.target.closest('.chip'); if (!b) return;
@@ -1889,6 +1994,7 @@ return maplibregl$1;
     return '<div class="row" data-xpoi="' + (extPois.length - 1) + '"><div class="ico">' + svg(x.cat, c.c, 18) + '</div><div class="grow"><div class="t ell">' + esc(x.name) + '</div><div class="s ell">' + esc(x.sub) + '</div></div><div class="r"><div class="s">' + fmtDist(x.d) + '</div></div></div>';
   }
   // Liste "in der Naehe": Offline-Daten nur in ihrer Region, sonst Online-Karte
+  var homeTries = 0;
   function nearbyRows(base, cats, n, maxD) {
     if (nearIsl(base)) return nearby(base.lat, base.lon, cats, n, maxD).map(poiRow).join('');
     return onlinePois(base.lat, base.lon, cats, n, maxD || 5000).map(extPoiRow).join('');
@@ -1948,6 +2054,7 @@ return maplibregl$1;
       meMarker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'viewport' }).setLngLat([lon, lat]).addTo(map);
       // erster GPS-Punkt: Karte springt zum eigenen Standort (weltweit)
       if (!cur && !nav) { follow = true; map.jumpTo({ center: [lon, lat], zoom: 15 }); store('lastPos', { lat: +lat.toFixed(4), lon: +lon.toFixed(4) }); }
+      drawChips();
     }
     setSrc('acc', accPoly(lat, lon, Math.min(acc, 300)));
     sessPoint(lat, lon, acc, speed);
@@ -1972,6 +2079,24 @@ return maplibregl$1;
     $('gpswarnText').textContent = txt;
   }
   $('gpswarnBtn').onclick = function () { if (A) A.openLocationSettings(); };
+  // Waehrend einer Fahrt: GPS-Ausfall erkennen (Tunnel, Wald, Hochhaeuser) und ehrlich anzeigen
+  var gpsLost = false;
+  setInterval(function () {
+    if (!nav) { if (gpsLost) { gpsLost = false; var e0 = $('gpslost'); if (e0) e0.remove(); } return; }
+    var lost = !lastFix || Date.now() - lastFix > 12000;
+    if (lost === gpsLost) return;
+    gpsLost = lost;
+    var el = $('gpslost');
+    if (lost) {
+      if (!el) { el = document.createElement('div'); el.id = 'gpslost'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+      el.innerHTML = svg('pin', '#b54708', 18) + '<span>GPS-Signal verloren. Die letzte bekannte Position wird angezeigt.</span>';
+      lastSpeed = -1; updSpeedo(); HOOK('haptic', 'warn'); HOOK('gpsLost', true);
+      if (!nav.free) say('GPS-Signal verloren');
+    } else {
+      if (el) el.remove();
+      toast('GPS wieder da'); HOOK('gpsLost', false);
+    }
+  }, 3000);
   setInterval(checkGps, 5000); setTimeout(checkGps, 1500);
   $('btnLoc').onclick = function () {
     if (!me) { toast('Noch kein GPS-Signal. Kurz warten oder GPS einschalten.'); return; }
@@ -2085,18 +2210,68 @@ return maplibregl$1;
     var d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d);
     setTimeout(function () { d.remove(); }, 3200);
   }
+  // Ansagen in der App-Sprache: die Saetze entstehen auf Deutsch und werden hier uebersetzt
+  var VLANG = { de: 'de-DE', en: 'en-GB', fr: 'fr-FR', it: 'it-IT', es: 'es-ES' };
+  var VPH = [ // [Deutsch, en, fr, it, es] - laengere Ausdruecke zuerst
+    ['scharf links abbiegen', 'turn sharp left', 'tournez fortement à gauche', 'svolta stretta a sinistra', 'gira bruscamente a la izquierda'],
+    ['scharf rechts abbiegen', 'turn sharp right', 'tournez fortement à droite', 'svolta stretta a destra', 'gira bruscamente a la derecha'],
+    ['leicht links halten', 'keep slightly left', 'restez légèrement à gauche', 'tieniti leggermente a sinistra', 'mantente ligeramente a la izquierda'],
+    ['leicht rechts halten', 'keep slightly right', 'restez légèrement à droite', 'tieniti leggermente a destra', 'mantente ligeramente a la derecha'],
+    ['links abbiegen', 'turn left', 'tournez à gauche', 'svolta a sinistra', 'gira a la izquierda'],
+    ['rechts abbiegen', 'turn right', 'tournez à droite', 'svolta a destra', 'gira a la derecha'],
+    ['links halten', 'keep left', 'restez à gauche', 'tieniti a sinistra', 'mantente a la izquierda'],
+    ['rechts halten', 'keep right', 'restez à droite', 'tieniti a destra', 'mantente a la derecha'],
+    ['geradeaus weiterfahren', 'continue straight ahead', 'continuez tout droit', 'prosegui dritto', 'sigue recto'],
+    ['wenden', 'make a U-turn', 'faites demi-tour', 'fai inversione', 'da la vuelta'],
+    ['Du hast dein Ziel erreicht', 'You have arrived at your destination', 'Vous êtes arrivé à destination', 'Sei arrivato a destinazione', 'Has llegado a tu destino'],
+    ['Route wird neu berechnet', 'Recalculating route', 'Recalcul de l\'itinéraire', 'Ricalcolo del percorso', 'Recalculando la ruta'],
+    ['GPS-Signal verloren', 'GPS signal lost', 'Signal GPS perdu', 'Segnale GPS perso', 'Señal GPS perdida'],
+    ['Keine Verbindung. Ich versuche es gleich nochmal.', 'No connection. I will try again shortly.', 'Pas de connexion. Je réessaie dans un instant.', 'Nessuna connessione. Riprovo tra poco.', 'Sin conexión. Lo intento de nuevo enseguida.'],
+    ['Sprachansagen eingeschaltet', 'Voice guidance on', 'Guidage vocal activé', 'Guida vocale attiva', 'Guía por voz activada'],
+    ['Ansagen an', 'Voice guidance on', 'Guidage vocal activé', 'Guida vocale attiva', 'Guía por voz activada'],
+    ['Aufzeichnung gestartet', 'Recording started', 'Enregistrement démarré', 'Registrazione avviata', 'Grabación iniciada']
+  ];
+  function sayLang() { var l = window.I18N && I18N.lang; return VLANG[l] ? l : 'de'; }
+  function sayTr(t) {
+    var l = sayLang(), k = { en: 1, fr: 2, it: 3, es: 4 }[l]; if (!k) return t;
+    var U = { m: ['meters', 'mètres', 'metri', 'metros'], km: ['kilometers', 'kilomètres', 'chilometri', 'kilómetros'], min: ['minutes', 'minutes', 'minuti', 'minutos'] };
+    t = t.replace(/(\d+),(\d)/g, l === 'en' ? '$1.$2' : '$1,$2');
+    t = t.replace(/ Kilometer\b/g, ' ' + U.km[k - 1]).replace(/ Meter\b/g, ' ' + U.m[k - 1]);
+    var m;
+    if ((m = t.match(/^Los gehts\. (.+?) bis zum Ziel, etwa (\d+) Minuten(?:, (\d+) Höhenmeter)?\.?$/))) {
+      return [null, "Let's go. " + m[1] + ' to your destination, about ' + m[2] + ' minutes' + (m[3] ? ', ' + m[3] + ' metres of climbing.' : '.'),
+        'C\'est parti. ' + m[1] + ' jusqu\'à destination, environ ' + m[2] + ' minutes' + (m[3] ? ', ' + m[3] + ' mètres de dénivelé.' : '.'),
+        'Si parte. ' + m[1] + ' alla destinazione, circa ' + m[2] + ' minuti' + (m[3] ? ', ' + m[3] + ' metri di salita.' : '.'),
+        'Vamos. ' + m[1] + ' hasta el destino, unos ' + m[2] + ' minutos' + (m[3] ? ', ' + m[3] + ' metros de subida.' : '.')][k];
+    }
+    if ((m = t.match(/^Achtung, Anstieg in (.+?): (.+?) mit (\d+) Prozent$/))) {
+      return [null, 'Caution, climb in ' + m[1] + ': ' + m[2] + ' at ' + m[3] + ' percent', 'Attention, montée dans ' + m[1] + ' : ' + m[2] + ' à ' + m[3] + ' pour cent',
+        'Attenzione, salita tra ' + m[1] + ': ' + m[2] + ' al ' + m[3] + ' per cento', 'Atención, subida en ' + m[1] + ': ' + m[2] + ' al ' + m[3] + ' por ciento'][k];
+    }
+    t = t.replace(/im Kreisverkehr die (\d+)\. Ausfahrt nehmen/, function (x, n) { return [null, 'at the roundabout take exit ' + n, 'au rond-point, prenez la sortie ' + n, 'alla rotonda prendi l\'uscita ' + n, 'en la rotonda toma la salida ' + n][k]; });
+    VPH.forEach(function (p) { if (t.indexOf(p[0]) >= 0) t = t.split(p[0]).join(p[k]); });
+    t = t.replace(/^In ([\d.,]+ \S+) /, function (x, d) { return [null, 'In ' + d + ', ', 'Dans ' + d + ', ', 'Tra ' + d + ', ', 'En ' + d + ', '][k]; });
+    t = t.replace(/^Jetzt /, [null, 'Now ', 'Maintenant, ', 'Ora ', 'Ahora '][k]);
+    t = t.replace(/ in (?=[A-ZÄÖÜ0-9])/, [null, ' onto ', ' sur ', ' in ', ' por '][k]);
+    return t;
+  }
+  var lastVoiceLang = null;
   function say(t) {
     if (!S.voice) return;
-    if (A) { try { A.speak(t); } catch (e) {} return; }
+    var l = sayLang(); t = sayTr(String(t));
+    if (A) {
+      try { if (l !== lastVoiceLang && A.setVoiceLang) { A.setVoiceLang(VLANG[l]); lastVoiceLang = l; } A.speak(t); } catch (e) {}
+      return;
+    }
     // am Computer: Sprachausgabe des Systems
-    try { var u = new SpeechSynthesisUtterance(t); u.lang = 'de-DE'; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+    try { var u = new SpeechSynthesisUtterance(t); u.lang = VLANG[l]; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
   }
   var DESKTOP = !!window.__desktop;
   // Am Computer ohne GPS: Testhilfen
-  function hereBtn() { return DESKTOP ? '<button class="go sec" id="hereTest">Hier bin ich (Test)</button>' : ''; }
+  function hereBtn() { return DESKTOP ? '<button class="go sec" id="hereTest">Hier bin ich</button>' : ''; }
   function bindHere(lat, lon) {
     if (!$('hereTest')) return;
-    $('hereTest').onclick = function () { onGps(lat, lon, 5, 0, -1, -1, 1, null); toast('Test-Standort gesetzt'); setFollow(true); view(lat, lon, Math.max(map.getZoom(), 15)); drawHome(); };
+    $('hereTest').onclick = function () { onGps(lat, lon, 5, 0, -1, -1, 1, null); toast('Standort gesetzt'); setFollow(true); view(lat, lon, Math.max(map.getZoom(), 15)); drawHome(); };
   }
   var simT = null;
   function simulateRide() {
@@ -2165,6 +2340,11 @@ return maplibregl$1;
     var base = hereRef(), hr = meRef(), z = hr ? eleAt(hr.lat, hr.lon) : null;
     homeDrawnWithGps = !!hr; extPois = [];
     var rows = nearbyRows(base, ['food', 'snack', 'cafe'], 4, 3000);
+    // Orte kommen aus den Kartenkacheln: sind sie noch nicht geladen, nach dem Laden erneut zeichnen (hoechstens 3-mal)
+    if (!rows && mapReady && !nearIsl(base)) {
+      homeTries = (homeTries || 0) + 1;
+      if (homeTries <= 3) map.once('idle', function () { if (state === 'home') drawHome(); });
+    } else homeTries = 0;
     var html = '<h2>Velora</h2><div class="sub">' +
       (hr ? 'GPS aktiv' + (z != null ? ' &middot; ' + Math.round(z) + ' m über dem Meer' : '') + '. Suche ein Ziel oder tippe auf die Karte.' : 'Warte auf GPS. Suche ein Ziel oder tippe auf die Karte.') + '</div>' +
       wxHtml() + (HOOK('homeHtml') || '') +
@@ -2173,7 +2353,7 @@ return maplibregl$1;
       '<button data-act="loop">' + svg('loop', '#0fae73', 24, 2) + 'Tour-Idee</button>' +
       '<button data-act="near">' + svg('list', '#0fae73', 24, 2) + 'In der Nähe</button>' +
       '<button data-act="free">' + svg('rec', '#ff5a4e', 24, 2.4) + 'Fahrt starten</button></div>' +
-      '<h3>Essen in der Nähe</h3><div class="list">' + (rows || '<div class="empty">Noch nichts geladen. Mit GPS und Internet erscheinen hier Restaurants und Cafés in deiner Nähe.</div>') + '</div>' +
+      '<h3>Essen in der Nähe</h3><div class="list">' + (rows || '<div class="empty">' + (navigator.onLine === false ? 'Ohne Internet können keine Orte geladen werden.' : homeTries && homeTries <= 3 ? 'Suche Restaurants und Cafés in der Nähe ...' : 'Hier in der Nähe ist nichts eingetragen. Tippe auf „In der Nähe“ für mehr.') + '</div>') + '</div>' +
       '<h3>Kartenlegende</h3>' + legendHtml() +
       '<div class="sub" style="margin-top:12px;font-size:12px">Rad: ' + BIKES[S.bike].n + ' &middot; ' + FIT[S.fit].n + ' &middot; Stil ' + STYLES[S.style].n + ' (im Menü änderbar)</div>';
     sheet(html);
@@ -2365,7 +2545,15 @@ return maplibregl$1;
   var plan = null, cur = null, routeLayer = null, hoverMarker = null;
   // Vor jeder Route: schnell & leicht oder am schoensten? Beide werden gerechnet und verglichen.
   var NET_MSG = 'Für die Route braucht die App Internet. Bitte mobile Daten einschalten.';
-  function loadingSheet(t) { state = 'loading'; sheet('<h2>' + esc(t) + '</h2><div class="sub" style="margin:10px 0 6px">Route wird online berechnet ...</div><div class="mix"><div style="width:35%;background:var(--lime);animation:none"></div></div>'); }
+  var ROUTE_MSG = 'Für dieses Ziel wurde keine Fahrradroute gefunden. Wähle einen Punkt näher an einer Straße oder einem Weg.';
+  function routeErr(e) { return e && e.route ? ROUTE_MSG : NET_MSG; }
+  function loadingSheet(t) {
+    state = 'loading';
+    sheet('<div class="ldg"><div class="ldg-fox">' + (HOOK('mascot', 'ride', 92) || '') + '</div><div class="grow"><h2 class="ell">' + esc(t) + '</h2>' +
+      '<div class="sub">Route wird berechnet ...</div><div class="ldbar" role="progressbar" aria-label="Route wird berechnet"><i></i></div></div></div>' +
+      '<div class="btns"><button class="go sec" id="ldCancel">Abbrechen</button></div>');
+    $('ldCancel').onclick = function () { chooseRoute.token = {}; clearRoute(); };
+  }
   function planRoute(pts, title, opt) {
     opt = opt || {};
     if (!opt.picked) { chooseRoute(pts, title, opt); return; }
@@ -2374,12 +2562,15 @@ return maplibregl$1;
     if (pre) { showRoute(pts, title, opt, pre); return; }
     if (isLocal(pts)) { showRoute(pts, title, opt, routeVia(pts, opt)); return; }
     loadingSheet(title);
-    fetchExt(pts, opt.style || S.style).then(function (r) { showRoute(pts, title, opt, r); }, function () { toast(NET_MSG); clearRoute(); });
+    fetchExt(pts, opt.style || S.style).then(function (r) { showRoute(pts, title, opt, r); }, function (e) { if (HOOK('foxSay', 'sad', routeErr(e), { ms: 4200 }) !== true) toast(routeErr(e)); clearRoute(); });
   }
   function showRoute(pts, title, opt, r) {
     if (!r) { toast('Keine Route gefunden.'); return; }
     plan = { pts: pts, title: title, opt: opt, desc: opt.desc || '' };
     cur = r; state = 'route';
+    // Velo freut sich erst, wenn die Karte zur Route geschwenkt ist (sonst ruckelt die Animation)
+    var popped = false, pop = function () { if (popped || state !== 'route' || cur !== r) return; popped = true; HOOK('foxSay', 'thumbs', 'Route steht: ' + fmtDist(r.len) + ', etwa ' + fmtTime(r.secs) + '.', { key: 'route', every: 600000, quiet: true }); };
+    setTimeout(function () { map.once('idle', pop); setTimeout(pop, 4000); }, 300);
     drawRoute(r);
     clearMarkers();
     var last = pts[pts.length - 1];
@@ -2402,11 +2593,11 @@ return maplibregl$1;
     // Online: beide Varianten gleichzeitig anfragen
     loadingSheet(title);
     var token = {}; chooseRoute.token = token;
-    var keys = Object.keys(STYLES), left = keys.length, failed = 0;
+    var keys = Object.keys(STYLES), left = keys.length, failed = 0, lastErr = null;
     keys.forEach(function (k) {
-      fetchExt(pts, k).then(function (r) { res[k] = r; }, function () { failed++; }).then(function () {
+      fetchExt(pts, k).then(function (r) { res[k] = r; }, function (e) { failed++; lastErr = e; }).then(function () {
         if (--left || chooseRoute.token !== token || state !== 'loading') return;
-        if (failed === keys.length) { toast(NET_MSG); clearRoute(); return; }
+        if (failed === keys.length) { clearRoute(); if (HOOK('foxSay', 'sad', routeErr(lastErr), { ms: 4200 }) !== true) toast(routeErr(lastErr)); return; }
         showChoice(pts, title, opt, res);
       });
     });
@@ -2427,6 +2618,8 @@ return maplibregl$1;
     });
     setSrc('cand', fc(feats));
     var f = res.fast, sc = res.scenic, same = sameRoute(f, sc);
+    // Beide Varianten gleich (oder nur eine da): keine Auswahl noetig, direkt die Route zeigen
+    if (same || !f || !sc) { var k0 = f && sc ? S.style : (f ? 'fast' : 'scenic'); planRoute(pts, title, L2(opt, { style: k0, picked: true, pre: res[k0] })); return; }
     function card(k) {
       var r = res[k]; if (!r) return '';
       var other = res[k === 'fast' ? 'scenic' : 'fast'], hint = '';
@@ -2524,7 +2717,7 @@ return maplibregl$1;
       settingsChips() + routeStatsHtml(r) + (HOOK('routeHtml', r, plan) || '') +
       '<div class="prof" id="prof">' + profileSvg(r, 340, 120, true) + '</div><div class="sub" id="profInfo" style="font-size:12px;min-height:16px">Finger auf das Profil legen, um den Punkt auf der Karte zu sehen.</div>' +
       '<div class="btns"><button class="go sec" id="cancel">Abbrechen</button><button class="go" id="start">Los fahren</button></div>' +
-      (DESKTOP ? '<div class="btns"><button class="go sec" id="simRide">Fahrt simulieren (Test am PC)</button></div>' : '') +
+      (window.__TESTER ? '<div class="btns"><button class="go sec" id="simRide">Fahrt simulieren (Test)</button></div>' : '') +
       '<h3>Belag</h3>' + mixBar(r.mixS, SURF, r.len, [0, 1, 2, 3, 4, 5]) +
       '<h3>Wegart</h3>' + mixBar(r.mixC, CLASS, r.len, [0, 1, 5, 2, 8, 3, 4, 6]) +
       (r.walk > 30 ? '<div class="sub" style="margin-top:8px">Ca. ' + fmtDist(r.walk) + ' zu steil oder zu grob zum Fahren: dort wird Schieben eingerechnet.</div>' : '') +
@@ -2923,7 +3116,7 @@ return maplibregl$1;
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 6.7 mit der KI Soul (echtes Sprachmodell über den Velora-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 7.0 mit der KI Soul (echtes Sprachmodell über den Velora-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -3103,10 +3296,10 @@ return maplibregl$1;
     var r = cur, along = nav.lastAlong;
     if (ref) {
       var pr = project(r, ref.lat, ref.lon, nav.lastAlong);
-      if (pr.d > 35 + Math.min(ref.acc, 30)) {
+      if (!nav.arrived && pr.d > 35 + Math.min(ref.acc, 30)) {
         nav.off++;
         if (nav.off === 2) HOOK('haptic', 'warn');
-        if (nav.off >= 3) {
+        if (nav.off >= 3 && Date.now() >= (nav.retryAt || 0)) {
           nav.off = 0;
           // verbleibende Wegpunkte behalten
           var rest = plan.pts.filter(function (p, k) { return k > 0 && r.legEnds[k - 1] > nav.lastAlong + 30; });
@@ -3115,18 +3308,28 @@ return maplibregl$1;
           if (!isLocal(pts)) {
             // online neu berechnen, waehrenddessen weiter auf der alten Route anzeigen
             if (!nav.fetching) {
-              nav.fetching = true; say('Route wird neu berechnet');
+              nav.fetching = true;
+              if (!nav.rerouteSaid) { say('Route wird neu berechnet'); nav.rerouteSaid = true; }
+              HOOK('rerouting', true);
               fetchExt(pts, plan.opt.style || S.style).then(function (nr2) {
                 nav.fetching = false; if (!nav || nav.free) return;
-                cur = nr2; plan.pts = pts; drawRoute(nr2); nav.said = {}; nav.climbSaid = {}; nav.lastAlong = 0; toast('Neue Route');
-              }, function () { if (nav) nav.fetching = false; });
+                cur = nr2; plan.pts = pts; drawRoute(nr2); nav.said = {}; nav.climbSaid = {}; nav.lastAlong = 0; nav.rerouteSaid = false; nav.netFail = 0; nav.retryAt = 0;
+                toast('Neue Route'); HOOK('rerouting', false);
+              }, function () {
+                if (!nav) return;
+                // ohne Netz: nicht im Sekundentakt neu versuchen und nicht dauernd ansagen
+                nav.fetching = false; nav.netFail = (nav.netFail || 0) + 1;
+                nav.retryAt = Date.now() + Math.min(60000, 15000 * nav.netFail);
+                if (nav.netFail === 1) { toast('Keine Verbindung: Neue Route folgt, sobald Internet da ist. Die alte Route bleibt sichtbar.'); say('Keine Verbindung. Ich versuche es gleich nochmal.'); }
+                HOOK('rerouting', false, true);
+              });
             }
           } else {
             var nr = routeVia(pts, { style: plan.opt.style });
             if (nr) { cur = r = nr; plan.pts = pts; drawRoute(r); nav.said = {}; nav.climbSaid = {}; say('Route wird neu berechnet'); toast('Neue Route'); pr = project(r, ref.lat, ref.lon, 0); }
           }
         }
-      } else nav.off = 0;
+      } else { nav.off = 0; if (!nav.fetching) nav.rerouteSaid = false; }
       along = pr.along; nav.lastAlong = along;
     }
     var remain = Math.max(0, r.len - along);
@@ -3427,6 +3630,7 @@ return maplibregl$1;
       var html = '<div class="msg ai' + (m.wait ? ' wait' : '') + '">' + (m.wait ? JUNO_LOAD : mdLite(m.content)) + (m.cr ? '<div class="crcost">-' + m.cr + ' Credit' + (m.cr > 1 ? 's' : '') + '</div>' : '');
       // Orte nur anzeigen, wenn Soul keine Route geplant hat (sonst nur Doppelungen des Ziels)
       if (m.orte && m.orte.length && !(m.acts || []).some(function (x) { return x.typ === 'route_planen'; })) html += '<div class="places">' + m.orte.map(function (o, k) { return '<button data-jp="' + i + '_' + k + '">' + esc(o.name) + '</button>'; }).join('') + '</div>';
+      if (m.llm) html += '<button class="jrep" data-jr="' + i + '"' + (m.rep ? ' disabled' : '') + '>' + (m.rep ? 'Gemeldet' : 'Antwort melden') + '</button>';
       if (m.acts && m.acts.length) html += m.acts.map(function (a, k) { return '<button class="act" data-ja="' + i + '_' + k + '">' + esc(actLabel(a)) + '</button>'; }).join('');
       return html + '</div>';
     }).join('');
@@ -3447,6 +3651,16 @@ return maplibregl$1;
     if ($('junoClear')) $('junoClear').onclick = function () { juno = []; saveJuno(); if (window.Soul && Soul.reset) Soul.reset(); if (window.SoulLLM) SoulLLM.stop(); showJuno(); };
     sheetEl.querySelectorAll('[data-jq]').forEach(function (b) { b.onclick = function () { askJuno(b.getAttribute('data-jq')); }; });
     sheetEl.querySelectorAll('[data-jp]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-jp').split('_'), o = juno[+ij[0]].orte[+ij[1]]; runAction({ typ: 'ort_zeigen', name: o.name, lat: o.lat, lon: o.lon }); }; });
+    // KI-Antwort melden (Google-Play-Regel fuer generative KI): geht an den Velora-Server zur Pruefung
+    sheetEl.querySelectorAll('[data-jr]').forEach(function (b) {
+      b.onclick = function () {
+        var m = juno[+b.getAttribute('data-jr')]; if (!m || m.rep) return;
+        b.disabled = true;
+        fetch('https://velora-ki.toni-sagmeister11.workers.dev/soul/report', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-App-Id': KI_ID }, body: JSON.stringify({ q: m.q || '', a: m.content }) })
+          .then(function (r) { if (!r.ok) throw 0; m.rep = true; saveJuno(); toast('Danke! Die Antwort wird geprüft.'); b.textContent = 'Gemeldet'; })
+          .catch(function () { b.disabled = false; toast('Melden geht gerade nicht. Bitte Internet prüfen.'); });
+      };
+    });
     sheetEl.querySelectorAll('[data-ja]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-ja').split('_'); runAction(juno[+ij[0]].acts[+ij[1]]); }; });
   }
   function actLabel(a) {
@@ -3485,7 +3699,7 @@ return maplibregl$1;
         junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
         if (!d.antwort && d.left === 0 && window.VX) VX.srvCredits = { left: 0, max: (VX.srvCredits && VX.srvCredits.max) || 10 };
         if (!d.antwort) { juno.push({ role: 'assistant', content: d.fehler || 'Soul ist gerade nicht erreichbar.' }); saveJuno(); if (state === 'ai') showJuno(); return; }
-        var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [] };
+        var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [], llm: !!d.llm, q: q };
         HOOK('haptic', 'soft'); HOOK('junoUsed', d.credits || 0, d.left); m.cr = d.credits || 0;
         juno.push(m); saveJuno(); junoLast = { text: d.antwort, t: Date.now() };
         if (nav || !$('chatlog')) say(plainText(d.antwort).slice(0, 400));
@@ -3574,7 +3788,7 @@ return maplibregl$1;
   window.__show = showPoi;
   window.V = {
     D: D, A: A, S: S, saveS: saveS, BIKES: BIKES, FIT: FIT, STYLES: STYLES, CLASS: CLASS, CAT: CAT, IC: IC, LAT: LAT, LON: LON,
-    map: map, sheet: sheet, sheetEl: sheetEl, toast: toast, say: say, svg: svg, esc: esc, $: $, store: store, load: load,
+    map: map, sheet: sheet, sheetEl: sheetEl, toast: toast, say: say, _sayTr: sayTr, svg: svg, esc: esc, $: $, store: store, load: load,
     dist: dist, bearing: bearing, fmtDist: fmtDist, fmtKm: fmtKm, fmtTime: fmtTime, hhmm: hhmm, clock: clock, demEle: demEle, eleAt: eleAt, onIsland: onIsland,
     nearestPlace: nearestPlace, nearestNode: nearestNode, nearby: nearby, routeVia: routeVia, planRoute: planRoute, startRef: startRef, meRef: meRef, myRef: myRef,
     computeCosts: computeCosts, drawHome: drawHome, drawRouteSheet: drawRouteSheet, fetchExt: fetchExt, isLocal: isLocal, showExtPoint: showExtPoint, onlinePois: onlinePois, hereRef: hereRef, nearIsl: nearIsl, showMenu: showMenu, showJuno: showJuno, askJuno: askJuno, showTours: showTours, setSrc: setSrc, fc: fc, lineF: lineF, ptF: ptF,
@@ -3594,6 +3808,8 @@ return maplibregl$1;
   var A = V.A, S = V.S, $ = V.$, esc = V.esc, svg = V.svg, map = V.map;
   var VX = window.VX = {};
   var TESTER = !!window.__TESTER;
+  // Kauf ueber Google Play Billing: erst aktiv, wenn die App die Bezahl-Schnittstelle mitbringt (siehe RELEASE.md)
+  var BILLING = !!(A && A.billingAvailable && (function () { try { return A.billingAvailable(); } catch (e) { return false; } })());
   var KI_BASE = 'https://velora-ki.toni-sagmeister11.workers.dev', KI_ID = 'velora-2026';
 
   function dayKey(t) { var d = new Date(t); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
@@ -3647,22 +3863,25 @@ return maplibregl$1;
       '<div class="px-feats">' + FEATS.map(function (f, i) { return '<div class="px-card" style="animation-delay:' + (0.15 + i * 0.06).toFixed(2) + 's"><div class="px-ic">' + svg(f[0], '#ffffff', 20, 2.3) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') + '</div>' +
       '<div class="px-price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><span class="px-pl">Monatlich</span><b>2,99 €</b><span>pro Monat</span></button>' +
       '<button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '"><em>Spare 44 %</em><span class="px-pl">Jährlich</span><b>19,99 €</b><span>nur 1,67 € im Monat</span></button></div>' +
-      '<button class="px-cta" id="plusGo"><span>Plus freischalten</span></button>' +
-      '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und die KI Soul ohne Limit.</div>' +
-      '<div class="px-note">Testversion: Die Bezahlung über Google Play kommt mit der Veröffentlichung. Bis dahin wird Plus hier kostenlos zum Ausprobieren freigeschaltet.</div></div>';
+      (BILLING || TESTER ? '<button class="px-cta" id="plusGo"><span>' + (BILLING ? 'Plus kaufen' : 'Zum Ausprobieren freischalten (Test)') + '</span></button>' : '<button class="px-cta soon" id="plusGo" disabled><span>Bald über Google Play</span></button>') +
+      '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und die KI Soul.</div>' +
+      '<div class="px-note">' + (BILLING ? 'Bezahlung und Kündigung über dein Google-Play-Konto.' : TESTER ? 'Testversion: Plus wird hier nur zum Ausprobieren freigeschaltet.' : 'Velora Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.') + '</div></div>';
     document.body.appendChild(el);
     hap('soft');
     function close() { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); }
     $('pxClose').onclick = close;
     el.querySelectorAll('[data-price]').forEach(function (b) { b.onclick = function () { PRICE = b.getAttribute('data-price'); V.store('price', PRICE); el.querySelectorAll('[data-price]').forEach(function (x) { x.classList.toggle('on', x === b); }); hap('click'); }; });
-    $('plusGo').onclick = function () { setPlus(true); close(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
+    $('plusGo').onclick = function () {
+      if (BILLING) { try { A.buyPlus(PRICE); } catch (e) { V.toast('Der Kauf ist gerade nicht möglich.'); } return; }
+      if (!TESTER) return;
+      setPlus(true); close(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
   }
   // Plus aktiv: schlicht
   function plusActive() {
     var m = modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('thumbs', 70) + '<div class="grow"><h2>Velora Plus</h2><div class="sub">Plus ist aktiv. Danke für deine Unterstützung!</div></div></div>' +
       '<div class="pbox ok"><div class="sub">' + 'Reiseführer, Tagesplaner, Akkuplaner, Regenwarnung, Bestzeiten, GPX, Offline-Karten ohne Grenze, alle Farben und Pfeile.</div></div>' +
-      '<div class="btns"><button class="go sec" id="plusOff">Plus beenden (Test)</button><button class="go" id="plusOk">Schließen</button></div>');
-    $('plusOff').onclick = function () { setPlus(false); closeModal(); if (V.state === 'menu') V.showMenu(); };
+      '<div class="btns">' + (TESTER ? '<button class="go sec" id="plusOff">Plus beenden (Test)</button>' : '') + '<button class="go" id="plusOk">Schließen</button></div>');
+    if ($('plusOff')) $('plusOff').onclick = function () { setPlus(false); closeModal(); if (V.state === 'menu') V.showMenu(); };
     $('plusOk').onclick = closeModal;
   }
   // true = darf; sonst Paywall
@@ -3705,6 +3924,30 @@ return maplibregl$1;
     return '<div class="fxw fx-' + m + '" style="width:' + Math.round(size * 0.87) + 'px;height:' + size + 'px">' + (window.Fox ? Fox.svg(m) : '') + '</div>';
   }
   VX.mascot = mascot;
+  // Velo reagiert: kurzer Auftritt mit 3D-Drehung oben links, nie waehrend der Navigation, nie aufdringlich
+  var popT = null, lastPop = V.load('foxPops', {});
+  function foxSay(mood, text, opt) {
+    opt = opt || {};
+    if (V.state === 'nav' || document.getElementById('onb') || document.getElementById('plusx')) return false;
+    if (opt.key) { if (lastPop[opt.key] && Date.now() - lastPop[opt.key] < (opt.every || 0)) return false; lastPop[opt.key] = Date.now(); V.store('foxPops', lastPop); }
+    var old = $('foxpop'); if (old) old.remove();
+    var el = document.createElement('div'); el.id = 'foxpop'; el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    el.innerHTML = '<div class="fp-fox">' + mascot(mood, 76) + '</div><div class="fp-bub">' + esc(text) + '</div>';
+    document.body.appendChild(el);
+    function hide() { if (!el.parentNode) return; el.classList.add('out'); setTimeout(function () { el.remove(); }, 320); }
+    el.onclick = hide;
+    clearTimeout(popT); popT = setTimeout(hide, opt.ms || 2600);
+    if (!opt.quiet) hap(mood === 'sad' ? 'warn' : 'soft');
+    return true;
+  }
+  VX.foxSay = foxSay;
+  // Begruessung: einmal am Tag beim Oeffnen
+  setTimeout(function () {
+    var d = new Date().toDateString(); if (V.load('greetDay', '') === d || V.state !== 'home') return;
+    var a = VX.account && VX.account(), nm = a && a.user && a.user.name ? a.user.name.split(' ')[0] : '';
+    var h = new Date().getHours(), g = h < 11 ? 'Guten Morgen' : h < 18 ? 'Hallo' : 'Guten Abend';
+    if (foxSay('wave', g + (nm ? ', ' + nm : '') + '! Wohin fahren wir heute?', { ms: 3200, quiet: true })) V.store('greetDay', d);
+  }, 2600);
   var FLAME = '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-4-1-6 1-9z" fill="#ff922b"/><path d="M12 12c1 2 3 3 3 5a3 3 0 0 1-6 0c0-1 1-2 1-3 1 1 2 0 2-2z" fill="#ffd43b"/></svg>';
   // grosse Flamme fuer die Serie, in drei Schichten (flackert ueber CSS)
   function bigFlame(cls) {
@@ -4233,7 +4476,7 @@ return maplibregl$1;
   function saveRoute(r, plan) {
     if (SAVED.some(function (x) { return x.title === plan.title && Math.abs(x.len - r.len) < 50; })) { V.toast('Diese Route ist schon gespeichert'); return; }
     SAVED.unshift({ t: Date.now(), title: plan.title, len: r.len, asc: r.asc, secs: r.secs, opt: { loop: !!plan.opt.loop, tour: !!plan.opt.tour, style: plan.opt.style || S.style }, pts: plan.pts.map(function (p) { return { lat: p.lat, lon: p.lon, name: p.name || '' }; }) });
-    V.store('saved', SAVED.slice(0, 50)); hap('success'); V.toast('Route gespeichert');
+    V.store('saved', SAVED.slice(0, 50)); hap('success'); if (!foxSay('thumbs', 'Route gespeichert! Du findest sie unter „Meine Routen“.')) V.toast('Route gespeichert');
   }
   function showSaved() {
     V.state = 'saved';
@@ -4673,7 +4916,7 @@ return maplibregl$1;
       clearTimeout(enterT); enterT = setTimeout(function () { V.sheetEl.classList.remove('enter'); }, 700);
     }
     lastState = st;
-    if (st === 'loading' && !V.sheetEl.querySelector('.m-load')) V.sheetEl.insertAdjacentHTML('beforeend', '<div class="m-load">' + mascot('ride', 74) + '</div><div class="skel"></div><div class="skel s2"></div>');
+    if (st === 'loading' && !V.sheetEl.querySelector('.m-load, .ldg')) V.sheetEl.insertAdjacentHTML('beforeend', '<div class="m-load">' + mascot('ride', 74) + '</div><div class="skel"></div><div class="skel s2"></div>');
   }).observe(V.sheetEl, { childList: true });
 
   // Blatt mit dem Finger hoch- und runterziehen
@@ -4731,7 +4974,11 @@ return maplibregl$1;
     done: ['Los geht\'s', 'Let\'s go', 'C\'est parti', 'Andiamo', 'Vamos'], hi: ['Hallo', 'Hi', 'Salut', 'Ciao', 'Hola'],
     ready: ['Dein Konto ist bereit. Ich feiere ab jetzt jede Fahrt mit dir!', 'Your account is ready. From now on I celebrate every ride with you!', 'Ton compte est prêt. Je fête chaque sortie avec toi !', 'Il tuo account è pronto. Festeggio ogni giro con te!', 'Tu cuenta está lista. ¡Celebraré cada ruta contigo!'],
     noNet: ['Keine Verbindung zum Server. Bitte Internet prüfen.', 'No connection to the server. Please check your internet.', 'Pas de connexion au serveur.', 'Nessuna connessione al server.', 'Sin conexión con el servidor.'],
-    guest: ['Ohne Konto ansehen (Vorschau)', 'Look around without account (preview)', 'Voir sans compte (aperçu)', 'Guarda senza account (anteprima)', 'Ver sin cuenta (vista previa)'],
+    guest: ['Ohne Konto weiter', 'Continue without account', 'Continuer sans compte', 'Continua senza account', 'Continuar sin cuenta'],
+    guestNote: ['Alles Wichtige geht auch ohne Konto. Mit Konto werden Einstellungen gesichert und Soul antwortet öfter.', 'Everything important works without an account. With an account your settings are backed up and Soul answers more often.', 'L\'essentiel fonctionne sans compte. Avec un compte, tes réglages sont sauvegardés et Soul répond plus souvent.', 'Le funzioni principali vanno anche senza account. Con un account le impostazioni sono salvate e Soul risponde più spesso.', 'Lo importante funciona sin cuenta. Con cuenta se guardan tus ajustes y Soul responde más a menudo.'],
+    errName: ['Bitte gib deinen Namen ein (mindestens 2 Zeichen).', 'Please enter your name (at least 2 characters).', 'Entre ton nom (2 caractères min.).', 'Inserisci il tuo nome (almeno 2 caratteri).', 'Escribe tu nombre (mín. 2 caracteres).'],
+    errMail: ['Bitte gib eine gültige E-Mail-Adresse ein.', 'Please enter a valid email address.', 'Entre une adresse e-mail valide.', 'Inserisci un indirizzo e-mail valido.', 'Escribe un correo válido.'],
+    errPw: ['Das Passwort braucht mindestens 8 Zeichen.', 'The password needs at least 8 characters.', 'Le mot de passe doit avoir 8 caractères min.', 'La password deve avere almeno 8 caratteri.', 'La contraseña necesita 8 caracteres mín.'],
     termsReq: ['Bitte der Datenschutzerklärung zustimmen.', 'Please accept the privacy policy.', 'Merci d\'accepter la politique.', 'Accetta l\'informativa.', 'Acepta la política de privacidad.'],
     delQ: ['Konto wirklich löschen? Das kann man nicht rückgängig machen.', 'Really delete your account? This cannot be undone.', 'Supprimer vraiment le compte ?', 'Eliminare davvero l\'account?', '¿Eliminar la cuenta de verdad?'],
     wkq: ['Wie oft willst du pro Woche fahren?', 'How often do you want to ride per week?', 'Combien de fois par semaine veux-tu rouler ?', 'Quante volte a settimana vuoi pedalare?', '¿Cuántas veces por semana quieres ir en bici?'],
@@ -4774,7 +5021,7 @@ return maplibregl$1;
         '<input class="ob-in" id="obMail" type="email" autocomplete="email" inputmode="email" placeholder="' + tx('mail') + '" value="' + esc(F.email) + '">' +
         '<div class="ob-pw"><input class="ob-in" id="obPw" type="password" autocomplete="' + (reg ? 'new-password' : 'current-password') + '" placeholder="' + (reg ? tx('pw') : tx('pw1')) + '"><button id="obEye" aria-label="Passwort zeigen">' + V.svg('view', '#5f7184', 20) + '</button></div>' +
         '<div class="ob-err" id="obErr"></div><button class="ob-go" id="obNext">' + (reg ? tx('next') : tx('login')) + '</button>' +
-        (TESTER && !REAL ? '<button class="ob-link" id="obGuest">' + tx('guest') + '</button>' : '');
+        '<button class="ob-link" id="obGuest">' + tx('guest') + '</button><div class="ob-note">' + tx('guestNote') + ' <a href="' + BASE + '/datenschutz" target="_blank" rel="noopener">' + tx('readp') + '</a></div>';
     } else if (step === 2) {
       h = '<h1 style="margin-top:6px">' + tx('country') + '</h1><input class="ob-in" id="obQ" placeholder="' + tx('search') + '"><div class="ob-list" id="obList"></div><button class="ob-go" id="obNext">' + tx('next') + '</button>';
     } else if (step === 3) {
@@ -4809,9 +5056,9 @@ return maplibregl$1;
       $('obNext').onclick = function () {
         keep();
         if (F.mode === 'new') {
-          if (F.name.length < 2) return err(tx('name'));
-          if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(F.email)) return err(tx('mail'));
-          if (F.pw.length < 8) return err(tx('pw'));
+          if (F.name.length < 2) return err(tx('errName'));
+          if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(F.email)) return err(tx('errMail'));
+          if (F.pw.length < 8) return err(tx('errPw'));
           onboard(2); return;
         }
         busy(true);
@@ -4856,7 +5103,7 @@ return maplibregl$1;
     var el = $('onb'); if (!el) return;
     el.classList.add('out'); setTimeout(function () { el.remove(); }, 350);
     V.drawHome();
-    if (ACC && !V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 600);
+    if (!V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 600);
   }
 
   // ---------- Konto anwenden und mit dem Server abgleichen ----------
@@ -4916,7 +5163,7 @@ return maplibregl$1;
     if (u) {
       h = '<div class="acc-card"><div class="acc-av">' + esc((u.name || '?').slice(0, 1).toUpperCase()) + '</div><div class="grow"><b>' + esc(u.name) + '</b><span>' + esc(u.email) + '</span></div><span class="fl big">' + (u.country ? flag(u.country) : '') + '</span></div>';
     } else {
-      h = '<div class="acc-card" id="accLogin"><div class="acc-av">?</div><div class="grow"><b>' + tx('acct') + '</b><span>' + tx('login') + '</span></div></div>';
+      h = '<div class="acc-card" id="accLogin"><div class="acc-av"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div><div class="grow"><b>' + tx('acct') + '</b><span>' + tx('login') + '</span></div></div>';
     }
     h += '<h3>' + I.t('Sprache') + '</h3><div class="hscroll" style="flex-wrap:wrap;overflow:visible">' + I.LANGS.map(function (l) { return '<button class="chip' + (I.lang === l[0] ? ' on' : '') + '" data-lang="' + l[0] + '"><span class="fl">' + flag(l[2]) + '</span>' + l[1] + '</button>'; }).join('') + '</div>';
     if (u) h += '<div class="linkrow"><button id="accCountry"><span class="fl">' + (u.country ? flag(u.country) : '') + '</span>' + esc(u.country ? cname(u.country) : I.t('Land')) + '</button><button id="accOut">' + I.t('Abmelden') + '</button></div>' +
@@ -4951,13 +5198,20 @@ return maplibregl$1;
     m.innerHTML = '<div class="cbox mbox"><div style="display:flex;gap:12px;align-items:center">' + mascot('sad', 80) + '<div class="grow"><h2>' + I.t('Konto löschen') + '</h2><div class="sub">' + tx('delQ') + '</div></div></div><div class="btns"><button class="go sec" id="dNo">' + I.t('Abbrechen') + '</button><button class="go red" id="dYes">' + I.t('Löschen') + '</button></div></div>';
     document.body.appendChild(m);
     $('dNo').onclick = function () { m.remove(); };
-    $('dYes').onclick = function () { api('/me', 'DELETE').then(function () {}).catch(function () {}); ACC = null; save(); m.remove(); onboard(0); };
+    // Erst nach Bestaetigung vom Server abmelden, sonst bliebe das Konto unbemerkt bestehen
+    $('dYes').onclick = function () {
+      var b = $('dYes'); b.disabled = true; b.textContent = I.t('Wird gelöscht ...');
+      api('/me', 'DELETE').then(function (j) {
+        if (!j.ok && j._s !== 401) throw new Error('fail');
+        ACC = null; save(); V.store('guest', 0); m.remove(); V.toast(I.t('Dein Konto wurde gelöscht.')); onboard(0);
+      }).catch(function () { b.disabled = false; b.textContent = I.t('Löschen'); V.toast(tx('noNet')); });
+    };
   }
 
   // ---------- Start ----------
   I.set(V.load('lang', null) || (ACC && ACC.user && ACC.user.lang) || F.lang);
   if (ACC) { applyUser(); refresh(); sendFeats(); if (!V.S.wkGoal && VX.askWeekGoal) setTimeout(VX.askWeekGoal, 1500); }
-  else if (!(TESTER && !REAL && V.load('guest', 0))) setTimeout(function () { onboard(0); }, TESTER ? 950 : 1150);
+  else if (!V.load('guest', 0)) setTimeout(function () { onboard(0); }, TESTER ? 950 : 1150);
   V.drawHome();
 })();
 </script>

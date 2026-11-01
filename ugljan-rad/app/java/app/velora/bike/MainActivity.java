@@ -99,7 +99,7 @@ public class MainActivity extends Activity implements LocationListener {
         });
 
         web = new WebView(this);
-        web.setBackgroundColor(Color.parseColor("#A8D5F2"));
+        web.setBackgroundColor(Color.parseColor("#F3F6FA"));
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -359,6 +359,17 @@ public class MainActivity extends Activity implements LocationListener {
         }
 
         @JavascriptInterface
+        public void setVoiceLang(String tag) {
+            // Ansagen in der App-Sprache; fehlt die Stimme, bleibt die bisherige
+            try {
+                if (tts == null) return;
+                int r = tts.setLanguage(Locale.forLanguageTag(tag));
+                if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) tts.setLanguage(Locale.GERMANY);
+                else ttsReady = true;
+            } catch (Exception ignored) { }
+        }
+
+        @JavascriptInterface
         public void speak(String text) {
             if (ttsReady) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "nav");
         }
@@ -372,7 +383,10 @@ public class MainActivity extends Activity implements LocationListener {
         public void vibrate(int ms) {
             try {
                 Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-                if (v != null) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
+                if (v == null) return;
+                // Android 7 kennt VibrationEffect noch nicht (sonst Absturz, kein Exception-Fall)
+                if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
+                else v.vibrate(ms);
             } catch (Exception ignored) { }
         }
 
@@ -383,7 +397,7 @@ public class MainActivity extends Activity implements LocationListener {
                 Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
                 if (v == null || !v.hasVibrator() || level <= 0) return;
                 float k = level >= 2 ? 1f : 0.55f;
-                if (Build.VERSION.SDK_INT >= 30 && v.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK,
+                if (Build.VERSION.SDK_INT >= 31 && v.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK,
                         VibrationEffect.Composition.PRIMITIVE_TICK, VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, VibrationEffect.Composition.PRIMITIVE_THUD)) {
                     VibrationEffect.Composition c = VibrationEffect.startComposition();
                     switch (type) {
@@ -418,7 +432,8 @@ public class MainActivity extends Activity implements LocationListener {
                     case "warn": t = new long[]{0, 120, 90, 120, 90, 120}; amp = new int[]{0, a, 0, a, 0, a}; break;
                     default: t = new long[]{0, 25}; amp = new int[]{0, a};
                 }
-                if (v.hasAmplitudeControl()) v.vibrate(VibrationEffect.createWaveform(t, amp, -1));
+                if (Build.VERSION.SDK_INT < 26) v.vibrate(t, -1);
+                else if (v.hasAmplitudeControl()) v.vibrate(VibrationEffect.createWaveform(t, amp, -1));
                 else v.vibrate(VibrationEffect.createWaveform(t, -1));
             } catch (Exception ignored) { }
         }
@@ -462,7 +477,7 @@ public class MainActivity extends Activity implements LocationListener {
                             try {
                                 HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
                                 c.setConnectTimeout(15000); c.setReadTimeout(20000);
-                                c.setRequestProperty("User-Agent", "Velora/6.7 (Android)");
+                                c.setRequestProperty("User-Agent", "Velora/7.0 (Android)");
                                 int code = c.getResponseCode();
                                 if (code == 200) {
                                     File tmp = new File(f.getPath() + ".tmp");
@@ -493,7 +508,7 @@ public class MainActivity extends Activity implements LocationListener {
                 String out = null, err = null;
                 try {
                     URL u = new URL(url);
-                    String host = u.getHost().toLowerCase();
+                    String host = u.getHost().toLowerCase(Locale.ROOT);
                     if (!"https".equals(u.getProtocol()) || host.equals("localhost") || host.endsWith(".local") || host.matches("^(10|127|192\\.168|172\\.(1[6-9]|2\\d|3[01]))\\..*")) throw new Exception("blocked");
                     HttpURLConnection c = (HttpURLConnection) u.openConnection();
                     c.setConnectTimeout(10000); c.setReadTimeout(12000);
