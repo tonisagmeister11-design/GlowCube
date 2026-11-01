@@ -18,7 +18,9 @@ Ortssuche Photon/Nominatim, Tagesplaner-Orte über Overpass (OpenStreetMap). `ap
 mit Tippfehler-Korrektur), Orte, Zeiten und Zahlen herauslesen, Werkzeuge der App ausführen (Route, Anpassen, Tour, Navigation),
 Fahrten auswerten, Wetter (Open-Meteo), Orte in der Nähe (Karte, Overpass), Rad-Hilfe, Training, Plaudern mit Emojis und
 Gesprächskontext. Wissensfragen recherchiert sie im Hintergrund (Wikipedia, auf Android zusätzlich DuckDuckGo über `fetchText`)
-und wählt die passendsten Sätze aus. Kein Server, keine fremde KI, keine Kosten. Der frühere Server-Weg (unten) bleibt nur für alte App-Versionen.
+und wählt die passendsten Sätze aus. `app/assets/soul-data.js` enthält ihr Wissen: Fahrrad-Wissensbuch (rund 75 Themen),
+Plauder-Sammlung, Fakten, Rätsel, Quiz, Geschichten und Gedichte. Soul merkt sich, was Nutzer über sich erzählen (nur auf dem Gerät),
+versteht Folgefragen zum letzten Thema und wiederholt Formulierungen nicht direkt. Kein Server, keine fremde KI, keine Kosten. Der frühere Server-Weg (unten) bleibt nur für alte App-Versionen.
 
 ## KI "Juno" (Server, alt)
 

@@ -12,7 +12,7 @@
   // ---------------------------------------------------------------------------------------------
   function norm(s) {
     return String(s || '').toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-      .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s.,%+\-*/:?']/g, ' ').replace(/\s+/g, ' ').trim();
+      .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s.,%+\-*/:?']/g, ' ').replace(/[?!]/g, ' ').replace(/([a-z])[.,](?=\s|$)/g, '$1').replace(/\s+/g, ' ').trim();
   }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
@@ -33,10 +33,12 @@
     'reifen schlauch platten flicken luftdruck kette schaltung bremse sattel licht helm training trainieren ausdauer motivation danke witz ' +
     'weather forecast restaurant nearby distance tomorrow today calories streak record speed tire chain brake helmet thanks joke').split(' ');
   var VSET = {}; VOCAB.forEach(function (w) { VSET[w] = 1; });
+  // haeufige Woerter, die nie "korrigiert" werden duerfen
+  var COMMON = {}; ('nichts gerne immer wieder einfach wirklich vielleicht eigentlich bisschen gerade weisst kannst koennen machen machst haben hatte hatten waren wurde wurden werden warum wieso woher welche welcher welches dieser diese dieses meine meinen meiner deine seine unsere schoen grosse kleine lange wenig alles etwas jemand niemand leute menschen freund freunde freundin familie mutter vater bruder schwester katze arbeit schule hause zuhause trinken schlafen spielen lernen fahren gehen kommen sehen sagen denken glauben finden wissen heisse heisst wohne wohnst liebe liebst magst brauche brauchst suche suchst hilfe fragen antwort problem gefaellt gefuehle langweilig traurig gluecklich krank muede stress gestern abends nachts wochen monate jahre stunde stunden minuten berge wasser sonne schnee wolken ganzen keinen keiner morgens mittags danke bitte hallo tschuess spaeter frueher anders andere anderen vielen trotzdem deshalb genau richtig falsch neues neuen alten nochmal erzaehl erzaehle schreib schreibe zeige gibst geben nehmen bringen bringst fahre faehrst gefahren geradelt unterwegs lieblings meinung denkst haeltst findest'.split(' ')).forEach(function (w) { COMMON[w] = 1; });
   function fix(t) {
     return t.split(' ').map(function (w) {
-      if (w.length < 5 || VSET[w] || /\d/.test(w)) return w;
-      var best = null, bd = w.length >= 8 ? 2 : 1;
+      if (w.length < 6 || VSET[w] || SW[w] || COMMON[w] || /\d/.test(w)) return w;
+      var best = null, bd = w.length >= 9 ? 2 : 1;
       VOCAB.forEach(function (v) { var d = lev(w, v); if (d <= bd && (!best || d < best.d)) best = { v: v, d: d }; });
       return best ? best.v : w;
     }).join(' ');
@@ -46,7 +48,7 @@
   // Sprache: App-Sprache, ausser die Nachricht ist klar englisch
   function langOf(raw) {
     var app = window.I18N ? I18N.lang : 'de', t = ' ' + norm(raw) + ' ';
-    var en = (t.match(/ (the|is|are|what|where|how|can|you|my|please|show|me|weather|near|nearby|ride|route|thanks|thank|hello|hi|there|i|to|do|does|which|who|will|it|tomorrow|today|get|tell|joke|last|was|rain|good|morning|any|some|plan|take) /g) || []).length;
+    var en = (t.match(/ (the|is|are|what|where|how|can|you|your|my|please|show|me|weather|near|nearby|thanks|thank|hello|hi|there|i|to|do|does|which|who|will|it|tomorrow|today|get|tell|joke|rain|good|morning|any|some|take|about|know|another|one|bye|much|many|should|would|could|with|for|of|and|from|this|that|have|has) /g) || []).length;
     var de = (t.match(/ (der|die|das|ist|und|wie|wo|was|kannst|du|dir|mein|meine|bitte|zeig|mir|wetter|ich|zu|nach|wer|welche|hallo|danke|gibt|es|hier|heute|morgen|regnet|erzaehl|einen|eine|war|letzte|servus|gehts) /g) || []).length;
     if (en > de) return 'en';
     if (de > en) return 'de';
@@ -56,13 +58,58 @@
   function T(de, en) { return L === 'de' ? de : en; }
 
   // ---------------------------------------------------------------------------------------------
+  // Wissen (soul-data.js) und Abgleich: Schluesselsaetze gegen die Nachricht, mit Wortstamm und Tippfehlern
+  // ---------------------------------------------------------------------------------------------
+  var SD = window.SOUL_DATA || { faq: [], chat: [], facts: [], riddles: [], quiz: [], story: null, poems: [], opinions: [] };
+  function stem(w) { return w.length > 5 ? w.replace(/(ungen|ung|heit|keit|lich|isch|ern|en|er|es|em|e|n|s)$/, '') : w; }
+  function keyScore(key, toks) {
+    var kt = key.split(' '), hit = 0;
+    kt.forEach(function (w) {
+      var sw = stem(w);
+      if (toks.some(function (m) { return m === w || stem(m) === sw || (w.length >= 5 && m.length >= 5 && lev(m, w) <= 1); })) hit++;
+    });
+    return { hit: hit, n: kt.length, r: hit / kt.length };
+  }
+  // bestes Element einer Liste; strong: mindestens zwei Woerter muessen passen
+  function bestOf(list, t, opt) {
+    opt = opt || {};
+    var toks = t.split(' ').filter(Boolean), best = null;
+    list.forEach(function (e, i) {
+      e.k.forEach(function (key) {
+        var s = keyScore(key, toks);
+        if (s.n <= 2 ? s.r < 1 : s.r < 0.75) return;
+        if (opt.strong && s.hit < 2) return;
+        if (opt.coverage && s.n === 1 && toks.length > 3) return;
+        if (opt.coverage && s.hit / toks.length < opt.coverage && toks.length > 4) return;
+        var sc = s.hit + (s.r === 1 ? 0.5 : 0);
+        if (!best || sc > best.sc) best = { e: e, i: i, sc: sc };
+      });
+    });
+    return best;
+  }
+  // nie zweimal hintereinander dieselbe Formulierung
+  var lastPick = {};
+  function pickNR(arr, key) {
+    if (!arr || !arr.length) return '';
+    if (arr.length < 2) return arr[0];
+    var i, g = 0; do { i = Math.floor(Math.random() * arr.length); } while (i === lastPick[key] && ++g < 10);
+    lastPick[key] = i; return arr[i];
+  }
+
+  // Was Soul sich ueber dich merkt (bleibt auf dem Handy)
+  var MEM = V.load('soulMem', { name: null, ort: null, mag: [], rad: null, alter: null, places: {} });
+  function saveMem() { V.store('soulMem', MEM); }
+
+  // ---------------------------------------------------------------------------------------------
   // Gespraechsgedaechtnis
   // ---------------------------------------------------------------------------------------------
   var M = { last: null, place: null, list: [], offer: null, article: null, sentIdx: 0, name: null, turns: 0, lastTopic: null };
   function userName() {
+    if (MEM.name) return MEM.name;
     try { var a = VX.account && VX.account(); if (a && a.user && a.user.name) return a.user.name.split(' ')[0]; } catch (e) {}
     return null;
   }
+  function userCountry() { try { var a = VX.account && VX.account(); return a && a.user && a.user.country; } catch (e) { return null; } }
 
   // ---------------------------------------------------------------------------------------------
   // Hilfen: Netz (Hintergrund-Browser), Orte, Wetter
@@ -147,6 +194,7 @@
 
   function detect(raw, t) {
     var q = isQuestion(raw, t);
+    if (/\d+(?:[.,]\d+)?\s*(%|prozent|percent)\s*(von|of)\s*\d/.test(t) || /\d+(?:[.,]\d+)?\s*(km|kilometer|meilen|miles|mi|kmh|km\/h|ms|m\/s)\s*(in|to)\s*(km|kilometer|meilen|miles|mi|kmh|km\/h|ms|m\/s)\b/.test(t)) return 'math';
     if (/^[\d\s+\-*/().,x:^%=]+$/.test(t.replace(/\b(mal|plus|minus|geteilt durch|durch|times|divided by|ist|=)\b/g, ' ').replace(/(was ist|rechne|berechne|what is|calculate)/, '')) && /\d/.test(t) && /[+\-*/x:]|mal|plus|minus|geteilt|times|divided/.test(t)) return 'math';
     if (/^(ja|jo|jep|jup|gerne|gern|klar|ok|okay|passt|mach (das|mal|es)|bitte|yes|yeah|yep|sure|go|los|na klar|unbedingt|auf jeden fall)\b/.test(t) && t.split(' ').length <= 5) return 'yes';
     if (/^(nein|nee|ne|no|nope|lieber nicht|doch nicht|nicht noetig|passt schon)\b/.test(t) && t.split(' ').length <= 5) return 'no';
@@ -158,10 +206,13 @@
     if (/\b(wie schnell (bin|fahre) ich|mein tempo|wie weit (noch|ist es noch)|wann (bin ich|komme ich) (da|an)|restzeit|wie lange noch|wie viele? (km|kilometer) noch|naechste (abbiegung|anweisung)|naechster anstieg|wie hoch bin ich|auf welcher hoehe|how fast am i|how far (is it )?(left|to go)|when will i arrive|eta)\b/.test(t)) return 'live';
     if (/\b(anziehen|kleidung|jacke mitnehmen|regenjacke|what (should i )?wear|clothes)\b/.test(t)) return 'wear';
     if (/\b(wetter|regen|regnet|regnen|wind|windig|temperatur|grad|sonnig|sonne scheint|gewitter|schnee|wie warm|wie kalt|weather|rain|raining|forecast|windy|temperature|sunny)\b/.test(t)) return 'weather';
-    if (/\b(statistik|kalorien|abzeichen|serie|flamme|streak|rekord|rekorde|bestzeit|bestzeiten|wochenziel|meine (fahrt|fahrten|woche|leistung|kilometer|km)|letzte(n)? fahrt|wie (gut|weit|viel|oft|schnell) bin ich (gefahren|geradelt|unterwegs)|wie war (meine|die|meine letzte) (fahrt|woche|tour)|wie viele? (km|kilometer|hoehenmeter|fahrten)|insgesamt gefahren|diese woche gefahren|letzten monat|bin ich besser|fortschritt|my (ride|rides|stats|week|streak|badges|progress)|how (far|much|often) (did|have) i|calories|last ride)\b/.test(t)) return 'stats';
+    var mine = /\b(ich|mein|meine|meinen|meiner|mir|hab|habe|bin|my|i|me)\b/.test(t);
+    if (/\b(statistik|abzeichen|serie|flamme|streak|rekord|rekorde|bestzeit|bestzeiten|wochenziel|meine (fahrt|fahrten|woche|leistung|kilometer|km)|letzte(n)? fahrt|wie (gut|weit|viel|oft|schnell) bin ich (gefahren|geradelt|unterwegs)|wie war (meine|die|meine letzte) (fahrt|woche|tour)|insgesamt gefahren|diese woche gefahren|bin ich besser|fortschritt|my (ride|rides|stats|week|streak|badges|progress)|how (far|much|often) (did|have) i|last ride)\b/.test(t) ||
+      (mine && /\b(kalorien|kcal|wie viele? (km|kilometer|hoehenmeter|fahrten)|letzten monat|calories)\b/.test(t))) return 'stats';
     if (/\b(tour|touren|runde|rundtour|rundfahrt|ausflug|ausfahrt|radtour|vorschlag|vorschlagen|idee|ideen|loop|ride idea|where (should|can) i ride|wohin (soll|kann) ich (fahren|radeln))\b/.test(t) && !catOf(t)) return 'tour';
     var c = catOf(t);
     if (c && (/\b(in der naehe|hier|nearby|um mich|in meiner naehe|wo (gibt|ist|kann|finde|bekomme)|naechste|naechstes|naechsten|gibt es|irgendwo|zeig|zeige|suche|such|find|where|any|around|hungrig|hunger|durst)\b/.test(t) || t.split(' ').length <= 3)) return 'nearby';
+    if (/\b(problem|probleme|kaputt|defekt|funktioniert nicht|geht nicht|klappt nicht)\b/.test(t) && /\b(rad|fahrrad|bike|reifen|kette|bremse|bremsen|schaltung|licht|sattel|pedal|ebike|akku)\b/.test(t)) return 'bike';
     if (/\b(platten|platter reifen|reifen|schlauch|flicken|luftdruck|reifendruck|kette|kettenoel|schaltung|gaenge|gang springt|bremse|bremsen|quietscht|knackt|sattel|sattelhoehe|licht|beleuchtung|oelen|schmieren|wartung|putzen|flat tire|puncture|tyre|tire pressure|chain|gears|brakes?|saddle|squeak|maintenance)\b/.test(t)) return 'bike';
     if (/\b(schneller werden|fitter|fit werden|trainier|training|ausdauer|kondition|berg ?hoch|bergauf (besser|leichter)|abnehmen|trittfrequenz|kadenz|intervall|get faster|get fitter|climb better|lose weight|cadence)\b/.test(t)) return 'training';
     if (/\b(helm|sicherheit|sicher fahren|unfall|im dunkeln|nachts fahren|verkehrsregel|handzeichen|safety|helmet|accident|at night)\b/.test(t)) return 'safety';
@@ -176,11 +227,10 @@
     if (/\b(witz|witze|joke|jokes|bring mich zum lachen|was lustiges|funny)\b/.test(t)) return 'joke';
     if (/\b(du bist (so |echt |wirklich )?(toll|super|cool|klasse|lieb|die beste|genial|nett|hilfreich|schlau)|ich mag dich|ich liebe dich|gut gemacht|love you|you are (great|awesome|cool|the best)|good job)\b/.test(t)) return 'compliment';
     if (/\b(du bist (so |echt )?(dumm|bloed|doof|schlecht|nutzlos|langweilig)|halt die klappe|stupid|useless|shut up)\b/.test(t)) return 'insult';
-    if (/\b(keine lust|bin (so |sehr |total )?(muede|faul|kaputt|erschoepft)|motivier|motivation|schaffe (es|das) nicht|zu anstrengend|bin traurig|schlechter tag|no motivation|tired|lazy)\b/.test(t)) return 'lowmood';
+    if (/\b(keine lust|bin (so |sehr |total )?(muede|faul|kaputt|erschoepft)|schaffe (es|das) nicht|zu anstrengend|no motivation|tired|lazy)\b/.test(t)) return 'lowmood';
     if (/\b(war|bin) (heute |gestern |gerade |eben )?(radeln|radfahren|rad fahren|gefahren|geradelt|unterwegs|biken)\b|\b(i (went|was) (cycling|riding)|i rode)\b/.test(t)) return 'rode';
     if (/\b(bin (gut drauf|happy|gluecklich|stolz|froh)|super tag|geschafft|ich habe es geschafft|feeling great|i did it)\b/.test(t)) return 'goodmood';
     if (/\b(wie alt bist du|how old are you)\b/.test(t)) return 'age';
-    if (/\b(magst du|was magst du|lieblings|favorite|favourite|do you like)\b/.test(t)) return 'likes';
     if (q) return 'knowledge';
     return 'chat';
   }
@@ -243,7 +293,15 @@
       return out;
     });
   }
+  var PRON = { er: 1, sie: 1, es: 1, ihn: 1, ihm: 1, ihr: 1, dort: 1, da: 1, dem: 1, davon: 1, darueber: 1, dieser: 1, diese: 1, dieses: 1, it: 1, he: 1, she: 1, they: 1, there: 1, that: 1, this: 1, him: 1, her: 1 };
   function knowledge(raw, t) {
+    // Folgefrage zum letzten Thema ohne neues Stichwort: im selben Artikel nachsehen
+    var rest = content(fix(t)).filter(function (w) { return !PRON[w] && !{ hoch: 1, lang: 1, alt: 1, gross: 1, weit: 1, viele: 1, gebaut: 1, gegruendet: 1, high: 1, tall: 1, long: 1, old: 1, built: 1, founded: 1, liegt: 1, wohnen: 1, leben: 1 }[w]; });
+    if (M.article && !rest.length && t.split(' ').some(function (w) { return PRON[w]; })) {
+      var r0 = rank(M.article.sents, t), b0 = r0.filter(function (x) { return M.article.used.indexOf(x.s) < 0 || x.sc >= 4; })[0] || r0[0];
+      M.article.used.push(b0.s);
+      return Promise.resolve(b0.s + ' 📚');
+    }
     var cw = content(fix(t));
     // Suchbegriff aus den Originalwoertern (mit Umlauten und ß), ohne Fragewoerter
     var QW = { hoch: 1, lang: 1, gross: 1, alt: 1, weit: 1, viele: 1, gegruendet: 0, high: 1, tall: 1, long: 1, old: 1, big: 1, many: 1 };
@@ -265,6 +323,7 @@
       var r = rank(ss, t), first = ss[0], top = r[0];
       var pickS = qtype(t) === 'what' || qtype(t) === 'who' ? [first].concat(top.s !== first ? [top.s] : []) : [top.s].concat(top.s !== first && r[0].sc < 5 ? [first] : []);
       M.article = { title: a.title, sents: ss, used: pickS.slice(), lang: lang }; M.lastTopic = a.title;
+      if (/^(Er|Sie|Es|Dieser|Diese|Dieses|Dort|It|He|She|They)\b/.test(pickS[0]) && pickS[0] !== first) pickS = [first, pickS[0]];
       var txt = pickS.slice(0, 2).join(' ');
       if (lang === 'en' && L === 'de') txt = 'Auf Deutsch habe ich nichts gefunden, hier aus der englischen Wikipedia: ' + txt;
       return txt + ' 📚\n\n' + T('Quelle: Wikipedia (' + a.title + '). Sag „mehr“, wenn du mehr wissen willst.', 'Source: Wikipedia (' + a.title + '). Say "more" to learn more.');
@@ -285,31 +344,39 @@
   // ---------------------------------------------------------------------------------------------
   function R(text, extra) { var o = { antwort: text, aktionen: [], orte: [] }; if (extra) for (var k in extra) o[k] = extra[k]; return Promise.resolve(o); }
   var JOKES = {
-    de: ['Warum fahren Fahrräder nie alleine? Weil sie zwei-reifig sind! 🚲😄', 'Was sagt ein Fahrrad zum anderen? „Reifen wir mal zusammen ab!“ 😂', 'Mein Fahrrad und ich haben eine feste Beziehung. Es ist immer für mich da, nur beim Bergauffahren lässt es mich hängen 😅', 'Warum ist das Fahrrad umgefallen? Es war zwei-müde! 😴🚲', 'Ich wollte einen Witz über Kettenschaltungen erzählen, aber ich komme einfach nicht in den richtigen Gang 🤭'],
-    en: ['Why can\'t a bicycle stand up by itself? Because it\'s two-tired! 🚲😄', 'I wanted to tell a joke about gears, but I couldn\'t shift into the right mood 🤭', 'What do you call a cyclist who doesn\'t like hills? Flat-out honest 😂']
+    de: ['Warum fahren Fahrräder nie alleine? Weil sie zwei-reifig sind! 🚲😄', 'Was sagt ein Fahrrad zum anderen? „Reifen wir mal zusammen ab!“ 😂', 'Mein Fahrrad und ich haben eine feste Beziehung. Es ist immer für mich da, nur beim Bergauffahren lässt es mich hängen 😅', 'Warum ist das Fahrrad umgefallen? Es war zwei-müde! 😴🚲', 'Ich wollte einen Witz über Kettenschaltungen erzählen, aber ich komme einfach nicht in den richtigen Gang 🤭',
+      'Was ist das Lieblingsessen von Radfahrern? Speichen-Spaghetti! 🍝😄', 'Warum hat der Radfahrer seinen Wecker auf das Rad gelegt? Er wollte eine Zeitfahrt machen! ⏰🚴',
+      'Treffen sich zwei Fahrräder. Sagt das eine: „Du siehst aber platt aus!“ Sagt das andere: „Ich hatte einen anstrengenden Tag, ich bin völlig durch… den Schlauch!“ 😂',
+      'Wie nennt man einen Fuchs auf dem Rennrad? Einen Turbo-Fux! 🦊💨', 'Warum gehen Fahrräder nie in die Schule? Weil sie schon genug Speichen-Wissen haben! 🤓',
+      'Mein Rad hat mir gesagt, ich soll mehr trainieren. Ich glaube, es wollte mich nur antreiben 😄', 'Was sagt der Berg zum Radfahrer? „Komm doch rauf, wenn du dich traust!“ ⛰️😏'],
+    en: ['Why can\'t a bicycle stand up by itself? Because it\'s two-tired! 🚲😄', 'I wanted to tell a joke about gears, but I couldn\'t shift into the right mood 🤭', 'What do you call a cyclist who doesn\'t like hills? Flat-out honest 😂', 'Why did the bicycle go to the doctor? It was feeling a bit run-down 😄', 'I tried to make a bike joke but it fell flat… like my tyre 🛞😂']
   };
   function chain(t, k) {
     var name = userName(), hr = new Date().getHours(), d = L === 'de';
     var I = intentCache;
     switch (I) {
       case 'greet': case 'greetq':
-        return R(pick(d ? [(hr < 11 ? 'Guten Morgen' : hr < 18 ? 'Hallo' : 'Guten Abend') + (name ? ' ' + name : '') + '! 👋 Was darf es heute sein: eine schöne Tour, das Wetter oder ein Café in der Nähe? ☕',
-          'Hey' + (name ? ' ' + name : '') + '! 😊 Schön, dass du da bist. Wobei kann ich dir helfen?', 'Servus' + (name ? ' ' + name : '') + '! 🚴 Lust auf eine Runde?']
-          : ['Hi' + (name ? ' ' + name : '') + '! 👋 What can I do for you: a nice tour, the weather or a café nearby? ☕', 'Hey' + (name ? ' ' + name : '') + '! 😊 Ready to ride?']));
+        var cc = userCountry(), hi = cc === 'AT' ? ['Servus', 'Griaß di', 'Hallo'] : cc === 'CH' ? ['Grüezi', 'Hoi', 'Hallo'] : cc === 'DE' ? ['Hallo', 'Moin', 'Hey'] : ['Hallo', 'Hey', 'Hi'];
+        var h1 = hr >= 5 && hr < 11 ? 'Guten Morgen' : hr >= 18 && hr < 23 ? 'Guten Abend' : pickNR(hi, 'hi'), nm = name ? ' ' + name : '';
+        if (hr >= 23 || hr < 5) h1 = pickNR([h1, 'Na, noch wach', 'Hey, Nachteule'], 'night');
+        var wx = k && k.wetter, wtxt = '';
+        if (wx && wx.temp_c != null) wtxt = wx.regenrisiko_prozent >= 50 ? ' Draußen sieht es nach Regen aus 🌧️, eher ein Tag für Planung oder eine kurze Runde mit Jacke.' : wx.temp_c >= 12 ? ' Draußen hat es ' + wx.temp_c + ' °C, ' + (wx.wind_kmh >= 30 ? 'etwas windig, aber' : 'richtig') + ' gutes Radwetter ☀️' : ' Draußen hat es frische ' + wx.temp_c + ' °C, also warm anziehen 🧣';
+        return R(d ? pickNR([h1 + nm + '! 👋' + wtxt + ' Was darf es heute sein?', h1 + nm + '! 😊 Schön, dass du da bist.' + wtxt + ' Wobei kann ich helfen?', h1 + nm + '! 🦊' + (wtxt || ' Lust auf eine Runde?')], 'greet')
+          : pickNR(['Hi' + nm + '! 👋 What can I do for you today?', 'Hey' + nm + '! 😊 Ready to ride?', (hr < 11 ? 'Good morning' : hr >= 18 ? 'Good evening' : 'Hello') + nm + '! 🦊 How can I help?'], 'greet'));
       case 'howru':
-        return R(pick(d ? ['Mir geht\'s super, danke! 😄 Ich hab heute schon Routen in Gedanken geplant. Und dir? Lust auf eine Runde? 🚴', 'Bestens! ☀️ Wie geht\'s dir denn? Fährst du heute noch?', 'Gut, danke der Nachfrage! 😊 Wie war dein Tag bisher?']
+        return R(pickNR(d ? ['Mir geht\'s super, danke! 😄 Ich hab heute schon Routen in Gedanken geplant. Und dir? Lust auf eine Runde? 🚴', 'Bestens! ☀️ Wie geht\'s dir denn? Fährst du heute noch?', 'Gut, danke der Nachfrage! 😊 Wie war dein Tag bisher?']
           : ['Great, thanks! 😄 And you? Fancy a ride today? 🚴', 'All good here! ☀️ How about you?']));
       case 'who':
         return R(d ? 'Ich bin **Soul**, die KI von Velora 🦊✨ Ich laufe direkt hier in der App, ohne fremde KI. Ich plane Routen und Touren, kenne das Wetter, finde schöne Orte in der Nähe, werte deine Fahrten aus und recherchiere für dich, wenn du etwas wissen willst.'
           : 'I\'m **Soul**, Velora\'s AI 🦊✨ I run right here in the app, no external AI. I plan routes and tours, know the weather, find nice places nearby, analyse your rides and look things up for you.');
       case 'can':
-        return R(d ? 'Ich kann dir helfen bei:\n- 🗺️ **Routen**: „Plan mir eine Route nach Melk“, danach „flacher“ oder „kürzer“\n- 🔄 **Touren**: „Schlag mir eine 2-Stunden-Tour vor“\n- 📍 **In der Nähe**: „Wo gibt es hier Pizza?“, „Aussichtspunkte in der Nähe“\n- ☀️ **Wetter**: „Regnet es morgen?“, „Was soll ich anziehen?“\n- 📊 **Deine Fahrten**: „Wie war meine Woche?“, „Wie viele Kalorien?“\n- 🔧 **Rad-Hilfe**: „Wie flicke ich einen Reifen?“\n- 📚 **Wissen**: „Wie hoch ist der Großglockner?“\n- 😄 Und einfach plaudern!'
+        return R(d ? 'Ich kann dir helfen bei:\n- 🗺️ **Routen**: „Plan mir eine Route nach Melk“, danach „flacher“ oder „kürzer“\n- 🔄 **Touren**: „Schlag mir eine 2-Stunden-Tour vor“\n- 📍 **In der Nähe**: „Wo gibt es hier Pizza?“, „Aussichtspunkte in der Nähe“\n- ☀️ **Wetter**: „Regnet es morgen?“, „Was soll ich anziehen?“\n- 📊 **Deine Fahrten**: „Wie war meine Woche?“, „Wie viele Kalorien?“\n- 🔧 **Rad-Hilfe**: „Wie flicke ich einen Reifen?“\n- 📚 **Wissen**: „Wie hoch ist der Großglockner?“, danach „Und der Mont Blanc?“\n- 🧠 **Ich merke mir dich**: „Ich heiße …“, „Meine Arbeit ist in …“\n- 🎲 **Spaß**: Witze, Rätsel, Quiz, Geschichten, Gedichte, Fun Facts\n- 😄 Und einfach plaudern!'
           : 'I can help with:\n- 🗺️ **Routes**: "Plan a route to Vienna", then "flatter" or "shorter"\n- 🔄 **Tours**: "Suggest a 2-hour tour"\n- 📍 **Nearby**: "Where can I get pizza?"\n- ☀️ **Weather**: "Will it rain tomorrow?"\n- 📊 **Your rides**: "How was my week?"\n- 🔧 **Bike help**: "How do I fix a flat?"\n- 📚 **Knowledge**: "How high is Mont Blanc?"\n- 😄 And just chatting!');
       case 'thanks':
-        return R(pick(d ? ['Sehr gern! 😊', 'Immer wieder gern! 🦊', 'Gerne doch! Gute Fahrt 🚴💨', 'Dafür bin ich da! ✨'] : ['You\'re welcome! 😊', 'Anytime! 🦊', 'Happy to help! Enjoy the ride 🚴💨']));
+        return R(pickNR(d ? ['Sehr gern! 😊', 'Immer wieder gern! 🦊', 'Gerne doch! Gute Fahrt 🚴💨', 'Dafür bin ich da! ✨'] : ['You\'re welcome! 😊', 'Anytime! 🦊', 'Happy to help! Enjoy the ride 🚴💨']));
       case 'bye':
-        return R(pick(d ? ['Bis bald' + (name ? ', ' + name : '') + '! 👋 Gute Fahrt!', 'Tschüss! 🦊 Melde dich, wenn du eine Tour brauchst.', hr >= 20 ? 'Gute Nacht! 🌙 Morgen wartet die nächste Runde.' : 'Bis später! 🚴'] : ['See you' + (name ? ', ' + name : '') + '! 👋 Ride safe!', 'Bye! 🦊']));
-      case 'joke': return R(pick(JOKES[d ? 'de' : 'en']));
+        return R(pickNR(d ? ['Bis bald' + (name ? ', ' + name : '') + '! 👋 Gute Fahrt!', 'Tschüss! 🦊 Melde dich, wenn du eine Tour brauchst.', hr >= 20 ? 'Gute Nacht! 🌙 Morgen wartet die nächste Runde.' : 'Bis später! 🚴'] : ['See you' + (name ? ', ' + name : '') + '! 👋 Ride safe!', 'Bye! 🦊']));
+      case 'joke': return R(pickNR(JOKES[d ? 'de' : 'en'], 'joke') + T(' Noch einer? 😄', ' Another one? 😄'), { _offer: 'joke' });
       case 'compliment': return R(pick(d ? ['Oh, danke! 🥰 Das geht runter wie ein frisch geöltes Kettenblatt.', 'Du bist aber auch toll! 😊 Zusammen sind wir ein starkes Team 🚴🦊', 'Danke! ✨ Das motiviert mich richtig.'] : ['Aww, thank you! 🥰', 'You\'re great too! 😊 We make a good team 🚴🦊']));
       case 'insult': return R(pick(d ? ['Autsch 😅 Ich gebe mein Bestes und lerne dazu. Sag mir, was nicht gepasst hat, dann versuche ich es nochmal.', 'Okay, das war wohl nichts 🙈 Wie kann ich es besser machen?'] : ['Ouch 😅 I\'m doing my best. Tell me what went wrong and I\'ll try again.']));
       case 'lowmood':
@@ -318,7 +385,6 @@
       case 'rode': return R(T('Wie cool! 🎉 Wie war es? Wenn du die Fahrt mit Velora aufgezeichnet hast, sag „Wie war meine letzte Fahrt?“ und ich werte sie dir aus 📊', 'Nice! 🎉 How was it? Ask "How was my last ride?" and I\'ll analyse it 📊'));
       case 'goodmood': return R(pick(d ? ['Wie cool! 🎉 Das freut mich richtig.', 'Stark! 💪 Weiter so!', 'Yes! 🔥 So muss das sein.'] : ['How cool! 🎉', 'Awesome! 💪 Keep it up!']));
       case 'age': return R(d ? 'Ich bin noch ganz frisch 🦊 Aber ich lerne jeden Tag dazu!' : 'I\'m brand new 🦊 but I learn every day!');
-      case 'likes': return R(d ? 'Ich liebe ruhige Radwege am Wasser, Sonnenuntergänge vom Aussichtspunkt und ein gutes Stück Kuchen nach der Tour 🍰🌅 Und du?' : 'I love quiet bike paths by the water, sunsets from a viewpoint and cake after a ride 🍰🌅 And you?');
       case 'time': var now = new Date(); return R(d ? 'Es ist ' + V.hhmm(now) + ' Uhr, ' + now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }) + ' 🕒' : 'It\'s ' + V.hhmm(now) + ', ' + now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ' 🕒');
     }
     return null;
@@ -326,6 +392,16 @@
   var intentCache = null;
 
   function doMath(t) {
+    var m = t.match(/(\d+(?:[.,]\d+)?)\s*(?:%|prozent|percent)\s*(?:von|of)\s*(\d+(?:[.,]\d+)?)/);
+    if (m) return Math.round(parseFloat(m[1].replace(',', '.')) * parseFloat(m[2].replace(',', '.'))) / 100;
+    m = t.match(/(\d+(?:[.,]\d+)?)\s*(km|kilometer|meilen|miles|mi|kmh|km\/h|ms|m\/s)\s*(?:in|to|=)\s*(km|kilometer|meilen|miles|mi|kmh|km\/h|ms|m\/s)/);
+    if (m) {
+      var x = parseFloat(m[1].replace(',', '.')), f = m[2], to = m[3], isKm = /^(km|kilometer)$/, isMi = /^(meilen|miles|mi)$/, isKmh = /^(kmh|km\/h)$/, isMs = /^(ms|m\/s)$/;
+      if (isKm.test(f) && isMi.test(to)) return Math.round(x / 1.609344 * 100) / 100;
+      if (isMi.test(f) && isKm.test(to)) return Math.round(x * 1.609344 * 100) / 100;
+      if (isKmh.test(f) && isMs.test(to)) return Math.round(x / 3.6 * 100) / 100;
+      if (isMs.test(f) && isKmh.test(to)) return Math.round(x * 3.6 * 100) / 100;
+    }
     var e = t.replace(/(was ist|rechne|berechne|what is|calculate|=|\?)/g, ' ').replace(/geteilt durch|durch|divided by|:/g, '/').replace(/\bmal\b|\btimes\b|x/g, '*').replace(/\bplus\b/g, '+').replace(/\bminus\b/g, '-').replace(/,/g, '.').replace(/\s+/g, '');
     if (!/^[\d+\-*/().%^]+$/.test(e)) return null;
     try { var v = Function('"use strict";return (' + e.replace(/\^/g, '**') + ')')(); if (typeof v === 'number' && isFinite(v)) return Math.round(v * 1e6) / 1e6; } catch (x) {}
@@ -335,7 +411,13 @@
   function doRoute(raw, t, k) {
     var tg = targetOf(raw) || {};
     if (tg.there && M.place) tg = { place: M.place };
-    if (tg.home) { var hc = V.load('homeCell', null); return R(T('Ein Zuhause habe ich noch nicht gespeichert 🏠 Sag mir einfach die Adresse, zum Beispiel „Route zur Hauptstraße 5 in Graz“.', 'I don\'t know your home yet 🏠 Just tell me the address.')); }
+    var PK = { arbeit: 'arbeit', firma: 'arbeit', buero: 'arbeit', job: 'arbeit', work: 'arbeit', office: 'arbeit', schule: 'schule', school: 'schule', uni: 'uni', universitaet: 'uni', zuhause: 'zuhause', home: 'zuhause' };
+    var pk = tg.home ? 'zuhause' : tg.q ? PK[norm(tg.q).replace(/^(meiner|meinem|meine|mein|my) /, '')] : null;
+    if (pk) {
+      var adr = MEM.places[pk] || (pk === 'zuhause' ? MEM.ort : null);
+      if (!adr) return R(T('Wo ist ' + { arbeit: 'deine Arbeit', schule: 'deine Schule', uni: 'deine Uni', zuhause: 'dein Zuhause' }[pk] + '? 🤔 Sag mir zum Beispiel „' + { arbeit: 'Meine Arbeit ist in der Hauptstraße 5 in Graz', schule: 'Meine Schule ist in der Schulgasse 3 in Linz', uni: 'Meine Uni ist die TU Wien', zuhause: 'Mein Zuhause ist in der Lindengasse 7 in Wien' }[pk] + '“, dann merke ich es mir für immer 😊', 'Where is it? 🤔 Tell me e.g. "My work is at 5 Main Street, Graz" and I\'ll remember it 😊'));
+      tg = { q: adr };
+    }
     var style = /\b(schnell|fast|direkt|kuerzeste|quick)\b/.test(t) ? 'schnell' : 'schoen';
     var go = function (p) {
       M.place = p;
@@ -504,15 +586,82 @@
   ];
   function doHelp(t) { for (var i = 0; i < HELP.length; i++) if (HELP[i][0].test(t)) return R(T(HELP[i][1][0], HELP[i][1][1])); }
 
+  // Spezielle Inhalte aus dem Wissenspaket
+  function special(tag) {
+    var d = L === 'de';
+    if (tag === '__fact__') { var f = pickNR(SD.facts, 'fact'); return R((d ? '💡 Wusstest du? ' + f[0] : '💡 Did you know? ' + f[1]) + T(' Willst du noch einen?', ' Want another one?'), { _offer: 'fact' }); }
+    if (tag === '__riddle__') { var r = pickNR(SD.riddles, 'riddle'); M.riddle = r; M.riddleT = M.turns; return R('🧩 ' + r[0] + T(' (Rate mal! Oder sag „Lösung“.)', ' (Take a guess! Or say "answer".)')); }
+    if (tag === '__quiz__') { var q = pickNR(SD.quiz, 'quiz'); M.quiz = q; M.quizT = M.turns; return R('🎯 **Quiz:** ' + q[0] + '\n' + q[1].map(function (o, i) { return (i + 1) + ') ' + o; }).join('\n') + T('\nAntworte mit 1, 2 oder 3!', '\nAnswer 1, 2 or 3!')); }
+    if (tag === '__story__') {
+      var S = SD.story; if (!S) return R('📖');
+      return R('📖 Es war einmal ' + pick(S.who) + '. Eines Tages ging die Fahrt ' + pick(S.where) + '. Alles war wunderbar, doch ' + pick(S.problem) + '. ' + pick(S.solve) + ', ' + pick(S.end) + T('\n\nSoll ich noch eine erzählen? 😊', ''), { _offer: 'story' });
+    }
+    if (tag === '__poem__') return R(pickNR(SD.poems, 'poem'));
+    return null;
+  }
+  // Statements ohne klare Absicht: auf den Inhalt eingehen statt Floskeln
   function chat(raw, t) {
     var tg = targetOf(raw);
     if (tg && tg.q && /\b(fahre|fahren|radle|radeln|will|moechte|wuerde gern|going|want)\b/.test(t)) { M.offer = 'route_to:' + tg.q; return R(T('Klingt nach einem Plan! 🚴 Soll ich dir eine Route nach **' + tg.q + '** planen?', 'Sounds like a plan! 🚴 Shall I plan a route to **' + tg.q + '**?')); }
-    if (/\b(gefahren|geradelt|war radeln|tour gemacht|rode|cycled)\b/.test(t)) return R(T('Wie cool! 🎉 Wie war es? Wenn du die Fahrt aufgezeichnet hast, kann ich dir sagen, wie gut sie war, frag einfach „Wie war meine letzte Fahrt?“', 'Nice! 🎉 How was it? Ask me "How was my last ride?"'));
     if (/\b(hunger|hungrig|durst)\b/.test(t)) return doNearby('essen', window.__ugljan.kontext());
-    if (/\b(langweilig|bored)\b/.test(t)) return R(T('Langeweile? Perfekte Ausrede für eine Runde! 😄 Soll ich dir eine Tour vorschlagen?', 'Bored? Perfect excuse for a ride! 😄 Want a tour idea?'), { _offer: 'tour_easy' });
-    if (/\b(ich heisse|mein name ist|my name is)\b/.test(t)) { var nm = raw.replace(/.*(ich heisse|ich heiße|mein name ist|my name is)\s+/i, '').split(/[\s,.!]/)[0]; M.name = nm; return R(T('Freut mich, ' + nm + '! 😊🦊', 'Nice to meet you, ' + nm + '! 😊🦊')); }
-    return R(pick(T(['Verstehe 😊 Erzähl mir mehr, oder soll ich dir bei einer Tour, dem Wetter oder einem Ziel helfen?', 'Spannend! 🦊 Womit kann ich dir helfen? Route, Tour, Wetter, Orte in der Nähe oder deine Fahrten?', 'Okay! 👍 Wenn du eine Frage hast, frag einfach drauf los.'],
-      ['I see 😊 Want help with a tour, the weather or a destination?', 'Interesting! 🦊 What can I do for you?'])));
+    var pos = /\b(gut|super|toll|schoen|geil|cool|genial|perfekt|happy|froh|freu|great|good|nice|awesome|love)\w*/.test(t), neg = /\b(schlecht|doof|bloed|nervig|kaputt|traurig|schade|mist|schlimm|scheiss|krank|verletzt|gestorben|streit|angst|sorgen?|anstrengend|stressig|muehsam|nervt|bad|sad|terrible|annoying|sick|exhausting)\w*/.test(t);
+    var d = L === 'de';
+    // Orte und Personen nach Praepositionen ("am Neusiedler See", "mit Anna"); deutsche Hauptwoerter allein sind keine Namen
+    var PREP = /\b(am|an der|an den|im|in|nach|zum|zur|beim|bei|auf dem|auf der|aus|to|at)\s+((?:[A-ZÄÖÜ][\wäöüß-]+)(?:\s+[A-ZÄÖÜ][\wäöüß-]+){0,2})/;
+    var pm = raw.match(PREP), per = raw.match(/\bmit\s+([A-ZÄÖÜ][a-zäöüß]+)\b(?!\s+[A-ZÄÖÜ])/);
+    var past = /\b(war|waren|gewesen|hatte|gestern|i was|we were)\b/.test(t);
+    if (pm && past) { var pr = /^(am|im|beim|zum|zur)$/i.test(pm[1]) ? pm[1] + ' ' : 'in '; return R(pickNR(d ? ['Wie schön! 😊 Wie war es ' + pr + pm[2] + '?' + (per ? ' Mit ' + per[1] + ' zusammen klingt nach einem richtig tollen Tag!' : '') + ' Seid ihr mit dem Rad hin? 🚴', 'Oh, ' + pm[2] + '! 😍 Erzähl, was habt ihr dort gemacht?'] : ['Nice! 😊 How was ' + pm[2] + '?'], 'past')); }
+    if (neg) return R(pickNR(d ? ['Oh nein, das tut mir leid 💛 Magst du mir mehr erzählen?', 'Das klingt nicht schön 😕 Was ist passiert?', 'Oje 😣 Kann ich dir irgendwie helfen?'] : ['Oh no, I\'m sorry 💛 Want to tell me more?', 'That doesn\'t sound good 😕 What happened?'], 'neg'));
+    if (pm && !past) { M.offer = 'route_to:' + pm[2]; return R(pickNR(d ? [pm[2] + '? Soll ich dir eine Route dorthin planen oder etwas darüber herausfinden? 🦊', 'Oh, ' + pm[2] + '! Willst du mit dem Rad hin? Ich plane dir gern die Strecke 🚴'] : [pm[2] + '? Want me to plan a route there? 🦊'], 'place')); }
+    if (per) return R(pickNR(d ? ['Mit ' + per[1] + '? Wie schön 😊 Erzähl mehr!', 'Grüß ' + per[1] + ' von mir! 😄'] : ['With ' + per[1] + '? Nice 😊'], 'person'));
+    var names = [];
+    if (neg) return R(pickNR(d ? ['Oh, das klingt nicht so toll 😕 Magst du mir mehr erzählen?', 'Hm, das tut mir leid 💛 Was ist passiert?', 'Das ist ärgerlich 😣 Kann ich dir irgendwie helfen?'] : ['Oh, that doesn\'t sound great 😕 Want to tell me more?', 'Sorry to hear that 💛 What happened?'], 'neg'));
+    if (pos) return R(pickNR(d ? ['Das klingt richtig gut! 😄 Erzähl mehr!', 'Wie schön! 🎉 Das freut mich.', 'Cool! 😊 Und wie geht es weiter?'] : ['That sounds great! 😄 Tell me more!', 'How nice! 🎉'], 'pos'));
+    if (names.length) return R(pickNR(d ? ['Spannend, ' + names[0] + '! 🤔 Was genau interessiert dich daran? Ich kann auch nachschauen, was ich darüber finde.', names[0] + '? Erzähl mir mehr darüber 😊', 'Oh, ' + names[0] + '! Soll ich dir eine Route dorthin planen oder etwas darüber recherchieren? 🦊'] : ['Interesting, ' + names[0] + '! 🤔 Want me to look it up or plan a route there?'], 'names'), names[0].length > 2 ? { _offer: 'route_to:' + names[0] } : null);
+    if (/\b(ich|mir|mich|mein)\b/.test(t)) return R(pickNR(d ? ['Verstehe 😊 Und wie fühlst du dich dabei?', 'Okay! Erzähl ruhig weiter, ich höre zu 🦊', 'Aha, spannend 🤔 Was hast du als Nächstes vor?'] : ['I see 😊 And how do you feel about it?', 'Okay! Go on, I\'m listening 🦊'], 'me'));
+    return R(pickNR(T(['Hm, da bin ich mir nicht sicher, was du meinst 🤔 Kannst du es anders sagen? Oder frag mich nach Touren, Wetter, Orten oder deinen Fahrten.', 'Das habe ich nicht ganz verstanden 🙈 Meinst du eine Frage? Dann stell sie mir ruhig direkt.', 'Okay! 👍 Wenn du eine Frage hast, frag einfach drauf los, ich versuche mein Bestes.'],
+      ['Hm, I\'m not sure what you mean 🤔 Could you rephrase it?', 'I didn\'t quite get that 🙈 Is it a question? Just ask me directly.']), 'fallback'));
+  }
+  // Gedaechtnis: Aussagen ueber dich erkennen und speichern
+  function memorize(raw, t) {
+    var m, d = L === 'de', said = null;
+    if ((m = raw.match(/(?:ich hei(?:ß|ss)e|mein name ist|nenn mich|du kannst mich .* nennen|my name is|call me)\s+([A-Za-zÄÖÜäöüß\-]{2,20})/i)) && !/^(soul|du|dich)$/i.test(m[1])) { MEM.name = cap(m[1]); said = T('Freut mich, ' + MEM.name + '! 😊 Ich merke mir deinen Namen.', 'Nice to meet you, ' + MEM.name + '! 😊'); }
+    else if ((m = raw.match(/(?:ich wohne in|ich lebe in|ich komme aus|i live in|i am from|i'm from)\s+([^,.!?]{2,40})/i))) { MEM.ort = m[1].trim(); said = T('Ah, ' + MEM.ort + '! 🏡 Merk ich mir. Soll ich dir mal schöne Touren in der Gegend suchen?', 'Ah, ' + MEM.ort + '! 🏡 Noted.'); }
+    else if ((m = raw.match(/\b(?:meine?|my)\s+(arbeit|firma|schule|uni|universit[äa]t|b[üu]ro|wohnung|zuhause|work|office|school|home)\s+(?:ist|liegt|is)\s+(?:in der |in |am |an der |auf der |bei |at |in the |die |der |das )?([^!?]{3,80})/i))) {
+      if (!/^(in der|in|am|an der|auf der|bei|at|in the)\s/i.test(raw.slice(raw.toLowerCase().indexOf(m[2].toLowerCase()) - 8)) && !/\d|stra(ß|ss)e|gasse|weg|platz|allee|ring|street|road|avenue|tu |uni /i.test(m[2]) && !/ (in der|in|am|an der|bei|at) $/i.test(raw.slice(0, raw.toLowerCase().indexOf(m[2].toLowerCase())))) m = null;
+    }
+    if (said == null && m && m[2] && /\b(?:meine?|my)\s+(arbeit|firma|schule|uni|universit|b[üu]ro|wohnung|zuhause|work|office|school|home)/i.test(raw)) {
+      var key = { arbeit: 'arbeit', firma: 'arbeit', 'büro': 'arbeit', buero: 'arbeit', work: 'arbeit', office: 'arbeit', schule: 'schule', school: 'schule', uni: 'uni', 'universität': 'uni', universitaet: 'uni', wohnung: 'zuhause', zuhause: 'zuhause', home: 'zuhause' }[m[1].toLowerCase()] || 'zuhause';
+      MEM.places[key] = m[2].trim().replace(/[.]$/, ''); said = T('Alles klar, gemerkt! 📍 Sag einfach „Route zur ' + ({ arbeit: 'Arbeit', schule: 'Schule', uni: 'Uni', zuhause: 'Hause' }[key]) + '“, dann bringe ich dich hin.', 'Got it! 📍 Just say "route to ' + key + '".');
+    }
+    else if ((m = raw.match(/(?:ich bin|i am|i'm)\s+(\d{1,2})\s*(?:jahre|years)/i))) { MEM.alter = +m[1]; said = T(m[1] + ' Jahre, cool! 😊', m[1] + ', cool! 😊'); }
+    else if ((m = raw.match(/(?:ich (?:habe|fahre) (?:ein|einen|eine)|mein (?:fahrrad|rad) ist (?:ein|eine)|i (?:have|ride) an?)\s+((?:[a-zäöüß-]+\s){0,2}(?:rennrad|gravelbike|gravel|mountainbike|mtb|e-?bike|pedelec|trekkingrad|cityrad|citybike|stadtrad|hollandrad|klapprad|lastenrad|fahrrad|bike))\b/i))) { MEM.rad = m[1].trim(); said = T('Ein ' + MEM.rad + ', sehr schön! 🚲 Merk ich mir.', 'A ' + MEM.rad + ', nice! 🚲'); }
+    else if ((m = raw.match(/(?:ich mag|ich liebe|mein lieblings\w* ist|i like|i love)\s+([^,.!?]{2,40})/i)) && !/^(dich|dir|you|es|das|soul)\b/i.test(m[1])) { var v = m[1].trim(); if (MEM.mag.indexOf(v) < 0) MEM.mag.push(v); MEM.mag = MEM.mag.slice(-12); said = T(pickNR(['Oh, ' + v + '! 😊 Gemerkt.', v + ' finde ich auch super! 💚', 'Schön, dass du ' + v + ' magst! Ich merke es mir 🦊'], 'like'), 'Nice, ' + v + '! 😊 Noted.'); }
+    if (said) { saveMem(); return R(said); }
+    if (/\b(was weisst du (ueber|von) (mir|mich)|was hast du dir (ueber mich )?gemerkt|kennst du mich|was merkst du dir|what do you know about me)\b/.test(t)) {
+      var f = [];
+      if (userName()) f.push(T('du heißt **' + userName() + '**', 'your name is **' + userName() + '**'));
+      if (MEM.ort) f.push(T('du wohnst in ' + MEM.ort, 'you live in ' + MEM.ort));
+      if (MEM.alter) f.push(T('du bist ' + MEM.alter + ' Jahre alt', 'you are ' + MEM.alter));
+      if (MEM.rad) f.push(T('du fährst ein ' + MEM.rad, 'you ride a ' + MEM.rad));
+      Object.keys(MEM.places).forEach(function (k2) { f.push(T(({ arbeit: 'deine Arbeit', schule: 'deine Schule', uni: 'deine Uni', zuhause: 'dein Zuhause' }[k2] || k2) + ' ist ' + MEM.places[k2], 'your ' + k2 + ' is ' + MEM.places[k2])); });
+      if (MEM.mag.length) f.push(T('du magst ' + MEM.mag.slice(-4).join(', '), 'you like ' + MEM.mag.slice(-4).join(', ')));
+      var s2 = VX.statsData && VX.statsData(); if (s2 && s2.n) f.push(T('du bist schon ' + km(s2.all.d) + ' km mit Velora gefahren', 'you have ridden ' + kmE(s2.all.d) + ' km with Velora'));
+      return R(f.length ? T('🧠 Ich weiß: ' + f.join(', ') + '. Wenn ich etwas vergessen soll, sag „Vergiss das“.', '🧠 I know: ' + f.join(', ') + '.') : T('Noch nicht viel 😊 Erzähl mir doch etwas über dich, zum Beispiel wie du heißt oder wo du wohnst!', 'Not much yet 😊 Tell me about yourself!'));
+    }
+    if (/\b(wie heisse ich|weisst du wie ich heisse|whats my name|what is my name)\b/.test(t)) return R(userName() ? T('Du heißt ' + userName() + '! 😊', 'Your name is ' + userName() + '! 😊') : T('Das weiß ich noch nicht 🙈 Wie heißt du denn?', 'I don\'t know yet 🙈 What\'s your name?'));
+    if (/\b(wo wohne ich|where do i live)\b/.test(t)) return R(MEM.ort ? T('In ' + MEM.ort + ' 🏡', 'In ' + MEM.ort + ' 🏡') : T('Das hast du mir noch nicht verraten 😊', 'You haven\'t told me yet 😊'));
+    if (/\b(vergiss (das|alles|mich)|loesch (das|alles)|forget (that|everything))\b/.test(t)) { MEM = { name: null, ort: null, mag: [], rad: null, alter: null, places: {} }; saveMem(); return R(T('Okay, ich habe alles vergessen, was du mir über dich erzählt hast 🧹', 'Okay, I forgot everything you told me 🧹')); }
+    return null;
+  }
+  // Meinung: "Was haeltst du von X?", "Magst du X?"
+  function opinion(raw, t) {
+    if (!/\b(was haeltst du von|was denkst du (ueber|von)|wie findest du|magst du|was ist deine meinung|what do you think (of|about)|do you like)\b/.test(t)) return null;
+    var t2 = t.replace(/-/g, '');
+    for (var i = 0; i < SD.opinions.length; i++) if (SD.opinions[i][0].test(t2) || SD.opinions[i][0].test(t)) return R(SD.opinions[i][1]);
+    var x = raw.replace(/.*(h(?:ä|ae|a)lt(?:e)?st du von|denkst du (?:über|ueber|von)|findest du|magst du|deine meinung (?:zu|über|ueber)|think (?:of|about)|do you like)\s*/i, '').replace(/[?!.]+$/, '').trim();
+    if (!x) return null;
+    return R(pickNR(T(['Zu ' + x + ' habe ich keine feste Meinung, ich bin ja eine KI 😊 Aber erzähl mir, wie du das siehst!', 'Hm, ' + x + '? Ich finde es spannend, was Menschen daran mögen. Was gefällt dir daran? 🤔', 'Gute Frage! Ich bin da neutral, aber neugierig: Was denkst du über ' + x + '? 🦊'], ['I don\'t have a strong opinion on ' + x + ' 😊 What do you think?']), 'opinion'));
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -533,8 +682,11 @@
     if (/\b(wie weit (ist|sind) (das|es|die|der)|how far is (it|that))\b/.test(t) && M.place) { var h0 = here(k); if (h0) return finish(R(T('📍 **' + M.place.name + '** ist ' + km(V.dist(h0.lat, h0.lon, M.place.lat, M.place.lon)) + ' km Luftlinie entfernt. Soll ich dich hinbringen?', '📍 **' + M.place.name + '** is ' + kmE(V.dist(h0.lat, h0.lon, M.place.lat, M.place.lon)) + ' km away. Want me to take you there?')), 'live'); }
     if (/\b(wie weit (ist|sind) (das|es)|how far is (it|that))\b/.test(t) && !M.place && !(k.navigation && k.navigation.aktiv)) return finish(R(T('Wohin genau meinst du? 🤔 Nenn mir den Ort, dann sage ich dir, wie weit es ist.', 'Where exactly do you mean? 🤔')), 'chat');
     if (/\b(dorthin|dahin|da hin|hin bringen|hinbringen|bring mich (hin|dahin|dorthin)|take me there)\b/.test(t) && M.place) return finish(doRoute('zu dort', t, k), 'route');
+    if (M.offer && /^(quiz|fact|story|joke)$/.test(M.offer) && /^(noch (eine|einen|einer|eins|mal)|nochmal|weiter|another|again|one more)\b/.test(t)) I = 'yes';
     if (I === 'yes' && M.offer) {
       var o = M.offer; M.offer = null;
+      if (/^(quiz|fact|story)$/.test(o)) return finish(special({ quiz: '__quiz__', fact: '__fact__', story: '__story__' }[o]), o);
+      if (o === 'joke') return finish(R(pickNR(JOKES[L === 'de' ? 'de' : 'en'], 'joke') + T(' Noch einer? 😄', ' Another one? 😄'), { _offer: 'joke' }), 'joke');
       if (o === 'route_first' && M.place) return finish(doRoute('zu dort', t, k), 'route');
       if (o === 'tour_easy') return finish(doTour('1 stunde leicht', k), 'tour');
       if (o.indexOf('route_to:') === 0) return finish(doRoute('nach ' + o.slice(9), 'route nach ' + norm(o.slice(9)), k), 'route');
@@ -542,6 +694,26 @@
     if (I === 'yes') return finish(R(pick(T(['Super! 😊 Was machen wir?', 'Klar! Wobei kann ich helfen? 🦊'], ['Great! 😊 What shall we do?']))), 'yes');
     if (I === 'no') { M.offer = null; return finish(R(pick(T(['Alles klar 👍 Sag Bescheid, wenn du etwas brauchst.', 'Okay, kein Problem 😊'], ['Alright 👍', 'No problem 😊']))), 'no'); }
     if (M.offer === 'tour_ask' && (durationOf(t) || /\b(leicht|schwer|mittel|easy|hard)\b/.test(t))) { M.offer = null; return finish(doTour(t, k), 'tour'); }
+    // Quiz- und Raetsel-Antworten
+    if (M.quiz) {
+      var qz = M.quiz, nn = t.match(/^\s*([123]|a|b|c|eins|zwei|drei)\b/), gi = nn ? { 1: 0, 2: 1, 3: 2, a: 0, b: 1, c: 2, eins: 0, zwei: 1, drei: 2 }[nn[1]] : qz[1].findIndex(function (o) { return norm(o).length > 2 && t.indexOf(norm(o)) >= 0; });
+      if (gi != null && gi >= 0) { M.quiz = null; M.offer = 'quiz'; return finish(R(gi === qz[2] ? pickNR(T(['Richtig! 🎉 Stark!', 'Genau! ✅ Du kennst dich aus!', 'Jawohl! 🏆'], ['Correct! 🎉']), 'qok') + T(' Noch eine Frage?', ' Another one?') : T('Leider nicht 😅 Richtig ist: **' + qz[1][qz[2]] + '**. Noch eine Frage?', 'Not quite 😅 The answer is **' + qz[1][qz[2]] + '**. Another one?')), 'quiz'); }
+    }
+    if (M.riddle && M.turns - (M.riddleT || 0) > 3) M.riddle = null;
+    if (M.quiz && M.turns - (M.quizT || 0) > 3) M.quiz = null;
+    if (M.riddle && I !== 'greet') {
+      var rd = M.riddle;
+      if (new RegExp('\\b(' + rd[1] + ')').test(t)) { M.riddle = null; return finish(R(T('Richtig! 🎉 ', 'Correct! 🎉 ') + rd[2]), 'riddle'); }
+      if (/\b(loesung|aufloesung|sag es|keine ahnung|weiss nicht|gib auf|answer|i give up)\b/.test(t)) { M.riddle = null; return finish(R(T('Die Lösung: ', 'The answer: ') + rd[2]), 'riddle'); }
+      if (t.split(' ').length <= 2 && I === 'chat' && !bestOf(SD.chat, t, { coverage: 0.34 })) return finish(R(pickNR(T(['Nicht ganz 😄 Rate nochmal!', 'Knapp daneben! 🤏 Noch ein Versuch?', 'Hmm, leider nein 🙈 Willst du die Lösung?'], ['Not quite 😄 Try again!']), 'rno')), 'riddle');
+    }
+    // Gedaechtnis (Aussagen ueber dich, Fragen nach dir)
+    var mem = memorize(raw, t); if (mem) return finish(mem, 'memory');
+    // Rad-Wissensbuch, wenn klar danach gefragt wird (zwei passende Woerter)
+    if (/^(chat|knowledge|weather|wear|training|safety|bike|lowmood|goodmood|tour)$/.test(I)) {
+      var fq = bestOf(SD.faq, t, { strong: true });
+      if (fq) return finish(R(L === 'de' ? fq.e.a : fq.e.e), 'faq');
+    }
     intentCache = I;
     var r = chain(t, k);
     if (r) return finish(r, I);
@@ -560,8 +732,21 @@
       case 'training': return finish(doTraining(t), I);
       case 'safety': return finish(doSafety(), I);
       case 'apphelp': return finish(doHelp(t), I);
-      case 'knowledge': return finish(knowledge(raw, t).then(function (x) { return { antwort: x, aktionen: [], orte: [] }; }), I);
     }
+    // Wissensbuch (auch einzelne Fachwoerter), Plauder-Sammlung, Meinungen
+    var fq2 = bestOf(SD.faq, t, { coverage: 0.2 });
+    if (fq2 && (I === 'knowledge' || I === 'chat')) return finish(R(L === 'de' ? fq2.e.a : fq2.e.e), 'faq');
+    var op = opinion(raw, t); if (op) return finish(op, 'opinion');
+    var ch = bestOf(SD.chat, t, { coverage: 0.34 });
+    if (ch) {
+      var arr = (L === 'de' ? ch.e.a : ch.e.e) || ch.e.a, ans = pickNR(arr, 'c' + ch.i);
+      var sp = /^__\w+__$/.test(ans) ? special(ans) : null;
+      return finish(sp || R(ans), 'smalltalk');
+    }
+    // "Und der Mont Blanc?" nach einer Wissensfrage
+    var und = t.match(/^und (?:was ist mit |wie ist es mit |what about )?(.{2,40})$/);
+    if (und && M.lastQ) { var raw2 = M.lastQ.replace(/(ist|sind|war|liegt|is|was)\s+(der|die|das|the)?\s*.+$/i, '$1 ') + raw.replace(/^\s*und\s+(was ist mit|wie ist es mit|what about)?\s*/i, '').replace(/[?!.]+$/, ''); return finish(knowledge(raw2, fix(norm(raw2))).then(function (x) { return { antwort: x, aktionen: [], orte: [] }; }), 'knowledge'); }
+    if (I === 'knowledge') { M.lastQ = raw.replace(/[?!.]+$/, ''); return finish(knowledge(raw, t).then(function (x) { return { antwort: x, aktionen: [], orte: [] }; }), I); }
     return finish(chat(raw, t), 'chat');
   }
   function finish(p, intent) {
@@ -574,5 +759,5 @@
   }
   // Antwort der App auf Hintergrund-Abrufe (Android)
   function got(id, text, err) { var p = pend[id]; if (!p) return; delete pend[id]; if (err) p.rej(new Error(err)); else p.res(text); }
-  window.Soul = { ask: ask, _got: got, _detect: function (s) { L = langOf(s); return detect(s, fix(norm(s))); } };
+  window.Soul = { ask: ask, _got: got, _detect: function (s) { L = langOf(s); return detect(s, fix(norm(s))); }, _dbg: function (s) { var t = fix(norm(s)); return { t: t, content: content(t), article: !!M.article, lastQ: M.lastQ }; } };
 })();
