@@ -431,3 +431,37 @@ body.fs #guide{top:46px}
 @keyframes ctaPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.0),0 8px 30px rgba(124,92,255,.5)}50%{box-shadow:0 0 0 8px rgba(255,255,255,.08),0 8px 40px rgba(255,59,212,.6)}}
 .px-free{font-size:12.5px;color:rgba(255,255,255,.62);margin:16px 4px 8px;line-height:1.45}
 .px-note{font-size:11px;color:rgba(255,255,255,.42);margin:4px 8px}
+
+/* Anmeldung */
+#onb{position:fixed;inset:0;z-index:4800;background:radial-gradient(circle at 50% 0%,#e9fbf3,#f3f6fa 60%);display:flex;justify-content:center;overflow:auto;transition:opacity .35s,transform .35s}
+body.night #onb{background:radial-gradient(circle at 50% 0%,#1d2a37,#0f1720 60%)}
+#onb.out{opacity:0;transform:scale(1.03)}
+.ob-box{width:100%;max-width:440px;padding:calc(18px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;text-align:center}
+.ob-in-anim>*{animation:sIn .45s cubic-bezier(.2,.8,.2,1) both}
+.ob-in-anim>*:nth-child(2){animation-delay:.05s}.ob-in-anim>*:nth-child(3){animation-delay:.1s}.ob-in-anim>*:nth-child(4){animation-delay:.15s}.ob-in-anim>*:nth-child(n+5){animation-delay:.2s}
+.ob-dots{display:flex;gap:6px;justify-content:center;margin-bottom:6px}.ob-dots i{width:26px;height:6px;border-radius:3px;background:var(--panel3);transition:background .3s}.ob-dots i.on{background:var(--lime)}
+.ob-hero{display:flex;justify-content:center;margin:6px 0 2px}.ob-hero .fxw{filter:drop-shadow(0 10px 20px rgba(13,43,62,.15))}
+#onb h1{font-size:27px;font-weight:800;letter-spacing:-.02em;margin:8px 0 6px}
+#onb p{color:var(--mute);font-size:15.5px;margin:0 0 14px;line-height:1.45}
+.ob-langs{display:grid;gap:8px;margin:6px 0 14px}
+.ob-lang,.ob-c{display:flex;align-items:center;gap:12px;border:2px solid transparent;background:var(--panel);border-radius:16px;padding:13px 14px;font-size:16px;font-weight:600;color:var(--text);box-shadow:var(--sh1);text-align:left}
+.ob-lang.on,.ob-c.on{border-color:var(--lime);background:linear-gradient(135deg,rgba(47,213,154,.12),var(--panel))}
+.fl{font-size:22px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}.fl.big{font-size:30px}
+.chip .fl{font-size:16px}.linkrow .fl{font-size:18px}
+.ob-go{margin-top:auto;height:56px;border:0;border-radius:18px;background:var(--lime);color:var(--ink);font-size:18px;font-weight:800;box-shadow:0 4px 0 rgba(13,43,62,.15)}
+.ob-go:active{transform:translateY(2px)}.ob-go.busy{opacity:.6}
+.ob-link{border:0;background:none;color:var(--mute);margin-top:12px;font-size:14px;text-decoration:underline}
+.ob-seg{margin:6px 0 12px}
+.ob-in{width:100%;height:52px;border-radius:14px;border:2px solid var(--line);background:var(--panel);color:var(--text);padding:0 14px;font-size:16px;margin-bottom:10px;outline:none;font-family:inherit}
+.ob-in:focus{border-color:var(--lime)}
+.ob-pw{position:relative}.ob-pw button{position:absolute;right:6px;top:6px;width:40px;height:40px;border:0;background:none}
+.ob-err{color:#e5463c;min-height:20px;font-size:14px;margin:2px 0 8px}
+.ob-list{display:flex;flex-direction:column;gap:6px;max-height:48vh;overflow:auto;margin:0 -4px 14px;padding:4px;text-align:left}
+.ob-c{padding:10px 12px;font-size:15px;font-weight:500;box-shadow:none;border-width:2px}
+.ob-chk{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--panel);border-radius:16px;padding:14px;margin:0 0 10px;font-size:14px;line-height:1.45;box-shadow:var(--sh1)}
+.ob-chk input{width:22px;height:22px;flex:none;accent-color:var(--acc);margin-top:1px}
+.ob-hero.big{margin-top:30px}
+/* Konto in den Einstellungen */
+.acc-card{display:flex;align-items:center;gap:12px;background:var(--panel2);border-radius:18px;padding:12px;margin:4px 0 6px}
+.acc-av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--lime),var(--acc));color:#fff;font-weight:800;font-size:20px;display:flex;align-items:center;justify-content:center;flex:none}
+.acc-card b{display:block;font-size:16px}.acc-card span{font-size:13px;color:var(--mute)}

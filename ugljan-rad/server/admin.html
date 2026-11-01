@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Velora Admin</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.css">
+<style>
+:root{--bg:#0e1420;--p:#161e2d;--p2:#1e2839;--line:#2a364b;--t:#e8eef6;--m:#8d9bb0;--a:#2fd59a;--b:#5aa9ff;--o:#ffa94d;--r:#ff6b6b}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--t);font:14px/1.45 Inter,system-ui,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(14,20,32,.92);backdrop-filter:blur(8px);z-index:5}
+header h1{font-size:18px;margin:0;font-weight:800}header h1 span{color:var(--a)}
+header .st{margin-left:auto;color:var(--m);font-size:12px;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--a);box-shadow:0 0 8px var(--a)}
+main{padding:16px;max-width:1280px;margin:0 auto;display:grid;gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.k{background:var(--p);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.k b{display:block;font-size:26px;font-weight:800}.k span{color:var(--m);font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--p);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.card h2{font-size:14px;margin:0 0 10px;color:var(--m);text-transform:uppercase;letter-spacing:1px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--m);font-weight:600;cursor:pointer}tr:hover td{background:var(--p2)}
+.tw{overflow:auto;max-height:460px}
+.tag{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;font-weight:700}
+.tag.plus{background:linear-gradient(90deg,#7c5cff,#2fb5ff);color:#fff}.tag.no{background:var(--p2);color:var(--m)}
+.bars{display:flex;align-items:flex-end;gap:3px;height:150px}.bars div{flex:1;background:linear-gradient(180deg,var(--a),#0c9a68);border-radius:4px 4px 0 0;min-height:2px;position:relative}
+.bars div:hover:after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#000;padding:2px 6px;border-radius:4px;font-size:11px;white-space:nowrap}
+.axis{display:flex;justify-content:space-between;color:var(--m);font-size:11px;margin-top:4px}
+.hl{display:flex;align-items:center;gap:8px;margin:5px 0}.hl .n{width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hl .bar{flex:1;height:8px;background:var(--p2);border-radius:4px;overflow:hidden}.hl .bar i{display:block;height:100%;background:var(--b)}.hl .v{width:60px;text-align:right;color:var(--m)}
+#map{height:420px;border-radius:12px;overflow:hidden}
+input,button{font:inherit}input{background:var(--p2);border:1px solid var(--line);color:var(--t);border-radius:10px;padding:9px 12px}
+button{background:var(--a);color:#06231a;border:0;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer}button.sec{background:var(--p2);color:var(--t)}
+#login{max-width:360px;margin:12vh auto;background:var(--p);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:10px}
+#login h1{margin:0 0 4px;font-size:22px}.err{color:var(--r);min-height:18px}
+.note{color:var(--m);font-size:12px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<form id="login">
+  <h1>Velora <span style="color:#2fd59a">Admin</span></h1>
+  <div class="note">Melde dich mit deinem Velora-Konto an (nur das Admin-Konto hat Zugang).</div>
+  <input id="em" type="email" placeholder="E-Mail" autocomplete="username" required>
+  <input id="pw" type="password" placeholder="Passwort" autocomplete="current-password" required>
+  <button>Anmelden</button><div class="err" id="err"></div>
+</form>
+<div id="app" class="hide">
+<header><h1>Velora <span>Admin</span></h1><div class="st"><i class="dot"></i><span id="upd">verbunden</span></div><button class="sec" id="csv">Nutzer als CSV</button><button class="sec" id="out">Abmelden</button></header>
+<main>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid2">
+    <div class="card"><h2>Juno-Credits pro Tag (30 Tage)</h2><div class="bars" id="cday"></div><div class="axis"><span id="ax0"></span><span>heute</span></div></div>
+    <div class="card"><h2>Größte Verbraucher (30 Tage)</h2><div class="tw" style="max-height:190px"><table id="top"></table></div></div>
+  </div>
+  <div class="card"><h2>Beliebte Gegenden (anonym, nur mit Zustimmung, letzte 3 Monate)</h2><div id="map"></div><div class="note" style="margin-top:6px">Zusammengefasst in Kacheln von etwa 2 km, ohne Bezug zu Personen.</div></div>
+  <div class="grid2">
+    <div class="card"><h2>Länder</h2><div id="countries"></div></div>
+    <div class="card"><h2>Benutzte Funktionen (30 Tage)</h2><div id="feats"></div></div>
+  </div>
+  <div class="card"><h2>Nutzer <input id="q" placeholder="Suchen" style="margin-left:10px;padding:5px 10px;font-size:13px;text-transform:none;letter-spacing:0"></h2><div class="tw"><table id="users"></table></div>
+    <div class="note" style="margin-top:8px">Passwörter werden nur als nicht umkehrbarer Hash gespeichert und sind für niemanden einsehbar. „Passwort vergessen“ per E-Mail kommt, sobald ein E-Mail-Dienst eingerichtet ist.</div></div>
+</main>
+</div>
+<script src="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)},tok=sessionStorage.getItem('vadm'),D=null,map=null,sortK='t',sortD=-1;
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function flag(cc){return cc&&cc.length===2?String.fromCodePoint.apply(null,cc.toUpperCase().split('').map(function(c){return 127397+c.charCodeAt(0)})):''}
+function dt(t){return t?new Date(t).toLocaleDateString('de-AT'):'-'}
+var LN={de:'Deutsch',en:'English',fr:'Français',it:'Italiano',es:'Español',pt:'Português',nl:'Nederlands',pl:'Polski'};
+var CN=new Intl.DisplayNames(['de'],{type:'region'});function cname(c){try{return CN.of(c)}catch(e){return c}}
+$('login').onsubmit=function(e){e.preventDefault();$('err').textContent='';
+ fetch('/admin/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('em').value,password:$('pw').value})}).then(function(r){return r.json()}).then(function(j){if(!j.token){$('err').textContent=j.fehler||'Kein Zugang';return}tok=j.token;sessionStorage.setItem('vadm',tok);start()}).catch(function(){$('err').textContent='Server nicht erreichbar'})};
+$('out').onclick=function(){sessionStorage.removeItem('vadm');location.reload()};
+function load(){return fetch('/admin/api/data',{headers:{Authorization:'Bearer '+tok}}).then(function(r){if(r.status===401){sessionStorage.removeItem('vadm');location.reload();throw 0}return r.json()}).then(function(j){D=j;render();$('upd').textContent='aktualisiert '+new Date().toLocaleTimeString('de-AT')})}
+function start(){$('login').classList.add('hide');$('app').classList.remove('hide');load();setInterval(function(){load().catch(function(){$('upd').textContent='Verbindung unterbrochen'})},60000)}
+function day(o){return new Date(Date.now()-o*864e5).toISOString().slice(0,10)}
+function render(){
+ var U=D.users,C=D.credits,now=Date.now(),byU={},today=day(0),crT=0,cr30=0,q30=0,daySum={};
+ C.forEach(function(c){cr30+=c.n;q30+=c.q;if(c.d===today)crT+=c.n;daySum[c.d]=(daySum[c.d]||0)+c.n;var u=byU[c.id]||(byU[c.id]={n:0,q:0});u.n+=c.n;u.q+=c.q});
+ var plus=U.filter(function(u){return u.p}).length,new7=U.filter(function(u){return now-u.t<7*864e5}).length,act7=U.filter(function(u){return now-u.s<7*864e5}).length,anon=U.filter(function(u){return u.a}).length;
+ $('kpis').innerHTML=[[U.length,'Nutzer gesamt'],[new7,'Neu (7 Tage)'],[act7,'Aktiv (7 Tage)'],[plus,'Plus-Nutzer'],[crT,'Credits heute'],[cr30,'Credits 30 Tage'],[q30,'Juno-Fragen 30 Tage'],[U.length?Math.round(anon/U.length*100)+' %':'-','teilen anonyme Daten']].map(function(k){return '<div class="k"><b>'+k[0]+'</b><span>'+k[1]+'</span></div>'}).join('');
+ var mx=1,days=[];for(var i=29;i>=0;i--){var d=day(i);days.push([d,daySum[d]||0]);mx=Math.max(mx,daySum[d]||0)}
+ $('cday').innerHTML=days.map(function(x){return '<div style="height:'+(x[1]/mx*100)+'%" data-t="'+x[0]+': '+x[1]+'"></div>'}).join('');$('ax0').textContent=days[0][0];
+ var uid={};U.forEach(function(u){uid[u.id]=u});
+ var top=Object.keys(byU).map(function(id){return{u:uid[id]||{n:'(gelöscht)',e:''},n:byU[id].n,q:byU[id].q}}).sort(function(a,b){return b.n-a.n}).slice(0,15);
+ $('top').innerHTML='<tr><th>Name</th><th>E-Mail</th><th>Credits</th><th>Fragen</th></tr>'+top.map(function(x){return '<tr><td>'+esc(x.u.n)+'</td><td>'+esc(x.u.e)+'</td><td>'+x.n+'</td><td>'+x.q+'</td></tr>'}).join('');
+ var cc={};U.forEach(function(u){cc[u.c||'?']=(cc[u.c||'?']||0)+1});var cl=Object.keys(cc).sort(function(a,b){return cc[b]-cc[a]}),cm=Math.max.apply(null,cl.map(function(k){return cc[k]}).concat([1]));
+ $('countries').innerHTML=cl.slice(0,15).map(function(k){return '<div class="hl"><span class="n">'+flag(k)+' '+esc(cname(k))+'</span><span class="bar"><i style="width:'+cc[k]/cm*100+'%"></i></span><span class="v">'+cc[k]+'</span></div>'}).join('')||'<div class="note">Noch keine Daten</div>';
+ var F=D.feats,fl=Object.keys(F).sort(function(a,b){return F[b]-F[a]}),fm=Math.max.apply(null,fl.map(function(k){return F[k]}).concat([1]));
+ $('feats').innerHTML=fl.slice(0,20).map(function(k){return '<div class="hl"><span class="n">'+esc(k.replace(/_/g,' '))+'</span><span class="bar"><i style="width:'+F[k]/fm*100+'%;background:var(--o)"></i></span><span class="v">'+F[k]+'</span></div>'}).join('')||'<div class="note">Noch keine Daten</div>';
+ users(byU);heat();
+}
+function users(byU){
+ var q=($('q').value||'').toLowerCase(),U=D.users.slice().filter(function(u){return !q||(u.n+' '+u.e+' '+u.c).toLowerCase().indexOf(q)>=0});
+ U.forEach(function(u){u.cr=(byU&&byU[u.id]||{n:0}).n});
+ U.sort(function(a,b){var x=a[sortK],y=b[sortK];return (x>y?1:x<y?-1:0)*sortD});
+ var H=[['n','Name'],['e','E-Mail'],['c','Land'],['l','Sprache'],['t','Angemeldet'],['s','Zuletzt aktiv'],['p','Plus'],['cr','Credits 30 T.'],['a','Anonym']];
+ $('users').innerHTML='<tr>'+H.map(function(h){return '<th data-k="'+h[0]+'">'+h[1]+(sortK===h[0]?(sortD>0?' &#9650;':' &#9660;'):'')+'</th>'}).join('')+'</tr>'+U.map(function(u){return '<tr><td>'+esc(u.n)+'</td><td>'+esc(u.e)+'</td><td>'+flag(u.c)+' '+esc(u.c||'')+'</td><td>'+esc(LN[u.l]||u.l||'')+'</td><td>'+dt(u.t)+'</td><td>'+dt(u.s)+'</td><td>'+(u.p?'<span class="tag plus">PLUS</span>':'<span class="tag no">frei</span>')+'</td><td>'+(u.cr||0)+'</td><td>'+(u.a?'ja':'nein')+'</td></tr>'}).join('');
+ $('users').querySelectorAll('th').forEach(function(th){th.onclick=function(){var k=th.getAttribute('data-k');if(sortK===k)sortD=-sortD;else{sortK=k;sortD=-1}users(byU)}});
+ users.last=byU;
+}
+$('q').oninput=function(){users(users.last)};
+$('csv').onclick=function(){if(!D)return;var rows=[['Name','E-Mail','Land','Sprache','Angemeldet','Zuletzt aktiv','Plus']].concat(D.users.map(function(u){return[u.n,u.e,u.c,u.l,dt(u.t),dt(u.s),u.p?'ja':'nein']}));var csv=rows.map(function(r){return r.map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'}).join(';')}).join('\n');var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));a.download='velora-nutzer.csv';a.click()};
+function heat(){
+ var fc={type:'FeatureCollection',features:Object.keys(D.heat).map(function(k){var p=k.split(',');return{type:'Feature',properties:{w:D.heat[k]},geometry:{type:'Point',coordinates:[+p[1]+.01,+p[0]+.01]}}})};
+ if(!map){map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/positron',center:[13,47.5],zoom:4});
+  map.on('load',function(){map.addSource('h',{type:'geojson',data:fc});map.addLayer({id:'h',type:'heatmap',source:'h',paint:{'heatmap-weight':['interpolate',['linear'],['get','w'],0,0,20,1],'heatmap-radius':['interpolate',['linear'],['zoom'],3,6,10,30],'heatmap-intensity':['interpolate',['linear'],['zoom'],3,1,10,3],'heatmap-color':['interpolate',['linear'],['heatmap-density'],0,'rgba(0,0,0,0)',.2,'#5aa9ff',.5,'#2fd59a',.8,'#ffd43b',1,'#ff6b6b']}});
+   if(fc.features.length){var b=new maplibregl.LngLatBounds();fc.features.forEach(function(f){b.extend(f.geometry.coordinates)});map.fitBounds(b,{padding:40,maxZoom:10,duration:0})}});
+ } else if(map.getSource('h')) map.getSource('h').setData(fc);
+}
+if(tok)start();
+})();
+</script>
+</body>
+</html>

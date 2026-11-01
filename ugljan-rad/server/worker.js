@@ -1,4 +1,5 @@
 import TESTER from './public/index.html';
+import { accounts, userFromReq, creditsLeft, addCredits } from './accounts.js';
 // Velora KI-Server ("Juno") auf Cloudflare Workers.
 // Die App schickt den Chatverlauf und ihre Live-Daten (Standort, Tempo, Höhe, Route, Navigation ...) an POST /chat.
 // Juno antwortet mit Hilfe von Werkzeugen, die echte Daten holen (OpenStreetMap, Wikivoyage/Wikipedia, Open-Meteo),
@@ -11,7 +12,7 @@ const UA = 'Velora-Fahrrad-App/1.0 (https://github.com/tonisagmeister11-design/g
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-App-Id'
+  'Access-Control-Allow-Headers': 'Content-Type, X-App-Id, Authorization'
 };
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
@@ -240,6 +241,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const url = new URL(req.url);
     if (url.pathname === '/live' || url.pathname.startsWith('/live/') || url.pathname.startsWith('/l/')) return live(req, env, url);
+    if (/^\/(auth|me|stats|admin|datenschutz)(\/|$)/.test(url.pathname)) { const r = await accounts(req, env, url); if (r) return r; }
     if (req.method !== 'POST' || (url.pathname !== '/chat' && url.pathname !== '/ki' && url.pathname !== '/werkzeug')) return json({ fehler: 'Nicht gefunden' }, 404);
     if (req.headers.get('X-App-Id') !== env.APP_ID) return json({ fehler: 'Nicht erlaubt' }, 403);
     // Werkzeug direkt testen (nur mit App-Kennung)
@@ -258,9 +260,15 @@ export default {
     verlauf = verlauf.slice(-12).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 1500) }));
     if (!verlauf.length || !verlauf[verlauf.length - 1].content.trim()) return json({ fehler: 'Leere Frage' }, 400);
     const kontext = JSON.stringify(body.kontext || {}).slice(0, 6000);
+    // Konto: Credits werden pro Konto und Tag auf dem Server gezaehlt
+    const user = await userFromReq(req, env);
+    if (user && await creditsLeft(env, user) < 1) return json({ fehler: user.plus ? 'Deine Juno-Credits für heute sind aufgebraucht. Morgen gibt es neue.' : 'Deine kostenlosen Juno-Credits für heute sind aufgebraucht. Mit Velora Plus bekommst du 100 am Tag.', left: 0 }, 429);
+    const SPR = { de: 'Deutsch', en: 'English', fr: 'Français', it: 'Italiano', es: 'Español', pt: 'Português', nl: 'Nederlands', pl: 'Polski' };
+    const sprache = SPR[String(body.sprache || (user && user.lang) || 'de').slice(0, 2)] || 'Deutsch';
+    const done = async (o) => { if (user && o.credits) o.left = await addCredits(env, user, o.credits); return json(o); };
 
     const messages = [
-      { role: 'system', content: SYSTEM + '\n\nLive-Daten der App (JSON):\n' + kontext },
+      { role: 'system', content: SYSTEM + '\n\nSprache: Antworte immer auf ' + sprache + ', egal in welcher Sprache die Live-Daten sind.' + (user ? ' Der Nutzer heißt ' + user.name + '.' : '') + '\n\nLive-Daten der App (JSON):\n' + kontext },
       ...verlauf
     ];
     const aktionen = [], orte = [];
@@ -282,7 +290,7 @@ export default {
           }
           if (!antwort) antwort = aktionen.length ? 'Erledigt, schau in die App.' : 'Das habe ich gerade nicht hinbekommen. Frag mich bitte nochmal.';
           // Credits: jeder Rechenschritt der KI kostet einen (einfache Frage 1, mit Suche/Recherche 2 bis 4)
-          return json({ antwort, aktionen, orte: dedupe(orte), modell: model, credits: Math.min(5, schritt + 1 + extra) });
+          return done({ antwort, aktionen, orte: dedupe(orte), modell: model, credits: Math.min(5, schritt + 1 + extra) });
         }
         messages.push({ role: 'assistant', content: m.content || '', tool_calls: calls });
         for (const c of calls) {
@@ -300,7 +308,7 @@ export default {
           messages.push({ role: 'tool', tool_call_id: c.id, name, content: JSON.stringify(result).slice(0, 5000) });
         }
       }
-      return json({ antwort: 'Das war mir gerade zu kompliziert. Frag mich bitte etwas genauer.', aktionen, orte: dedupe(orte), credits: 5 });
+      return done({ antwort: 'Das war mir gerade zu kompliziert. Frag mich bitte etwas genauer.', aktionen, orte: dedupe(orte), credits: 5 });
     } catch (e) {
       console.error('KI-Fehler', e && e.message);
       if (/4006|daily free allocation/i.test(String(e && e.message)))

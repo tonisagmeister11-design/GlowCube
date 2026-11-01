@@ -1879,7 +1879,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 6.1 mit der KI Juno. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 6.2 mit der KI Juno. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -2150,7 +2150,7 @@
   // Wetter und Sonne
   // =====================================================================
   function compass(d) { return ['Nord', 'Nordost', 'Ost', 'Südost', 'Süd', 'Südwest', 'West', 'Nordwest'][Math.round(d / 45) % 8]; }
-  function windName(d) { return d >= 15 && d <= 75 ? ' (Bura)' : d >= 105 && d <= 165 ? ' (Jugo)' : d >= 280 && d <= 330 ? ' (Maestral)' : ''; }
+  function windName(d) { return ''; }
   var WCODE = { 0: 'Klar', 1: 'Überwiegend klar', 2: 'Teilweise bewölkt', 3: 'Bedeckt', 45: 'Nebel', 48: 'Nebel', 51: 'Nieselregen', 53: 'Nieselregen', 55: 'Nieselregen', 61: 'Leichter Regen', 63: 'Regen', 65: 'Starker Regen', 80: 'Regenschauer', 81: 'Regenschauer', 82: 'Heftige Schauer', 95: 'Gewitter', 96: 'Gewitter', 99: 'Gewitter' };
   function sunTimes(date) {
     var hp = typeof map !== 'undefined' && map.getCenter ? hereRef() : { lat: 48, lon: 13 }, lat = hp.lat, lon = hp.lon, rad = RAD;
@@ -2424,13 +2424,15 @@
     junoBusy = true;
     if (state === 'ai') showJuno();
     var verlauf = juno.filter(function (m) { return !m.wait && m.content; }).slice(-12).map(function (m) { return { role: m.role, content: m.content }; });
-    fetch(KI_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-App-Id': KI_ID }, body: JSON.stringify({ verlauf: verlauf, kontext: buildKontext() }) })
+    var hd = { 'Content-Type': 'application/json', 'X-App-Id': KI_ID }, tk = HOOK('token'); if (tk) hd.Authorization = 'Bearer ' + tk;
+    fetch(KI_URL, { method: 'POST', headers: hd, body: JSON.stringify({ verlauf: verlauf, kontext: buildKontext(), sprache: window.I18N ? I18N.lang : 'de' }) })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);
+        if (!d.antwort && d.left === 0 && window.VX) VX.srvCredits = { left: 0, max: (VX.srvCredits && VX.srvCredits.max) || 10 };
         if (!d.antwort) { juno.push({ role: 'assistant', content: d.fehler || 'Juno ist gerade nicht erreichbar.' }); saveJuno(); if (state === 'ai') showJuno(); return; }
         var m = { role: 'assistant', content: d.antwort, orte: d.orte || [], acts: d.aktionen || [] };
-        HOOK('haptic', 'soft'); HOOK('junoUsed', d.credits || 1); m.cr = d.credits || 1;
+        HOOK('haptic', 'soft'); HOOK('junoUsed', d.credits || 1, d.left); m.cr = d.credits || 1;
         juno.push(m); saveJuno(); junoLast = { text: d.antwort, t: Date.now() };
         if (nav || !$('chatlog')) say(plainText(d.antwort).slice(0, 400));
         // Aktionen sofort ausfuehren (Route, Tour, Anpassung); Orte nur anzeigen

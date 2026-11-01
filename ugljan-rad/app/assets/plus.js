@@ -20,7 +20,8 @@
   // =====================================================================
   var P = V.load('plus', { on: false });
   function isPlus() { return !!P.on; }
-  function setPlus(on) { P.on = on; P.since = on ? Date.now() : 0; V.store('plus', P); applyLook(); updWidget(); }
+  VX.setPlusQuiet = function (on) { P.on = !!on; V.store('plus', P); applyLook(); };
+  function setPlus(on) { P.on = on; P.since = on ? Date.now() : 0; V.store('plus', P); applyLook(); updWidget(); if (VX.onPlus) VX.onPlus(on); }
   var TAG = '<span class="plustag">PLUS</span>';
   var FEATS = [
     ['juno', '100 Juno-Credits am Tag', 'Statt 10. Für lange Gespräche, Recherche und viele Routen.'],
@@ -520,9 +521,9 @@
   // =====================================================================
   // Credits: jede Rechenrunde der KI kostet einen (einfache Frage 1, mit Suche oder Recherche 2 bis 4)
   var CR_FREE = 10, CR_PLUS = 100;
-  function crMax() { return isPlus() ? CR_PLUS : CR_FREE; }
+  function crMax() { return VX.srvCredits ? VX.srvCredits.max : isPlus() ? CR_PLUS : CR_FREE; }
   function crUsed() { var c = V.load('junoCr', { d: '', n: 0 }); return c.d === dayKey(Date.now()) ? c.n : 0; }
-  function crLeft() { return Math.max(0, crMax() - crUsed()); }
+  function crLeft() { return VX.srvCredits ? VX.srvCredits.left : Math.max(0, crMax() - crUsed()); }
   VX.junoGate = function () {
     if (crLeft() >= 1) return true;
     if (isPlus()) { V.toast('Deine ' + CR_PLUS + ' Credits für heute sind aufgebraucht. Morgen gibt es neue.'); return false; }

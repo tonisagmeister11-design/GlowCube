@@ -29,3 +29,8 @@ globs = ["**/*.html"]
 [[kv_namespaces]]
 binding = "LIVE"
 id = "fc0f09a228394fa183c473036fc21d62"
+
+# Konten, Credits, anonyme Statistik (Velora 6.2)
+[[kv_namespaces]]
+binding = "USERS"
+id = "a8e2d070b62544aa873f55d184f4c86b"
