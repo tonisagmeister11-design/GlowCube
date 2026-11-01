@@ -143,6 +143,26 @@ export async function accounts(req, env, url) {
     if (!u || !same(h, u.pw.h)) return json({ fehler: 'Kein Zugang.' }, 401);
     return json({ token: await newSession(env, u.id, true) });
   }
+  // Nur anonyme Summen fuer das Dashboard-Artefakt (keine E-Mails, Namen oder IDs).
+  // Zugang mit einem Statistik-Schluessel, dessen SHA-256 in KV unter cfg:statskey liegt.
+  if (p === '/admin/api/summary' && req.method === 'GET') {
+    const k = req.headers.get('X-Stats-Key') || '', want = await env.USERS.get('cfg:statskey');
+    if (!want || !k || !same(await sha(k), want)) return json({ fehler: 'Kein Zugang.' }, 401);
+    const list = async prefix => { let out = [], cur; do { const r = await env.USERS.list({ prefix, cursor: cur }); out = out.concat(r.keys); cur = r.list_complete ? null : r.cursor; } while (cur && out.length < 20000); return out; };
+    const now = Date.now(), um = (await list('u:')).map(k2 => k2.metadata || {});
+    const cnt = (arr, f) => { const o = {}; arr.forEach(x => { const v = f(x) || '?'; o[v] = (o[v] || 0) + 1; }); return o; };
+    const signups = {}; um.forEach(m => { if (m.t && now - m.t < 30 * 86400e3) { const d = day(m.t); signups[d] = (signups[d] || 0) + 1; } });
+    const feats = {};
+    for (let i = 0; i < 30; i++) { const f = await env.USERS.get('f:' + day(now - i * 86400e3), 'json'); if (f) for (const n in f) feats[n] = (feats[n] || 0) + f[n]; }
+    const ki = [];
+    for (let i = 0; i < 30; i++) { const d = day(now - i * 86400e3), v = await env.USERS.get('ai:' + d, 'json'); if (v) ki.push({ d, n: v.n, q: v.q }); }
+    return json({
+      stand: new Date(now).toISOString(), nutzer: um.length,
+      neu7: um.filter(m => m.t && now - m.t < 7 * 86400e3).length, aktiv7: um.filter(m => m.s && now - m.s < 7 * 86400e3).length,
+      plus: um.filter(m => m.p).length, anonym: um.filter(m => m.a).length,
+      laender: cnt(um, m => m.c), sprachen: cnt(um, m => m.l), signups, feats, ki, kiLimit: Number(env.SOUL_DAY_CAP || 9000), gratis: 10000
+    });
+  }
   if (p === '/admin/api/data' && req.method === 'GET') {
     const s = await session(req, env); if (!s || !s.adm) return json({ fehler: 'Kein Zugang.' }, 401);
     const list = async prefix => { let out = [], cur; do { const r = await env.USERS.list({ prefix, cursor: cur }); out = out.concat(r.keys); cur = r.list_complete ? null : r.cursor; } while (cur && out.length < 20000); return out; };

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Velora Dashboard</title>
+<style>
+:root{color-scheme:light;
+  --bg:#f3f6fa;--surface:#fcfcfb;--line:#e4e8ee;--grid:#eceff3;
+  --text:#0b0b0b;--text2:#52514e;--muted:#7b7a75;
+  --series:#1baf7a;--series-hi:#12895f;--ref:#52514e;
+  --good:#008300;--warn:#c98500;--crit:#e34948;
+  --track:#e6ebf1;--shadow:0 1px 2px rgba(19,38,58,.05),0 4px 14px rgba(19,38,58,.06)}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){color-scheme:dark;
+  --bg:#121211;--surface:#1a1a19;--line:#2b2b29;--grid:#252523;
+  --text:#f0efec;--text2:#c3c2b7;--muted:#97968d;
+  --series:#199e70;--series-hi:#2dbd8a;--ref:#c3c2b7;
+  --good:#3fae3f;--warn:#e0a020;--crit:#e66767;--track:#2a2a28;--shadow:none}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#121211;--surface:#1a1a19;--line:#2b2b29;--grid:#252523;
+  --text:#f0efec;--text2:#c3c2b7;--muted:#97968d;
+  --series:#199e70;--series-hi:#2dbd8a;--ref:#c3c2b7;
+  --good:#3fae3f;--warn:#e0a020;--crit:#e66767;--track:#2a2a28;--shadow:none}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0}
+h1 span{color:var(--series-hi)}
+.stand{color:var(--text2);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px;min-width:0}
+h2{font-size:15px;font-weight:700;margin:0 0 2px}
+.sub{color:var(--text2);font-size:13px;margin:0 0 12px}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:center}
+.big{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text2)}
+.status svg{flex:none}
+.meter{position:relative;height:14px;border-radius:7px;background:var(--track);overflow:visible;margin:14px 0 6px;grid-column:1/-1}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--series)}
+.meter b{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--ref);border-radius:1px}
+.mlab{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;grid-column:1/-1}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow)}
+.kpi b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.kpi span{color:var(--text2);font-size:12.5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.grid2 .card{margin-bottom:0}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--muted);font-size:11.5px}
+.tip{position:absolute;pointer-events:none;background:var(--text);color:var(--surface);font-size:12.5px;padding:6px 9px;border-radius:8px;white-space:nowrap;transform:translate(-50%,-100%);margin-top:-8px;opacity:0;transition:opacity .12s}
+.tip.on{opacity:1}
+.hb{display:grid;grid-template-columns:minmax(80px,40%) 1fr auto;gap:6px 10px;align-items:center;font-size:13.5px}
+.hb .n{color:var(--text2)}
+.hb .bar{height:12px;border-radius:0 4px 4px 0;background:var(--series);min-width:2px}
+.hb .v{font-variant-numeric:tabular-nums;color:var(--text)}
+.hb .row{display:contents}
+.hb .row:hover .bar{background:var(--series-hi)}
+.empty{color:var(--muted);font-size:13.5px;padding:18px 0;text-align:center}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--text2);font-size:12.5px}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+td,th{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+td:last-child,th:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.note{color:var(--muted);font-size:12.5px;margin-top:18px}
+.note a{color:var(--text2)}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Velora <span>Dashboard</span></h1><div class="stand" id="stand"></div></header>
+
+  <section class="card" aria-labelledby="h-ki">
+    <h2 id="h-ki">Soul-KI heute: Gratis-Kontingent bei Cloudflare</h2>
+    <p class="sub">Cloudflare schenkt 10.000 Neuronen pro Tag. Der Server bremst bei 9.000; darüber antwortet Soul bis Mitternacht (UTC) einfacher. Es entstehen keine Kosten über den Workers-Tarif hinaus.</p>
+    <div class="hero">
+      <div class="big" id="kiPct"></div>
+      <div><div style="font-weight:600" id="kiAns"></div><div class="status" id="kiStatus"></div></div>
+      <div class="meter" id="kiMeter" role="img"><i id="kiFill"></i><b id="kiBrake"></b></div>
+      <div class="mlab"><span>0</span><span id="kiBrakeLab"></span><span>10.000</span></div>
+    </div>
+  </section>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section class="card" aria-labelledby="h-day">
+    <h2 id="h-day">Soul-KI pro Tag (30 Tage)</h2>
+    <p class="sub">Anteil am Gratis-Kontingent. Die gestrichelte Linie ist die Bremse bei 90 %.</p>
+    <div class="chart" id="cKi"></div>
+    <details><summary>Als Tabelle</summary><table id="tKi"></table></details>
+  </section>
+
+  <section class="card" aria-labelledby="h-sign">
+    <h2 id="h-sign">Neue Konten pro Tag (30 Tage)</h2>
+    <div class="chart" id="cSign"></div>
+    <details><summary>Als Tabelle</summary><table id="tSign"></table></details>
+  </section>
+
+  <div class="grid2">
+    <section class="card"><h2>Länder</h2><p class="sub">Konten nach Land</p><div class="hb" id="hLand"></div></section>
+    <section class="card"><h2>Sprachen</h2><p class="sub">Eingestellte App-Sprache</p><div class="hb" id="hLang"></div></section>
+  </div>
+  <section class="card" style="margin-top:14px"><h2>Meistgenutzte Funktionen (30 Tage)</h2><p class="sub">Nur von Personen, die anonyme Statistik erlaubt haben</p><div class="hb" id="hFeat"></div></section>
+
+  <p class="note">Nur anonyme Summen, keine E-Mail-Adressen, Namen oder Routen. Diese Seite ist ein Schnappschuss und wird aktualisiert, wenn du Claude darum bittest. Live mit Nutzerliste: das Admin-Dashboard unter <a href="https://velora-ki.toni-sagmeister11.workers.dev/admin">velora-ki.toni-sagmeister11.workers.dev/admin</a>.</p>
+</main>
+<script>
+var D = /*DATA*/{};
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var nf = new Intl.NumberFormat('de-DE');
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function day(o, base) { var d = new Date(base - o * 864e5); return d.toISOString().slice(0, 10); }
+  function dm(iso) { var p = iso.split('-'); return +p[2] + '.' + +p[1] + '.'; }
+  var now = new Date(D.stand).getTime(), today = D.stand.slice(0, 10);
+  $('stand').textContent = 'Stand: ' + new Date(D.stand).toLocaleString('de-AT', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Vienna' });
+
+  // Heute
+  var kd = {}; (D.ki || []).forEach(function (k) { kd[k.d] = k; });
+  var t = kd[today] || { n: 0, q: 0 }, G = D.gratis || 10000, cap = D.kiLimit || 9000, pct = t.n / G * 100;
+  $('kiPct').textContent = (pct < 10 ? pct.toFixed(1).replace('.', ',') : Math.round(pct)) + ' %';
+  $('kiAns').textContent = nf.format(t.q) + ' Antworten, ' + nf.format(Math.round(t.n)) + ' von ' + nf.format(G) + ' Neuronen';
+  var st = t.n >= cap ? ['crit', 'Bremse aktiv: Soul antwortet heute einfacher', 'M12 3 2 21h20L12 3zm0 6v5m0 3v.5'] : t.n >= cap * 0.75 ? ['warn', 'Bald erreicht', 'M12 3 2 21h20L12 3zm0 6v5m0 3v.5'] : ['good', 'Alles im grünen Bereich', 'M5 12.5 10 17 19 7'];
+  $('kiStatus').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--' + st[0] + ')" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="' + st[2] + '"/></svg>' + st[1];
+  $('kiFill').style.width = Math.min(100, pct) + '%';
+  $('kiBrake').style.left = 'calc(' + (cap / G * 100) + '% - 1px)';
+  $('kiBrakeLab').textContent = 'Bremse ' + nf.format(cap);
+  $('kiMeter').setAttribute('aria-label', Math.round(pct) + ' Prozent des Gratis-Kontingents verbraucht');
+
+  // Kennzahlen
+  var k = [[D.nutzer, 'Konten gesamt'], [D.neu7, 'Neu (7 Tage)'], [D.aktiv7, 'Aktiv (7 Tage)'], [D.plus, 'Plus-Konten'],
+    [D.nutzer ? Math.round(D.anonym / D.nutzer * 100) + ' %' : '–', 'teilen anonyme Statistik']];
+  var q30 = 0; (D.ki || []).forEach(function (x) { q30 += x.q; }); k.splice(4, 0, [q30, 'Soul-Antworten (30 Tage)']);
+  $('kpis').innerHTML = k.map(function (x) { return '<div class="kpi"><b>' + (typeof x[0] === 'number' ? nf.format(x[0]) : x[0]) + '</b><span>' + x[1] + '</span></div>'; }).join('');
+
+  // Saeulen mit Hover
+  function bars(el, rows, opt) {
+    var W = Math.max(280, Math.round(el.clientWidth || 640)), H = W < 500 ? 180 : 210, L = 38, R = 6, T = 10, B = 24, n = rows.length, iw = (W - L - R) / n, max = opt.max || Math.max(1, Math.max.apply(null, rows.map(function (r) { return r.v; })));
+    var ticks = opt.ticks || [0, Math.ceil(max / 2), max], y = function (v) { return T + (H - T - B) * (1 - v / max); };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opt.label) + '">';
+    ticks.forEach(function (tv) { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(tv) + '" y2="' + y(tv) + '" stroke="var(--grid)"/><text x="' + (L - 6) + '" y="' + (y(tv) + 4) + '" text-anchor="end">' + opt.fmt(tv) + '</text>'; });
+    rows.forEach(function (r, i) {
+      var x = L + i * iw + 1, w = Math.max(2, iw - 2), h = Math.max(0, y(0) - y(r.v));
+      if (r.v > 0) s += '<path d="M' + x + ' ' + y(0) + 'v' + (-Math.max(0, h - 4)) + 'q0 -4 4 -4h' + Math.max(0, w - 8) + 'q4 0 4 4v' + Math.max(0, h - 4) + 'z" fill="var(--series)" data-i="' + i + '"/>';
+      s += '<rect x="' + (x - 1) + '" y="' + T + '" width="' + iw + '" height="' + (H - T - B) + '" fill="transparent" data-i="' + i + '"/>';
+      if (i === 0 || i === n - 1 || i === Math.floor(n / 2) || (W > 500 && (i === Math.floor(n / 4) || i === Math.floor(3 * n / 4)))) s += '<text x="' + (x + w / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + (i === n - 1 ? 'heute' : dm(r.d)) + '</text>';
+    });
+    if (opt.ref != null) s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(opt.ref) + '" y2="' + y(opt.ref) + '" stroke="var(--ref)" stroke-dasharray="5 4" stroke-width="1.5"/><text x="' + (W - R) + '" y="' + (y(opt.ref) - 5) + '" text-anchor="end">Bremse</text>';
+    s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line)"/></svg><div class="tip"></div>';
+    el.innerHTML = s;
+    var tip = el.querySelector('.tip'), svg = el.querySelector('svg');
+    function show(e) {
+      var i = e.target.getAttribute('data-i'); if (i == null) { tip.classList.remove('on'); return; }
+      var r = rows[+i], bb = svg.getBoundingClientRect(), sc = bb.width / W;
+      svg.querySelectorAll('path[data-i]').forEach(function (p) { p.setAttribute('fill', p.getAttribute('data-i') === i ? 'var(--series-hi)' : 'var(--series)'); });
+      tip.innerHTML = opt.tip(r); tip.classList.add('on');
+      tip.style.left = Math.min(bb.width - 70, Math.max(70, (L + (+i + .5) * iw) * sc)) + 'px'; tip.style.top = (y(r.v) * sc) + 'px';
+    }
+    svg.addEventListener('pointermove', show); svg.addEventListener('pointerdown', show);
+    svg.addEventListener('pointerleave', function () { tip.classList.remove('on'); svg.querySelectorAll('path[data-i]').forEach(function (p) { p.setAttribute('fill', 'var(--series)'); }); });
+  }
+  var redraw = [];
+  function table(el, head, rows) { el.innerHTML = '<tr><th>' + head[0] + '</th><th>' + head[1] + '</th></tr>' + rows.map(function (r) { return '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join(''); }
+
+  var days = []; for (var i = 29; i >= 0; i--) days.push(day(i, now));
+  var kiRows = days.map(function (d) { var x = kd[d] || { n: 0, q: 0 }; return { d: d, v: x.n / G * 100, q: x.q, n: x.n }; });
+  var kmax = Math.max(100, Math.ceil(Math.max.apply(null, kiRows.map(function (r) { return r.v; })) / 25) * 25);
+  function drawKi() { bars($('cKi'), kiRows, { max: kmax, ticks: [0, 50, 100].filter(function (v) { return v <= kmax; }), ref: cap / G * 100, label: 'Anteil am Gratis-Kontingent pro Tag', fmt: function (v) { return v + ' %'; },
+    tip: function (r) { return '<b>' + dm(r.d) + '</b> ' + r.v.toFixed(1).replace('.', ',') + ' % · ' + nf.format(r.q) + ' Antworten'; } }); }
+  drawKi(); redraw.push(drawKi);
+  table($('tKi'), ['Tag', 'Kontingent / Antworten'], kiRows.slice().reverse().map(function (r) { return [dm(r.d), r.v.toFixed(1).replace('.', ',') + ' % / ' + r.q]; }));
+
+  var sg = D.signups || {}, sRows = days.map(function (d) { return { d: d, v: sg[d] || 0 }; }), smax = Math.max(2, Math.max.apply(null, sRows.map(function (r) { return r.v; })));
+  function drawSign() { bars($('cSign'), sRows, { max: smax, ticks: [0, Math.round(smax / 2), smax], label: 'Neue Konten pro Tag', fmt: function (v) { return nf.format(v); }, tip: function (r) { return '<b>' + dm(r.d) + '</b> ' + r.v + ' neue Konten'; } }); }
+  drawSign(); redraw.push(drawSign);
+  var rt; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { redraw.forEach(function (f) { f(); }); }, 150); });
+  table($('tSign'), ['Tag', 'Neue Konten'], sRows.slice().reverse().map(function (r) { return [dm(r.d), r.v]; }));
+
+  // Waagrechte Balken
+  function hbars(el, obj, name, limit) {
+    var rows = Object.keys(obj || {}).map(function (k2) { return [k2, obj[k2]]; }).sort(function (a, b) { return b[1] - a[1]; });
+    if (!rows.length) { el.outerHTML = '<div class="empty">Noch keine Daten</div>'; return; }
+    if (rows.length > limit) { var rest = rows.slice(limit - 1).reduce(function (a, r) { return a + r[1]; }, 0); rows = rows.slice(0, limit - 1).concat([['Andere', rest]]); }
+    var mx = rows[0][1];
+    el.innerHTML = rows.map(function (r) { return '<div class="row" title="' + esc(name(r[0])) + ': ' + r[1] + '"><span class="n">' + esc(name(r[0])) + '</span><span><i class="bar" style="display:block;width:' + Math.max(1, r[1] / mx * 100) + '%"></i></span><span class="v">' + nf.format(r[1]) + '</span></div>'; }).join('');
+  }
+  var reg = window.Intl && Intl.DisplayNames ? new Intl.DisplayNames(['de'], { type: 'region' }) : null, lng = window.Intl && Intl.DisplayNames ? new Intl.DisplayNames(['de'], { type: 'language' }) : null;
+  hbars($('hLand'), D.laender, function (c) { try { return c === 'Andere' || c === '?' ? (c === '?' ? 'Unbekannt' : c) : reg.of(c); } catch (e) { return c; } }, 8);
+  hbars($('hLang'), D.sprachen, function (c) { try { return c === 'Andere' || c === '?' ? (c === '?' ? 'Unbekannt' : c) : lng.of(c); } catch (e) { return c; } }, 6);
+  var FN = { soul_llm: 'Soul (Sprachmodell)', soul_cloud: 'Soul (Server-KI)', route: 'Route planen', nav: 'Navigation', tour: 'Tourvorschläge', ride: 'Fahrt aufgezeichnet', offline: 'Offline-Karten', live: 'Live-Standort', gpx: 'GPX-Export' };
+  hbars($('hFeat'), D.feats, function (c) { return FN[c] || (c.indexOf('soul_') === 0 ? 'Soul: ' + c.slice(5).replace(/_/g, ' ') : c.replace(/_/g, ' ')); }, 10);
+})();
+</script>
+</body>
+</html>
