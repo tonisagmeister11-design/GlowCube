@@ -22,7 +22,21 @@ und wählt die passendsten Sätze aus. `app/assets/soul-data.js` enthält ihr Wi
 Plauder-Sammlung, Fakten, Rätsel, Quiz, Geschichten und Gedichte. Soul merkt sich, was Nutzer über sich erzählen (nur auf dem Gerät),
 versteht Folgefragen zum letzten Thema und wiederholt Formulierungen nicht direkt. Kein Server, keine fremde KI, keine Kosten. Der frühere Server-Weg (unten) bleibt nur für alte App-Versionen.
 
-## Soul-Sprachmodell (ab 6.6, auf dem Gerät)
+## Soul über den Server (ab 6.7, Standard)
+
+Soul fragt zuerst den Velora-Server: `POST /soul` (`server/soul.js`) rechnet mit Cloudflare Workers AI (`@cf/qwen/qwen3-30b-a3b-fp8`,
+ohne "Nachdenken") und streamt die Antwort. Das geht auf jedem Handy in etwa 1 bis 2 Sekunden.
+
+Kostenbremse, damit nie mehr als der Workers-Tarif (5 US-Dollar im Monat) anfällt:
+- Cloudflare schenkt 10.000 Neuronen pro Tag (UTC). Der Server erlaubt höchstens `SOUL_DAY_CAP` = 9.000 (wrangler.toml).
+- Gezählt wird exakt in einem Durable Object (`SoulBudget`): vor jeder Antwort werden 25 Neuronen reserviert, danach der echte Verbrauch abgerechnet.
+- Pro Person und Tag: ohne Konto 10, mit Konto 30, mit Plus 120 Antworten.
+- Ist eine Grenze erreicht, antwortet die App bis Mitternacht (UTC) regelbasiert. Das Admin-Dashboard zeigt den Tagesverbrauch.
+- Der alte Juno-Weg `/chat` (teures Modell ohne Bremse) ist abgeschaltet.
+
+Reihenfolge in der App: Server, dann (falls geladen) das Modell auf dem Gerät als Offline-Modus, dann die Regel-KI.
+
+## Soul-Sprachmodell (ab 6.6, auf dem Gerät, jetzt "Offline-Modus")
 
 Soul kann ein echtes KI-Sprachmodell nutzen, das komplett auf dem Gerät läuft (llama.cpp, Modelle von Qwen, Apache-2.0).
 Kein Cloudflare, keine fremde KI, keine laufenden Kosten. Der Nutzer lädt das Modell einmalig im Soul-Chat herunter:

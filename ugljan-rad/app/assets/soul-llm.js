@@ -23,7 +23,7 @@
   }
   var st = { info: null, loaded: '', loading: null, dl: null, err: '', port: 0 };
   var wants = V.load('soulModel', '');            // gewaehltes Modell ('std' | 'pro')
-  var hideCard = false;
+  var hideCard = true;   // Soul laeuft ueber den Server; das Geraete-Modell ist ein freiwilliger Offline-Modus
 
   function info() {
     var b = backend();
@@ -40,7 +40,7 @@
     if (wants && i.models[wants] && i.models[wants].have) return wants;
     return i.models.pro && i.models.pro.have ? 'pro' : i.models.std && i.models.std.have ? 'std' : '';
   }
-  function usable() { return !!backend() && !!installed(); }
+  function usable() { return cloudOk() || (!!backend() && !!installed()); }
 
   // ---------------------------------------------------------------------------------------------
   // Laden, Herunterladen, Ereignisse
@@ -68,7 +68,7 @@
     if (type === 'dl') { st.dl = d; renderProgress(); return; }
     if (type === 'dlEnd') {
       st.dl = null; info();
-      if (d.ok) { wants = d.which; V.store('soulModel', wants); V.toast('Soul kann jetzt richtig sprechen'); HOOK('haptic', 'success'); ensure(); }
+      if (d.ok) { wants = d.which; V.store('soulModel', wants); V.toast('Offline-Modus ist bereit'); HOOK('haptic', 'success'); ensure(); }
       else if (d.err !== 'stopped') V.toast(d.err === 'space' ? 'Zu wenig Speicherplatz für das Sprachmodell' : d.err === 'checksum' ? 'Download fehlerhaft, bitte nochmal versuchen' : 'Download unterbrochen. Tippe auf Fortsetzen.');
       render(); return;
     }
@@ -170,10 +170,67 @@
     Object.keys(gens).forEach(function (k) { if (gens[k].ctl) gens[k].ctl.abort(); });
   }
 
+  // ---------------------------------------------------------------------------------------------
+  // Soul ueber den Velora-Server (Cloudflare Workers AI): schnell auf jedem Handy, mit Kostenbremse auf dem Server
+  // ---------------------------------------------------------------------------------------------
+  var CLOUD = 'https://velora-ki.toni-sagmeister11.workers.dev/soul';
+  var block = V.load('soulBlock', { until: 0, why: '' });
+  function nextUtcDay() { var d = new Date(); d.setUTCHours(24, 0, 30, 0); return d.getTime(); }
+  function cloudOk() { return navigator.onLine !== false && Date.now() > (block.until || 0) && !srvUrl(); }
+  function localUsable() { return !!backend() && !!installed(); }
+  function cloudAnswer(o, cb) {
+    var hd = { 'Content-Type': 'application/json', 'X-App-Id': 'velora-2026' }, tk = VX.token && VX.token();
+    if (tk) hd.Authorization = 'Bearer ' + tk;
+    var ctl = window.AbortController ? new AbortController() : null, to = setTimeout(function () { if (ctl) ctl.abort(); }, 30000);
+    gens.cloud = { ctl: ctl };
+    return fetch(CLOUD, { method: 'POST', headers: hd, signal: ctl && ctl.signal, body: JSON.stringify({ q: o.q, ctx: o.ctx, refs: o.refs, search: o.search, hist: (o.hist || []).slice(-4), long: !!o.long }) })
+      .then(function (r) {
+        if (r.status === 429) return r.json().then(function (j) {
+          var g = j.grenze;
+          block = { until: g === 'minute' ? Date.now() + 60000 : nextUtcDay(), why: g };
+          if (g !== 'minute') V.store('soulBlock', block);
+          if (g === 'tag') V.toast('Soul ist für heute ausgelastet. Bis morgen antworte ich etwas einfacher.');
+          else if (g === 'person') V.toast('Deine Soul-Antworten für heute sind aufgebraucht. Morgen gibt es neue.');
+          throw new Error('limit');
+        });
+        if (!r.ok || !r.body) throw new Error('http ' + r.status);
+        var rd = r.body.getReader(), dec = new TextDecoder(), buf = '', text = '';
+        function pump() {
+          return rd.read().then(function (x) {
+            if (x.done) return text;
+            buf += dec.decode(x.value, { stream: true });
+            var lines = buf.split('\n'); buf = lines.pop();
+            lines.forEach(function (l) {
+              if (l.indexOf('data: ') !== 0) return;
+              try { var j = JSON.parse(l.slice(6)); if (j.t) { text += j.t; cb && cb(clean(text, false)); } if (j.ende) st.cloudLeft = j.rest; } catch (e) { }
+            });
+            return pump();
+          });
+        }
+        return pump();
+      })
+      .then(function (t) { clearTimeout(to); delete gens.cloud; t = clean(t, true); if (!t) throw new Error('empty'); if (VX.track) try { VX.track('soul_cloud'); } catch (e) { } return t; },
+        function (e) { clearTimeout(to); delete gens.cloud; throw e; });
+  }
+
   var busy = false;
   // o: { q, ctx, refs, search, hist, long }; cb(teilText) fuer Wort-fuer-Wort-Anzeige
+  // Reihenfolge: Server (schnell) -> Modell auf dem Geraet (offline) -> soul.js antwortet regelbasiert
   function answer(o, cb) {
     if (busy) return Promise.reject(new Error('busy'));
+    if (cloudOk()) {
+      busy = true;
+      return cloudAnswer(o, cb).then(function (t) { busy = false; return t; }, function (e) {
+        busy = false;
+        if (localUsable()) return localAnswer(o, cb);
+        throw e;
+      });
+    }
+    return localAnswer(o, cb);
+  }
+  function localAnswer(o, cb) {
+    if (busy) return Promise.reject(new Error('busy'));
+    if (!localUsable()) return Promise.reject(new Error('no model'));
     return ensure().then(function (ok) {
       if (!ok) throw new Error('not loaded');
       busy = true;
@@ -211,7 +268,7 @@
     if (have && !manage) {
       return '<div class="sllm on" id="soulLlm"><span class="sllm-dot' + (st.loading ? ' wait' : '') + '"></span><div class="grow"><b>' + MODELS[have].n + '</b> <span class="sub">' + (st.loading ? 'wacht auf ...' : st.loaded ? 'Sprachmodell aktiv, offline auf deinem Gerät' : st.err ? 'konnte nicht starten' : 'bereit') + '</span></div><button class="chip sm" data-sllm="manage">Verwalten</button></div>';
     }
-    if (!have && hideCard) return '<div class="sllm mini" id="soulLlm"><button class="chip sm" data-sllm="show">Echtes Sprachmodell laden</button></div>';
+    if (!have && hideCard) return '<div class="sllm mini" id="soulLlm"><button class="chip sm" data-sllm="show">Offline-Modus</button></div>';
     var rec = i.rec || 'std';
     var opts = ['std', 'pro'].map(function (w) {
       var m = MODELS[w], h = i.models[w] && i.models[w].have, part = i.models[w] && i.models[w].part;
@@ -222,8 +279,8 @@
           : dis ? '' : '<button class="chip sm' + (w === rec ? ' on' : '') + '" data-sllm="dl:' + w + '">' + (part ? 'Fortsetzen' : 'Laden') + '</button>') + '</div>';
     }).join('');
     return '<div class="sllm big" id="soulLlm">' + (have ? '<div class="sllm-t"><b>Sprachmodell verwalten</b><button class="chip sm" data-sllm="close">Fertig</button></div>' :
-      '<div class="sllm-t"><b>Soul kann jetzt richtig sprechen</b><button class="chip sm" data-sllm="hide">Später</button></div>' +
-      '<div class="sub">Lade einmalig ein echtes KI-Sprachmodell. Danach versteht Soul jede Frage, plaudert natürlich und läuft direkt auf deinem Gerät: ohne Internet, privat und kostenlos. WLAN empfohlen.</div>') +
+      '<div class="sllm-t"><b>Offline-Modus</b><button class="chip sm" data-sllm="hide">Schließen</button></div>' +
+      '<div class="sub">Soul antwortet normalerweise über das Internet. Für unterwegs ohne Netz kannst du zusätzlich ein Sprachmodell auf dein Gerät laden. Das braucht viel Speicher und ein starkes Gerät. WLAN empfohlen.</div>') +
       opts + '</div>';
   }
   function render() {
@@ -260,12 +317,12 @@
     var h = (oldHead && oldHead()) || '';
     if (!backend()) return h;
     info();
-    if (installed() && !st.loaded && !st.loading) setTimeout(ensure, 50);
+    if (installed() && !cloudOk() && !st.loaded && !st.loading) setTimeout(ensure, 50);
     setTimeout(bind, 0);
     return h + cardHtml();
   };
   // Nach dem Start im Hintergrund vorladen, damit die erste Antwort schnell kommt
-  setTimeout(function () { if (backend() && installed()) ensure(); }, 6000);
+  setTimeout(function () { if (backend() && installed() && !cloudOk()) ensure(); }, 6000);
 
-  window.SoulLLM = { model: function () { return backend() === 'server' ? (srvModel() || 'pro') : installed(); }, _ev: onEv, backend: backend, info: info, usable: usable, ensure: ensure, answer: answer, stop: stop, download: download, cancel: cancel, remove: remove, state: st, _build: build };
+  window.SoulLLM = { cloudOk: cloudOk, model: function () { return cloudOk() ? 'cloud' : backend() === 'server' ? (srvModel() || 'pro') : installed(); }, _ev: onEv, backend: backend, info: info, usable: usable, ensure: ensure, answer: answer, stop: stop, download: download, cancel: cancel, remove: remove, state: st, _build: build };
 })();

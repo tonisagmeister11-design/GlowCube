@@ -9,6 +9,10 @@ binding = "AI"
 [vars]
 # Kennung, die die App mitschickt
 APP_ID = "velora-2026"
+# Soul-KI: hoechstens so viele Neuronen pro Tag (Cloudflare schenkt 10.000). Darueber antwortet die App selbst,
+# damit nie Kosten ueber den Workers-Tarif hinaus entstehen.
+SOUL_DAY_CAP = "9000"
+SOUL_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
 # Modell: auf dem Gratis-Tarif das stärkste mit Werkzeugen.
 # Mit "Workers Paid" z. B. "@cf/deepseek-ai/deepseek-v4.1-flash-1017" oder "@cf/zai-org/glm-5.3-flash".
 MODEL = "@cf/openai/gpt-oss-120b"
@@ -34,3 +38,12 @@ id = "fc0f09a228394fa183c473036fc21d62"
 [[kv_namespaces]]
 binding = "USERS"
 id = "a8e2d070b62544aa873f55d184f4c86b"
+
+# Exakter Zaehler fuer die Soul-Kostenbremse (Velora 6.7)
+[[durable_objects.bindings]]
+name = "BUDGET"
+class_name = "SoulBudget"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SoulBudget"]

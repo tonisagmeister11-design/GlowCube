@@ -152,7 +152,10 @@ export async function accounts(req, env, url) {
     const feats = {}, heat = {};
     for (let i = 0; i < 30; i++) { const f = await env.USERS.get('f:' + day(Date.now() - i * 86400e3), 'json'); if (f) for (const n in f) feats[n] = (feats[n] || 0) + f[n]; }
     for (let i = 0; i < 3; i++) { const d = new Date(); d.setMonth(d.getMonth() - i); const h = await env.USERS.get('h:' + d.toISOString().slice(0, 7), 'json'); if (h) for (const c in h) heat[c] = (heat[c] || 0) + h[c]; }
-    return json({ users, credits: cr, feats, heat, limits: { free: CR_FREE, plus: CR_PLUS } });
+    // Soul-KI-Verbrauch der letzten 30 Tage (Neuronen und Antworten pro Tag) und die Tagesgrenze
+    const ki = [];
+    for (let i = 0; i < 30; i++) { const d = day(Date.now() - i * 86400e3), v = await env.USERS.get('ai:' + d, 'json'); if (v) ki.push({ d, n: v.n, q: v.q }); }
+    return json({ users, credits: cr, feats, heat, ki, kiLimit: Number(env.SOUL_DAY_CAP || 9000), limits: { free: CR_FREE, plus: CR_PLUS } });
   }
   return null;
 }

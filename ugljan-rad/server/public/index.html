@@ -904,6 +904,8 @@ return maplibregl$1;
     ['wacht auf ...', 'waking up ...', 'se réveille ...', 'si sveglia ...', 'despertando ...'], ['bereit', 'ready', 'prêt', 'pronto', 'listo'], ['konnte nicht starten', 'could not start', 'n\'a pas pu démarrer', 'non è partito', 'no pudo iniciar'], ['Wird geprüft', 'Checking', 'Vérification', 'Verifica', 'Comprobando'],
     ['Schnell, läuft auf jedem Handy. 1,1 GB', 'Fast, runs on any phone. 1.1 GB', 'Rapide, fonctionne sur tout téléphone. 1,1 Go', 'Veloce, funziona su ogni telefono. 1,1 GB', 'Rápido, funciona en cualquier móvil. 1,1 GB'],
     ['Klüger und natürlicher, braucht ein starkes Gerät. 2,5 GB', 'Smarter and more natural, needs a strong device. 2.5 GB', 'Plus intelligent et naturel, demande un appareil puissant. 2,5 Go', 'Più intelligente e naturale, serve un dispositivo potente. 2,5 GB', 'Más listo y natural, necesita un dispositivo potente. 2,5 GB'],
+    ['Offline-Modus', 'Offline mode', 'Mode hors ligne', 'Modalità offline', 'Modo sin conexión'], ['Schließen', 'Close', 'Fermer', 'Chiudi', 'Cerrar'],
+    ['Soul antwortet normalerweise über das Internet. Für unterwegs ohne Netz kannst du zusätzlich ein Sprachmodell auf dein Gerät laden. Das braucht viel Speicher und ein starkes Gerät. WLAN empfohlen.', 'Soul normally answers over the internet. For rides without signal you can also download a language model to your device. It needs a lot of storage and a strong device. Wi-Fi recommended.', 'Soul répond normalement via internet. Pour rouler sans réseau, tu peux aussi télécharger un modèle sur ton appareil. Il faut beaucoup d\'espace et un appareil puissant. Wi-Fi conseillé.', 'Soul di solito risponde via internet. Per i giri senza rete puoi scaricare anche un modello sul dispositivo. Serve molto spazio e un dispositivo potente. Consigliato il Wi-Fi.', 'Soul normalmente responde por internet. Para salir sin cobertura puedes descargar también un modelo en tu dispositivo. Necesita mucho espacio y un dispositivo potente. Se recomienda Wi-Fi.'],
     ['Soul denkt nach', 'Soul is thinking', 'Soul réfléchit', 'Soul sta pensando', 'Soul está pensando'], ['Schaut sich die Gegend an', 'Looking at the area', 'Regarde les environs', 'Guarda la zona', 'Mira la zona'], ['Prüft echte Orte', 'Checking real places', 'Vérifie les lieux', 'Controlla i luoghi', 'Comprueba lugares'], ['Gleich fertig', 'Almost done', 'Presque fini', 'Quasi fatto', 'Casi listo'],
     ['Mehr mit Plus', 'More with Plus', 'Plus avec Plus', 'Di più con Plus', 'Más con Plus'], ['Plus freischalten', 'Unlock Plus', 'Débloquer Plus', 'Sblocca Plus', 'Desbloquear Plus'], ['pro Monat', 'per month', 'par mois', 'al mese', 'al mes'], ['pro Jahr', 'per year', 'par an', 'all\'anno', 'al año'],
     ['Wie willst du fahren?', 'How do you want to ride?', 'Comment veux-tu rouler ?', 'Come vuoi pedalare?', '¿Cómo quieres ir?'], ['Konto', 'Account', 'Compte', 'Account', 'Cuenta'], ['Sprache', 'Language', 'Langue', 'Lingua', 'Idioma'], ['Land', 'Country', 'Pays', 'Paese', 'País'],
@@ -2921,7 +2923,7 @@ return maplibregl$1;
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 6.6 mit der KI Soul (echtes Sprachmodell direkt auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 6.7 mit der KI Soul (echtes Sprachmodell über den Velora-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -5341,7 +5343,7 @@ window.SOUL_DATA = {
   }
   var st = { info: null, loaded: '', loading: null, dl: null, err: '', port: 0 };
   var wants = V.load('soulModel', '');            // gewaehltes Modell ('std' | 'pro')
-  var hideCard = false;
+  var hideCard = true;   // Soul laeuft ueber den Server; das Geraete-Modell ist ein freiwilliger Offline-Modus
 
   function info() {
     var b = backend();
@@ -5358,7 +5360,7 @@ window.SOUL_DATA = {
     if (wants && i.models[wants] && i.models[wants].have) return wants;
     return i.models.pro && i.models.pro.have ? 'pro' : i.models.std && i.models.std.have ? 'std' : '';
   }
-  function usable() { return !!backend() && !!installed(); }
+  function usable() { return cloudOk() || (!!backend() && !!installed()); }
 
   // ---------------------------------------------------------------------------------------------
   // Laden, Herunterladen, Ereignisse
@@ -5386,7 +5388,7 @@ window.SOUL_DATA = {
     if (type === 'dl') { st.dl = d; renderProgress(); return; }
     if (type === 'dlEnd') {
       st.dl = null; info();
-      if (d.ok) { wants = d.which; V.store('soulModel', wants); V.toast('Soul kann jetzt richtig sprechen'); HOOK('haptic', 'success'); ensure(); }
+      if (d.ok) { wants = d.which; V.store('soulModel', wants); V.toast('Offline-Modus ist bereit'); HOOK('haptic', 'success'); ensure(); }
       else if (d.err !== 'stopped') V.toast(d.err === 'space' ? 'Zu wenig Speicherplatz für das Sprachmodell' : d.err === 'checksum' ? 'Download fehlerhaft, bitte nochmal versuchen' : 'Download unterbrochen. Tippe auf Fortsetzen.');
       render(); return;
     }
@@ -5488,10 +5490,67 @@ window.SOUL_DATA = {
     Object.keys(gens).forEach(function (k) { if (gens[k].ctl) gens[k].ctl.abort(); });
   }
 
+  // ---------------------------------------------------------------------------------------------
+  // Soul ueber den Velora-Server (Cloudflare Workers AI): schnell auf jedem Handy, mit Kostenbremse auf dem Server
+  // ---------------------------------------------------------------------------------------------
+  var CLOUD = 'https://velora-ki.toni-sagmeister11.workers.dev/soul';
+  var block = V.load('soulBlock', { until: 0, why: '' });
+  function nextUtcDay() { var d = new Date(); d.setUTCHours(24, 0, 30, 0); return d.getTime(); }
+  function cloudOk() { return navigator.onLine !== false && Date.now() > (block.until || 0) && !srvUrl(); }
+  function localUsable() { return !!backend() && !!installed(); }
+  function cloudAnswer(o, cb) {
+    var hd = { 'Content-Type': 'application/json', 'X-App-Id': 'velora-2026' }, tk = VX.token && VX.token();
+    if (tk) hd.Authorization = 'Bearer ' + tk;
+    var ctl = window.AbortController ? new AbortController() : null, to = setTimeout(function () { if (ctl) ctl.abort(); }, 30000);
+    gens.cloud = { ctl: ctl };
+    return fetch(CLOUD, { method: 'POST', headers: hd, signal: ctl && ctl.signal, body: JSON.stringify({ q: o.q, ctx: o.ctx, refs: o.refs, search: o.search, hist: (o.hist || []).slice(-4), long: !!o.long }) })
+      .then(function (r) {
+        if (r.status === 429) return r.json().then(function (j) {
+          var g = j.grenze;
+          block = { until: g === 'minute' ? Date.now() + 60000 : nextUtcDay(), why: g };
+          if (g !== 'minute') V.store('soulBlock', block);
+          if (g === 'tag') V.toast('Soul ist für heute ausgelastet. Bis morgen antworte ich etwas einfacher.');
+          else if (g === 'person') V.toast('Deine Soul-Antworten für heute sind aufgebraucht. Morgen gibt es neue.');
+          throw new Error('limit');
+        });
+        if (!r.ok || !r.body) throw new Error('http ' + r.status);
+        var rd = r.body.getReader(), dec = new TextDecoder(), buf = '', text = '';
+        function pump() {
+          return rd.read().then(function (x) {
+            if (x.done) return text;
+            buf += dec.decode(x.value, { stream: true });
+            var lines = buf.split('\n'); buf = lines.pop();
+            lines.forEach(function (l) {
+              if (l.indexOf('data: ') !== 0) return;
+              try { var j = JSON.parse(l.slice(6)); if (j.t) { text += j.t; cb && cb(clean(text, false)); } if (j.ende) st.cloudLeft = j.rest; } catch (e) { }
+            });
+            return pump();
+          });
+        }
+        return pump();
+      })
+      .then(function (t) { clearTimeout(to); delete gens.cloud; t = clean(t, true); if (!t) throw new Error('empty'); if (VX.track) try { VX.track('soul_cloud'); } catch (e) { } return t; },
+        function (e) { clearTimeout(to); delete gens.cloud; throw e; });
+  }
+
   var busy = false;
   // o: { q, ctx, refs, search, hist, long }; cb(teilText) fuer Wort-fuer-Wort-Anzeige
+  // Reihenfolge: Server (schnell) -> Modell auf dem Geraet (offline) -> soul.js antwortet regelbasiert
   function answer(o, cb) {
     if (busy) return Promise.reject(new Error('busy'));
+    if (cloudOk()) {
+      busy = true;
+      return cloudAnswer(o, cb).then(function (t) { busy = false; return t; }, function (e) {
+        busy = false;
+        if (localUsable()) return localAnswer(o, cb);
+        throw e;
+      });
+    }
+    return localAnswer(o, cb);
+  }
+  function localAnswer(o, cb) {
+    if (busy) return Promise.reject(new Error('busy'));
+    if (!localUsable()) return Promise.reject(new Error('no model'));
     return ensure().then(function (ok) {
       if (!ok) throw new Error('not loaded');
       busy = true;
@@ -5529,7 +5588,7 @@ window.SOUL_DATA = {
     if (have && !manage) {
       return '<div class="sllm on" id="soulLlm"><span class="sllm-dot' + (st.loading ? ' wait' : '') + '"></span><div class="grow"><b>' + MODELS[have].n + '</b> <span class="sub">' + (st.loading ? 'wacht auf ...' : st.loaded ? 'Sprachmodell aktiv, offline auf deinem Gerät' : st.err ? 'konnte nicht starten' : 'bereit') + '</span></div><button class="chip sm" data-sllm="manage">Verwalten</button></div>';
     }
-    if (!have && hideCard) return '<div class="sllm mini" id="soulLlm"><button class="chip sm" data-sllm="show">Echtes Sprachmodell laden</button></div>';
+    if (!have && hideCard) return '<div class="sllm mini" id="soulLlm"><button class="chip sm" data-sllm="show">Offline-Modus</button></div>';
     var rec = i.rec || 'std';
     var opts = ['std', 'pro'].map(function (w) {
       var m = MODELS[w], h = i.models[w] && i.models[w].have, part = i.models[w] && i.models[w].part;
@@ -5540,8 +5599,8 @@ window.SOUL_DATA = {
           : dis ? '' : '<button class="chip sm' + (w === rec ? ' on' : '') + '" data-sllm="dl:' + w + '">' + (part ? 'Fortsetzen' : 'Laden') + '</button>') + '</div>';
     }).join('');
     return '<div class="sllm big" id="soulLlm">' + (have ? '<div class="sllm-t"><b>Sprachmodell verwalten</b><button class="chip sm" data-sllm="close">Fertig</button></div>' :
-      '<div class="sllm-t"><b>Soul kann jetzt richtig sprechen</b><button class="chip sm" data-sllm="hide">Später</button></div>' +
-      '<div class="sub">Lade einmalig ein echtes KI-Sprachmodell. Danach versteht Soul jede Frage, plaudert natürlich und läuft direkt auf deinem Gerät: ohne Internet, privat und kostenlos. WLAN empfohlen.</div>') +
+      '<div class="sllm-t"><b>Offline-Modus</b><button class="chip sm" data-sllm="hide">Schließen</button></div>' +
+      '<div class="sub">Soul antwortet normalerweise über das Internet. Für unterwegs ohne Netz kannst du zusätzlich ein Sprachmodell auf dein Gerät laden. Das braucht viel Speicher und ein starkes Gerät. WLAN empfohlen.</div>') +
       opts + '</div>';
   }
   function render() {
@@ -5578,14 +5637,14 @@ window.SOUL_DATA = {
     var h = (oldHead && oldHead()) || '';
     if (!backend()) return h;
     info();
-    if (installed() && !st.loaded && !st.loading) setTimeout(ensure, 50);
+    if (installed() && !cloudOk() && !st.loaded && !st.loading) setTimeout(ensure, 50);
     setTimeout(bind, 0);
     return h + cardHtml();
   };
   // Nach dem Start im Hintergrund vorladen, damit die erste Antwort schnell kommt
-  setTimeout(function () { if (backend() && installed()) ensure(); }, 6000);
+  setTimeout(function () { if (backend() && installed() && !cloudOk()) ensure(); }, 6000);
 
-  window.SoulLLM = { model: function () { return backend() === 'server' ? (srvModel() || 'pro') : installed(); }, _ev: onEv, backend: backend, info: info, usable: usable, ensure: ensure, answer: answer, stop: stop, download: download, cancel: cancel, remove: remove, state: st, _build: build };
+  window.SoulLLM = { cloudOk: cloudOk, model: function () { return cloudOk() ? 'cloud' : backend() === 'server' ? (srvModel() || 'pro') : installed(); }, _ev: onEv, backend: backend, info: info, usable: usable, ensure: ensure, answer: answer, stop: stop, download: download, cancel: cancel, remove: remove, state: st, _build: build };
 })();
 </script>
 <script>/* Soul: die eigene KI von Velora. Laeuft komplett in der App, ohne fremde KI und ohne Kosten.
