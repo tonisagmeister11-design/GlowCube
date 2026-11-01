@@ -48,6 +48,7 @@ app.whenReady().then(() => {
   // Links (Website, Telefon) im Standardprogramm öffnen
   win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('app://')) { e.preventDefault(); shell.openExternal(url); } });
+  require('./llm').setup(win);
   win.loadURL('app://velora/index.html');
 });
 app.on('window-all-closed', () => app.quit());

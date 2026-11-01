@@ -1879,7 +1879,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 6.5 mit der KI Soul. Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">Velora 6.6 mit der KI Soul (echtes Sprachmodell direkt auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -2400,7 +2400,7 @@
     $('chatSend').onclick = function () { askJuno($('chatIn').value); };
     $('chatIn').onkeydown = function (e) { if (e.key === 'Enter') askJuno(this.value); };
     if ($('chatMic')) $('chatMic').onclick = function () { this.classList.add('on'); try { A.listen(); } catch (e) {} };
-    if ($('junoClear')) $('junoClear').onclick = function () { juno = []; saveJuno(); showJuno(); };
+    if ($('junoClear')) $('junoClear').onclick = function () { juno = []; saveJuno(); if (window.Soul && Soul.reset) Soul.reset(); if (window.SoulLLM) SoulLLM.stop(); showJuno(); };
     sheetEl.querySelectorAll('[data-jq]').forEach(function (b) { b.onclick = function () { askJuno(b.getAttribute('data-jq')); }; });
     sheetEl.querySelectorAll('[data-jp]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-jp').split('_'), o = juno[+ij[0]].orte[+ij[1]]; runAction({ typ: 'ort_zeigen', name: o.name, lat: o.lat, lon: o.lon }); }; });
     sheetEl.querySelectorAll('[data-ja]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-ja').split('_'); runAction(juno[+ij[0]].acts[+ij[1]]); }; });
@@ -2426,7 +2426,16 @@
     var verlauf = juno.filter(function (m) { return !m.wait && m.content; }).slice(-12).map(function (m) { return { role: m.role, content: m.content }; });
     var hd = { 'Content-Type': 'application/json', 'X-App-Id': KI_ID }, tk = HOOK('token'); if (tk) hd.Authorization = 'Bearer ' + tk;
     // Soul: die eigene KI laeuft direkt in der App (kein Server, keine Kosten); ohne Soul der alte Server
-    (window.Soul ? Soul.ask(q, buildKontext()) : fetch(KI_URL, { method: 'POST', headers: hd, body: JSON.stringify({ verlauf: verlauf, kontext: buildKontext(), sprache: window.I18N ? I18N.lang : 'de' }) })
+    // Wort fuer Wort anzeigen, sobald das Sprachmodell schreibt
+    var onPart = function (txt) {
+      if (!txt || !wait.wait && wait.content === txt) return;
+      wait.wait = false; wait.content = txt;
+      var lg = $('chatlog'); if (!lg || state !== 'ai') return;
+      var b = lg.lastElementChild; if (!b || !b.classList.contains('ai')) return;
+      b.classList.remove('wait'); b.innerHTML = mdLite(txt) + '<span class="caret"></span>';
+      sheetEl.scrollTop = sheetEl.scrollHeight;
+    };
+    (window.Soul ? Soul.ask(q, buildKontext(), onPart) : fetch(KI_URL, { method: 'POST', headers: hd, body: JSON.stringify({ verlauf: verlauf, kontext: buildKontext(), sprache: window.I18N ? I18N.lang : 'de' }) })
       .then(function (r) { return r.json(); }))
       .then(function (d) {
         junoBusy = false; var i = juno.indexOf(wait); if (i >= 0) juno.splice(i, 1);

@@ -1,6 +1,6 @@
 # Velora
 
-Fahrrad-Navigation weltweit für Android (APK) und Windows (EXE), mit der KI Juno und dem Maskottchen Velo (Fuchs).
+Fahrrad-Navigation weltweit für Android (APK) und Windows (EXE), mit der KI Soul (echtes Sprachmodell direkt auf dem Gerät) und dem Maskottchen Velo (Fuchs).
 
 - Fertige Dateien: `dist/Velora.apk` (`./build.sh`, braucht Android SDK mit build-tools 36.1.0 und platform android-36, JDK 17+) und `dist/Velora.exe` (`./build-desktop.sh`)
 - Paketname: `app.velora.bike`
@@ -21,6 +21,26 @@ Gesprächskontext. Wissensfragen recherchiert sie im Hintergrund (Wikipedia, auf
 und wählt die passendsten Sätze aus. `app/assets/soul-data.js` enthält ihr Wissen: Fahrrad-Wissensbuch (rund 75 Themen),
 Plauder-Sammlung, Fakten, Rätsel, Quiz, Geschichten und Gedichte. Soul merkt sich, was Nutzer über sich erzählen (nur auf dem Gerät),
 versteht Folgefragen zum letzten Thema und wiederholt Formulierungen nicht direkt. Kein Server, keine fremde KI, keine Kosten. Der frühere Server-Weg (unten) bleibt nur für alte App-Versionen.
+
+## Soul-Sprachmodell (ab 6.6, auf dem Gerät)
+
+Soul kann ein echtes KI-Sprachmodell nutzen, das komplett auf dem Gerät läuft (llama.cpp, Modelle von Qwen, Apache-2.0).
+Kein Cloudflare, keine fremde KI, keine laufenden Kosten. Der Nutzer lädt das Modell einmalig im Soul-Chat herunter:
+
+| Modell | Datei | Größe | Für |
+|---|---|---|---|
+| Soul | Qwen3-1.7B Q4_K_M | 1,1 GB | jedes Handy, schnell |
+| Soul Pro | Qwen3-4B-Instruct-2507 Q4_K_M | 2,5 GB | ab etwa 6 GB RAM empfohlen, klüger |
+
+- Android: `native/velora_llm.cpp` (JNI um llama.cpp), gebaut mit `./build-native.sh` (NDK, llama.cpp fest auf b12032) zu
+  `app/lib/arm64-v8a/libvelora_llm.so` (ARMv8.2 mit dotprod) und `libvelora_llm_base.so` (ältere Handys). `Llm.java` lädt die passende
+  Bibliothek, lädt das Modell herunter (fortsetzbar, SHA-256-Prüfung) und streamt Antworten an die App.
+- Windows: `desktop/llm.js` startet den mitgelieferten `llama-server.exe` nur auf 127.0.0.1 und reicht die Antworten über IPC weiter.
+- `app/assets/soul-llm.js`: Modellkarte im Chat (Download, Fortschritt, Verwalten), Prompt (Persönlichkeit, Info, Suchergebnisse, Verlauf), Streaming.
+- `soul.js` entscheidet: App-Aktionen (Route, Tour, Wetter, Orte, Navigation, Statistik, Rechnen, Gedächtnis) bleiben regelbasiert;
+  Gespräch, Wissen und Rad-Fragen beantwortet das Sprachmodell, bei Faktenfragen mit Wikipedia und Websuche als Grundlage.
+  Ohne Modell (oder bei einem Fehler) antwortet Soul wie bisher regelbasiert.
+- Später ein eigener Server: `localStorage.soulServer = "https://..."` (llama-server-kompatibles `/completion`), `soulServerModel` = `std` oder `pro`.
 
 ## KI "Juno" (Server, alt)
 

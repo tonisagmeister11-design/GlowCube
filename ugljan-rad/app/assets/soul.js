@@ -665,9 +665,103 @@
   }
 
   // ---------------------------------------------------------------------------------------------
+  // Echtes Sprachmodell (soul-llm.js): Gespraech, Wissen und Rad-Fragen. App-Aktionen bleiben hier.
+  // ---------------------------------------------------------------------------------------------
+  var LLM_I = /^(chat|knowledge|training|safety|bike|lowmood|goodmood|greet|greetq|howru|who|can|thanks|bye|compliment|insult|rode|age|smalltalk)$/;
+  var HIST = [];
+  function withTimeout(p, ms) { return Promise.race([p, new Promise(function (r) { setTimeout(function () { r(null); }, ms); })]); }
+  function needSearch(raw, t) {
+    if (/\b(such|suche|google|googel|im internet|online nach|recherchier|look up|search)\b/.test(t)) return true;
+    if (/\b(aktuell|aktuelle|heute|neueste|neuesten|neu|news|nachrichten|preis|kostet|ergebnis|gewonnen|weltmeister|2025|2026|2027|latest|current|price)\b/.test(t) && !/\b(wetter|regen)\b/.test(t)) return true;
+    var ty = qtype(t); if (ty !== 'what') return true;
+    // Eigennamen (gross geschrieben, nicht am Satzanfang): Personen, Orte, Firmen
+    var w = String(raw).replace(/^\s*\S+/, '').match(/\b[A-ZÄÖÜ][a-zäöüß]{2,}/g) || [];
+    return w.filter(function (x) { return !/^(Ich|Du|Sie|Er|Es|Wir|Ihr|Rad|Fahrrad|Was|Wie|Wo|Wer|Warum|Kannst|Velora|Soul)$/.test(x) && !SW[norm(x)]; }).length > 0 && /\b(wer|was ist|was sind|was war|erzaehl|weisst du|kennst du)\b/.test(t);
+  }
+  function research(raw, t) {
+    var cw = content(fix(t)), lang = wikiLang();
+    var QW = { hoch: 1, lang: 1, gross: 1, alt: 1, weit: 1, viele: 1, high: 1, tall: 1, long: 1, old: 1, big: 1, many: 1, such: 1, suche: 1, google: 1, internet: 1 };
+    var orig = String(raw).replace(/[?!.,;:„“"()]/g, ' ').split(/\s+/).filter(function (w) { var n = norm(w); return n.length > 2 && !SW[n] && !QW[n] && !PRON[n]; });
+    var query = orig.join(' ') || cw.join(' ') || raw;
+    // Folgefrage mit "er/sie/es": letztes Thema dazunehmen
+    if (M.lastTopic && (t.split(' ').some(function (w) { return PRON[w]; }) || /^und\b/.test(t))) query = M.lastTopic + ' ' + orig.filter(function (w) { return !/^(und|wurde|wurden|ersten|erste|mal|zum)$/i.test(w); }).join(' ');
+    var wiki = wikiSearch(query, lang).then(function (titles) {
+      if (!titles.length) throw new Error('none');
+      var best = titles[0], bs = -1;
+      titles.forEach(function (ti) { var n = norm(ti), sc = cw.filter(function (w) { return n.indexOf(w) >= 0; }).length; if (sc > bs) { bs = sc; best = ti; } });
+      return wikiText(best, lang);
+    }).then(function (a) {
+      if (!a) return null;
+      var ss = sentences(a.text); if (!ss.length) return null;
+      var r = rank(ss, t), pickS = ss.slice(0, 3);
+      r.slice(0, 4).forEach(function (x) { if (pickS.indexOf(x.s) < 0) pickS.push(x.s); });
+      M.lastTopic = a.title;
+      return { title: a.title, text: pickS.join(' ') };
+    }).catch(function () { return null; });
+    var web = (A && A.fetchText) ? ddg(query).then(function (sn) { return sn.slice(0, 4).join(' | '); }).catch(function () { return ''; }) : Promise.resolve('');
+    return Promise.all([withTimeout(wiki, 7000), withTimeout(web, 7000)]).then(function (x) {
+      var w = x[0], d = x[1];
+      if (!w && !d) return null;
+      var txt = (w ? w.text : '') + (d ? (w ? ' || Web: ' : '') + d : '');
+      return { text: txt, src: w ? 'Wikipedia: ' + w.title + (d ? ', Websuche' : '') : 'Websuche', title: w ? w.title : null };
+    });
+  }
+  // Nur Hintergrund, der zur Nachricht passt (sonst redet das Modell ungefragt ueber Wetter und Ort)
+  function ctxLine(k, t) {
+    var p = [], now = new Date();
+    var ride = /\b(rad|fahr|fahrt|tour|runde|draussen|raus|heute|morgen|wetter|warm|kalt|regen|wind|anziehen|lust|ride|bike|outside|weather)\w*/.test(t);
+    p.push('Jetzt: ' + now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ', ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ' Uhr');
+    if (k.position && k.position.ort && (ride || /\b(hier|wo bin|gegend|naehe|stadt|ort|here|area)\b/.test(t))) p.push('Ort: ' + k.position.ort);
+    if (k.wetter && ride) p.push('Wetter jetzt: ' + k.wetter.temp_c + ' °C, ' + (k.wetter.lage || '') + ', Wind ' + k.wetter.wind_kmh + ' km/h');
+    if (k.rad && /\b(rad|fahrrad|bike|reifen|kette|schaltung|bremse|sattel|ebike|akku)\w*/.test(t)) p.push('Rad in der App: ' + k.rad);
+    var me = [];
+    if (userName()) me.push('heißt ' + userName());
+    if (MEM.alter) me.push(MEM.alter + ' Jahre');
+    if (MEM.ort) me.push('wohnt in ' + MEM.ort);
+    if (MEM.rad) me.push('fährt ' + MEM.rad);
+    if (MEM.mag && MEM.mag.length) me.push('mag ' + MEM.mag.slice(-4).join(', '));
+    if (me.length) p.push('Die Person, mit der du sprichst (nicht du selbst): ' + me.join(', '));
+    if (/\b(ich|mein|meine|mir|my|i)\b/.test(t) && /\b(fahrt|fahrten|gefahren|km|kilometer|woche|training|fit|stats)\w*/.test(t)) try { var s2 = VX.statsData && VX.statsData(); if (s2 && s2.n) p.push('Fahrten mit Velora: ' + s2.n + ', zusammen ' + km(s2.all.d) + ' km'); } catch (e) {}
+    if (k.route && /\b(route|strecke|weg|anstieg|steil|lang|weit)\w*/.test(t)) p.push('Offene Route: ' + k.route.titel + ', ' + k.route.km + ' km, ' + k.route.bergauf_m + ' Hm');
+    if (k.navigation && k.navigation.aktiv) p.push('Navigation läuft, noch ' + k.navigation.rest_km + ' km');
+    return p.join('; ');
+  }
+  function llmPath(raw, t, I, k, onPart) {
+    var refs = [];
+    var fs = bestOf(SD.faq, t, { strong: true }), fq = fs || (/^(chat|knowledge|bike|training)$/.test(I) ? bestOf(SD.faq, t, { coverage: 0.2 }) : null);
+    // Kleines Modell: gepruefte Anleitungen aus dem Velora-Wissen direkt zeigen (das Modell formuliert sie sonst fehlerhaft um)
+    if (SoulLLM.model() === 'std' && /^(bike|training|safety)$/.test(I)) {
+      var cur = fs ? R(L === 'de' ? fs.e.a : fs.e.e) : I === 'bike' ? doBike(t) : I === 'training' ? doTraining(t) : doSafety();
+      if (cur) return Promise.resolve(cur).then(function (o) { if (!o || !o.antwort) throw new Error('none'); return o; });
+    }
+    if (fq) refs.push(L === 'de' ? fq.e.a : fq.e.e);
+    var pre = null;
+    if (!fq && I === 'bike') pre = doBike(t); else if (!fq && I === 'training') pre = doTraining(t); else if (I === 'safety') pre = doSafety();
+    var srch = null;
+    return Promise.resolve(pre).then(function (o) {
+      if (o && o.antwort) refs.push(o.antwort);
+      return (I === 'knowledge' || I === 'chat') && !fq && needSearch(raw, t) ? research(raw, t) : null;
+    }).then(function (sr) {
+      if (sr) M.lastSearch = { sr: sr, turn: M.turns };
+      else if (M.lastSearch && M.turns - M.lastSearch.turn <= 3 && (/^und\b/.test(t) || t.split(' ').some(function (w) { return PRON[w]; }))) sr = M.lastSearch.sr;
+      srch = sr;
+      var long = /\b(erklaer|erklaere|wie funktioniert|anleitung|schritt|schritte|tipps|liste|unterschied|vergleich|warum|explain|how does|steps|tips|difference|why)\b/.test(t);
+      return SoulLLM.answer({ q: raw, ctx: ctxLine(k, t), refs: refs, search: sr, hist: HIST, long: long }, onPart);
+    }).then(function (txt) {
+      if (srch && srch.title) txt += '\n\n' + T('Quelle: Wikipedia (' + srch.title + ')', 'Source: Wikipedia (' + srch.title + ')');
+      else if (srch) txt += '\n\n' + T('(mit Websuche)', '(with web search)');
+      return { antwort: txt, aktionen: [], orte: [], llm: true };
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------
   // Einstieg
   // ---------------------------------------------------------------------------------------------
-  function ask(raw, k) {
+  // Verlauf fuers Sprachmodell (auch Antworten der App-Werkzeuge, damit Folgefragen passen)
+  function ask(raw, k, onPart) {
+    return ask0(raw, k, onPart).then(function (o) { if (o && o.antwort) { HIST.push({ u: String(raw), a: String(o.antwort) }); if (HIST.length > 8) HIST.shift(); } return o; });
+  }
+  function ask0(raw, k, onPart) {
     k = k || (window.__ugljan && __ugljan.kontext ? __ugljan.kontext() : {});
     L = langOf(raw);
     var t = fix(norm(raw)), I = detect(raw, t);
@@ -709,6 +803,15 @@
     }
     // Gedaechtnis (Aussagen ueber dich, Fragen nach dir)
     var mem = memorize(raw, t); if (mem) return finish(mem, 'memory');
+    // Echtes Sprachmodell, wenn geladen: Gespraech und Wissen (Witze, Quiz, Raetsel bleiben handverlesen)
+    if (window.SoulLLM && SoulLLM.usable() && LLM_I.test(I) && !M.riddle && !M.quiz && !/\b(witz|witze|joke|quiz|raetsel|riddle)\b/.test(t)) {
+      var I0 = I;
+      return finish(llmPath(raw, t, I, k, onPart).catch(function () { return ruleRest(raw, t, I0, k); }), 'llm_' + I);
+    }
+    return ruleRest(raw, t, I, k);
+  }
+  // Regelbasierte Antworten (auch Rueckfall, wenn das Sprachmodell nicht da ist)
+  function ruleRest(raw, t, I, k) {
     // Rad-Wissensbuch, wenn klar danach gefragt wird (zwei passende Woerter)
     if (/^(chat|knowledge|weather|wear|training|safety|bike|lowmood|goodmood|tour)$/.test(I)) {
       var fq = bestOf(SD.faq, t, { strong: true });
@@ -750,7 +853,7 @@
     return finish(chat(raw, t), 'chat');
   }
   function finish(p, intent) {
-    if (VX.track) try { VX.track('soul_' + intent); } catch (e) {}
+    if (intent && VX.track) try { VX.track('soul_' + intent); } catch (e) {}
     return Promise.resolve(p).then(function (o) {
       if (o._offer) { M.offer = o._offer; delete o._offer; }
       o.credits = 0;
@@ -759,5 +862,5 @@
   }
   // Antwort der App auf Hintergrund-Abrufe (Android)
   function got(id, text, err) { var p = pend[id]; if (!p) return; delete pend[id]; if (err) p.rej(new Error(err)); else p.res(text); }
-  window.Soul = { ask: ask, _got: got, _detect: function (s) { L = langOf(s); return detect(s, fix(norm(s))); }, _dbg: function (s) { var t = fix(norm(s)); return { t: t, content: content(t), article: !!M.article, lastQ: M.lastQ }; } };
+  window.Soul = { ask: ask, _got: got, reset: function () { HIST = []; M.lastSearch = null; M.article = null; M.lastTopic = null; M.offer = null; }, _detect: function (s) { L = langOf(s); return detect(s, fix(norm(s))); }, _dbg: function (s) { var t = fix(norm(s)); return { t: t, content: content(t), article: !!M.article, lastQ: M.lastQ }; } };
 })();

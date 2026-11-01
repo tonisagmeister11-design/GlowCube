@@ -54,6 +54,7 @@ import org.json.JSONObject;
 
 public class MainActivity extends Activity implements LocationListener {
     private WebView web;
+    private Llm llm;
     private LocationManager lm;
     private TextToSpeech tts;
     private boolean ttsReady;
@@ -133,6 +134,7 @@ public class MainActivity extends Activity implements LocationListener {
                 }
             }
         });
+        llm = new Llm(this, this::js);
         web.addJavascriptInterface(new Bridge(), "Android");
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
@@ -230,6 +232,7 @@ public class MainActivity extends Activity implements LocationListener {
 
     @Override
     protected void onDestroy() {
+        if (llm != null) llm.unload();
         if (tts != null) tts.shutdown();
         if (recognizer != null) recognizer.destroy();
         try {
@@ -459,7 +462,7 @@ public class MainActivity extends Activity implements LocationListener {
                             try {
                                 HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
                                 c.setConnectTimeout(15000); c.setReadTimeout(20000);
-                                c.setRequestProperty("User-Agent", "Velora/6.5 (Android)");
+                                c.setRequestProperty("User-Agent", "Velora/6.6 (Android)");
                                 int code = c.getResponseCode();
                                 if (code == 200) {
                                     File tmp = new File(f.getPath() + ".tmp");
@@ -507,6 +510,15 @@ public class MainActivity extends Activity implements LocationListener {
                 js("window.Soul&&Soul._got(" + org.json.JSONObject.quote(id) + "," + org.json.JSONObject.quote(out == null ? "" : out) + "," + (err == null ? "null" : org.json.JSONObject.quote(err)) + ")");
             }).start();
         }
+
+        @JavascriptInterface public String llmInfo() { return llm.info(); }
+        @JavascriptInterface public void llmDownload(String w) { llm.download(w); }
+        @JavascriptInterface public void llmCancel() { llm.cancel(); }
+        @JavascriptInterface public void llmDelete(String w) { llm.delete(w); }
+        @JavascriptInterface public void llmLoad(String w) { llm.load(w); }
+        @JavascriptInterface public void llmUnload() { llm.unload(); }
+        @JavascriptInterface public void llmGenerate(String id, String prompt, int n, float temp) { llm.generate(id, prompt, n, temp); }
+        @JavascriptInterface public void llmStop() { llm.stop(); }
 
         @JavascriptInterface
         public void shareText(String title, String text) {

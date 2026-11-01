@@ -13,7 +13,10 @@ javac -source 11 -target 11 -nowarn -cp $JAR -d build/classes $(find app/java bu
 $BT/d8 --release --min-api 24 --lib $JAR --output build/dex $(find build/classes -name '*.class')
 cp build/base.apk build/unsigned.apk
 (cd build/dex && zip -q -j ../unsigned.apk classes.dex)
-$BT/zipalign -f -p 4 build/unsigned.apk build/aligned.apk
+# Soul-Engine (llama.cpp), unkomprimiert damit Android sie direkt aus der APK laden kann
+[ -f app/lib/arm64-v8a/libvelora_llm.so ] || ./build-native.sh
+(cd app && zip -q -0 -r ../build/unsigned.apk lib)
+$BT/zipalign -f -P 16 4 build/unsigned.apk build/aligned.apk
 KS=${KEYSTORE:-$HOME/.ugljan-rad.keystore}
 [ -f "$KS" ] || keytool -genkeypair -keystore "$KS" -storepass ugljanrad -keypass ugljanrad -alias rad -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ugljan Rad" >/dev/null 2>&1
 $BT/apksigner sign --ks "$KS" --ks-pass pass:ugljanrad --key-pass pass:ugljanrad --out dist/Velora.apk build/aligned.apk

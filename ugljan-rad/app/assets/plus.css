@@ -475,3 +475,21 @@ body.night .wkpick button.on{background:var(--panel2)}
 .wkdots i{width:24px;height:24px;border-radius:50%;background:var(--panel3);display:flex;align-items:center;justify-content:center}
 .wkdots i.on{background:#fff4e6;box-shadow:0 0 0 2px #ffa94d inset}
 .wkdots i svg{width:15px;height:15px}
+
+/* Soul-Sprachmodell: Karte im Chat-Kopf */
+.sllm{display:flex;align-items:center;gap:10px;background:var(--panel2,#f3f6fa);border-radius:14px;padding:9px 12px;margin:8px 0;font-size:13.5px}
+.sllm.big,.sllm:has(.sllm-bar){display:block;padding:12px 14px;background:linear-gradient(135deg,rgba(15,174,115,.12),rgba(90,169,255,.1));box-shadow:var(--sh1)}
+.sllm.mini{background:none;padding:0;margin:4px 0}
+.sllm .sub{font-size:12.5px;line-height:1.4}
+.sllm-t{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.sllm-t b{font-size:15px}
+.sllm-opt{display:flex;align-items:center;gap:8px;padding:9px 0 2px;border-top:1px solid rgba(19,38,58,.07);margin-top:8px}
+.sllm-opt .chip{white-space:nowrap}
+.sllm-opt.dis{opacity:.55}
+.sllm-tag{font-size:11px;font-weight:600;color:#0c8a5c;background:rgba(15,174,115,.14);padding:2px 7px;border-radius:9px;vertical-align:1px}
+.sllm-bar i{background:linear-gradient(90deg,#0fae73,#5aa9ff)}
+.sllm-dot{width:9px;height:9px;border-radius:50%;background:#0fae73;box-shadow:0 0 0 4px rgba(15,174,115,.18);flex:none}
+.sllm-dot.wait{background:#ffa94d;box-shadow:0 0 0 4px rgba(255,169,77,.2);animation:sllmPulse 1s ease-in-out infinite}
+@keyframes sllmPulse{50%{transform:scale(.6)}}
+.msg.ai .caret{display:inline-block;width:7px;height:15px;margin-left:2px;vertical-align:-2px;border-radius:2px;background:#0fae73;animation:sllmBlink .8s steps(2) infinite}
+@keyframes sllmBlink{50%{opacity:0}}
