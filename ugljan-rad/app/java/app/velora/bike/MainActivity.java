@@ -477,7 +477,7 @@ public class MainActivity extends Activity implements LocationListener {
                             try {
                                 HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
                                 c.setConnectTimeout(15000); c.setReadTimeout(20000);
-                                c.setRequestProperty("User-Agent", "Velora/7.0 (Android)");
+                                c.setRequestProperty("User-Agent", "Velora/7.1 (Android)");
                                 int code = c.getResponseCode();
                                 if (code == 200) {
                                     File tmp = new File(f.getPath() + ".tmp");
@@ -543,6 +543,31 @@ public class MainActivity extends Activity implements LocationListener {
                     startActivity(Intent.createChooser(i, title));
                 } catch (Exception ignored) { }
             });
+        }
+
+        // Fahrt als Bild teilen: Bild in "Bilder/Velora" ablegen und den Teilen-Dialog oeffnen (ab Android 10 ohne Speicher-Berechtigung)
+        @JavascriptInterface
+        public boolean shareImage(String b64, final String title) {
+            if (Build.VERSION.SDK_INT < 29) return false;
+            try {
+                byte[] data = android.util.Base64.decode(b64, android.util.Base64.DEFAULT);
+                ContentValues cv = new ContentValues();
+                cv.put(MediaStore.Images.Media.DISPLAY_NAME, "velora-" + System.currentTimeMillis() + ".png");
+                cv.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+                cv.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Velora");
+                final Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv);
+                if (uri == null) return false;
+                try (OutputStream o = getContentResolver().openOutputStream(uri)) { if (o == null) return false; o.write(data); }
+                runOnUiThread(() -> {
+                    try {
+                        Intent i = new Intent(Intent.ACTION_SEND).setType("image/png").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(Intent.createChooser(i, title));
+                    } catch (Exception ignored) { }
+                });
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
         }
 
         @JavascriptInterface

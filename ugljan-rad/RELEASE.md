@@ -1,6 +1,6 @@
 # Velora – Release im Google Play Store
 
-Stand: Version 7.0 (versionCode 26), Paket `app.velora.bike`, targetSdk 36, minSdk 24, nur arm64-v8a.
+Stand: Version 7.1 (versionCode 27), Paket `app.velora.bike`, targetSdk 36, minSdk 24, nur arm64-v8a.
 
 ## 1. Bauen
 

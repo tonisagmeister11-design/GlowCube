@@ -24,7 +24,7 @@ for f in os.listdir(os.path.join(A, 'fonts')):
     if f.endswith('.woff2'):
         css = css.replace('url(fonts/' + f + ')', 'url(data:font/woff2;base64,' + base64.b64encode(open(os.path.join(A, 'fonts', f), 'rb').read()).decode() + ')')
 html = html.replace('<link rel="stylesheet" href="plus.css">', '<style>' + css + '</style>')
-for js in ['i18n.js', 'fox.js', 'account.js', 'soul-data.js', 'soul-llm.js', 'soul.js']:
+for js in ['i18n.js', 'fox.js', 'account.js', 'extras.js', 'soul-data.js', 'soul-llm.js', 'soul.js']:
     html = html.replace('<script src="' + js + '"></script>', '<script>' + safe(rd(js)) + '</script>')
 html = html.replace('<script src="plus.js"></script>', '<script>' + safe(rd('plus.js')) + '</script>')
 html = html.replace('<title>Velora</title>', '<title>Velora Tester</title>')

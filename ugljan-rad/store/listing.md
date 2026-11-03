@@ -15,6 +15,9 @@ ROUTEN, DIE ZUM RAD PASSEN
 • Wähle zwischen „Schnell & leicht“ und „Am schönsten“ (Radwege, beschilderte Radrouten, ruhige Wege)
 • Höhenprofil, Anstiege mit Steigung, Bergauf- und Bergab-Meter, Fahrzeit und Ankunftszeit
 • Fahrzeiten werden aus Gewicht, Belag, Steigung und Wind berechnet
+• 3D-Vorschau: Flieg die Route vorher über das echte Gelände ab
+• Abbiegeliste und Sehenswertes, Cafés und Trinkwasser direkt an der Strecke
+• Hinweis, wenn du erst nach Sonnenuntergang ankommst
 
 NAVIGATION MIT ANSAGEN
 • Abbiegehinweise mit Stimme (Deutsch, Englisch, Französisch, Italienisch, Spanisch) und Vibration
@@ -31,6 +34,7 @@ DEIN FAHRTENBUCH
 • Jede Fahrt mit Strecke, Zeit, Schnitt, Höhenmetern und Kalorien
 • Wochenziel mit Serie: Velo, der Fuchs, zündet deine Flamme an
 • Abzeichen, Statistik und Wochenrückblick, Widget für den Startbildschirm
+• Teile deine Fahrt als schönes Bild mit Strecke und Werten
 
 SOUL, DEINE RAD-KI
 • Frag Soul, was du willst: „Plan mir eine 2-Stunden-Tour“, „Regnet es morgen?“, „Wie flicke ich einen Platten?“
@@ -60,6 +64,9 @@ ROUTES MADE FOR BIKES
 • Worldwide routes for city and trekking bikes, road bikes, mountain bikes, gravel, e-bikes and families with kids
 • Choose between “Fast & easy” and “Most beautiful” (cycle paths, signed bike routes, quiet roads)
 • Elevation profile, climbs with gradient, ascent and descent, ride time and arrival time
+• 3D preview: fly over the route on real terrain before you ride
+• Turn list plus sights, cafés and drinking water right along the route
+• A heads-up if you will arrive after sunset
 
 VOICE NAVIGATION
 • Turn-by-turn voice guidance in English, German, French, Italian and Spanish, plus vibration
@@ -76,6 +83,7 @@ YOUR RIDE LOG
 • Every ride with distance, time, average speed, climbing and calories
 • Weekly goal with streak: Velo the fox lights your flame
 • Badges, statistics, weekly recap and a home screen widget
+• Share your ride as a beautiful image with route and stats
 
 SOUL, YOUR CYCLING AI
 • Ask Soul anything: “Plan a 2-hour tour”, “Will it rain tomorrow?”, “How do I fix a flat?”

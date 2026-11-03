@@ -542,3 +542,25 @@ body.night #gpslost{background:#3a2a10;border-color:#7a5418;color:#ffd9a0}
 /* KI-Antwort melden: dezent unter Soul-Antworten */
 .msg.ai .jrep{display:block;margin-top:6px;border:0;background:none;padding:2px 0;color:var(--mute);font-size:12px;text-decoration:underline;text-underline-offset:2px}
 .msg.ai .jrep:disabled{text-decoration:none;opacity:.8}
+
+/* Velora 7.1: 3D-Vorschau, Abbiegeliste, Sehenswertes entlang der Strecke, Dunkelheits-Hinweis */
+.xrow{display:flex;gap:8px;margin:10px 0 4px}
+.xbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:600 14px inherit;font-family:inherit}
+.xbtn:active{transform:scale(.97)}
+.hl-box{display:flex;flex-direction:column;gap:6px}
+.hl-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;border-radius:14px;background:var(--panel2);padding:9px 10px;color:var(--text);font-family:inherit}
+.hl-row b{display:block;font-size:14.5px}.hl-row span span,.hl-row .grow>span{display:block;font-size:12.5px;color:var(--mute)}
+.hl-ic{flex:none;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.hl-pin{width:34px;height:34px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.25);animation:fpBub .4s var(--spring) both}
+.hl-pin svg{transform:rotate(45deg)}
+.dark-hint{display:flex;align-items:center;gap:10px;margin:10px 0 2px;padding:10px 12px;border-radius:14px;background:#fff7e6;border:1px solid #f5c26b;color:#7a4300;font-size:13.5px;font-weight:600}
+body.night .dark-hint{background:#3a2a10;border-color:#7a5418;color:#ffd9a0}
+.cue{max-height:56vh;overflow:auto;margin:10px -4px 0;padding:0 4px}
+.cue-r{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line)}
+.cue-r b{display:block;font-size:14.5px}.cue-r .grow span{display:block;font-size:12.5px;color:var(--mute)}
+.cue-a{flex:none;width:38px;height:38px;border-radius:12px;background:var(--panel2);color:var(--acc);display:flex;align-items:center;justify-content:center}
+.cue-km{color:var(--mute);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+#flyBar{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:1600;display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:12px 14px;box-shadow:var(--sh2);animation:fpBub .35s var(--spring) both}
+#flyBar .fly-t{flex:none;display:flex;flex-direction:column;font-size:12.5px;color:var(--mute)}#flyBar .fly-t b{font-size:15px;color:var(--text)}
+#flyBar .fly-p{flex:1;height:6px;border-radius:3px;background:var(--panel3);overflow:hidden}#flyBar .fly-p i{display:block;height:100%;width:0;background:var(--lime);border-radius:3px}
+#flyBar button{flex:none;height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--lime);color:var(--ink);font-weight:700;font-family:inherit}

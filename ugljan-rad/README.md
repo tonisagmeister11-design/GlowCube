@@ -1,5 +1,15 @@
 # Velora
 
+## Version 7.1: Ideen von anderen Rad-Apps
+
+`app/assets/extras.js` (hängt sich an die Erweiterungspunkte, ändert nichts Bestehendes):
+- Sehenswertes, Pausenorte, Trinkwasser und Radläden entlang der Strecke (wie Highlights bei Komoot): aus den Kartenkacheln
+  und per Overpass-Abfrage entlang der Linie (180 m Korridor), nur echte OpenStreetMap-Orte, antippen zeigt sie auf der Karte
+- 3D-Vorschau (wie bei Bikemap): Kamera fliegt die Route mit echtem Gelände (Terrarium-Höhen) ab, jederzeit beendbar
+- Abbiegeliste vor dem Losfahren (wie das Cue Sheet bei Ride with GPS)
+- Hinweis bei Dunkelheit bzw. Ankunft nach Sonnenuntergang
+- Fahrt als Bild teilen (wie bei Strava): Android ab 10 über `Android.shareImage` (Bilder/Velora), sonst Bild zum Speichern
+
 ## Version 7.0: Release-Kandidat für Google Play
 
 Store-Veröffentlichung, Signatur, Play-Console-Angaben und offene Punkte: siehe **RELEASE.md**. Store-Texte und Grafiken: `store/`.
