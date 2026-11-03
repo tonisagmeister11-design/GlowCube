@@ -27,7 +27,7 @@ html = html.replace('<link rel="stylesheet" href="plus.css">', '<style>' + css +
 for js in ['i18n.js', 'fox.js', 'account.js', 'extras.js', 'soul-data.js', 'soul-llm.js', 'soul.js']:
     html = html.replace('<script src="' + js + '"></script>', '<script>' + safe(rd(js)) + '</script>')
 html = html.replace('<script src="plus.js"></script>', '<script>' + safe(rd('plus.js')) + '</script>')
-html = html.replace('<title>Velora</title>', '<title>Velora Tester</title>')
+html = html.replace('<title>BikeOra</title>', '<title>BikeOra Tester</title>')
 html = html.replace('<script src="maplibre-gl.js"></script>', head + '<script>' + safe(rd('maplibre-gl.js')) + '</script><script>' + safe(shim) + '</script>')
 html = html.replace('<script src="data.js"></script>', '<script>' + safe(rd('data.js')) + '</script>')
 html = html.replace('<script src="app.js"></script>', '<script>' + safe(app) + '</script>')

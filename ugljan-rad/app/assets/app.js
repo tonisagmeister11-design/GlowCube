@@ -1,4 +1,4 @@
-/* Velora: Fahrrad-Navigation weltweit mit Höhen- und Fahrphysik, Touren und der KI Juno */
+/* BikeOra: Fahrrad-Navigation weltweit mit Höhen- und Fahrphysik, Touren und der KI Juno */
 (function () {
   'use strict';
   var D = window.UGLJAN;
@@ -1210,7 +1210,7 @@
       homeTries = (homeTries || 0) + 1;
       if (homeTries <= 3) map.once('idle', function () { if (state === 'home') drawHome(); });
     } else homeTries = 0;
-    var html = '<h2>Velora</h2><div class="sub">' +
+    var html = '<h2>BikeOra</h2><div class="sub">' +
       (hr ? 'GPS aktiv' + (z != null ? ' &middot; ' + Math.round(z) + ' m über dem Meer' : '') + '. Suche ein Ziel oder tippe auf die Karte.' : 'Warte auf GPS. Suche ein Ziel oder tippe auf die Karte.') + '</div>' +
       wxHtml() + (HOOK('homeHtml') || '') +
       '<div class="quick">' +
@@ -1981,7 +1981,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">Velora 7.2 mit der KI Juno (echtes Sprachmodell über den Velora-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">BikeOra 7.3 mit der KI Juno (echtes Sprachmodell über den BikeOra-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -2402,7 +2402,7 @@
   });
 
   // =====================================================================
-  // Juno: die KI von Velora (Cloudflare Workers AI, echte Daten ueber Werkzeuge)
+  // Juno: die KI von BikeOra (Cloudflare Workers AI, echte Daten ueber Werkzeuge)
   // =====================================================================
   var KI_URL = 'https://velora-ki.toni-sagmeister11.workers.dev/chat', KI_ID = 'velora-2026';
   var juno = load('juno', []), junoBusy = false, junoLast = null;
@@ -2445,7 +2445,7 @@
   function buildKontext() {
     var ref = meRef(), c = map.getCenter(), lat = ref ? ref.lat : c.lat, lon = ref ? ref.lon : c.lng, now = new Date();
     var k = {
-      app: 'Velora', zeit: now.toLocaleDateString('de-DE') + ' ' + hhmm(now),
+      app: 'BikeOra', zeit: now.toLocaleDateString('de-DE') + ' ' + hhmm(now),
       position: { lat: +lat.toFixed(5), lon: +lon.toFixed(5), quelle: ref ? 'GPS' : 'Kartenmitte (kein GPS)', ort: placeNameAt(lat, lon) },
       rad: BIKES[S.bike].n, fitness: FIT[S.fit].n, routenstil: STYLES[S.style].n
     };
@@ -2518,7 +2518,7 @@
     if ($('junoClear')) $('junoClear').onclick = function () { juno = []; saveJuno(); if (window.Soul && Soul.reset) Soul.reset(); if (window.SoulLLM) SoulLLM.stop(); showJuno(); };
     sheetEl.querySelectorAll('[data-jq]').forEach(function (b) { b.onclick = function () { askJuno(b.getAttribute('data-jq')); }; });
     sheetEl.querySelectorAll('[data-jp]').forEach(function (b) { b.onclick = function () { var ij = b.getAttribute('data-jp').split('_'), o = juno[+ij[0]].orte[+ij[1]]; runAction({ typ: 'ort_zeigen', name: o.name, lat: o.lat, lon: o.lon }); }; });
-    // KI-Antwort melden (Google-Play-Regel fuer generative KI): geht an den Velora-Server zur Pruefung
+    // KI-Antwort melden (Google-Play-Regel fuer generative KI): geht an den BikeOra-Server zur Pruefung
     sheetEl.querySelectorAll('[data-jr]').forEach(function (b) {
       b.onclick = function () {
         var m = juno[+b.getAttribute('data-jr')]; if (!m || m.rep) return;

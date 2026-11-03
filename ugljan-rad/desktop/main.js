@@ -1,4 +1,4 @@
-// Velora für Windows: dieselbe App wie auf Android, in einem Electron-Fenster
+// BikeOra für Windows: dieselbe App wie auf Android, in einem Electron-Fenster
 const { app, BrowserWindow, protocol, net, Menu, session, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -41,7 +41,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'geolocation' || perm === 'fullscreen'));
   const win = new BrowserWindow({
-    width: 440, height: 900, minWidth: 360, minHeight: 600, title: 'Velora', backgroundColor: '#f3f6fa',
+    width: 440, height: 900, minWidth: 360, minHeight: 600, title: 'BikeOra', backgroundColor: '#f3f6fa',
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: false, sandbox: false }
   });

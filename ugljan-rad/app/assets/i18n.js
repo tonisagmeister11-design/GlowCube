@@ -1,4 +1,4 @@
-/* Velora: Sprachen. Die App ist auf Deutsch geschrieben; dieses Modul uebersetzt sichtbare Texte
+/* BikeOra: Sprachen. Die App ist auf Deutsch geschrieben; dieses Modul uebersetzt sichtbare Texte
    (Textknoten, Platzhalter, Titel) laufend in die gewaehlte Sprache. Juno antwortet direkt in der Sprache. */
 (function () {
   'use strict';
@@ -64,7 +64,7 @@
     ['Hier in der Nähe ist nichts eingetragen. Tippe auf „In der Nähe“ für mehr.', 'Nothing listed nearby. Tap “Nearby” for more.', 'Rien à proximité. Touche « À proximité » pour plus.', 'Niente nei dintorni. Tocca «Nei dintorni» per altro.', 'Nada cerca. Toca «Cerca» para más.'],
     ['Route gespeichert! Du findest sie unter „Meine Routen“.', 'Route saved! You can find it under “My routes”.', 'Itinéraire enregistré ! Retrouve-le dans « Mes itinéraires ».', 'Percorso salvato! Lo trovi in «I miei percorsi».', '¡Ruta guardada! La encontrarás en «Mis rutas».'],
     ['Bald über Google Play', 'Coming soon on Google Play', 'Bientôt sur Google Play', 'Presto su Google Play', 'Pronto en Google Play'],
-    ['Velora Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.', 'Velora Plus will soon be available on Google Play. Everything else is free.', 'Velora Plus sera bientôt disponible sur Google Play. Tout le reste est gratuit.', 'Velora Plus sarà presto acquistabile su Google Play. Tutto il resto è gratis.', 'Velora Plus pronto estará en Google Play. Todo lo demás es gratis.'],
+    ['BikeOra Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.', 'BikeOra Plus will soon be available on Google Play. Everything else is free.', 'BikeOra Plus sera bientôt disponible sur Google Play. Tout le reste est gratuit.', 'BikeOra Plus sarà presto acquistabile su Google Play. Tutto il resto è gratis.', 'BikeOra Plus pronto estará en Google Play. Todo lo demás es gratis.'],
     ['Wird gelöscht ...', 'Deleting ...', 'Suppression ...', 'Eliminazione ...', 'Eliminando ...'],
     ['Dein Konto wurde gelöscht.', 'Your account has been deleted.', 'Ton compte a été supprimé.', 'Il tuo account è stato eliminato.', 'Tu cuenta ha sido eliminada.'],
     ['Hier bin ich', 'I am here', 'Je suis ici', 'Sono qui', 'Estoy aquí'],

@@ -19,5 +19,5 @@ cp build/base.apk build/unsigned.apk
 $BT/zipalign -f -P 16 4 build/unsigned.apk build/aligned.apk
 KS=${KEYSTORE:-$HOME/.ugljan-rad.keystore}
 [ -f "$KS" ] || keytool -genkeypair -keystore "$KS" -storepass ugljanrad -keypass ugljanrad -alias rad -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Ugljan Rad" >/dev/null 2>&1
-$BT/apksigner sign --ks "$KS" --ks-pass pass:ugljanrad --key-pass pass:ugljanrad --out dist/Velora.apk build/aligned.apk
-$BT/apksigner verify dist/Velora.apk && ls -la dist/Velora.apk
+$BT/apksigner sign --ks "$KS" --ks-pass pass:ugljanrad --key-pass pass:ugljanrad --out dist/BikeOra.apk build/aligned.apk
+$BT/apksigner verify dist/BikeOra.apk && ls -la dist/BikeOra.apk

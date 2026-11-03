@@ -1,4 +1,4 @@
-# Velora
+# BikeOra
 
 ## Version 7.1: Ideen von anderen Rad-Apps
 
@@ -8,7 +8,7 @@
 - 3D-Vorschau (wie bei Bikemap): Kamera fliegt die Route mit echtem Gelände (Terrarium-Höhen) ab, jederzeit beendbar
 - Abbiegeliste vor dem Losfahren (wie das Cue Sheet bei Ride with GPS)
 - Hinweis bei Dunkelheit bzw. Ankunft nach Sonnenuntergang
-- Fahrt als Bild teilen (wie bei Strava): Android ab 10 über `Android.shareImage` (Bilder/Velora), sonst Bild zum Speichern
+- Fahrt als Bild teilen (wie bei Strava): Android ab 10 über `Android.shareImage` (Bilder/BikeOra), sonst Bild zum Speichern
 
 ## Version 7.0: Release-Kandidat für Google Play
 
@@ -26,7 +26,7 @@ Wichtigste Änderungen in 7.0:
 
 Fahrrad-Navigation weltweit für Android (APK) und Windows (EXE), mit der KI Juno (echtes Sprachmodell direkt auf dem Gerät) und dem Maskottchen Velo (Fuchs).
 
-- Fertige Dateien: `dist/Velora.apk` (`./build.sh`, braucht Android SDK mit build-tools 36.1.0 und platform android-36, JDK 17+) und `dist/Velora.exe` (`./build-desktop.sh`)
+- Fertige Dateien: `dist/BikeOra.apk` (`./build.sh`, braucht Android SDK mit build-tools 36.1.0 und platform android-36, JDK 17+) und `dist/BikeOra.exe` (`./build-desktop.sh`)
 - Paketname: `app.velora.bike`
 - Signiert wird mit dem Schlüssel aus `$KEYSTORE` (Standard `~/.ugljan-rad.keystore`). Updates müssen mit demselben Schlüssel signiert sein. Der Schlüssel liegt bewusst nicht im Repository.
 
@@ -38,7 +38,7 @@ Ortssuche Photon/Nominatim, Tagesplaner-Orte über Overpass (OpenStreetMap). `ap
 
 ## KI "Juno" (ab 6.4, in der App)
 
-`app/assets/soul.js` ist die eigene KI von Velora, nach dem Prinzip des Projekts "Juno": Absichten erkennen (Deutsch und Englisch,
+`app/assets/soul.js` ist die eigene KI von BikeOra, nach dem Prinzip des Projekts "Juno": Absichten erkennen (Deutsch und Englisch,
 mit Tippfehler-Korrektur), Orte, Zeiten und Zahlen herauslesen, Werkzeuge der App ausführen (Route, Anpassen, Tour, Navigation),
 Fahrten auswerten, Wetter (Open-Meteo), Orte in der Nähe (Karte, Overpass), Rad-Hilfe, Training, Plaudern mit Emojis und
 Gesprächskontext. Wissensfragen recherchiert sie im Hintergrund (Wikipedia, auf Android zusätzlich DuckDuckGo über `fetchText`)
@@ -48,7 +48,7 @@ versteht Folgefragen zum letzten Thema und wiederholt Formulierungen nicht direk
 
 ## Juno über den Server (ab 6.7, Standard)
 
-Juno fragt zuerst den Velora-Server: `POST /soul` (`server/soul.js`) rechnet mit Cloudflare Workers AI (`@cf/qwen/qwen3-30b-a3b-fp8`,
+Juno fragt zuerst den BikeOra-Server: `POST /soul` (`server/soul.js`) rechnet mit Cloudflare Workers AI (`@cf/qwen/qwen3-30b-a3b-fp8`,
 ohne "Nachdenken") und streamt die Antwort. Das geht auf jedem Handy in etwa 1 bis 2 Sekunden.
 
 Kostenbremse, damit nie mehr als der Workers-Tarif (5 US-Dollar im Monat) anfällt:
@@ -90,11 +90,11 @@ Route planen, Tour vorschlagen, Route anpassen, Navigation starten, Ort zeigen.
 Hochladen: im Ordner `server/` `npx wrangler deploy` (Cloudflare-Konto nötig).
 Juno-Credits: jede Rechenrunde der KI kostet einen Credit (`credits` in der Antwort); gratis 10 am Tag, mit Plus 100.
 
-## Velora Plus, Velo und Haptik (ab 5.4)
+## BikeOra Plus, Velo und Haptik (ab 5.4)
 
 `app/assets/plus.js` und `plus.css` hängen sich über `window.VX` an die Haken (`HOOK`) in `app.js`:
 Vibrationen (Android `haptic`), Maskottchen Velo (Fuchs) mit Animationen (Serien-Flamme, Fahrt, Abzeichen),
-Nachtmodus, Farbthemen, 3D-Pfeil, Abzeichen in Stufen, Credits und Velora Plus. Plus wird bis zur Play-Store-Bezahlung lokal zum Testen freigeschaltet.
+Nachtmodus, Farbthemen, 3D-Pfeil, Abzeichen in Stufen, Credits und BikeOra Plus. Plus wird bis zur Play-Store-Bezahlung lokal zum Testen freigeschaltet.
 Live-Standort: `server/worker.js` (`/live`, `/l/<id>`, KV-Speicher `LIVE`).
 Browser-Tester: `python3 tools/build_tester.py` (Demo-Juno) bzw. `--real server/public/index.html` (echte Juno, liegt auf dem Server unter `/`).
 Schrift: Inter (SIL Open Font License, `app/assets/fonts/OFL.txt`).

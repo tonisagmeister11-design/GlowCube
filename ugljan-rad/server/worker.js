@@ -2,14 +2,14 @@ import TESTER from './public/index.html';
 import { accounts, userFromReq, creditsLeft, addCredits } from './accounts.js';
 import { soul, soulReport, SoulBudget } from './soul.js';
 export { SoulBudget };
-// Velora KI-Server ("Juno") auf Cloudflare Workers.
+// BikeOra KI-Server ("Juno") auf Cloudflare Workers.
 // Die App schickt den Chatverlauf und ihre Live-Daten (Standort, Tempo, Höhe, Route, Navigation ...) an POST /chat.
 // Juno antwortet mit Hilfe von Werkzeugen, die echte Daten holen (OpenStreetMap, Wikivoyage/Wikipedia, Open-Meteo),
 // und kann der App Aktionen geben (Route planen, Tour vorschlagen, Route anpassen ...).
 // Kein fremder API-Key: Die KI läuft über Cloudflare Workers AI. Kein Schlüssel steckt in der App.
 
 const DEFAULT_MODEL = '@cf/openai/gpt-oss-120b';
-const UA = 'Velora-Fahrrad-App/1.0 (https://github.com/tonisagmeister11-design/glowcube)';
+const UA = 'BikeOra-Fahrrad-App/1.0 (https://github.com/tonisagmeister11-design/glowcube)';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +19,7 @@ const CORS = {
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
 
-const SYSTEM = `Du bist Juno, die KI der Fahrrad-App "Velora". Du begleitest Radfahrer weltweit: bei Routen, Touren, Pausen, Sehenswürdigkeiten, Wetter, Technik und allen anderen Fragen.
+const SYSTEM = `Du bist Juno, die KI der Fahrrad-App "BikeOra". Du begleitest Radfahrer weltweit: bei Routen, Touren, Pausen, Sehenswürdigkeiten, Wetter, Technik und allen anderen Fragen.
 
 Regeln:
 - Antworte in der Sprache des Nutzers (meist Deutsch), freundlich, locker und kurz: meist 2 bis 6 Sätze. Unterwegs liest oder hört man dich auf dem Rad.
@@ -176,7 +176,7 @@ function msgOf(out) {
 }
 
 // ---------------------------------------------------------------------
-// Live-Standort teilen (Velora Plus): die App schickt jede Minute ihre Position,
+// Live-Standort teilen (BikeOra Plus): die App schickt jede Minute ihre Position,
 // Familie und Freunde sehen sie unter /l/<id>. Daten verfallen nach 2 Stunden.
 // ---------------------------------------------------------------------
 async function sha(t) {
@@ -216,17 +216,17 @@ async function live(req, env, url) {
   return json({ fehler: 'Nicht gefunden' }, 404);
 }
 const LIVE_PAGE = `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Velora Live</title><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.css">
+<title>BikeOra Live</title><link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.css">
 <style>html,body{margin:0;height:100%;font-family:system-ui,sans-serif;background:#f3f6fa;color:#13263a}#m{position:absolute;inset:0}
 #c{position:absolute;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));background:#fff;border-radius:18px;padding:14px 16px;box-shadow:0 8px 30px rgba(19,38,58,.2)}
 #c b{font-size:18px}#c .s{color:#5f7184;font-size:14px;margin-top:4px}.dot{width:22px;height:22px;border-radius:50%;background:#1aa874;border:4px solid #fff;box-shadow:0 0 0 8px rgba(26,168,116,.25),0 2px 8px rgba(0,0,0,.3)}</style></head>
-<body><div id="m"></div><div id="c"><b id="h">Velora Live</b><div class="s" id="s">Lade Standort ...</div></div>
+<body><div id="m"></div><div id="c"><b id="h">BikeOra Live</b><div class="s" id="s">Lade Standort ...</div></div>
 <script src="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.js"></script><script>
 var id='__ID__',map=new maplibregl.Map({container:'m',style:'https://tiles.openfreemap.org/styles/liberty',center:[15.19,44.07],zoom:11}),mk=null,first=true;
 function ago(t){var s=Math.round((Date.now()-t)/1000);return s<60?'gerade eben':Math.round(s/60)+' min her'}
 function up(){fetch('/live/'+id).then(function(r){return r.json()}).then(function(d){
  if(d.fehler){document.getElementById('s').textContent='Diese Fahrt ist beendet oder der Link ist abgelaufen.';return}
- document.getElementById('h').textContent=(d.name?d.name+' fährt':'Velora Live')+(d.ende?' (beendet)':'');
+ document.getElementById('h').textContent=(d.name?d.name+' fährt':'BikeOra Live')+(d.ende?' (beendet)':'');
  if(d.ende){document.getElementById('s').textContent='Die Fahrt wurde beendet.';return}
  var t=[ago(d.t)];if(d.spd!=null)t.push(Math.round(d.spd)+' km/h');if(d.ziel)t.push('Ziel: '+d.ziel);if(d.rest!=null)t.push('noch '+(d.rest/1000).toFixed(1).replace('.',',')+' km');
  if(d.eta){var e=new Date(d.eta);t.push('Ankunft '+('0'+e.getHours()).slice(-2)+':'+('0'+e.getMinutes()).slice(-2))}
@@ -246,7 +246,7 @@ export default {
     if (url.pathname === '/soul') return soul(req, env, ctx);
     if (url.pathname === '/soul/report') return soulReport(req, env);
     // Alter Juno-Weg (teures Modell, ohne Kostenbremse): abgeschaltet, die App nutzt /soul
-    if (url.pathname === '/chat' || url.pathname === '/ki') return json({ fehler: 'Bitte Velora aktualisieren.' }, 410);
+    if (url.pathname === '/chat' || url.pathname === '/ki') return json({ fehler: 'Bitte BikeOra aktualisieren.' }, 410);
     if (/^\/(auth|me|stats|admin|datenschutz|konto-loeschen)(\/|$)/.test(url.pathname)) { const r = await accounts(req, env, url); if (r) return r; }
     if (req.method !== 'POST' || (url.pathname !== '/chat' && url.pathname !== '/ki' && url.pathname !== '/werkzeug')) return json({ fehler: 'Nicht gefunden' }, 404);
     if (req.headers.get('X-App-Id') !== env.APP_ID) return json({ fehler: 'Nicht erlaubt' }, 403);
@@ -268,7 +268,7 @@ export default {
     const kontext = JSON.stringify(body.kontext || {}).slice(0, 6000);
     // Konto: Credits werden pro Konto und Tag auf dem Server gezaehlt
     const user = await userFromReq(req, env);
-    if (user && await creditsLeft(env, user) < 1) return json({ fehler: user.plus ? 'Deine Juno-Credits für heute sind aufgebraucht. Morgen gibt es neue.' : 'Deine kostenlosen Juno-Credits für heute sind aufgebraucht. Mit Velora Plus bekommst du 100 am Tag.', left: 0 }, 429);
+    if (user && await creditsLeft(env, user) < 1) return json({ fehler: user.plus ? 'Deine Juno-Credits für heute sind aufgebraucht. Morgen gibt es neue.' : 'Deine kostenlosen Juno-Credits für heute sind aufgebraucht. Mit BikeOra Plus bekommst du 100 am Tag.', left: 0 }, 429);
     const SPR = { de: 'Deutsch', en: 'English', fr: 'Français', it: 'Italiano', es: 'Español', pt: 'Português', nl: 'Nederlands', pl: 'Polski' };
     const sprache = SPR[String(body.sprache || (user && user.lang) || 'de').slice(0, 2)] || 'Deutsch';
     const done = async (o) => { if (user && o.credits) o.left = await addCredits(env, user, o.credits); return json(o); };

@@ -1,4 +1,4 @@
-/* Velo, der Fuchs: Maskottchen von Velora als Vektorgrafik mit beweglichen Teilen.
+/* Velo, der Fuchs: Maskottchen von BikeOra als Vektorgrafik mit beweglichen Teilen.
    Fox.svg(pose) liefert das SVG, die Bewegungen kommen aus plus.css (.fx-<pose>). */
 (function () {
   'use strict';

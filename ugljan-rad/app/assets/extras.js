@@ -1,4 +1,4 @@
-/* Velora 7.1: Ideen von anderen Rad-Apps, auf Velora zugeschnitten.
+/* BikeOra 7.1: Ideen von anderen Rad-Apps, auf BikeOra zugeschnitten.
    - Sehenswertes entlang der Route (wie Highlights bei Komoot), nur echte Orte aus der Karte
    - 3D-Vorschau: die Kamera fliegt die Route ab (wie bei Bikemap), mit echtem Gelaende
    - Abbiegeliste vor dem Losfahren (wie das Cue Sheet bei Ride with GPS)
@@ -258,7 +258,7 @@
     }
     // Texte
     var font = '"Inter","Roboto",system-ui,sans-serif';
-    g.fillStyle = '#ffffff'; g.font = '800 64px ' + font; g.fillText('Velora', 80, 140);
+    g.fillStyle = '#ffffff'; g.font = '800 64px ' + font; g.fillText('BikeOra', 80, 140);
     g.font = '600 34px ' + font; g.globalAlpha = 0.85;
     var d = new Date(ride.t), sub = d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }) + (ride.title ? ' · ' + ride.title : '');
     // nicht unter den Fuchs laufen lassen
@@ -285,7 +285,7 @@
     rideImage(ride).then(function (c) {
       var url = c.toDataURL('image/png');
       if (A && A.shareImage) {
-        var ok = false; try { ok = A.shareImage(url.split(',')[1], 'Meine Fahrt mit Velora'); } catch (e) { }
+        var ok = false; try { ok = A.shareImage(url.split(',')[1], 'Meine Fahrt mit BikeOra'); } catch (e) { }
         if (ok) return;
       }
       // ohne Teilen-Funktion (PC, aeltere Android-Versionen): Bild zeigen

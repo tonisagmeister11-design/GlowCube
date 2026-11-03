@@ -1,4 +1,4 @@
-/* Velora 5.4: Haptik, smoothes Design, Navigationspfeil, Maskottchen Velo und Velora Plus.
+/* BikeOra 5.4: Haptik, smoothes Design, Navigationspfeil, Maskottchen Velo und BikeOra Plus.
    Haengt sich ueber window.VX an die Haken in app.js (HOOK). */
 (function () {
   'use strict';
@@ -18,7 +18,7 @@
   function rnd(n) { var c = 'abcdefghijkmnpqrstuvwxyz23456789', o = ''; for (var i = 0; i < n; i++) o += c[Math.floor(Math.random() * c.length)]; return o; }
 
   // =====================================================================
-  // Velora Plus (Bezahlung kommt spaeter ueber Google Play, bis dahin zum Testen freischaltbar)
+  // BikeOra Plus (Bezahlung kommt spaeter ueber Google Play, bis dahin zum Testen freischaltbar)
   // =====================================================================
   var P = V.load('plus', { on: false });
   function isPlus() { return !!P.on; }
@@ -56,14 +56,14 @@
     el.innerHTML = '<div class="px-aurora"></div><div class="px-stars">' + stars + '</div>' +
       '<button class="px-close" id="pxClose" aria-label="Schließen"><svg width="22" height="22" viewBox="0 0 24 24" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>' +
       '<div class="px-scroll"><div class="px-hero"><div class="px-ring"></div>' + mascot('cheer', 150) + '</div>' +
-      '<div class="px-logo">VELORA <span class="px-rb">PLUS</span></div>' +
-      '<div class="px-sub">' + (why ? esc(why) + ' gehört zu Velora Plus.' : 'Mehr Juno, mehr Touren, mehr Abenteuer.') + '</div>' +
+      '<div class="px-logo">BIKEORA <span class="px-rb">PLUS</span></div>' +
+      '<div class="px-sub">' + (why ? esc(why) + ' gehört zu BikeOra Plus.' : 'Mehr Juno, mehr Touren, mehr Abenteuer.') + '</div>' +
       '<div class="px-feats">' + FEATS.map(function (f, i) { return '<div class="px-card" style="animation-delay:' + (0.15 + i * 0.06).toFixed(2) + 's"><div class="px-ic">' + svg(f[0], '#ffffff', 20, 2.3) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') + '</div>' +
       '<div class="px-price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><span class="px-pl">Monatlich</span><b>2,99 €</b><span>pro Monat</span></button>' +
       '<button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '"><em>Spare 44 %</em><span class="px-pl">Jährlich</span><b>19,99 €</b><span>nur 1,67 € im Monat</span></button></div>' +
       (BILLING || TESTER ? '<button class="px-cta" id="plusGo"><span>' + (BILLING ? 'Plus kaufen' : 'Zum Ausprobieren freischalten (Test)') + '</span></button>' : '<button class="px-cta soon" id="plusGo" disabled><span>Bald über Google Play</span></button>') +
       '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und die KI Juno.</div>' +
-      '<div class="px-note">' + (BILLING ? 'Bezahlung und Kündigung über dein Google-Play-Konto.' : TESTER ? 'Testversion: Plus wird hier nur zum Ausprobieren freigeschaltet.' : 'Velora Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.') + '</div></div>';
+      '<div class="px-note">' + (BILLING ? 'Bezahlung und Kündigung über dein Google-Play-Konto.' : TESTER ? 'Testversion: Plus wird hier nur zum Ausprobieren freigeschaltet.' : 'BikeOra Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.') + '</div></div>';
     document.body.appendChild(el);
     hap('soft');
     function close() { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); }
@@ -76,7 +76,7 @@
   }
   // Plus aktiv: schlicht
   function plusActive() {
-    var m = modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('thumbs', 70) + '<div class="grow"><h2>Velora Plus</h2><div class="sub">Plus ist aktiv. Danke für deine Unterstützung!</div></div></div>' +
+    var m = modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('thumbs', 70) + '<div class="grow"><h2>BikeOra Plus</h2><div class="sub">Plus ist aktiv. Danke für deine Unterstützung!</div></div></div>' +
       '<div class="pbox ok"><div class="sub">' + 'Reiseführer, Tagesplaner, Akkuplaner, Regenwarnung, Bestzeiten, GPX, Offline-Karten ohne Grenze, alle Farben und Pfeile.</div></div>' +
       '<div class="btns">' + (TESTER ? '<button class="go sec" id="plusOff">Plus beenden (Test)</button>' : '') + '<button class="go" id="plusOk">Schließen</button></div>');
     if ($('plusOff')) $('plusOff').onclick = function () { setPlus(false); closeModal(); if (V.state === 'menu') V.showMenu(); };
@@ -688,10 +688,10 @@
     $('svBack').onclick = function () { V.showMenu(); };
   }
   function exportGpx(r, title) {
-    var x = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Velora" xmlns="http://www.topografix.com/GPX/1/1">\n<trk><name>' + esc(title) + '</name><trkseg>\n';
+    var x = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="BikeOra" xmlns="http://www.topografix.com/GPX/1/1">\n<trk><name>' + esc(title) + '</name><trkseg>\n';
     for (var i = 0; i < r.la.length; i++) x += '<trkpt lat="' + r.la[i].toFixed(6) + '" lon="' + r.lo[i].toFixed(6) + '"><ele>' + Math.round(r.ele[i]) + '</ele></trkpt>\n';
     x += '</trkseg></trk>\n</gpx>\n';
-    var name = 'Velora-' + String(title).replace(/[^A-Za-z0-9äöüÄÖÜß]+/g, '-').slice(0, 40) + '.gpx';
+    var name = 'BikeOra-' + String(title).replace(/[^A-Za-z0-9äöüÄÖÜß]+/g, '-').slice(0, 40) + '.gpx';
     if (A && A.saveFile) { var p = A.saveFile(name, 'application/gpx+xml', x); if (p) { hap('success'); V.toast('Gespeichert: ' + p); return; } }
     try {
       var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([x], { type: 'application/gpx+xml' })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
@@ -806,7 +806,7 @@
     $('liveShare').onclick = function () {
       var t = 'Hier kannst du sehen, wo ich gerade mit dem Rad fahre: ' + url;
       if (A && A.shareText) A.shareText('Live-Standort teilen', t);
-      else if (navigator.share) navigator.share({ title: 'Velora Live', text: t, url: url }).catch(function () {});
+      else if (navigator.share) navigator.share({ title: 'BikeOra Live', text: t, url: url }).catch(function () {});
       else { try { navigator.clipboard.writeText(url); V.toast('Link kopiert'); } catch (e) {} }
     };
     $('liveCopy').onclick = function () { try { navigator.clipboard.writeText(url).then(function () { V.toast('Link kopiert'); }); } catch (e) { V.toast(url); } };
@@ -1054,8 +1054,8 @@
   var THEMES = [['mint', 'Minze', '#2fd59a'], ['ocean', 'Ozean', '#5aa9ff'], ['forest', 'Wald', '#69db7c'], ['sunset', 'Abendrot', '#ffa94d', 1], ['lavender', 'Lavendel', '#b197fc', 1], ['cherry', 'Kirschblüte', '#f783ac', 1], ['midnight', 'Mitternacht', '#748ffc', 1], ['gold', 'Gold', '#fcc419', 1]];
   function themeFree(t) { return THEMES.some(function (x) { return x[0] === t && !x[3]; }); }
   VX.menuTop = function () {
-    return (isPlus() ? '<div class="plusbar" data-act="plus"><div class="ico">' + svg('flag', '#6b4dff', 18) + '</div><div class="grow"><b>Velora Plus ist aktiv</b><span>Alle Funktionen freigeschaltet</span></div></div>'
-      : '<div class="plusbar" data-act="plus">' + mascot('thumbs', 56) + '<div class="grow"><b>Velora Plus</b><span>Reiseführer, Tagesplaner, Akkuplaner und mehr</span></div><button class="go plus" style="width:auto;padding:0 14px;height:40px;font-size:14px">Ansehen</button></div>') +
+    return (isPlus() ? '<div class="plusbar" data-act="plus"><div class="ico">' + svg('flag', '#6b4dff', 18) + '</div><div class="grow"><b>BikeOra Plus ist aktiv</b><span>Alle Funktionen freigeschaltet</span></div></div>'
+      : '<div class="plusbar" data-act="plus">' + mascot('thumbs', 56) + '<div class="grow"><b>BikeOra Plus</b><span>Reiseführer, Tagesplaner, Akkuplaner und mehr</span></div><button class="go plus" style="width:auto;padding:0 14px;height:40px;font-size:14px">Ansehen</button></div>') +
       '<div class="linkrow"><button data-act="stats">' + svg('list', 'currentColor', 18) + 'Statistik</button><button id="mSaved">' + svg('flag', 'currentColor', 18) + 'Meine Routen</button>' +
       '<button data-act="dayplan">' + svg('loop', 'currentColor', 18) + 'Tagesplaner</button><button id="mOffline">' + svg('road', 'currentColor', 18) + 'Offline-Karten</button></div>';
   };

@@ -1,4 +1,4 @@
-# Velora – Release im Google Play Store
+# BikeOra – Release im Google Play Store
 
 Stand: Version 7.1 (versionCode 27), Paket `app.velora.bike`, targetSdk 36, minSdk 24, nur arm64-v8a.
 
@@ -6,14 +6,14 @@ Stand: Version 7.1 (versionCode 27), Paket `app.velora.bike`, targetSdk 36, minS
 
 ```bash
 ./build-native.sh        # nur nötig, wenn sich native/velora_llm.cpp ändert (llama.cpp b12032)
-./build-release.sh       # dist/Velora.aab (für die Play Console) + dist/Velora-release.apk (gleiche Signatur, zum Testen)
-./build.sh               # dist/Velora.apk mit dem Entwickler-Schlüssel (nur zum Ausprobieren)
+./build-release.sh       # dist/BikeOra.aab (für die Play Console) + dist/BikeOra-release.apk (gleiche Signatur, zum Testen)
+./build.sh               # dist/BikeOra.apk mit dem Entwickler-Schlüssel (nur zum Ausprobieren)
 ```
 
 `build-release.sh` signiert mit dem **Upload-Schlüssel**, der nicht im Repository liegt:
 
 ```bash
-VELORA_UPLOAD_KS=/sicherer/ort/velora-upload.jks VELORA_UPLOAD_PASS='…' ./build-release.sh
+BIKEORA_UPLOAD_KS=/sicherer/ort/velora-upload.jks BIKEORA_UPLOAD_PASS='…' ./build-release.sh
 ```
 
 Den Upload-Schlüssel (`velora-upload.jks`, Alias `upload`) und sein Passwort sicher aufbewahren (zum Beispiel im Passwort-Manager und auf einem USB-Stick).
@@ -50,7 +50,7 @@ SHA-256 des Upload-Zertifikats: `13:6F:8B:10:98:4C:50:7F:5A:3E:67:65:7E:E1:30:20
 **KI-Inhalte:** Juno erzeugt Antworten mit einem Sprachmodell. Unter jeder KI-Antwort gibt es „Antwort melden“. Meldungen erscheinen im Admin-Dashboard.
 
 **Vordergrunddienst (Android 14+):** Typ `location`, Anwendungsfall „Navigation“.
-Beschreibung: „Während einer vom Nutzer gestarteten Navigation oder Fahrtaufzeichnung bekommt Velora weiter GPS-Positionen, damit Abbiegehinweise und die Aufzeichnung auch bei gesperrtem Bildschirm funktionieren. Ohne den Dienst bricht die Navigation ab, sobald der Bildschirm ausgeht.“
+Beschreibung: „Während einer vom Nutzer gestarteten Navigation oder Fahrtaufzeichnung bekommt BikeOra weiter GPS-Positionen, damit Abbiegehinweise und die Aufzeichnung auch bei gesperrtem Bildschirm funktionieren. Ohne den Dienst bricht die Navigation ab, sobald der Bildschirm ausgeht.“
 Video: Ziel suchen → „Hierhin fahren“ → „Los fahren“ → Bildschirm sperren → Benachrichtigung und Ansage zeigen.
 
 **Berechtigungen:** Standort (genau und ungefähr; nur im Vordergrund, kein Hintergrund-Standort), Mikrofon (nur für die Spracheingabe bei Juno, wird erst beim Antippen abgefragt), Benachrichtigungen (Navigation läuft), Vibration, Internet.
@@ -59,7 +59,7 @@ Video: Ziel suchen → „Hierhin fahren“ → „Los fahren“ → Bildschirm 
 
 | Datentyp | Erhoben | Geteilt | Zweck | Freiwillig |
 |---|---|---|---|---|
-| Genauer Standort | Ja (an Routen-/Wetterdienste für die Funktion; an den Velora-Server nur beim Live-Teilen) | Nein | App-Funktionen | Teilweise (Navigation braucht ihn) |
+| Genauer Standort | Ja (an Routen-/Wetterdienste für die Funktion; an den BikeOra-Server nur beim Live-Teilen) | Nein | App-Funktionen | Teilweise (Navigation braucht ihn) |
 | Name, E-Mail-Adresse | Ja, nur mit Konto | Nein | Kontoverwaltung | Ja |
 | Nutzungsdaten (Funktionen, Gegenden als 2-km-Kacheln) | Ja, nur mit Zustimmung, anonym | Nein | Analyse | Ja |
 | Andere Nutzerinhalte (Fragen an Juno) | Ja, nur kurzzeitig verarbeitet, nicht gespeichert (gemeldete Antworten 90 Tage) | Nein | App-Funktionen | Ja |
@@ -73,7 +73,7 @@ Daten werden verschlüsselt übertragen (HTTPS). Nutzer können die Löschung ih
 - `/admin/api/summary` nur anonyme Summen, mit Statistik-Schlüssel (für das Dashboard-Artefakt)
 - Deploy: `cd server && npx wrangler deploy`
 
-## 5. Velora Plus (noch nicht verkaufsbereit)
+## 5. BikeOra Plus (noch nicht verkaufsbereit)
 
 Der Kauf über Google Play Billing ist noch nicht eingebaut. Deshalb zeigt die App „Bald über Google Play“ und schaltet nichts frei; der Server ignoriert Plus-Anfragen der App.
 Zum Einbauen nötig:

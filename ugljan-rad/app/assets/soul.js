@@ -1,4 +1,4 @@
-/* Juno: die eigene KI von Velora. Laeuft komplett in der App, ohne fremde KI und ohne Kosten.
+/* Juno: die eigene KI von BikeOra. Laeuft komplett in der App, ohne fremde KI und ohne Kosten.
    Prinzip wie im Projekt "Juno": Absicht erkennen (mit Tippfehler-Korrektur), Orte/Zahlen/Zeiten herauslesen,
    Werkzeuge der App ausfuehren, Antwort bauen, bei Wissensfragen im Hintergrund recherchieren
    (Wikipedia, auf Android zusaetzlich DuckDuckGo ueber die App) und die passendsten Saetze auswaehlen. */
@@ -367,8 +367,8 @@
         return R(pickNR(d ? ['Mir geht\'s super, danke! 😄 Ich hab heute schon Routen in Gedanken geplant. Und dir? Lust auf eine Runde? 🚴', 'Bestens! ☀️ Wie geht\'s dir denn? Fährst du heute noch?', 'Gut, danke der Nachfrage! 😊 Wie war dein Tag bisher?']
           : ['Great, thanks! 😄 And you? Fancy a ride today? 🚴', 'All good here! ☀️ How about you?']));
       case 'who':
-        return R(d ? 'Ich bin **Juno**, die KI von Velora 🦊✨ Ich laufe direkt hier in der App, ohne fremde KI. Ich plane Routen und Touren, kenne das Wetter, finde schöne Orte in der Nähe, werte deine Fahrten aus und recherchiere für dich, wenn du etwas wissen willst.'
-          : 'I\'m **Juno**, Velora\'s AI 🦊✨ I run right here in the app, no external AI. I plan routes and tours, know the weather, find nice places nearby, analyse your rides and look things up for you.');
+        return R(d ? 'Ich bin **Juno**, die KI von BikeOra 🦊✨ Ich laufe direkt hier in der App, ohne fremde KI. Ich plane Routen und Touren, kenne das Wetter, finde schöne Orte in der Nähe, werte deine Fahrten aus und recherchiere für dich, wenn du etwas wissen willst.'
+          : 'I\'m **Juno**, BikeOra\'s AI 🦊✨ I run right here in the app, no external AI. I plan routes and tours, know the weather, find nice places nearby, analyse your rides and look things up for you.');
       case 'can':
         return R(d ? 'Ich kann dir helfen bei:\n- 🗺️ **Routen**: „Plan mir eine Route nach Melk“, danach „flacher“ oder „kürzer“\n- 🔄 **Touren**: „Schlag mir eine 2-Stunden-Tour vor“\n- 📍 **In der Nähe**: „Wo gibt es hier Pizza?“, „Aussichtspunkte in der Nähe“\n- ☀️ **Wetter**: „Regnet es morgen?“, „Was soll ich anziehen?“\n- 📊 **Deine Fahrten**: „Wie war meine Woche?“, „Wie viele Kalorien?“\n- 🔧 **Rad-Hilfe**: „Wie flicke ich einen Reifen?“\n- 📚 **Wissen**: „Wie hoch ist der Großglockner?“, danach „Und der Mont Blanc?“\n- 🧠 **Ich merke mir dich**: „Ich heiße …“, „Meine Arbeit ist in …“\n- 🎲 **Spaß**: Witze, Rätsel, Quiz, Geschichten, Gedichte, Fun Facts\n- 😄 Und einfach plaudern!'
           : 'I can help with:\n- 🗺️ **Routes**: "Plan a route to Vienna", then "flatter" or "shorter"\n- 🔄 **Tours**: "Suggest a 2-hour tour"\n- 📍 **Nearby**: "Where can I get pizza?"\n- ☀️ **Weather**: "Will it rain tomorrow?"\n- 📊 **Your rides**: "How was my week?"\n- 🔧 **Bike help**: "How do I fix a flat?"\n- 📚 **Knowledge**: "How high is Mont Blanc?"\n- 😄 And just chatting!');
@@ -382,7 +382,7 @@
       case 'lowmood':
         return R(pick(d ? ['Kenn ich 😊 Weißt du was? Schon 20 Minuten auf dem Rad machen den Kopf frei. Soll ich dir eine kurze, flache Runde raussuchen? 🌿', 'Keine Sorge, jeder hat solche Tage 💛 Wie wäre es mit einer gemütlichen Runde zu einem Café? ☕ Ich such dir eine raus, wenn du willst.']
           : ['I get it 😊 Even 20 minutes on the bike clear your head. Want me to find a short, flat loop? 🌿']), { _offer: 'tour_easy' });
-      case 'rode': return R(T('Wie cool! 🎉 Wie war es? Wenn du die Fahrt mit Velora aufgezeichnet hast, sag „Wie war meine letzte Fahrt?“ und ich werte sie dir aus 📊', 'Nice! 🎉 How was it? Ask "How was my last ride?" and I\'ll analyse it 📊'));
+      case 'rode': return R(T('Wie cool! 🎉 Wie war es? Wenn du die Fahrt mit BikeOra aufgezeichnet hast, sag „Wie war meine letzte Fahrt?“ und ich werte sie dir aus 📊', 'Nice! 🎉 How was it? Ask "How was my last ride?" and I\'ll analyse it 📊'));
       case 'goodmood': return R(pick(d ? ['Wie cool! 🎉 Das freut mich richtig.', 'Stark! 💪 Weiter so!', 'Yes! 🔥 So muss das sein.'] : ['How cool! 🎉', 'Awesome! 💪 Keep it up!']));
       case 'age': return R(d ? 'Ich bin noch ganz frisch 🦊 Aber ich lerne jeden Tag dazu!' : 'I\'m brand new 🦊 but I learn every day!');
       case 'time': var now = new Date(); return R(d ? 'Es ist ' + V.hhmm(now) + ' Uhr, ' + now.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }) + ' 🕒' : 'It\'s ' + V.hhmm(now) + ', ' + now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + ' 🕒');
@@ -573,13 +573,13 @@
   function doSafety() { return R(T('🪖 **Sicher unterwegs:**\n- Helm tragen, auch auf kurzen Strecken\n- Licht vorne weiß, hinten rot, bei Dämmerung immer an\n- Handzeichen beim Abbiegen, Blickkontakt mit Autofahrern\n- Abstand zu parkenden Autos (Türen!)\n- Bei Live-Standort teilen sieht deine Familie, wo du bist 📍', '🪖 **Stay safe:** wear a helmet, lights on at dusk, hand signals, keep clear of parked car doors, and share your live location 📍'));}
   var HELP = [
     [/\b(serie|flamme|wochenziel|streak)\b/, ['🔥 Die **Serie** zählt Wochen: Du wählst, wie oft du pro Woche fahren willst (1–4 Mal). Schaffst du das bis Sonntag, brennt die Flamme eine Woche weiter. Ändern kannst du das Ziel in der Statistik.', '🔥 The **streak** counts weeks: pick 1–4 rides per week; reach it by Sunday and the flame keeps burning.']],
-    [/\b(plus|premium|abo|preis)\b/, ['✨ **Velora Plus** kostet 2,99 € im Monat oder 19,99 € im Jahr. Dazu gehören Reiseführer, Tagesplaner, Gravel- und Familienprofil, E-Bike-Akkuplaner, Regenwarnung, Bestzeiten, GPX, mehr Offline-Karten, Farben und Pfeile. Mich gibt es für alle kostenlos 🦊', '✨ **Velora Plus**: €2.99/month or €19.99/year. I\'m free for everyone 🦊']],
+    [/\b(plus|premium|abo|preis)\b/, ['✨ **BikeOra Plus** kostet 2,99 € im Monat oder 19,99 € im Jahr. Dazu gehören Reiseführer, Tagesplaner, Gravel- und Familienprofil, E-Bike-Akkuplaner, Regenwarnung, Bestzeiten, GPX, mehr Offline-Karten, Farben und Pfeile. Mich gibt es für alle kostenlos 🦊', '✨ **BikeOra Plus**: €2.99/month or €19.99/year. I\'m free for everyone 🦊']],
     [/\b(offline)\b/, ['📴 **Offline-Karten:** Menü → Offline-Karten → Karte auf das Gebiet schieben → speichern. Gratis ein Gebiet, mit Plus beliebig viele.', '📴 Menu → Offline maps → move the map → save.']],
     [/\b(live)\b/, ['📍 **Live teilen:** Während einer Navigation unten auf „Live-Standort teilen“ tippen und den Link schicken. Er endet automatisch mit der Fahrt.', '📍 During navigation tap "Share live location" and send the link.']],
     [/\b(gpx)\b/, ['📁 **GPX:** In jeder Route gibt es „GPX“ zum Exportieren, unter Menü → Meine Routen kannst du GPX-Dateien importieren (Plus).', '📁 Export via "GPX" in a route, import under Menu → My routes (Plus).']],
     [/\b(tagesplaner)\b/, ['🗓️ Der **Tagesplaner** (Plus) baut dir einen ganzen Tag mit Aussicht, Mittagessen und Baden als eine Runde mit Uhrzeiten: Menü → Tagesplaner.', '🗓️ Menu → Day planner (Plus).']],
     [/\b(abzeichen)\b/, ['🏅 Es gibt 18 Abzeichen-Familien mit bis zu 10 Stufen, von Bronze bis Legende. Tippe in der Statistik auf ein Abzeichen, dann siehst du, was dir zur nächsten Stufe fehlt.', '🏅 18 badge families with up to 10 levels. Tap one in the stats to see your progress.']],
-    [/\b(widget)\b/, ['📱 Das **Widget**: Startbildschirm lange drücken → Widgets → Velora. Es zeigt deine Wochenkilometer und die Serie.', '📱 Long-press the home screen → Widgets → Velora.']],
+    [/\b(widget)\b/, ['📱 Das **Widget**: Startbildschirm lange drücken → Widgets → BikeOra. Es zeigt deine Wochenkilometer und die Serie.', '📱 Long-press the home screen → Widgets → BikeOra.']],
     [/\b(velo|fuchs)\b/, ['🦊 **Velo** ist dein Fuchs-Maskottchen. Er feiert deine Fahrten und zündet die Flamme an. Ich bin Juno, die KI. Wir sind ein Team 😄', '🦊 **Velo** is the fox mascot who celebrates your rides. I\'m Juno, the AI. We\'re a team 😄']],
     [/\b(rueckenwind)\b/, ['💨 Bei Tour-Vorschlägen kannst du „Rückenwind auf dem Heimweg“ einschalten. Dann lege ich die Runde so, dass dich der Wind zurückschiebt.', '💨 Turn on "Tailwind on the way home" in tour suggestions.']],
     [/./, ['Frag mich ruhig genauer, zum Beispiel „Wie funktioniert die Serie?“ oder „Was kann Plus?“ 😊', 'Ask me more specifically, e.g. "How does the streak work?" 😊']]
@@ -646,7 +646,7 @@
       if (MEM.rad) f.push(T('du fährst ein ' + MEM.rad, 'you ride a ' + MEM.rad));
       Object.keys(MEM.places).forEach(function (k2) { f.push(T(({ arbeit: 'deine Arbeit', schule: 'deine Schule', uni: 'deine Uni', zuhause: 'dein Zuhause' }[k2] || k2) + ' ist ' + MEM.places[k2], 'your ' + k2 + ' is ' + MEM.places[k2])); });
       if (MEM.mag.length) f.push(T('du magst ' + MEM.mag.slice(-4).join(', '), 'you like ' + MEM.mag.slice(-4).join(', ')));
-      var s2 = VX.statsData && VX.statsData(); if (s2 && s2.n) f.push(T('du bist schon ' + km(s2.all.d) + ' km mit Velora gefahren', 'you have ridden ' + kmE(s2.all.d) + ' km with Velora'));
+      var s2 = VX.statsData && VX.statsData(); if (s2 && s2.n) f.push(T('du bist schon ' + km(s2.all.d) + ' km mit BikeOra gefahren', 'you have ridden ' + kmE(s2.all.d) + ' km with BikeOra'));
       return R(f.length ? T('🧠 Ich weiß: ' + f.join(', ') + '. Wenn ich etwas vergessen soll, sag „Vergiss das“.', '🧠 I know: ' + f.join(', ') + '.') : T('Noch nicht viel 😊 Erzähl mir doch etwas über dich, zum Beispiel wie du heißt oder wo du wohnst!', 'Not much yet 😊 Tell me about yourself!'));
     }
     if (/\b(wie heisse ich|weisst du wie ich heisse|whats my name|what is my name)\b/.test(t)) return R(userName() ? T('Du heißt ' + userName() + '! 😊', 'Your name is ' + userName() + '! 😊') : T('Das weiß ich noch nicht 🙈 Wie heißt du denn?', 'I don\'t know yet 🙈 What\'s your name?'));
@@ -676,7 +676,7 @@
     var ty = qtype(t); if (ty !== 'what') return true;
     // Eigennamen (gross geschrieben, nicht am Satzanfang): Personen, Orte, Firmen
     var w = String(raw).replace(/^\s*\S+/, '').match(/\b[A-ZÄÖÜ][a-zäöüß]{2,}/g) || [];
-    return w.filter(function (x) { return !/^(Ich|Du|Sie|Er|Es|Wir|Ihr|Rad|Fahrrad|Was|Wie|Wo|Wer|Warum|Kannst|Velora|Juno)$/.test(x) && !SW[norm(x)]; }).length > 0 && /\b(wer|was ist|was sind|was war|erzaehl|weisst du|kennst du)\b/.test(t);
+    return w.filter(function (x) { return !/^(Ich|Du|Sie|Er|Es|Wir|Ihr|Rad|Fahrrad|Was|Wie|Wo|Wer|Warum|Kannst|BikeOra|Juno)$/.test(x) && !SW[norm(x)]; }).length > 0 && /\b(wer|was ist|was sind|was war|erzaehl|weisst du|kennst du)\b/.test(t);
   }
   function research(raw, t) {
     var cw = content(fix(t)), lang = wikiLang();
@@ -721,7 +721,7 @@
     if (MEM.rad) me.push('fährt ' + MEM.rad);
     if (MEM.mag && MEM.mag.length) me.push('mag ' + MEM.mag.slice(-4).join(', '));
     if (me.length) p.push('Die Person, mit der du sprichst (nicht du selbst): ' + me.join(', '));
-    if (/\b(ich|mein|meine|mir|my|i)\b/.test(t) && /\b(fahrt|fahrten|gefahren|km|kilometer|woche|training|fit|stats)\w*/.test(t)) try { var s2 = VX.statsData && VX.statsData(); if (s2 && s2.n) p.push('Fahrten mit Velora: ' + s2.n + ', zusammen ' + km(s2.all.d) + ' km'); } catch (e) {}
+    if (/\b(ich|mein|meine|mir|my|i)\b/.test(t) && /\b(fahrt|fahrten|gefahren|km|kilometer|woche|training|fit|stats)\w*/.test(t)) try { var s2 = VX.statsData && VX.statsData(); if (s2 && s2.n) p.push('Fahrten mit BikeOra: ' + s2.n + ', zusammen ' + km(s2.all.d) + ' km'); } catch (e) {}
     if (k.route && /\b(route|strecke|weg|anstieg|steil|lang|weit)\w*/.test(t)) p.push('Offene Route: ' + k.route.titel + ', ' + k.route.km + ' km, ' + k.route.bergauf_m + ' Hm');
     if (k.navigation && k.navigation.aktiv) p.push('Navigation läuft, noch ' + k.navigation.rest_km + ' km');
     return p.join('; ');
@@ -729,7 +729,7 @@
   function llmPath(raw, t, I, k, onPart) {
     var refs = [];
     var fs = bestOf(SD.faq, t, { strong: true }), fq = fs || (/^(chat|knowledge|bike|training)$/.test(I) ? bestOf(SD.faq, t, { coverage: 0.2 }) : null);
-    // Kleines Modell: gepruefte Anleitungen aus dem Velora-Wissen direkt zeigen (das Modell formuliert sie sonst fehlerhaft um)
+    // Kleines Modell: gepruefte Anleitungen aus dem BikeOra-Wissen direkt zeigen (das Modell formuliert sie sonst fehlerhaft um)
     if (SoulLLM.model() === 'std' && /^(bike|training|safety)$/.test(I)) {
       var cur = fs ? R(L === 'de' ? fs.e.a : fs.e.e) : I === 'bike' ? doBike(t) : I === 'training' ? doTraining(t) : doSafety();
       if (cur) return Promise.resolve(cur).then(function (o) { if (!o || !o.antwort) throw new Error('none'); return o; });

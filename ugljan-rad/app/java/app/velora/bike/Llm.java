@@ -151,7 +151,7 @@ public class Llm {
                             c = (HttpURLConnection) new URL(u).openConnection();
                             c.setInstanceFollowRedirects(false);
                             c.setConnectTimeout(15000); c.setReadTimeout(30000);
-                            c.setRequestProperty("User-Agent", "Velora/6.6 (Android)");
+                            c.setRequestProperty("User-Agent", "BikeOra/6.6 (Android)");
                             if (have > 0) c.setRequestProperty("Range", "bytes=" + have + "-");
                             int code = c.getResponseCode();
                             if (code >= 300 && code < 400) { u = new URL(new URL(u), c.getHeaderField("Location")).toString(); c.disconnect(); continue; }

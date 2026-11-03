@@ -1,14 +1,14 @@
-# Velora – Texte für den Google Play Store
+# BikeOra – Texte für den Google Play Store
 
 ## Deutsch (Standardsprache)
 
-**App-Name (max. 30):** Velora – Fahrrad-Navigation
+**App-Name (max. 30):** BikeOra – Fahrrad-Navigation
 
 **Kurzbeschreibung (max. 80):** Radrouten weltweit, Navi mit Ansagen, Touren, Fahrtenbuch und die KI Juno.
 
 **Vollständige Beschreibung:**
 
-Velora ist die Fahrrad-Navigation für alle, die lieber auf Radwegen und ruhigen Straßen fahren als neben Lastwagen.
+BikeOra ist die Fahrrad-Navigation für alle, die lieber auf Radwegen und ruhigen Straßen fahren als neben Lastwagen.
 
 ROUTEN, DIE ZUM RAD PASSEN
 • Weltweit Routen für City- und Trekkingrad, Rennrad, Mountainbike, Gravel, E-Bike und Familien mit Kindern
@@ -52,13 +52,13 @@ Karten: © OpenStreetMap-Mitwirkende, OpenFreeMap. Routen: BRouter. Wetter: Open
 
 ## English
 
-**App name:** Velora – Bike Navigation
+**App name:** BikeOra – Bike Navigation
 
 **Short description:** Bike routes worldwide, voice navigation, tours, ride log and the AI Juno.
 
 **Full description:**
 
-Velora is bike navigation for everyone who would rather ride on cycle paths and quiet roads than next to trucks.
+BikeOra is bike navigation for everyone who would rather ride on cycle paths and quiet roads than next to trucks.
 
 ROUTES MADE FOR BIKES
 • Worldwide routes for city and trekking bikes, road bikes, mountain bikes, gravel, e-bikes and families with kids

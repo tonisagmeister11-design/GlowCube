@@ -29,17 +29,17 @@ simple = { limit = 20, period = 60 }
 type = "Text"
 globs = ["**/*.html"]
 
-# Live-Standort teilen (Velora Plus)
+# Live-Standort teilen (BikeOra Plus)
 [[kv_namespaces]]
 binding = "LIVE"
 id = "fc0f09a228394fa183c473036fc21d62"
 
-# Konten, Credits, anonyme Statistik (Velora 6.2)
+# Konten, Credits, anonyme Statistik (BikeOra 6.2)
 [[kv_namespaces]]
 binding = "USERS"
 id = "a8e2d070b62544aa873f55d184f4c86b"
 
-# Exakter Zaehler fuer die Soul-Kostenbremse (Velora 6.7)
+# Exakter Zaehler fuer die Soul-Kostenbremse (BikeOra 6.7)
 [[durable_objects.bindings]]
 name = "BUDGET"
 class_name = "SoulBudget"

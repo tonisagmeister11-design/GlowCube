@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Velora Admin</title>
+<title>BikeOra Admin</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.21.1/dist/maplibre-gl.css">
 <style>
 :root{--bg:#0e1420;--p:#161e2d;--p2:#1e2839;--line:#2a364b;--t:#e8eef6;--m:#8d9bb0;--a:#2fd59a;--b:#5aa9ff;--o:#ffa94d;--r:#ff6b6b}
@@ -41,14 +41,14 @@ button{background:var(--a);color:#06231a;border:0;border-radius:10px;padding:9px
 </head>
 <body>
 <form id="login">
-  <h1>Velora <span style="color:#2fd59a">Admin</span></h1>
-  <div class="note">Melde dich mit deinem Velora-Konto an (nur das Admin-Konto hat Zugang).</div>
+  <h1>BikeOra <span style="color:#2fd59a">Admin</span></h1>
+  <div class="note">Melde dich mit deinem BikeOra-Konto an (nur das Admin-Konto hat Zugang).</div>
   <input id="em" type="email" placeholder="E-Mail" autocomplete="username" required>
   <input id="pw" type="password" placeholder="Passwort" autocomplete="current-password" required>
   <button>Anmelden</button><div class="err" id="err"></div>
 </form>
 <div id="app" class="hide">
-<header><h1>Velora <span>Admin</span></h1><div class="st"><i class="dot"></i><span id="upd">verbunden</span></div><button class="sec" id="csv">Nutzer als CSV</button><button class="sec" id="out">Abmelden</button></header>
+<header><h1>BikeOra <span>Admin</span></h1><div class="st"><i class="dot"></i><span id="upd">verbunden</span></div><button class="sec" id="csv">Nutzer als CSV</button><button class="sec" id="out">Abmelden</button></header>
 <main>
   <div class="kpis" id="kpis"></div>
   <div class="grid2">

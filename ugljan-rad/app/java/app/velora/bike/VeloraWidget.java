@@ -23,7 +23,7 @@ public class VeloraWidget extends AppWidgetProvider {
             RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget);
             v.setTextViewText(R.id.wBig, p.getString("big", "0,0 km"));
             v.setTextViewText(R.id.wSmall, p.getString("small", "diese Woche"));
-            v.setTextViewText(R.id.wLine, p.getString("line", "Öffne Velora und fahr los"));
+            v.setTextViewText(R.id.wLine, p.getString("line", "Öffne BikeOra und fahr los"));
             v.setOnClickPendingIntent(R.id.wRoot, pi);
             m.updateAppWidget(id, v);
         }

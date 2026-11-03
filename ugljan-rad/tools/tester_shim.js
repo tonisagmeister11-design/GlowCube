@@ -35,7 +35,7 @@
     var d = document.createElement('div');
     d.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(13,31,48,.55);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,sans-serif';
     d.innerHTML = '<div style="background:#fff;border-radius:24px;padding:22px;max-width:360px;text-align:center;color:#13263a">' + (window.VX && VX.mascot ? VX.mascot('wave', 120) : '') +
-      '<h2 style="margin:8px 0 6px;font-size:21px">Volle Version öffnen</h2><p style="color:#5f7184;font-size:14.5px;line-height:1.45;margin:0 0 16px">Diese Vorschau im Chat darf weder deinen Standort noch das Internet nutzen. Die volle Velora mit echtem Standort, Weltkarte, Anmeldung und Juno läuft hier:</p>' +
+      '<h2 style="margin:8px 0 6px;font-size:21px">Volle Version öffnen</h2><p style="color:#5f7184;font-size:14.5px;line-height:1.45;margin:0 0 16px">Diese Vorschau im Chat darf weder deinen Standort noch das Internet nutzen. Die volle BikeOra mit echtem Standort, Weltkarte, Anmeldung und Juno läuft hier:</p>' +
       '<a href="https://velora-ki.toni-sagmeister11.workers.dev/" target="_blank" rel="noopener" style="display:block;background:#2fd59a;color:#0d2b3e;font-weight:800;font-size:17px;padding:15px;border-radius:16px;text-decoration:none">Volle Version öffnen</a>' +
       '<button id="pvGo" style="margin-top:12px;border:0;background:none;color:#5f7184;font-size:14px;text-decoration:underline">Trotzdem Vorschau ohne Internet ansehen</button></div>';
     document.body.appendChild(d);

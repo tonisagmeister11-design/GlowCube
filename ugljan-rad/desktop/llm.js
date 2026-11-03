@@ -63,7 +63,7 @@ function download(w) {
     if (dl.stop) return finish('stopped');
     const have0 = partSize(w);
     if (have0 >= m.size) return verify();
-    const headers = { 'User-Agent': 'Velora/6.6 (Windows)' };
+    const headers = { 'User-Agent': 'BikeOra/6.6 (Windows)' };
     if (have0 > 0) headers.Range = 'bytes=' + have0 + '-';
     dl.req = get(m.url, headers, (err, res) => {
       if (err) return retry(err.message);

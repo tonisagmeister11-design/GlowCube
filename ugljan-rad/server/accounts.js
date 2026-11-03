@@ -1,4 +1,4 @@
-// Konten, Credits, anonyme Statistik und Admin-Dashboard fuer Velora.
+// Konten, Credits, anonyme Statistik und Admin-Dashboard fuer BikeOra.
 // Passwoerter werden nur als PBKDF2-Hash gespeichert und sind fuer niemanden lesbar.
 import ADMIN_PAGE from './admin.html';
 import PRIVACY_PAGE from './datenschutz.html';
@@ -68,12 +68,12 @@ async function wipeUser(env, u, req) {
   if (m) await env.USERS.delete('s:' + await sha(m[1]));
   let cur; do { const r = await env.USERS.list({ prefix: 'c:', cursor: cur }); for (const k of r.keys) if (k.name.endsWith(':' + u.id)) await env.USERS.delete(k.name); cur = r.list_complete ? null : r.cursor; } while (cur);
 }
-const DELETE_PAGE = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Velora-Konto löschen</title>
+const DELETE_PAGE = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BikeOra-Konto löschen</title>
 <style>body{margin:0;background:#f3f6fa;color:#13263a;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}main{max-width:460px;margin:0 auto;padding:28px 18px}
 h1{font-size:24px;margin:0 0 8px}p{color:#4b5d70}form{background:#fff;border:1px solid #e1e7ee;border-radius:16px;padding:18px;margin-top:16px}
 label{display:block;font-weight:600;font-size:14px;margin:10px 0 4px}input{width:100%;box-sizing:border-box;height:46px;border:1px solid #cfd8e3;border-radius:12px;padding:0 12px;font-size:16px}
 button{margin-top:16px;width:100%;height:48px;border:0;border-radius:14px;background:#d92d20;color:#fff;font-weight:700;font-size:16px}#msg{margin-top:12px;font-weight:600}</style></head>
-<body><main><h1>Velora-Konto löschen</h1><p>Hier kannst du dein Velora-Konto und die zugehörigen Daten auf dem Server dauerhaft löschen, auch ohne die App. Gelöscht werden Name, E-Mail-Adresse, Passwort-Hash, Land, Sprache, Einstellungen und Nutzungszähler. Anonyme Statistiken ohne Personenbezug bleiben erhalten. In der App geht das unter Einstellungen, Konto löschen.</p>
+<body><main><h1>BikeOra-Konto löschen</h1><p>Hier kannst du dein BikeOra-Konto und die zugehörigen Daten auf dem Server dauerhaft löschen, auch ohne die App. Gelöscht werden Name, E-Mail-Adresse, Passwort-Hash, Land, Sprache, Einstellungen und Nutzungszähler. Anonyme Statistiken ohne Personenbezug bleiben erhalten. In der App geht das unter Einstellungen, Konto löschen.</p>
 <form id="f"><label for="e">E-Mail-Adresse</label><input id="e" type="email" autocomplete="email" required><label for="p">Passwort</label><input id="p" type="password" autocomplete="current-password" required>
 <button type="submit">Konto endgültig löschen</button><div id="msg" role="status"></div></form></main>
 <script>document.getElementById('f').onsubmit=function(ev){ev.preventDefault();var m=document.getElementById('msg');m.style.color='#4b5d70';m.textContent='Wird gelöscht ...';

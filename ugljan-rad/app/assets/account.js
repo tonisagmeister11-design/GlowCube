@@ -1,4 +1,4 @@
-/* Velora: Anmeldung beim ersten Start, Konto in den Einstellungen, Sprache, Land,
+/* BikeOra: Anmeldung beim ersten Start, Konto in den Einstellungen, Sprache, Land,
    Verbindung zum Server (Credits, Plus, anonyme Statistik nur mit Zustimmung). */
 (function () {
   'use strict';
@@ -13,7 +13,7 @@
 
   // ---------- Texte der Anmeldung in allen App-Sprachen ----------
   var L = {
-    welcome: ['Willkommen bei Velora!', 'Welcome to Velora!', 'Bienvenue sur Velora !', 'Benvenuto su Velora!', '¡Bienvenido a Velora!'],
+    welcome: ['Willkommen bei BikeOra!', 'Welcome to BikeOra!', 'Bienvenue sur BikeOra !', 'Benvenuto su BikeOra!', '¡Bienvenido a BikeOra!'],
     hello: ['Ich bin Velo. Wähle zuerst deine Sprache.', 'I am Velo. First, choose your language.', 'Je suis Velo. Choisis d\'abord ta langue.', 'Sono Velo. Prima scegli la tua lingua.', 'Soy Velo. Primero elige tu idioma.'],
     acct: ['Dein Konto', 'Your account', 'Ton compte', 'Il tuo account', 'Tu cuenta'],
     newh: ['Neu hier', 'New here', 'Nouveau', 'Nuovo qui', 'Soy nuevo'], have: ['Ich habe ein Konto', 'I have an account', 'J\'ai un compte', 'Ho un account', 'Tengo cuenta'],
@@ -24,7 +24,7 @@
     country: ['Wo wohnst du?', 'Where do you live?', 'Où habites-tu ?', 'Dove vivi?', '¿Dónde vives?'], search: ['Land suchen', 'Search country', 'Chercher un pays', 'Cerca paese', 'Buscar país'],
     privacy: ['Fast geschafft', 'Almost done', 'Presque fini', 'Quasi fatto', 'Casi listo'],
     terms: ['Ich habe die Datenschutzerklärung gelesen und stimme zu.', 'I have read and agree to the privacy policy.', 'J\'ai lu et j\'accepte la politique de confidentialité.', 'Ho letto e accetto l\'informativa sulla privacy.', 'He leído y acepto la política de privacidad.'],
-    anon: ['Anonyme Nutzungsdaten teilen (freiwillig). Hilft, Velora zu verbessern: beliebte Gegenden und benutzte Funktionen, ohne Bezug zu dir.', 'Share anonymous usage data (optional). Helps improve Velora: popular areas and used features, not linked to you.', 'Partager des données anonymes (facultatif) : zones populaires et fonctions utilisées, sans lien avec toi.', 'Condividi dati anonimi (facoltativo): zone popolari e funzioni usate, senza collegamento a te.', 'Compartir datos anónimos (opcional): zonas populares y funciones usadas, sin relación contigo.'],
+    anon: ['Anonyme Nutzungsdaten teilen (freiwillig). Hilft, BikeOra zu verbessern: beliebte Gegenden und benutzte Funktionen, ohne Bezug zu dir.', 'Share anonymous usage data (optional). Helps improve BikeOra: popular areas and used features, not linked to you.', 'Partager des données anonymes (facultatif) : zones populaires et fonctions utilisées, sans lien avec toi.', 'Condividi dati anonimi (facoltativo): zone popolari e funzioni usate, senza collegamento a te.', 'Compartir datos anónimos (opcional): zonas populares y funciones usadas, sin relación contigo.'],
     readp: ['Datenschutzerklärung lesen', 'Read privacy policy', 'Lire la politique', 'Leggi l\'informativa', 'Leer la política'],
     create: ['Konto erstellen', 'Create account', 'Créer le compte', 'Crea account', 'Crear cuenta'],
     done: ['Los geht\'s', 'Let\'s go', 'C\'est parti', 'Andiamo', 'Vamos'], hi: ['Hallo', 'Hi', 'Salut', 'Ciao', 'Hola'],

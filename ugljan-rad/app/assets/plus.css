@@ -1,4 +1,4 @@
-/* Velora 5.4: smoothes Design, Maskottchen Velo, Plus-Funktionen */
+/* BikeOra 5.4: smoothes Design, Maskottchen Velo, Plus-Funktionen */
 @font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(fonts/inter-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:Inter;font-style:normal;font-weight:400;font-display:swap;src:url(fonts/inter-latin-ext-400-normal.woff2) format("woff2");unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 @font-face{font-family:Inter;font-style:normal;font-weight:600;font-display:swap;src:url(fonts/inter-latin-600-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -543,7 +543,7 @@ body.night #gpslost{background:#3a2a10;border-color:#7a5418;color:#ffd9a0}
 .msg.ai .jrep{display:block;margin-top:6px;border:0;background:none;padding:2px 0;color:var(--mute);font-size:12px;text-decoration:underline;text-underline-offset:2px}
 .msg.ai .jrep:disabled{text-decoration:none;opacity:.8}
 
-/* Velora 7.1: 3D-Vorschau, Abbiegeliste, Sehenswertes entlang der Strecke, Dunkelheits-Hinweis */
+/* BikeOra 7.1: 3D-Vorschau, Abbiegeliste, Sehenswertes entlang der Strecke, Dunkelheits-Hinweis */
 .xrow{display:flex;gap:8px;margin:10px 0 4px}
 .xbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:14px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:600 14px inherit;font-family:inherit}
 .xbtn:active{transform:scale(.97)}

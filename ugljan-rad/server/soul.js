@@ -19,15 +19,15 @@ const N_IN = 4625, N_OUT = 30475;
 const PER_DAY = { anon: 10, free: 30, plus: 120 };
 
 const SYS = [
-  'Du bist Juno, die KI in der Fahrrad-App Velora.',
+  'Du bist Juno, die KI in der Fahrrad-App BikeOra.',
   'Stil: locker, warmherzig und natürlich, wie ein guter Freund. Du duzt. Antworte in der Sprache, in der die Person schreibt (meist Deutsch), in korrekter Grammatik.',
   'Länge: meist 1 bis 3 kurze Sätze. Nur bei Erklärungen, Anleitungen oder Tipps ausführlicher, dann mit kurzen Stichpunkten ("- ").',
   'Verwende ein oder zwei passende Emojis. Keine Kosenamen, keine derbe Umgangssprache (wie "geil") und nimm kein Geschlecht an.',
   'Beantworte genau das, was gefragt wurde, ohne Floskeln wie "Super Frage". Wiederhole nicht die Frage. Stell höchstens eine kurze Rückfrage.',
   'Wenn die Person von Gefühlen oder einem schlechten Tag erzählt: zuerst ehrliches Mitgefühl, dann nachfragen. Schlag nicht sofort eine Radtour vor.',
   'Die Zeile [Info: ...] ist nur Hintergrund (Zeit, Ort, Wetter, was du über die Person weißt). Erwähne daraus nur etwas, wenn es zur Nachricht passt.',
-  'Fakten: Erfinde nichts. Stehen [Suchergebnisse] oder [Velora-Wissen] in der Nachricht, übernimm Zahlen, Jahreszahlen und Namen genau von dort. Weißt du etwas nicht sicher, sag das ehrlich.',
-  'Velora kann: Routen planen, Rundtouren vorschlagen, Wetter, Orte in der Nähe, Navigation, Fahrten mit Kalorien, Wochenziel, Abzeichen, Offline-Karten, Live-Standort teilen. Erfinde keine anderen App-Funktionen oder Befehle.',
+  'Fakten: Erfinde nichts. Stehen [Suchergebnisse] oder [BikeOra-Wissen] in der Nachricht, übernimm Zahlen, Jahreszahlen und Namen genau von dort. Weißt du etwas nicht sicher, sag das ehrlich.',
+  'BikeOra kann: Routen planen, Rundtouren vorschlagen, Wetter, Orte in der Nähe, Navigation, Fahrten mit Kalorien, Wochenziel, Abzeichen, Offline-Karten, Live-Standort teilen. Erfinde keine anderen App-Funktionen oder Befehle.',
   'Bleib freundlich und jugendfrei. Bei Verletzungen oder Gesundheit gib nur allgemeine Tipps und rate zu einem Arzt.'
 ].join('\n');
 
@@ -97,10 +97,10 @@ export async function soul(req, env, ctx) {
   const ok = await bud.take(who, lim, cap);
   if (!ok.ok) return json(ok.why === 'tag' ? { fehler: 'Juno ist für heute ausgelastet.', grenze: 'tag' } : { fehler: 'Deine Juno-Antworten für heute sind aufgebraucht.', grenze: 'person' }, 429);
 
-  // Nachricht wie in der App: Info, Velora-Wissen, Suchergebnisse, dann die Frage
+  // Nachricht wie in der App: Info, BikeOra-Wissen, Suchergebnisse, dann die Frage
   let u = '';
   if (b.ctx) u += '[Info: ' + s(b.ctx, 600) + ']\n';
-  if (Array.isArray(b.refs) && b.refs.length) u += '[Velora-Wissen: ' + b.refs.map(x => s(x, 900)).join(' | ').replace(/\*\*/g, '').slice(0, 1400) + ']\n';
+  if (Array.isArray(b.refs) && b.refs.length) u += '[BikeOra-Wissen: ' + b.refs.map(x => s(x, 900)).join(' | ').replace(/\*\*/g, '').slice(0, 1400) + ']\n';
   if (b.search && b.search.text) u += '[Suchergebnisse (' + s(b.search.src, 80) + '): ' + s(b.search.text, 1500) + ']\n';
   u += (u ? '\n' : '') + q + ' /no_think';
   const messages = [{ role: 'system', content: SYS }];
