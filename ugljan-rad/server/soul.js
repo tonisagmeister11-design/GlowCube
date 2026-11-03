@@ -1,4 +1,4 @@
-// Soul über den Server: die KI rechnet bei Cloudflare (Workers AI), nicht auf dem Handy.
+// Juno über den Server: die KI rechnet bei Cloudflare (Workers AI), nicht auf dem Handy.
 // Kostenbremse: pro Tag (UTC) höchstens SOUL_DAY_CAP Neuronen. Cloudflare schenkt 10.000 am Tag,
 // die Grenze liegt darunter. Ist sie erreicht, antwortet die App bis Mitternacht (UTC) mit ihrer eingebauten Logik.
 // So entstehen nie Kosten über den Workers-Tarif hinaus.
@@ -19,7 +19,7 @@ const N_IN = 4625, N_OUT = 30475;
 const PER_DAY = { anon: 10, free: 30, plus: 120 };
 
 const SYS = [
-  'Du bist Soul, die KI in der Fahrrad-App Velora.',
+  'Du bist Juno, die KI in der Fahrrad-App Velora.',
   'Stil: locker, warmherzig und natürlich, wie ein guter Freund. Du duzt. Antworte in der Sprache, in der die Person schreibt (meist Deutsch), in korrekter Grammatik.',
   'Länge: meist 1 bis 3 kurze Sätze. Nur bei Erklärungen, Anleitungen oder Tipps ausführlicher, dann mit kurzen Stichpunkten ("- ").',
   'Verwende ein oder zwei passende Emojis. Keine Kosenamen, keine derbe Umgangssprache (wie "geil") und nimm kein Geschlecht an.',
@@ -95,7 +95,7 @@ export async function soul(req, env, ctx) {
   const lim = user ? (user.plus ? PER_DAY.plus : PER_DAY.free) : PER_DAY.anon;
   const bud = env.BUDGET.get(env.BUDGET.idFromName('global'));
   const ok = await bud.take(who, lim, cap);
-  if (!ok.ok) return json(ok.why === 'tag' ? { fehler: 'Soul ist für heute ausgelastet.', grenze: 'tag' } : { fehler: 'Deine Soul-Antworten für heute sind aufgebraucht.', grenze: 'person' }, 429);
+  if (!ok.ok) return json(ok.why === 'tag' ? { fehler: 'Juno ist für heute ausgelastet.', grenze: 'tag' } : { fehler: 'Deine Juno-Antworten für heute sind aufgebraucht.', grenze: 'person' }, 429);
 
   // Nachricht wie in der App: Info, Velora-Wissen, Suchergebnisse, dann die Frage
   let u = '';
@@ -115,8 +115,8 @@ export async function soul(req, env, ctx) {
   } catch (e) {
     const m = String(e && e.message);
     await bud.settle(0, d0);
-    if (/4006|daily free allocation|neurons/i.test(m)) { await bud.block(cap); return json({ fehler: 'Soul ist für heute ausgelastet.', grenze: 'tag' }, 429); }
-    return json({ fehler: 'Soul ist gerade nicht erreichbar.' }, 503);
+    if (/4006|daily free allocation|neurons/i.test(m)) { await bud.block(cap); return json({ fehler: 'Juno ist für heute ausgelastet.', grenze: 'tag' }, 429); }
+    return json({ fehler: 'Juno ist gerade nicht erreichbar.' }, 503);
   }
 
   // Strom an die App weiterreichen: data: {"t":"..."} ... data: {"ende":true,"rest":n}

@@ -31,7 +31,7 @@
     ready: ['Dein Konto ist bereit. Ich feiere ab jetzt jede Fahrt mit dir!', 'Your account is ready. From now on I celebrate every ride with you!', 'Ton compte est prêt. Je fête chaque sortie avec toi !', 'Il tuo account è pronto. Festeggio ogni giro con te!', 'Tu cuenta está lista. ¡Celebraré cada ruta contigo!'],
     noNet: ['Keine Verbindung zum Server. Bitte Internet prüfen.', 'No connection to the server. Please check your internet.', 'Pas de connexion au serveur.', 'Nessuna connessione al server.', 'Sin conexión con el servidor.'],
     guest: ['Ohne Konto weiter', 'Continue without account', 'Continuer sans compte', 'Continua senza account', 'Continuar sin cuenta'],
-    guestNote: ['Alles Wichtige geht auch ohne Konto. Mit Konto werden Einstellungen gesichert und Soul antwortet öfter.', 'Everything important works without an account. With an account your settings are backed up and Soul answers more often.', 'L\'essentiel fonctionne sans compte. Avec un compte, tes réglages sont sauvegardés et Soul répond plus souvent.', 'Le funzioni principali vanno anche senza account. Con un account le impostazioni sono salvate e Soul risponde più spesso.', 'Lo importante funciona sin cuenta. Con cuenta se guardan tus ajustes y Soul responde más a menudo.'],
+    guestNote: ['Alles Wichtige geht auch ohne Konto. Mit Konto werden Einstellungen gesichert und Juno antwortet öfter.', 'Everything important works without an account. With an account your settings are backed up and Juno answers more often.', 'L\'essentiel fonctionne sans compte. Avec un compte, tes réglages sont sauvegardés et Juno répond plus souvent.', 'Le funzioni principali vanno anche senza account. Con un account le impostazioni sono salvate e Juno risponde più spesso.', 'Lo importante funciona sin cuenta. Con cuenta se guardan tus ajustes y Juno responde más a menudo.'],
     errName: ['Bitte gib deinen Namen ein (mindestens 2 Zeichen).', 'Please enter your name (at least 2 characters).', 'Entre ton nom (2 caractères min.).', 'Inserisci il tuo nome (almeno 2 caratteri).', 'Escribe tu nombre (mín. 2 caracteres).'],
     errMail: ['Bitte gib eine gültige E-Mail-Adresse ein.', 'Please enter a valid email address.', 'Entre une adresse e-mail valide.', 'Inserisci un indirizzo e-mail valido.', 'Escribe un correo válido.'],
     errPw: ['Das Passwort braucht mindestens 8 Zeichen.', 'The password needs at least 8 characters.', 'Le mot de passe doit avoir 8 caractères min.', 'La password deve avere almeno 8 caratteri.', 'La contraseña necesita 8 caracteres mín.'],
@@ -181,7 +181,7 @@
   }
   VX.onPlus = function (on) { if (ACC) api('/me', 'POST', { plus: on }).then(function (j) { if (j.user) { ACC.user = j.user; save(); } refresh(); }).catch(function () {}); };
 
-  // ---------- Soul: Credits vom Server ----------
+  // ---------- Juno: Credits vom Server ----------
   var oldUsed = VX.junoUsed;
   VX.junoUsed = function (cr, left) {
     if (left != null) VX.srvCredits = { left: left, max: (VX.srvCredits && VX.srvCredits.max) || (ACC && ACC.user.plus ? 100 : 10) };

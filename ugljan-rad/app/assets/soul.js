@@ -1,5 +1,5 @@
-/* Soul: die eigene KI von Velora. Laeuft komplett in der App, ohne fremde KI und ohne Kosten.
-   Prinzip wie im Projekt "Soul": Absicht erkennen (mit Tippfehler-Korrektur), Orte/Zahlen/Zeiten herauslesen,
+/* Juno: die eigene KI von Velora. Laeuft komplett in der App, ohne fremde KI und ohne Kosten.
+   Prinzip wie im Projekt "Juno": Absicht erkennen (mit Tippfehler-Korrektur), Orte/Zahlen/Zeiten herauslesen,
    Werkzeuge der App ausfuehren, Antwort bauen, bei Wissensfragen im Hintergrund recherchieren
    (Wikipedia, auf Android zusaetzlich DuckDuckGo ueber die App) und die passendsten Saetze auswaehlen. */
 (function () {
@@ -96,7 +96,7 @@
     lastPick[key] = i; return arr[i];
   }
 
-  // Was Soul sich ueber dich merkt (bleibt auf dem Handy)
+  // Was Juno sich ueber dich merkt (bleibt auf dem Handy)
   var MEM = V.load('soulMem', { name: null, ort: null, mag: [], rad: null, alter: null, places: {} });
   function saveMem() { V.store('soulMem', MEM); }
 
@@ -367,8 +367,8 @@
         return R(pickNR(d ? ['Mir geht\'s super, danke! 😄 Ich hab heute schon Routen in Gedanken geplant. Und dir? Lust auf eine Runde? 🚴', 'Bestens! ☀️ Wie geht\'s dir denn? Fährst du heute noch?', 'Gut, danke der Nachfrage! 😊 Wie war dein Tag bisher?']
           : ['Great, thanks! 😄 And you? Fancy a ride today? 🚴', 'All good here! ☀️ How about you?']));
       case 'who':
-        return R(d ? 'Ich bin **Soul**, die KI von Velora 🦊✨ Ich laufe direkt hier in der App, ohne fremde KI. Ich plane Routen und Touren, kenne das Wetter, finde schöne Orte in der Nähe, werte deine Fahrten aus und recherchiere für dich, wenn du etwas wissen willst.'
-          : 'I\'m **Soul**, Velora\'s AI 🦊✨ I run right here in the app, no external AI. I plan routes and tours, know the weather, find nice places nearby, analyse your rides and look things up for you.');
+        return R(d ? 'Ich bin **Juno**, die KI von Velora 🦊✨ Ich laufe direkt hier in der App, ohne fremde KI. Ich plane Routen und Touren, kenne das Wetter, finde schöne Orte in der Nähe, werte deine Fahrten aus und recherchiere für dich, wenn du etwas wissen willst.'
+          : 'I\'m **Juno**, Velora\'s AI 🦊✨ I run right here in the app, no external AI. I plan routes and tours, know the weather, find nice places nearby, analyse your rides and look things up for you.');
       case 'can':
         return R(d ? 'Ich kann dir helfen bei:\n- 🗺️ **Routen**: „Plan mir eine Route nach Melk“, danach „flacher“ oder „kürzer“\n- 🔄 **Touren**: „Schlag mir eine 2-Stunden-Tour vor“\n- 📍 **In der Nähe**: „Wo gibt es hier Pizza?“, „Aussichtspunkte in der Nähe“\n- ☀️ **Wetter**: „Regnet es morgen?“, „Was soll ich anziehen?“\n- 📊 **Deine Fahrten**: „Wie war meine Woche?“, „Wie viele Kalorien?“\n- 🔧 **Rad-Hilfe**: „Wie flicke ich einen Reifen?“\n- 📚 **Wissen**: „Wie hoch ist der Großglockner?“, danach „Und der Mont Blanc?“\n- 🧠 **Ich merke mir dich**: „Ich heiße …“, „Meine Arbeit ist in …“\n- 🎲 **Spaß**: Witze, Rätsel, Quiz, Geschichten, Gedichte, Fun Facts\n- 😄 Und einfach plaudern!'
           : 'I can help with:\n- 🗺️ **Routes**: "Plan a route to Vienna", then "flatter" or "shorter"\n- 🔄 **Tours**: "Suggest a 2-hour tour"\n- 📍 **Nearby**: "Where can I get pizza?"\n- ☀️ **Weather**: "Will it rain tomorrow?"\n- 📊 **Your rides**: "How was my week?"\n- 🔧 **Bike help**: "How do I fix a flat?"\n- 📚 **Knowledge**: "How high is Mont Blanc?"\n- 😄 And just chatting!');
@@ -580,7 +580,7 @@
     [/\b(tagesplaner)\b/, ['🗓️ Der **Tagesplaner** (Plus) baut dir einen ganzen Tag mit Aussicht, Mittagessen und Baden als eine Runde mit Uhrzeiten: Menü → Tagesplaner.', '🗓️ Menu → Day planner (Plus).']],
     [/\b(abzeichen)\b/, ['🏅 Es gibt 18 Abzeichen-Familien mit bis zu 10 Stufen, von Bronze bis Legende. Tippe in der Statistik auf ein Abzeichen, dann siehst du, was dir zur nächsten Stufe fehlt.', '🏅 18 badge families with up to 10 levels. Tap one in the stats to see your progress.']],
     [/\b(widget)\b/, ['📱 Das **Widget**: Startbildschirm lange drücken → Widgets → Velora. Es zeigt deine Wochenkilometer und die Serie.', '📱 Long-press the home screen → Widgets → Velora.']],
-    [/\b(velo|fuchs)\b/, ['🦊 **Velo** ist dein Fuchs-Maskottchen. Er feiert deine Fahrten und zündet die Flamme an. Ich bin Soul, die KI. Wir sind ein Team 😄', '🦊 **Velo** is the fox mascot who celebrates your rides. I\'m Soul, the AI. We\'re a team 😄']],
+    [/\b(velo|fuchs)\b/, ['🦊 **Velo** ist dein Fuchs-Maskottchen. Er feiert deine Fahrten und zündet die Flamme an. Ich bin Juno, die KI. Wir sind ein Team 😄', '🦊 **Velo** is the fox mascot who celebrates your rides. I\'m Juno, the AI. We\'re a team 😄']],
     [/\b(rueckenwind)\b/, ['💨 Bei Tour-Vorschlägen kannst du „Rückenwind auf dem Heimweg“ einschalten. Dann lege ich die Runde so, dass dich der Wind zurückschiebt.', '💨 Turn on "Tailwind on the way home" in tour suggestions.']],
     [/./, ['Frag mich ruhig genauer, zum Beispiel „Wie funktioniert die Serie?“ oder „Was kann Plus?“ 😊', 'Ask me more specifically, e.g. "How does the streak work?" 😊']]
   ];
@@ -625,7 +625,7 @@
   // Gedaechtnis: Aussagen ueber dich erkennen und speichern
   function memorize(raw, t) {
     var m, d = L === 'de', said = null;
-    if ((m = raw.match(/(?:ich hei(?:ß|ss)e|mein name ist|nenn mich|du kannst mich .* nennen|my name is|call me)\s+([A-Za-zÄÖÜäöüß\-]{2,20})/i)) && !/^(soul|du|dich)$/i.test(m[1])) { MEM.name = cap(m[1]); said = T('Freut mich, ' + MEM.name + '! 😊 Ich merke mir deinen Namen.', 'Nice to meet you, ' + MEM.name + '! 😊'); }
+    if ((m = raw.match(/(?:ich hei(?:ß|ss)e|mein name ist|nenn mich|du kannst mich .* nennen|my name is|call me)\s+([A-Za-zÄÖÜäöüß\-]{2,20})/i)) && !/^(soul|juno|du|dich)$/i.test(m[1])) { MEM.name = cap(m[1]); said = T('Freut mich, ' + MEM.name + '! 😊 Ich merke mir deinen Namen.', 'Nice to meet you, ' + MEM.name + '! 😊'); }
     else if ((m = raw.match(/(?:ich wohne in|ich lebe in|ich komme aus|i live in|i am from|i'm from)\s+([^,.!?]{2,40})/i))) { MEM.ort = m[1].trim(); said = T('Ah, ' + MEM.ort + '! 🏡 Merk ich mir. Soll ich dir mal schöne Touren in der Gegend suchen?', 'Ah, ' + MEM.ort + '! 🏡 Noted.'); }
     else if ((m = raw.match(/\b(?:meine?|my)\s+(arbeit|firma|schule|uni|universit[äa]t|b[üu]ro|wohnung|zuhause|work|office|school|home)\s+(?:ist|liegt|is)\s+(?:in der |in |am |an der |auf der |bei |at |in the |die |der |das )?([^!?]{3,80})/i))) {
       if (!/^(in der|in|am|an der|auf der|bei|at|in the)\s/i.test(raw.slice(raw.toLowerCase().indexOf(m[2].toLowerCase()) - 8)) && !/\d|stra(ß|ss)e|gasse|weg|platz|allee|ring|street|road|avenue|tu |uni /i.test(m[2]) && !/ (in der|in|am|an der|bei|at) $/i.test(raw.slice(0, raw.toLowerCase().indexOf(m[2].toLowerCase())))) m = null;
@@ -636,7 +636,7 @@
     }
     else if ((m = raw.match(/(?:ich bin|i am|i'm)\s+(\d{1,2})\s*(?:jahre|years)/i))) { MEM.alter = +m[1]; said = T(m[1] + ' Jahre, cool! 😊', m[1] + ', cool! 😊'); }
     else if ((m = raw.match(/(?:ich (?:habe|fahre) (?:ein|einen|eine)|mein (?:fahrrad|rad) ist (?:ein|eine)|i (?:have|ride) an?)\s+((?:[a-zäöüß-]+\s){0,2}(?:rennrad|gravelbike|gravel|mountainbike|mtb|e-?bike|pedelec|trekkingrad|cityrad|citybike|stadtrad|hollandrad|klapprad|lastenrad|fahrrad|bike))\b/i))) { MEM.rad = m[1].trim(); said = T('Ein ' + MEM.rad + ', sehr schön! 🚲 Merk ich mir.', 'A ' + MEM.rad + ', nice! 🚲'); }
-    else if ((m = raw.match(/(?:ich mag|ich liebe|mein lieblings\w* ist|i like|i love)\s+([^,.!?]{2,40})/i)) && !/^(dich|dir|you|es|das|soul)\b/i.test(m[1])) { var v = m[1].trim(); if (MEM.mag.indexOf(v) < 0) MEM.mag.push(v); MEM.mag = MEM.mag.slice(-12); said = T(pickNR(['Oh, ' + v + '! 😊 Gemerkt.', v + ' finde ich auch super! 💚', 'Schön, dass du ' + v + ' magst! Ich merke es mir 🦊'], 'like'), 'Nice, ' + v + '! 😊 Noted.'); }
+    else if ((m = raw.match(/(?:ich mag|ich liebe|mein lieblings\w* ist|i like|i love)\s+([^,.!?]{2,40})/i)) && !/^(dich|dir|you|es|das|soul|juno)\b/i.test(m[1])) { var v = m[1].trim(); if (MEM.mag.indexOf(v) < 0) MEM.mag.push(v); MEM.mag = MEM.mag.slice(-12); said = T(pickNR(['Oh, ' + v + '! 😊 Gemerkt.', v + ' finde ich auch super! 💚', 'Schön, dass du ' + v + ' magst! Ich merke es mir 🦊'], 'like'), 'Nice, ' + v + '! 😊 Noted.'); }
     if (said) { saveMem(); return R(said); }
     if (/\b(was weisst du (ueber|von) (mir|mich)|was hast du dir (ueber mich )?gemerkt|kennst du mich|was merkst du dir|what do you know about me)\b/.test(t)) {
       var f = [];
@@ -676,7 +676,7 @@
     var ty = qtype(t); if (ty !== 'what') return true;
     // Eigennamen (gross geschrieben, nicht am Satzanfang): Personen, Orte, Firmen
     var w = String(raw).replace(/^\s*\S+/, '').match(/\b[A-ZÄÖÜ][a-zäöüß]{2,}/g) || [];
-    return w.filter(function (x) { return !/^(Ich|Du|Sie|Er|Es|Wir|Ihr|Rad|Fahrrad|Was|Wie|Wo|Wer|Warum|Kannst|Velora|Soul)$/.test(x) && !SW[norm(x)]; }).length > 0 && /\b(wer|was ist|was sind|was war|erzaehl|weisst du|kennst du)\b/.test(t);
+    return w.filter(function (x) { return !/^(Ich|Du|Sie|Er|Es|Wir|Ihr|Rad|Fahrrad|Was|Wie|Wo|Wer|Warum|Kannst|Velora|Juno)$/.test(x) && !SW[norm(x)]; }).length > 0 && /\b(wer|was ist|was sind|was war|erzaehl|weisst du|kennst du)\b/.test(t);
   }
   function research(raw, t) {
     var cw = content(fix(t)), lang = wikiLang();

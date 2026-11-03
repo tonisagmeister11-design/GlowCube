@@ -71,8 +71,8 @@ td:last-child,th:last-child{text-align:right;font-variant-numeric:tabular-nums}
   <header><h1>Velora <span>Dashboard</span></h1><div class="stand" id="stand"></div></header>
 
   <section class="card" aria-labelledby="h-ki">
-    <h2 id="h-ki">Soul-KI heute: Gratis-Kontingent bei Cloudflare</h2>
-    <p class="sub">Cloudflare schenkt 10.000 Neuronen pro Tag. Der Server bremst bei 9.000; darüber antwortet Soul bis Mitternacht (UTC) einfacher. Es entstehen keine Kosten über den Workers-Tarif hinaus.</p>
+    <h2 id="h-ki">Juno-KI heute: Gratis-Kontingent bei Cloudflare</h2>
+    <p class="sub">Cloudflare schenkt 10.000 Neuronen pro Tag. Der Server bremst bei 9.000; darüber antwortet Juno bis Mitternacht (UTC) einfacher. Es entstehen keine Kosten über den Workers-Tarif hinaus.</p>
     <div class="hero">
       <div class="big" id="kiPct"></div>
       <div><div style="font-weight:600" id="kiAns"></div><div class="status" id="kiStatus"></div></div>
@@ -84,7 +84,7 @@ td:last-child,th:last-child{text-align:right;font-variant-numeric:tabular-nums}
   <div class="kpis" id="kpis"></div>
 
   <section class="card" aria-labelledby="h-day">
-    <h2 id="h-day">Soul-KI pro Tag (30 Tage)</h2>
+    <h2 id="h-day">Juno-KI pro Tag (30 Tage)</h2>
     <p class="sub">Anteil am Gratis-Kontingent. Die gestrichelte Linie ist die Bremse bei 90 %.</p>
     <div class="chart" id="cKi"></div>
     <details><summary>Als Tabelle</summary><table id="tKi"></table></details>
@@ -121,7 +121,7 @@ var D = /*DATA*/{};
   var t = kd[today] || { n: 0, q: 0 }, G = D.gratis || 10000, cap = D.kiLimit || 9000, pct = t.n / G * 100;
   $('kiPct').textContent = (pct < 10 ? pct.toFixed(1).replace('.', ',') : Math.round(pct)) + ' %';
   $('kiAns').textContent = nf.format(t.q) + ' Antworten, ' + nf.format(Math.round(t.n)) + ' von ' + nf.format(G) + ' Neuronen';
-  var st = t.n >= cap ? ['crit', 'Bremse aktiv: Soul antwortet heute einfacher', 'M12 3 2 21h20L12 3zm0 6v5m0 3v.5'] : t.n >= cap * 0.75 ? ['warn', 'Bald erreicht', 'M12 3 2 21h20L12 3zm0 6v5m0 3v.5'] : ['good', 'Alles im grünen Bereich', 'M5 12.5 10 17 19 7'];
+  var st = t.n >= cap ? ['crit', 'Bremse aktiv: Juno antwortet heute einfacher', 'M12 3 2 21h20L12 3zm0 6v5m0 3v.5'] : t.n >= cap * 0.75 ? ['warn', 'Bald erreicht', 'M12 3 2 21h20L12 3zm0 6v5m0 3v.5'] : ['good', 'Alles im grünen Bereich', 'M5 12.5 10 17 19 7'];
   $('kiStatus').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--' + st[0] + ')" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="' + st[2] + '"/></svg>' + st[1];
   $('kiFill').style.width = Math.min(100, pct) + '%';
   $('kiBrake').style.left = 'calc(' + (cap / G * 100) + '% - 1px)';
@@ -131,7 +131,7 @@ var D = /*DATA*/{};
   // Kennzahlen
   var k = [[D.nutzer, 'Konten gesamt'], [D.neu7, 'Neu (7 Tage)'], [D.aktiv7, 'Aktiv (7 Tage)'], [D.plus, 'Plus-Konten'],
     [D.nutzer ? Math.round(D.anonym / D.nutzer * 100) + ' %' : '–', 'teilen anonyme Statistik']];
-  var q30 = 0; (D.ki || []).forEach(function (x) { q30 += x.q; }); k.splice(4, 0, [q30, 'Soul-Antworten (30 Tage)']);
+  var q30 = 0; (D.ki || []).forEach(function (x) { q30 += x.q; }); k.splice(4, 0, [q30, 'Juno-Antworten (30 Tage)']);
   $('kpis').innerHTML = k.map(function (x) { return '<div class="kpi"><b>' + (typeof x[0] === 'number' ? nf.format(x[0]) : x[0]) + '</b><span>' + x[1] + '</span></div>'; }).join('');
 
   // Saeulen mit Hover
@@ -188,8 +188,8 @@ var D = /*DATA*/{};
   var reg = window.Intl && Intl.DisplayNames ? new Intl.DisplayNames(['de'], { type: 'region' }) : null, lng = window.Intl && Intl.DisplayNames ? new Intl.DisplayNames(['de'], { type: 'language' }) : null;
   hbars($('hLand'), D.laender, function (c) { try { return c === 'Andere' || c === '?' ? (c === '?' ? 'Unbekannt' : c) : reg.of(c); } catch (e) { return c; } }, 8);
   hbars($('hLang'), D.sprachen, function (c) { try { return c === 'Andere' || c === '?' ? (c === '?' ? 'Unbekannt' : c) : lng.of(c); } catch (e) { return c; } }, 6);
-  var FN = { soul_llm: 'Soul (Sprachmodell)', soul_cloud: 'Soul (Server-KI)', route: 'Route planen', nav: 'Navigation', tour: 'Tourvorschläge', ride: 'Fahrt aufgezeichnet', offline: 'Offline-Karten', live: 'Live-Standort', gpx: 'GPX-Export' };
-  hbars($('hFeat'), D.feats, function (c) { return FN[c] || (c.indexOf('soul_') === 0 ? 'Soul: ' + c.slice(5).replace(/_/g, ' ') : c.replace(/_/g, ' ')); }, 10);
+  var FN = { soul_llm: 'Juno (Sprachmodell)', soul_cloud: 'Juno (Server-KI)', route: 'Route planen', nav: 'Navigation', tour: 'Tourvorschläge', ride: 'Fahrt aufgezeichnet', offline: 'Offline-Karten', live: 'Live-Standort', gpx: 'GPX-Export' };
+  hbars($('hFeat'), D.feats, function (c) { return FN[c] || (c.indexOf('soul_') === 0 ? 'Juno: ' + c.slice(5).replace(/_/g, ' ') : c.replace(/_/g, ' ')); }, 10);
 })();
 </script>
 </body>

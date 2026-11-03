@@ -19,12 +19,12 @@ Wichtigste Änderungen in 7.0:
 - Ansagen in Deutsch, Englisch, Französisch, Italienisch und Spanisch (Stimme folgt der App-Sprache)
 - Ohne Konto nutzbar, verständliche Fehlermeldungen bei der Anmeldung, Konto-Löschung wartet auf den Server, Web-Löschseite
 - Plus wird nicht mehr gratis freigeschaltet (Kauf über Google Play folgt), Server ignoriert Plus-Anfragen der App
-- Soul: „Antwort melden“ unter KI-Antworten (Google-Play-Regel für generative KI)
+- Juno: „Antwort melden“ unter KI-Antworten (Google-Play-Regel für generative KI)
 - Velo, der Fuchs: plastischer (Licht und Schatten), reagiert kurz mit 3D-Drehung (Begrüßung, Route fertig, Fehler, Speichern), nie während der Navigation
 - Kategorien wirken weltweit, Startseite lädt Orte nach, ruhigere Karte, kleine Bildschirme und Tablets
 - Android: Absturz beim Vibrieren auf Android 7 behoben, Startbildschirm (Splash) für Android 12+, Symbol für einfarbige Themes
 
-Fahrrad-Navigation weltweit für Android (APK) und Windows (EXE), mit der KI Soul (echtes Sprachmodell direkt auf dem Gerät) und dem Maskottchen Velo (Fuchs).
+Fahrrad-Navigation weltweit für Android (APK) und Windows (EXE), mit der KI Juno (echtes Sprachmodell direkt auf dem Gerät) und dem Maskottchen Velo (Fuchs).
 
 - Fertige Dateien: `dist/Velora.apk` (`./build.sh`, braucht Android SDK mit build-tools 36.1.0 und platform android-36, JDK 17+) und `dist/Velora.exe` (`./build-desktop.sh`)
 - Paketname: `app.velora.bike`
@@ -36,19 +36,19 @@ Karte und Routen kommen online: OpenFreeMap (OpenMapTiles), AWS Terrain Tiles, w
 Ortssuche Photon/Nominatim, Tagesplaner-Orte über Overpass (OpenStreetMap). `app/assets/data.js` enthält eine kleine Offline-Testregion
 (Daten-Werkzeuge in `tools/`), die nur benutzt wird, wenn man sich dort befindet.
 
-## KI "Soul" (ab 6.4, in der App)
+## KI "Juno" (ab 6.4, in der App)
 
-`app/assets/soul.js` ist die eigene KI von Velora, nach dem Prinzip des Projekts "Soul": Absichten erkennen (Deutsch und Englisch,
+`app/assets/soul.js` ist die eigene KI von Velora, nach dem Prinzip des Projekts "Juno": Absichten erkennen (Deutsch und Englisch,
 mit Tippfehler-Korrektur), Orte, Zeiten und Zahlen herauslesen, Werkzeuge der App ausführen (Route, Anpassen, Tour, Navigation),
 Fahrten auswerten, Wetter (Open-Meteo), Orte in der Nähe (Karte, Overpass), Rad-Hilfe, Training, Plaudern mit Emojis und
 Gesprächskontext. Wissensfragen recherchiert sie im Hintergrund (Wikipedia, auf Android zusätzlich DuckDuckGo über `fetchText`)
 und wählt die passendsten Sätze aus. `app/assets/soul-data.js` enthält ihr Wissen: Fahrrad-Wissensbuch (rund 75 Themen),
-Plauder-Sammlung, Fakten, Rätsel, Quiz, Geschichten und Gedichte. Soul merkt sich, was Nutzer über sich erzählen (nur auf dem Gerät),
+Plauder-Sammlung, Fakten, Rätsel, Quiz, Geschichten und Gedichte. Juno merkt sich, was Nutzer über sich erzählen (nur auf dem Gerät),
 versteht Folgefragen zum letzten Thema und wiederholt Formulierungen nicht direkt. Kein Server, keine fremde KI, keine Kosten. Der frühere Server-Weg (unten) bleibt nur für alte App-Versionen.
 
-## Soul über den Server (ab 6.7, Standard)
+## Juno über den Server (ab 6.7, Standard)
 
-Soul fragt zuerst den Velora-Server: `POST /soul` (`server/soul.js`) rechnet mit Cloudflare Workers AI (`@cf/qwen/qwen3-30b-a3b-fp8`,
+Juno fragt zuerst den Velora-Server: `POST /soul` (`server/soul.js`) rechnet mit Cloudflare Workers AI (`@cf/qwen/qwen3-30b-a3b-fp8`,
 ohne "Nachdenken") und streamt die Antwort. Das geht auf jedem Handy in etwa 1 bis 2 Sekunden.
 
 Kostenbremse, damit nie mehr als der Workers-Tarif (5 US-Dollar im Monat) anfällt:
@@ -60,15 +60,15 @@ Kostenbremse, damit nie mehr als der Workers-Tarif (5 US-Dollar im Monat) anfäl
 
 Reihenfolge in der App: Server, dann (falls geladen) das Modell auf dem Gerät als Offline-Modus, dann die Regel-KI.
 
-## Soul-Sprachmodell (ab 6.6, auf dem Gerät, jetzt "Offline-Modus")
+## Juno-Sprachmodell (ab 6.6, auf dem Gerät, jetzt "Offline-Modus")
 
-Soul kann ein echtes KI-Sprachmodell nutzen, das komplett auf dem Gerät läuft (llama.cpp, Modelle von Qwen, Apache-2.0).
-Kein Cloudflare, keine fremde KI, keine laufenden Kosten. Der Nutzer lädt das Modell einmalig im Soul-Chat herunter:
+Juno kann ein echtes KI-Sprachmodell nutzen, das komplett auf dem Gerät läuft (llama.cpp, Modelle von Qwen, Apache-2.0).
+Kein Cloudflare, keine fremde KI, keine laufenden Kosten. Der Nutzer lädt das Modell einmalig im Juno-Chat herunter:
 
 | Modell | Datei | Größe | Für |
 |---|---|---|---|
-| Soul | Qwen3-1.7B Q4_K_M | 1,1 GB | jedes Handy, schnell |
-| Soul Pro | Qwen3-4B-Instruct-2507 Q4_K_M | 2,5 GB | ab etwa 6 GB RAM empfohlen, klüger |
+| Juno | Qwen3-1.7B Q4_K_M | 1,1 GB | jedes Handy, schnell |
+| Juno Pro | Qwen3-4B-Instruct-2507 Q4_K_M | 2,5 GB | ab etwa 6 GB RAM empfohlen, klüger |
 
 - Android: `native/velora_llm.cpp` (JNI um llama.cpp), gebaut mit `./build-native.sh` (NDK, llama.cpp fest auf b12032) zu
   `app/lib/arm64-v8a/libvelora_llm.so` (ARMv8.2 mit dotprod) und `libvelora_llm_base.so` (ältere Handys). `Llm.java` lädt die passende
@@ -77,7 +77,7 @@ Kein Cloudflare, keine fremde KI, keine laufenden Kosten. Der Nutzer lädt das M
 - `app/assets/soul-llm.js`: Modellkarte im Chat (Download, Fortschritt, Verwalten), Prompt (Persönlichkeit, Info, Suchergebnisse, Verlauf), Streaming.
 - `soul.js` entscheidet: App-Aktionen (Route, Tour, Wetter, Orte, Navigation, Statistik, Rechnen, Gedächtnis) bleiben regelbasiert;
   Gespräch, Wissen und Rad-Fragen beantwortet das Sprachmodell, bei Faktenfragen mit Wikipedia und Websuche als Grundlage.
-  Ohne Modell (oder bei einem Fehler) antwortet Soul wie bisher regelbasiert.
+  Ohne Modell (oder bei einem Fehler) antwortet Juno wie bisher regelbasiert.
 - Später ein eigener Server: `localStorage.soulServer = "https://..."` (llama-server-kompatibles `/completion`), `soulServerModel` = `std` oder `pro`.
 
 ## KI "Juno" (Server, alt)

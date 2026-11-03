@@ -4,7 +4,7 @@
 
 **App-Name (max. 30):** Velora – Fahrrad-Navigation
 
-**Kurzbeschreibung (max. 80):** Radrouten weltweit, Navi mit Ansagen, Touren, Fahrtenbuch und die KI Soul.
+**Kurzbeschreibung (max. 80):** Radrouten weltweit, Navi mit Ansagen, Touren, Fahrtenbuch und die KI Juno.
 
 **Vollständige Beschreibung:**
 
@@ -37,8 +37,8 @@ DEIN FAHRTENBUCH
 • Teile deine Fahrt als schönes Bild mit Strecke und Werten
 
 SOUL, DEINE RAD-KI
-• Frag Soul, was du willst: „Plan mir eine 2-Stunden-Tour“, „Regnet es morgen?“, „Wie flicke ich einen Platten?“
-• Soul kennt deine Fahrdaten, findet echte Orte und plant Routen für dich
+• Frag Juno, was du willst: „Plan mir eine 2-Stunden-Tour“, „Regnet es morgen?“, „Wie flicke ich einen Platten?“
+• Juno kennt deine Fahrdaten, findet echte Orte und plant Routen für dich
 • Unanständige oder falsche Antworten kannst du direkt melden
 
 PRIVAT UND FAIR
@@ -54,7 +54,7 @@ Karten: © OpenStreetMap-Mitwirkende, OpenFreeMap. Routen: BRouter. Wetter: Open
 
 **App name:** Velora – Bike Navigation
 
-**Short description:** Bike routes worldwide, voice navigation, tours, ride log and the AI Soul.
+**Short description:** Bike routes worldwide, voice navigation, tours, ride log and the AI Juno.
 
 **Full description:**
 
@@ -86,8 +86,8 @@ YOUR RIDE LOG
 • Share your ride as a beautiful image with route and stats
 
 SOUL, YOUR CYCLING AI
-• Ask Soul anything: “Plan a 2-hour tour”, “Will it rain tomorrow?”, “How do I fix a flat?”
-• Soul knows your rides, finds real places and plans routes for you
+• Ask Juno anything: “Plan a 2-hour tour”, “Will it rain tomorrow?”, “How do I fix a flat?”
+• Juno knows your rides, finds real places and plans routes for you
 • You can report inappropriate or wrong answers right in the chat
 
 PRIVATE AND FAIR

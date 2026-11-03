@@ -45,15 +45,15 @@ SHA-256 des Upload-Zertifikats: `13:6F:8B:10:98:4C:50:7F:5A:3E:67:65:7E:E1:30:20
 
 **Zielgruppe:** 13–15, 16–17 und 18+ (nicht unter 13, damit gilt nicht die Familienrichtlinie). Für ein Konto verlangt die Datenschutzerklärung mindestens 14 Jahre.
 
-**Inhaltsbewertung (IARC):** keine Gewalt, keine sexuellen Inhalte, kein Glücksspiel. Nutzer können mit einer KI chatten (Soul), Live-Standort kann mit einem Link geteilt werden. Keine Kommunikation zwischen Nutzern.
+**Inhaltsbewertung (IARC):** keine Gewalt, keine sexuellen Inhalte, kein Glücksspiel. Nutzer können mit einer KI chatten (Juno), Live-Standort kann mit einem Link geteilt werden. Keine Kommunikation zwischen Nutzern.
 
-**KI-Inhalte:** Soul erzeugt Antworten mit einem Sprachmodell. Unter jeder KI-Antwort gibt es „Antwort melden“. Meldungen erscheinen im Admin-Dashboard.
+**KI-Inhalte:** Juno erzeugt Antworten mit einem Sprachmodell. Unter jeder KI-Antwort gibt es „Antwort melden“. Meldungen erscheinen im Admin-Dashboard.
 
 **Vordergrunddienst (Android 14+):** Typ `location`, Anwendungsfall „Navigation“.
 Beschreibung: „Während einer vom Nutzer gestarteten Navigation oder Fahrtaufzeichnung bekommt Velora weiter GPS-Positionen, damit Abbiegehinweise und die Aufzeichnung auch bei gesperrtem Bildschirm funktionieren. Ohne den Dienst bricht die Navigation ab, sobald der Bildschirm ausgeht.“
 Video: Ziel suchen → „Hierhin fahren“ → „Los fahren“ → Bildschirm sperren → Benachrichtigung und Ansage zeigen.
 
-**Berechtigungen:** Standort (genau und ungefähr; nur im Vordergrund, kein Hintergrund-Standort), Mikrofon (nur für die Spracheingabe bei Soul, wird erst beim Antippen abgefragt), Benachrichtigungen (Navigation läuft), Vibration, Internet.
+**Berechtigungen:** Standort (genau und ungefähr; nur im Vordergrund, kein Hintergrund-Standort), Mikrofon (nur für die Spracheingabe bei Juno, wird erst beim Antippen abgefragt), Benachrichtigungen (Navigation läuft), Vibration, Internet.
 
 **Datensicherheit (Data safety):**
 
@@ -62,7 +62,7 @@ Video: Ziel suchen → „Hierhin fahren“ → „Los fahren“ → Bildschirm 
 | Genauer Standort | Ja (an Routen-/Wetterdienste für die Funktion; an den Velora-Server nur beim Live-Teilen) | Nein | App-Funktionen | Teilweise (Navigation braucht ihn) |
 | Name, E-Mail-Adresse | Ja, nur mit Konto | Nein | Kontoverwaltung | Ja |
 | Nutzungsdaten (Funktionen, Gegenden als 2-km-Kacheln) | Ja, nur mit Zustimmung, anonym | Nein | Analyse | Ja |
-| Andere Nutzerinhalte (Fragen an Soul) | Ja, nur kurzzeitig verarbeitet, nicht gespeichert (gemeldete Antworten 90 Tage) | Nein | App-Funktionen | Ja |
+| Andere Nutzerinhalte (Fragen an Juno) | Ja, nur kurzzeitig verarbeitet, nicht gespeichert (gemeldete Antworten 90 Tage) | Nein | App-Funktionen | Ja |
 
 Daten werden verschlüsselt übertragen (HTTPS). Nutzer können die Löschung ihrer Daten beantragen (in der App und über die Web-Seite).
 
@@ -86,4 +86,4 @@ Zum Einbauen nötig:
 
 - Nur arm64-Geräte (64-Bit). Ältere reine 32-Bit-Handys sehen die App im Store nicht.
 - Sprachansagen brauchen die entsprechende Stimme auf dem Gerät; fehlt sie, wird Deutsch verwendet.
-- Offline-Karten und der Offline-Modus von Soul brauchen viel Speicher; beides ist freiwillig.
+- Offline-Karten und der Offline-Modus von Juno brauchen viel Speicher; beides ist freiwillig.

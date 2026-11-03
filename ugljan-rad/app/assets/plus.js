@@ -26,7 +26,7 @@
   function setPlus(on) { P.on = on; P.since = on ? Date.now() : 0; V.store('plus', P); applyLook(); updWidget(); if (VX.onPlus) VX.onPlus(on); }
   var TAG = '<span class="plustag">PLUS</span>';
   var FEATS = [
-    ['juno', 'Soul als Reiseführer', 'Erzählt unterwegs, an welchen Orten du gerade vorbeifährst.'],
+    ['juno', 'Juno als Reiseführer', 'Erzählt unterwegs, an welchen Orten du gerade vorbeifährst.'],
     ['loop', 'Tagesplaner', 'Ein ganzer Tag mit Aussicht, Mittagessen und Badestopp als eine Route.'],
     ['bike', 'Mehr Fahrprofile', 'Gravel sowie Familie mit Kindern (ruhig und flach).'],
     ['wind', 'E-Bike-Akkuplaner', 'Reicht dein Akku für die Route? Mit Ladestationen in der Nähe.'],
@@ -57,12 +57,12 @@
       '<button class="px-close" id="pxClose" aria-label="Schließen"><svg width="22" height="22" viewBox="0 0 24 24" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>' +
       '<div class="px-scroll"><div class="px-hero"><div class="px-ring"></div>' + mascot('cheer', 150) + '</div>' +
       '<div class="px-logo">VELORA <span class="px-rb">PLUS</span></div>' +
-      '<div class="px-sub">' + (why ? esc(why) + ' gehört zu Velora Plus.' : 'Mehr Soul, mehr Touren, mehr Abenteuer.') + '</div>' +
+      '<div class="px-sub">' + (why ? esc(why) + ' gehört zu Velora Plus.' : 'Mehr Juno, mehr Touren, mehr Abenteuer.') + '</div>' +
       '<div class="px-feats">' + FEATS.map(function (f, i) { return '<div class="px-card" style="animation-delay:' + (0.15 + i * 0.06).toFixed(2) + 's"><div class="px-ic">' + svg(f[0], '#ffffff', 20, 2.3) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') + '</div>' +
       '<div class="px-price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><span class="px-pl">Monatlich</span><b>2,99 €</b><span>pro Monat</span></button>' +
       '<button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '"><em>Spare 44 %</em><span class="px-pl">Jährlich</span><b>19,99 €</b><span>nur 1,67 € im Monat</span></button></div>' +
       (BILLING || TESTER ? '<button class="px-cta" id="plusGo"><span>' + (BILLING ? 'Plus kaufen' : 'Zum Ausprobieren freischalten (Test)') + '</span></button>' : '<button class="px-cta soon" id="plusGo" disabled><span>Bald über Google Play</span></button>') +
-      '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und die KI Soul.</div>' +
+      '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und die KI Juno.</div>' +
       '<div class="px-note">' + (BILLING ? 'Bezahlung und Kündigung über dein Google-Play-Konto.' : TESTER ? 'Testversion: Plus wird hier nur zum Ausprobieren freigeschaltet.' : 'Velora Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.') + '</div></div>';
     document.body.appendChild(el);
     hap('soft');
@@ -351,7 +351,7 @@
     ['night', 'Nachteule', 'mute', [1, 5, 20, 50], function (c) { return c.night; }, function (x) { return x + (x === 1 ? ' Fahrt' : ' Fahrten') + ' nach 21 Uhr'; }],
     ['weekend', 'Wochenendkrieger', 'bike', [5, 25, 100, 250], function (c) { return c.wkend; }, function (x) { return x + ' Fahrten am Wochenende'; }],
     ['speed', 'Rakete', 'wind', [30, 40, 50, 60], function (c) { return c.vmax; }, function (x) { return 'Höchstgeschwindigkeit ' + x + ' km/h'; }],
-    ['juno', 'Soul-Freund', 'juno', [1, 10, 50, 200, 500], function (c) { return c.juno; }, function (x) { return x + (x === 1 ? ' Frage' : ' Fragen') + ' an Soul'; }]
+    ['juno', 'Juno-Freund', 'juno', [1, 10, 50, 200, 500], function (c) { return c.juno; }, function (x) { return x + (x === 1 ? ' Frage' : ' Fragen') + ' an Juno'; }]
   ];
   var GOT = V.load('tiers', {});
   function cellOf(r) { return r.c || null; }
@@ -486,7 +486,7 @@
     m.querySelectorAll('[data-wg]').forEach(function (b) { b.onclick = function () { S.wkGoal = +b.getAttribute('data-wg'); V.saveS(); hap('success'); closeModal(); V.drawHome(); updWidget(); }; });
   }
   VX.askWeekGoal = askWeekGoal;
-  // Fahrdaten fuer die KI Soul (Analysen, Vergleiche, Serie, Abzeichen)
+  // Fahrdaten fuer die KI Juno (Analysen, Vergleiche, Serie, Abzeichen)
   VX.statsData = function () {
     var now = Date.now(), ws = weekStart(now), mo = new Date(now); mo.setDate(1); mo.setHours(0, 0, 0, 0);
     var lm = new Date(mo); lm.setMonth(lm.getMonth() - 1);
@@ -574,7 +574,7 @@
   }
 
   // =====================================================================
-  // Soul: kostenlos 5 Fragen am Tag, mit Plus unbegrenzt
+  // Juno: kostenlos 5 Fragen am Tag, mit Plus unbegrenzt
   // =====================================================================
   // Credits: jede Rechenrunde der KI kostet einen (einfache Frage 1, mit Suche oder Recherche 2 bis 4)
   var CR_FREE = 10, CR_PLUS = 100;
@@ -582,17 +582,17 @@
   function crUsed() { var c = V.load('junoCr', { d: '', n: 0 }); return c.d === dayKey(Date.now()) ? c.n : 0; }
   function crLeft() { return VX.srvCredits ? VX.srvCredits.left : Math.max(0, crMax() - crUsed()); }
   VX.junoGate = function () {
-    if (window.Soul) return true; // Soul laeuft in der App: kein Limit, keine Kosten
+    if (window.Soul) return true; // Juno laeuft in der App: kein Limit, keine Kosten
     if (crLeft() >= 1) return true;
     if (isPlus()) { V.toast('Deine ' + CR_PLUS + ' Credits für heute sind aufgebraucht. Morgen gibt es neue.'); return false; }
-    paywall('Mehr Soul-Credits (' + CR_PLUS + ' statt ' + CR_FREE + ' am Tag)'); return false;
+    paywall('Mehr Juno-Credits (' + CR_PLUS + ' statt ' + CR_FREE + ' am Tag)'); return false;
   };
   VX.junoUsed = function (cr) {
     if (window.Soul) { V.store('junoTotal', V.load('junoTotal', 0) + 1); checkBadges(true); return; }
     V.store('junoCr', { d: dayKey(Date.now()), n: crUsed() + (cr || 1) });
     V.store('junoTotal', V.load('junoTotal', 0) + 1);
     var left = crLeft();
-    if (!isPlus() && left <= 3) V.toast(left ? 'Noch ' + left + ' Soul-Credits heute' : 'Soul-Credits für heute aufgebraucht');
+    if (!isPlus() && left <= 3) V.toast(left ? 'Noch ' + left + ' Juno-Credits heute' : 'Juno-Credits für heute aufgebraucht');
     var h = $('crHead'); if (h) h.outerHTML = VX.junoHead();
     checkBadges(true);
   };
@@ -768,7 +768,7 @@
     b.onclick = liveStart;
   };
 
-  // ---------- Soul als Reisefuehrer (Wikipedia, kostet kein Soul-Kontingent) ----------
+  // ---------- Juno als Reisefuehrer (Wikipedia, kostet kein Juno-Kontingent) ----------
   function guideCheck(ref) {
     if (!isPlus() || !S.guide || V.lastSpeed < 4) return;
     var now = Date.now(); if (now - guideT < 90000) return; guideT = now;
@@ -899,7 +899,7 @@
       '<h3>Wie lange?</h3><div class="seg">' + [3, 5, 7].map(function (h) { return '<button data-dph="' + h + '" class="' + (DP.h === h ? 'on' : '') + '">' + h + ' Stunden</button>'; }).join('') + '</div>' +
       '<h3>Start</h3><div class="seg">' + [8, 9, 10, 11, 13].map(function (h) { return '<button data-dps="' + h + '" class="' + (DP.start === h ? 'on' : '') + '">' + h + ':00</button>'; }).join('') + '</div>' +
       '<h3>Was willst du erleben?</h3><div class="hscroll" style="flex-wrap:wrap;overflow:visible">' + W.map(function (w) { return '<button class="chip' + (DP.want[w[0]] ? ' on' : '') + '" data-dpw="' + w[0] + '">' + w[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="btns"><button class="go" id="dpGo">Tag planen</button></div><div class="btns"><button class="go sec" id="dpJuno">Soul um Ideen fragen</button></div><div id="dpOut"></div>' +
+      '<div class="btns"><button class="go" id="dpGo">Tag planen</button></div><div class="btns"><button class="go sec" id="dpJuno">Juno um Ideen fragen</button></div><div id="dpOut"></div>' +
       '<div class="btns"><button class="go sec" id="dpBack">Zurück</button></div>');
     V.sheetEl.querySelectorAll('[data-dph]').forEach(function (b) { b.onclick = function () { DP.h = +b.getAttribute('data-dph'); V.store('dayplan', DP); showDayPlan(); }; });
     V.sheetEl.querySelectorAll('[data-dps]').forEach(function (b) { b.onclick = function () { DP.start = +b.getAttribute('data-dps'); V.store('dayplan', DP); showDayPlan(); }; });
@@ -1067,7 +1067,7 @@
       '<div class="seg" style="margin-top:0">' + [['off', 'Aus'], ['auto', 'Automatisch'], ['on', 'An']].map(function (x) { return '<button data-night="' + x[0] + '" class="' + (S.night === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>' +
       '<div class="opt"><div class="grow">Farbe</div></div><div class="hscroll" style="margin-top:0">' + THEMES.map(function (t, i) { return '<button class="chip' + (S.theme === t[0] ? ' on' : '') + '" data-theme="' + t[0] + '"><i style="width:12px;height:12px;border-radius:50%;background:' + t[2] + ';display:inline-block"></i>' + t[1] + (t[3] && !plus ? TAG : '') + '</button>'; }).join('') + '</div>' +
       '<div class="opt"><div class="grow">Navigationspfeil</div></div><div class="hscroll" style="margin-top:0">' + Object.keys(ARROWS).map(function (k) { return '<button class="chip' + (S.arrow === k ? ' on' : '') + '" data-arrow="' + k + '"><span style="width:18px;height:20px;display:inline-block">' + ARROWS[k][1] + '</span>' + ARROWS[k][0] + (plus || k === '3d' || k === 'pfeil' ? '' : TAG) + '</button>'; }).join('') + '</div>' +
-      '<div class="opt"><div class="grow">Soul als Reiseführer' + (plus ? '' : TAG) + '<div class="sub">Erzählt unterwegs über Orte, an denen du vorbeifährst</div></div>' + '<div class="sw' + (S.guide && plus ? ' on' : '') + '" id="swGuide"></div></div>' +
+      '<div class="opt"><div class="grow">Juno als Reiseführer' + (plus ? '' : TAG) + '<div class="sub">Erzählt unterwegs über Orte, an denen du vorbeifährst</div></div>' + '<div class="sw' + (S.guide && plus ? ' on' : '') + '" id="swGuide"></div></div>' +
       (S.bike === 'road' ? '<div class="opt"><div class="grow">Rennrad: maximale Steigung</div></div><div class="seg" style="margin-top:0">' + [[0, 'Egal'], [0.06, '6 %'], [0.08, '8 %'], [0.1, '10 %']].map(function (x) { return '<button data-maxg="' + x[0] + '" class="' + (S.maxG === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>' : '');
   };
   VX.menuBound = function () {
@@ -1078,7 +1078,7 @@
     el.querySelectorAll('[data-theme]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-theme'); if (!themeFree(t) && !gate('Diese Farbe')) return; S.theme = t; V.saveS(); applyLook(); V.showMenu(); }; });
     el.querySelectorAll('[data-arrow]').forEach(function (b) { b.onclick = function () { var a = b.getAttribute('data-arrow'); if (a !== '3d' && a !== 'pfeil' && !gate('Navigationspfeile')) return; S.arrow = a; V.saveS(); setArrowSkin(); V.showMenu(); }; });
     el.querySelectorAll('[data-maxg]').forEach(function (b) { b.onclick = function () { S.maxG = +b.getAttribute('data-maxg'); V.saveS(); V.computeCosts(); V.showMenu(); }; });
-    if ($('swGuide')) $('swGuide').onclick = function () { if (!gate('Soul als Reiseführer')) return; S.guide = !S.guide; V.saveS(); this.classList.toggle('on', S.guide); };
+    if ($('swGuide')) $('swGuide').onclick = function () { if (!gate('Juno als Reiseführer')) return; S.guide = !S.guide; V.saveS(); this.classList.toggle('on', S.guide); };
     if ($('mSaved')) $('mSaved').onclick = showSaved;
     if ($('mOffline')) $('mOffline').onclick = showOffline;
   };

@@ -1,7 +1,7 @@
-/* Soul-Sprachmodell: ein echtes KI-Sprachmodell, das direkt auf dem Geraet laeuft (llama.cpp mit Qwen3).
+/* Juno-Sprachmodell: ein echtes KI-Sprachmodell, das direkt auf dem Geraet laeuft (llama.cpp mit Qwen3).
    Android: ueber die App-Bruecke (JNI). Windows: ein mitgeliefertes llama-server-Programm auf dem eigenen PC.
    Spaeter optional: ein eigener Server mit derselben Schnittstelle (localStorage "soulServer").
-   Kein Cloudflare, keine fremde KI, keine Kosten. Soul (soul.js) entscheidet, wann das Modell gefragt wird. */
+   Kein Cloudflare, keine fremde KI, keine Kosten. Juno (soul.js) entscheidet, wann das Modell gefragt wird. */
 (function () {
   'use strict';
   var V = window.V, VX = window.VX || (window.VX = {}); if (!V) return;
@@ -10,8 +10,8 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
   var MODELS = {
-    std: { n: 'Soul', d: 'Schnell, läuft auf jedem Handy', size: 1107409472, think: true },
-    pro: { n: 'Soul Pro', d: 'Klüger und natürlicher, braucht ein starkes Gerät', size: 2497281120, think: false }
+    std: { n: 'Juno', d: 'Schnell, läuft auf jedem Handy', size: 1107409472, think: true },
+    pro: { n: 'Juno Pro', d: 'Klüger und natürlicher, braucht ein starkes Gerät', size: 2497281120, think: false }
   };
   function srvUrl() { try { return (localStorage.getItem('soulServer') || '').replace(/\/+$/, ''); } catch (e) { return ''; } }
   function srvModel() { try { return localStorage.getItem('soulServerModel') || ''; } catch (e) { return ''; } }
@@ -23,7 +23,7 @@
   }
   var st = { info: null, loaded: '', loading: null, dl: null, err: '', port: 0 };
   var wants = V.load('soulModel', '');            // gewaehltes Modell ('std' | 'pro')
-  var hideCard = true;   // Soul laeuft ueber den Server; das Geraete-Modell ist ein freiwilliger Offline-Modus
+  var hideCard = true;   // Juno laeuft ueber den Server; das Geraete-Modell ist ein freiwilliger Offline-Modus
 
   function info() {
     var b = backend();
@@ -96,7 +96,7 @@
   // Prompt bauen und Text erzeugen
   // ---------------------------------------------------------------------------------------------
   var SYS = [
-    'Du bist Soul, die KI in der Fahrrad-App Velora. Du läufst direkt auf dem Gerät der Person, privat und ohne Cloud.',
+    'Du bist Juno, die KI in der Fahrrad-App Velora. Du läufst direkt auf dem Gerät der Person, privat und ohne Cloud.',
     'Stil: locker, warmherzig und natürlich, wie ein guter Freund. Du duzt. Antworte in der Sprache, in der die Person schreibt (meist Deutsch), in korrekter Grammatik.',
     'Länge: meist 1 bis 3 kurze Sätze. Nur bei Erklärungen, Anleitungen oder Tipps ausführlicher, dann mit kurzen Stichpunkten ("- ").',
     'Verwende ein oder zwei passende Emojis. Keine Kosenamen und nimm kein Geschlecht an.',
@@ -129,7 +129,7 @@
   function clean(t, final) {
     t = String(t).replace(/<think>[\s\S]*?<\/think>\s*/g, '').replace(/^<think>[\s\S]*$/, '').replace(/<\|im_(start|end)\|>.*$/s, '');
     t = t.replace(/\u{1F6B4}\u200D[\u2640\u2642]\uFE0F?/gu, '\u{1F6B4}').replace(/\u{1F6B5}\u200D[\u2640\u2642]\uFE0F?/gu, '\u{1F6B5}');
-    t = t.replace(/^\s*(Soul|Assistant|Assistent)\s*:\s*/i, '').replace(/\[(Info|Velora-Wissen|Suchergebnisse)[^\]]*\]\s*/g, '');
+    t = t.replace(/^\s*(Juno|Assistant|Assistent)\s*:\s*/i, '').replace(/\[(Info|Velora-Wissen|Suchergebnisse)[^\]]*\]\s*/g, '');
     return final ? t.trim() : t.replace(/^\s+/, '');
   }
   var gid = 0;
@@ -171,7 +171,7 @@
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Soul ueber den Velora-Server (Cloudflare Workers AI): schnell auf jedem Handy, mit Kostenbremse auf dem Server
+  // Juno ueber den Velora-Server (Cloudflare Workers AI): schnell auf jedem Handy, mit Kostenbremse auf dem Server
   // ---------------------------------------------------------------------------------------------
   var CLOUD = 'https://velora-ki.toni-sagmeister11.workers.dev/soul';
   var block = V.load('soulBlock', { until: 0, why: '' });
@@ -189,8 +189,8 @@
           var g = j.grenze;
           block = { until: g === 'minute' ? Date.now() + 60000 : nextUtcDay(), why: g };
           if (g !== 'minute') V.store('soulBlock', block);
-          if (g === 'tag') V.toast('Soul ist für heute ausgelastet. Bis morgen antworte ich etwas einfacher.');
-          else if (g === 'person') V.toast('Deine Soul-Antworten für heute sind aufgebraucht. Morgen gibt es neue.');
+          if (g === 'tag') V.toast('Juno ist für heute ausgelastet. Bis morgen antworte ich etwas einfacher.');
+          else if (g === 'person') V.toast('Deine Juno-Antworten für heute sind aufgebraucht. Morgen gibt es neue.');
           throw new Error('limit');
         });
         if (!r.ok || !r.body) throw new Error('http ' + r.status);
@@ -250,7 +250,7 @@
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Oberflaeche: Karte oben im Soul-Chat (Download, Fortschritt, Modellwahl)
+  // Oberflaeche: Karte oben im Juno-Chat (Download, Fortschritt, Modellwahl)
   // ---------------------------------------------------------------------------------------------
   function gb(b) { return (b / 1e9).toFixed(1).replace('.', ',') + ' GB'; }
   var manage = false;
@@ -262,7 +262,7 @@
       var p = dl.total ? Math.min(100, dl.done / dl.total * 100) : 0;
       return '<div class="sllm" id="soulLlm"><div class="sllm-t"><b>' + (dl.state === 'check' ? 'Wird geprüft' : MODELS[dl.which].n + ' wird geladen') + '</b><span id="sllmPct">' + Math.floor(p) + ' %</span></div>' +
         '<div class="meter sllm-bar"><i id="sllmBar" style="width:' + p + '%"></i></div>' +
-        '<div class="sub" id="sllmSub">' + gb(dl.done) + ' von ' + gb(dl.total) + '. Du kannst Soul währenddessen normal benutzen.</div>' +
+        '<div class="sub" id="sllmSub">' + gb(dl.done) + ' von ' + gb(dl.total) + '. Du kannst Juno währenddessen normal benutzen.</div>' +
         '<div class="btns"><button class="chip sm" data-sllm="cancel">Pausieren</button></div></div>';
     }
     if (have && !manage) {
@@ -280,7 +280,7 @@
     }).join('');
     return '<div class="sllm big" id="soulLlm">' + (have ? '<div class="sllm-t"><b>Sprachmodell verwalten</b><button class="chip sm" data-sllm="close">Fertig</button></div>' :
       '<div class="sllm-t"><b>Offline-Modus</b><button class="chip sm" data-sllm="hide">Schließen</button></div>' +
-      '<div class="sub">Soul antwortet normalerweise über das Internet. Für unterwegs ohne Netz kannst du zusätzlich ein Sprachmodell auf dein Gerät laden. Das braucht viel Speicher und ein starkes Gerät. WLAN empfohlen.</div>') +
+      '<div class="sub">Juno antwortet normalerweise über das Internet. Für unterwegs ohne Netz kannst du zusätzlich ein Sprachmodell auf dein Gerät laden. Das braucht viel Speicher und ein starkes Gerät. WLAN empfohlen.</div>') +
       opts + '</div>';
   }
   function render() {
@@ -293,7 +293,7 @@
     if (!$('sllmBar')) { render(); return; }
     var p = d.total ? Math.min(100, d.done / d.total * 100) : 0;
     $('sllmBar').style.width = p + '%'; $('sllmPct').textContent = Math.floor(p) + ' %';
-    $('sllmSub').textContent = d.state === 'check' ? 'Fast fertig, die Datei wird geprüft ...' : gb(d.done) + ' von ' + gb(d.total) + '. Du kannst Soul währenddessen normal benutzen.';
+    $('sllmSub').textContent = d.state === 'check' ? 'Fast fertig, die Datei wird geprüft ...' : gb(d.done) + ' von ' + gb(d.total) + '. Du kannst Juno währenddessen normal benutzen.';
   }
   function bind() {
     document.querySelectorAll('[data-sllm]').forEach(function (b) {
@@ -311,7 +311,7 @@
       };
     });
   }
-  // In den Kopf des Soul-Chats einhaengen und beim Oeffnen das Modell aufwecken
+  // In den Kopf des Juno-Chats einhaengen und beim Oeffnen das Modell aufwecken
   var oldHead = VX.junoHead;
   VX.junoHead = function () {
     var h = (oldHead && oldHead()) || '';
