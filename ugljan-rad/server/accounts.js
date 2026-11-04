@@ -165,7 +165,8 @@ export async function accounts(req, env, url) {
   // ---------- Admin ----------
   if (p === '/admin/api/login' && req.method === 'POST') {
     const b = await body(req) || {}, email = cleanEmail(b.email);
-    const admin = cleanEmail(env.ADMIN_EMAIL || '');
+    // Admin-Adresse: Cloudflare-Secret ADMIN_EMAIL oder (ohne Secret) der Eintrag cfg:admin in der Datenbank
+    const admin = cleanEmail(env.ADMIN_EMAIL || await env.USERS.get('cfg:admin') || '');
     const id = admin && email === admin ? await env.USERS.get('e:' + email) : null, u = await getUser(env, id);
     const h = u ? await pwHash(String(b.password || ''), u.pw.s, u.pw.it) : await pwHash('x', 'y', ITER);
     if (!u || !same(h, u.pw.h)) return json({ fehler: 'Kein Zugang.' }, 401);
