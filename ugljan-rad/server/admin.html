@@ -43,8 +43,9 @@ button{background:var(--a);color:#06231a;border:0;border-radius:10px;padding:9px
 <form id="login">
   <h1>BikeOra <span style="color:#2fd59a">Admin</span></h1>
   <div class="note">Melde dich mit deinem BikeOra-Konto an (nur das Admin-Konto hat Zugang).</div>
-  <input id="em" type="email" placeholder="E-Mail" autocomplete="username" required>
-  <input id="pw" type="password" placeholder="Passwort" autocomplete="current-password" required>
+  <input id="em" type="email" placeholder="E-Mail" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+  <input id="pw" type="password" placeholder="Passwort" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+  <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin:4px 0 8px"><input type="checkbox" id="pwShow" style="width:auto;margin:0" onchange="document.getElementById('pw').type=this.checked?'text':'password'"> Passwort anzeigen</label>
   <button>Anmelden</button><div class="err" id="err"></div>
 </form>
 <div id="app" class="hide">

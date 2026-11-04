@@ -169,7 +169,7 @@ export async function accounts(req, env, url) {
     const admin = cleanEmail(env.ADMIN_EMAIL || await env.USERS.get('cfg:admin') || '');
     const id = admin && email === admin ? await env.USERS.get('e:' + email) : null, u = await getUser(env, id);
     const h = u ? await pwHash(String(b.password || ''), u.pw.s, u.pw.it) : await pwHash('x', 'y', ITER);
-    if (!u || !same(h, u.pw.h)) return json({ fehler: 'Kein Zugang.' }, 401);
+    if (!u || !same(h, u.pw.h)) return json({ fehler: 'Kein Zugang: E-Mail oder Passwort stimmt nicht (Groß- und Kleinschreibung beachten) oder dieses Konto ist kein Admin.' }, 401);
     return json({ token: await newSession(env, u.id, true) });
   }
   // Nur anonyme Summen fuer das Dashboard-Artefakt (keine E-Mails, Namen oder IDs).
