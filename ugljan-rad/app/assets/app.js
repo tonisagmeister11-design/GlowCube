@@ -1076,14 +1076,15 @@
   // Nach einer Weile ohne Beruehrung zurueck zur eigenen Position (und Norden oben bzw. Fahrtrichtung)
   setInterval(function () {
     var idle = Date.now() - lastTouch, ref = meRef();
-    if (map.isMoving()) return;
+    if (map.isMoving() || HOOK('flying')) return;   // nicht in die 3D-Vorschau hineinfunken (sonst ruckelt sie jede Sekunde)
     var bTarget = camBearing() !== null ? camBearing() : 0, off = Math.abs(((map.getBearing() - bTarget + 540) % 360) - 180) > 0.5 || (bTarget === 0 && map.getPitch() > 1);
     if (nav && idle > 8000) {
       if (ref && !follow) { setFollow(true); var o = { center: [ref.lon, ref.lat], zoom: Math.max(map.getZoom(), 16), padding: padding(), duration: 900 }; if (camBearing() !== null) { o.bearing = bTarget; o.pitch = 45; } else { o.bearing = 0; o.pitch = 0; } map.easeTo(o); }
       else if (off && !(follow && camBearing() !== null)) map.easeTo({ bearing: bTarget, pitch: bTarget ? 45 : 0, duration: 800, padding: padding() });   // Fahrtrichtung: macht der Kamera-Takt
     } else if (!nav && idle > 20000) {
-      if (ref && !follow && (state === 'home' || state === 'near')) { setFollow(true); map.easeTo({ center: [ref.lon, ref.lat], zoom: Math.max(map.getZoom(), 15), bearing: 0, pitch: 0, padding: padding(), duration: 900 }); }
-      else if (off) smoothBearing(0, 800);
+      // mit 3D-Gelaende bleibt die gekippte Ansicht, die der Nutzer gewaehlt hat
+      if (ref && !follow && (state === 'home' || state === 'near')) { setFollow(true); var o2 = { center: [ref.lon, ref.lat], zoom: Math.max(map.getZoom(), 15), padding: padding(), duration: 900 }; if (!S.terrain3d) { o2.bearing = 0; o2.pitch = 0; } map.easeTo(o2); }
+      else if (off && !S.terrain3d) smoothBearing(0, 800);
     }
   }, 1000);
 
