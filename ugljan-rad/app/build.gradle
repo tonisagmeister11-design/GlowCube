@@ -1,0 +1,70 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Version: hier eintragen, build.sh liest sie ebenfalls von hier
+def appVersionCode = 30
+def appVersionName = '8.0'
+
+android {
+    namespace 'app.velora.bike'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'app.velora.bike'
+        minSdk 24
+        targetSdk 36
+        versionCode appVersionCode
+        versionName appVersionName
+        ndk { abiFilters 'arm64-v8a' }
+    }
+
+    // Vorhandene Ordnerstruktur weiterverwenden
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['java']
+            res.srcDirs = ['res']
+            assets.srcDirs = ['assets']
+            jniLibs.srcDirs = ['lib']
+        }
+    }
+
+    // Upload-Schluessel liegt NICHT im Repository: Pfad und Passwort kommen aus Umgebungsvariablen
+    // (VELORA_UPLOAD_KS, VELORA_UPLOAD_PASS) oder aus ../../release-keys/
+    signingConfigs {
+        release {
+            def ks = System.getenv('VELORA_UPLOAD_KS') ?: file('../../release-keys/velora-upload.jks').path
+            def pw = System.getenv('VELORA_UPLOAD_PASS') ?: (file('../../release-keys/velora-upload.pass').exists() ? file('../../release-keys/velora-upload.pass').text.trim() : null)
+            if (file(ks).exists() && pw) {
+                storeFile file(ks); storePassword pw; keyAlias 'upload'; keyPassword pw
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release.storeFile ? signingConfigs.release : null
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    packaging {
+        jniLibs { useLegacyPackaging false }
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    // Google Play Billing: Kauf von BikeOra Plus
+    implementation 'com.android.billingclient:billing:8.3.0'
+}

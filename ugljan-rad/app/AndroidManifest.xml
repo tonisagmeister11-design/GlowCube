@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="app.velora.bike" android:versionCode="29" android:versionName="7.3">
-    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36" />
+<!-- Paketname, Version und SDK-Stufen stehen in app/build.gradle (eine Quelle fuer Gradle und build.sh) -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -16,7 +15,7 @@
         </intent>
     </queries>
     <application android:enableOnBackInvokedCallback="true" android:label="BikeOra" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
-        android:theme="@style/Velora" android:hardwareAccelerated="true" android:extractNativeLibs="false" android:largeHeap="true">
+        android:theme="@style/Velora" android:hardwareAccelerated="true" android:largeHeap="true">
         <activity android:name=".MainActivity" android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode" android:launchMode="singleTask"
             android:screenOrientation="portrait">

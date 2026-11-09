@@ -8,8 +8,11 @@ cd "$(dirname "$0")"
 rm -rf build/classes build/dex build/gen build/res.zip build/*.apk && mkdir -p build/classes build/dex
 $BT/aapt2 compile --dir app/res -o build/res.zip
 mkdir -p build/gen
-$BT/aapt2 link -o build/base.apk -I $JAR --manifest app/AndroidManifest.xml -A app/assets build/res.zip --java build/gen
-javac -source 11 -target 11 -nowarn -cp $JAR -d build/classes $(find app/java build/gen -name '*.java') 2>&1 | { grep -v "bootstrap class path\|JAVA_TOOL_OPTIONS" || true; }
+# Paketname, Version und SDK-Stufen aus app/build.gradle in eine Kopie des Manifests setzen
+VC=$(grep -o "appVersionCode = [0-9]*" app/build.gradle | grep -o "[0-9]*"); VN=$(grep -o "appVersionName = '[^']*'" app/build.gradle | cut -d"'" -f2)
+sed "s#<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">#<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"app.velora.bike\" android:versionCode=\"$VC\" android:versionName=\"$VN\"><uses-sdk android:minSdkVersion=\"24\" android:targetSdkVersion=\"36\" />#; s#<application #<application android:extractNativeLibs=\"false\" #" app/AndroidManifest.xml > build/AndroidManifest.xml
+$BT/aapt2 link -o build/base.apk -I $JAR --manifest build/AndroidManifest.xml -A app/assets build/res.zip --java build/gen
+javac -source 11 -target 11 -nowarn -cp $JAR -d build/classes $(find app/java build/gen -name '*.java' ! -name 'Billing.java') 2>&1 | { grep -v "bootstrap class path\|JAVA_TOOL_OPTIONS" || true; }
 $BT/d8 --release --min-api 24 --lib $JAR --output build/dex $(find build/classes -name '*.class')
 cp build/base.apk build/unsigned.apk
 (cd build/dex && zip -q -j ../unsigned.apk classes.dex)

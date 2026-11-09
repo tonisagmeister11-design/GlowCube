@@ -55,6 +55,7 @@ import org.json.JSONObject;
 public class MainActivity extends Activity implements LocationListener {
     private WebView web;
     private Llm llm;
+    private Pay pay;
     private LocationManager lm;
     private TextToSpeech tts;
     private boolean ttsReady;
@@ -135,6 +136,11 @@ public class MainActivity extends Activity implements LocationListener {
             }
         });
         llm = new Llm(this, this::js);
+        // Google Play Billing nur, wenn die Bibliothek mitgebaut wurde (Gradle-Build); sonst ohne Kauf
+        try {
+            Llm.Out o = this::js;
+            pay = (Pay) Class.forName("app.velora.bike.Billing").getConstructor(Activity.class, Llm.Out.class).newInstance(this, o);
+        } catch (Throwable t) { pay = null; }
         web.addJavascriptInterface(new Bridge(), "Android");
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
@@ -220,6 +226,7 @@ public class MainActivity extends Activity implements LocationListener {
     @Override
     protected void onResume() {
         super.onResume();
+        if (pay != null) pay.refresh();
         startGps();
     }
 
@@ -526,6 +533,11 @@ public class MainActivity extends Activity implements LocationListener {
             }).start();
         }
 
+        @JavascriptInterface public boolean billingAvailable() { return pay != null && pay.available(); }
+        @JavascriptInterface public String billingInfo() { return pay == null ? "{\"available\":false}" : pay.info(); }
+        @JavascriptInterface public void buyPlus(String plan) { if (pay != null) pay.buy("year".equals(plan) ? "yearly" : "month".equals(plan) ? "monthly" : plan); }
+        @JavascriptInterface public void billingRefresh() { if (pay != null) pay.refresh(); }
+        @JavascriptInterface public void manageSubscription() { if (pay != null) pay.manage(); }
         @JavascriptInterface public String llmInfo() { return llm.info(); }
         @JavascriptInterface public void llmDownload(String w) { llm.download(w); }
         @JavascriptInterface public void llmCancel() { llm.cancel(); }

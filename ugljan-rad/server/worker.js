@@ -247,7 +247,7 @@ export default {
     if (url.pathname === '/soul/report') return soulReport(req, env);
     // Alter Juno-Weg (teures Modell, ohne Kostenbremse): abgeschaltet, die App nutzt /soul
     if (url.pathname === '/chat' || url.pathname === '/ki') return json({ fehler: 'Bitte BikeOra aktualisieren.' }, 410);
-    if (/^\/(auth|me|stats|admin|datenschutz|konto-loeschen)(\/|$)/.test(url.pathname)) { const r = await accounts(req, env, url); if (r) return r; }
+    if (/^\/(auth|me|stats|admin|datenschutz|konto-loeschen|billing)(\/|$)/.test(url.pathname)) { const r = await accounts(req, env, url); if (r) return r; }
     if (req.method !== 'POST' || (url.pathname !== '/chat' && url.pathname !== '/ki' && url.pathname !== '/werkzeug')) return json({ fehler: 'Nicht gefunden' }, 404);
     if (req.headers.get('X-App-Id') !== env.APP_ID) return json({ fehler: 'Nicht erlaubt' }, 403);
     // Werkzeug direkt testen (nur mit App-Kennung)

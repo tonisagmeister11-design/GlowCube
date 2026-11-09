@@ -167,9 +167,18 @@
     if (!ACC) return;
     var u = ACC.user || {};
     if (u.lang && u.lang !== I.lang) { V.store('lang', u.lang); I.set(u.lang); }
+    // Server bestaetigt Plus (z. B. geprueftes Abo); ein laufendes Google-Play-Abo auf diesem Geraet wird nie abgeschaltet
     var P = V.load('plus', { on: false });
-    if (!!P.on !== !!u.plus && VX.setPlusQuiet) VX.setPlusQuiet(u.plus);
+    if (u.plus && !P.on && VX.setPlusQuiet) VX.setPlusQuiet(true, 'server');
+    else if (!u.plus && P.on && P.src === 'server' && VX.setPlusQuiet) VX.setPlusQuiet(false);
   }
+  // Gekauftes Abo am Konto melden; der Server prueft es bei Google (wenn eingerichtet) und gibt dann z. B. mehr Juno-Antworten
+  var lastVerify = '';
+  VX.verifyPlus = function (token) {
+    if (!ACC || !token) return;
+    var key = token.slice(-12) + new Date().toDateString(); if (key === lastVerify) return; lastVerify = key;
+    api('/billing/verify', 'POST', { token: token, product: 'bikeora_plus' }).then(function (j) { if (j.user) { ACC.user = j.user; save(); } }).catch(function () {});
+  };
   function refresh() {
     if (!ACC) return;
     api('/me').then(function (j) {
@@ -179,7 +188,7 @@
       VX.srvCredits = { left: j.left, max: j.max };
     }).catch(function () {});
   }
-  VX.onPlus = function (on) { if (ACC) api('/me', 'POST', { plus: on }).then(function (j) { if (j.user) { ACC.user = j.user; save(); } refresh(); }).catch(function () {}); };
+  VX.onPlus = function (on) { if (ACC) refresh(); };
 
   // ---------- Juno: Credits vom Server ----------
   var oldUsed = VX.junoUsed;

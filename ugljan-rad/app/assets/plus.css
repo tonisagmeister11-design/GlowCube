@@ -564,3 +564,4 @@ body.night .dark-hint{background:#3a2a10;border-color:#7a5418;color:#ffd9a0}
 #flyBar .fly-t{flex:none;display:flex;flex-direction:column;font-size:12.5px;color:var(--mute)}#flyBar .fly-t b{font-size:15px;color:var(--text)}
 #flyBar .fly-p{flex:1;height:6px;border-radius:3px;background:var(--panel3);overflow:hidden}#flyBar .fly-p i{display:block;height:100%;width:0;background:var(--lime);border-radius:3px}
 #flyBar button{flex:none;height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--lime);color:var(--ink);font-weight:700;font-family:inherit}
+.px-restore{display:block;margin:10px auto 0;border:0;background:none;color:rgba(255,255,255,.85);font-size:14px;text-decoration:underline;text-underline-offset:3px;font-family:inherit}

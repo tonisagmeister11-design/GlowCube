@@ -80,6 +80,29 @@ button{margin-top:16px;width:100%;height:48px;border:0;border-radius:14px;backgr
 fetch('/auth/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('e').value,password:document.getElementById('p').value})})
 .then(function(r){return r.json()}).then(function(j){m.style.color=j.ok?'#067647':'#b42318';m.textContent=j.ok?'Dein Konto wurde gelöscht.':(j.fehler||'Das hat nicht geklappt.')}).catch(function(){m.style.color='#b42318';m.textContent='Keine Verbindung. Bitte später nochmal versuchen.'})};</script></body></html>`;
 
+// ---------- Google Play: Abo pruefen (Google Play Developer API mit Dienstkonto) ----------
+// Secret GOOGLE_PLAY_SA = JSON-Schluessel eines Dienstkontos mit Zugriff in der Play Console ("Finanzdaten ansehen").
+const b64u = b => btoa(b).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+async function googleToken(env) {
+  const sa = JSON.parse(env.GOOGLE_PLAY_SA), now = Math.floor(Date.now() / 1000);
+  const head = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claim = b64u(JSON.stringify({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/androidpublisher', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 }));
+  const der = Uint8Array.from(atob(sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, enc.encode(head + '.' + claim)));
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + head + '.' + claim + '.' + b64u(String.fromCharCode(...sig)) });
+  const j = await r.json(); if (!j.access_token) throw new Error('google auth'); return j.access_token;
+}
+async function checkSub(env, token) {
+  const pkg = env.PLAY_PACKAGE || 'app.velora.bike';
+  const r = await fetch('https://androidpublisher.googleapis.com/androidpublisher/v3/applications/' + pkg + '/purchases/subscriptionsv2/tokens/' + encodeURIComponent(token), { headers: { Authorization: 'Bearer ' + await googleToken(env) } });
+  if (!r.ok) return { active: false, until: 0, state: 'http ' + r.status };
+  const j = await r.json(), until = Math.max(0, ...(j.lineItems || []).map(l => Date.parse(l.expiryTime) || 0));
+  const ok = ['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD', 'SUBSCRIPTION_STATE_CANCELED'].includes(j.subscriptionState);
+  return { active: ok && until > Date.now(), until, state: j.subscriptionState };
+}
+
 export async function accounts(req, env, url) {
   const p = url.pathname;
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
@@ -87,7 +110,7 @@ export async function accounts(req, env, url) {
   if (p === '/datenschutz' && req.method === 'GET') return new Response(PRIVACY_PAGE, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   if (p === '/admin' && req.method === 'GET') return new Response(ADMIN_PAGE, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' } });
   const ip = req.headers.get('CF-Connecting-IP') || 'x';
-  if (req.method === 'POST' && (p === '/auth/register' || p === '/auth/login' || p === '/auth/delete' || p === '/admin/api/login')) {
+  if (req.method === 'POST' && (p === '/auth/register' || p === '/auth/login' || p === '/auth/delete' || p === '/admin/api/login' || p === '/billing/verify')) {
     const { success } = await env.LIMIT.limit({ key: 'auth:' + ip });
     if (!success) return json({ fehler: 'Zu viele Versuche. Bitte kurz warten.' }, 429);
   }
@@ -122,9 +145,26 @@ export async function accounts(req, env, url) {
     await wipeUser(env, u, null);
     return json({ ok: true });
   }
+  if (p === '/billing/verify' && req.method === 'POST') {
+    const u = await userFromReq(req, env); if (!u) return json({ fehler: 'Nicht angemeldet' }, 401);
+    const b = await body(req) || {}, token = short(b.token, 800);
+    if (!token) return json({ fehler: 'Kein Kauf' }, 400);
+    if (!env.GOOGLE_PLAY_SA) { // noch keine Pruefung eingerichtet: nur merken, Plus am Konto bleibt unbestaetigt
+      u.plusClaim = { h: await sha(token), t: Date.now() }; await putUser(env, u);
+      return json({ ok: true, verified: false, user: pub(u) });
+    }
+    let c; try { c = await checkSub(env, token); } catch (e) { return json({ fehler: 'Prüfung bei Google fehlgeschlagen' }, 502); }
+    u.plus = !!c.active; u.plusUntil = c.until; u.plusToken = token; await putUser(env, u);
+    return json({ ok: true, verified: true, active: u.plus, state: c.state, user: pub(u) });
+  }
   if (p === '/me') {
     const u = await userFromReq(req, env); if (!u) return json({ fehler: 'Nicht angemeldet' }, 401);
     if (req.method === 'GET') {
+      // abgelaufenes Abo: bei Google nachfragen (wenn eingerichtet), sonst Plus am Konto beenden
+      if (u.plus && u.plusUntil && u.plusUntil < Date.now()) {
+        let c = null; if (env.GOOGLE_PLAY_SA && u.plusToken) { try { c = await checkSub(env, u.plusToken); } catch (e) { } }
+        u.plus = !!(c && c.active); u.plusUntil = c ? c.until : 0; await putUser(env, u);
+      }
       if (Date.now() - (u.seen || 0) > 6 * 3600e3) { u.seen = Date.now(); await putUser(env, u); }
       return json({ user: pub(u), left: await creditsLeft(env, u), max: u.plus ? CR_PLUS : CR_FREE });
     }

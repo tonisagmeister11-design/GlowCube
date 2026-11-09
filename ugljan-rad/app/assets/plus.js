@@ -7,7 +7,9 @@
   var VX = window.VX = {};
   var TESTER = !!window.__TESTER;
   // Kauf ueber Google Play Billing: erst aktiv, wenn die App die Bezahl-Schnittstelle mitbringt (siehe RELEASE.md)
-  var BILLING = !!(A && A.billingAvailable && (function () { try { return A.billingAvailable(); } catch (e) { return false; } })());
+  // Kauf ueber Google Play Billing (Billing.java im Gradle-Build). Ohne Bibliothek oder ohne Produkt in der Play Console: nicht verfuegbar.
+  function billing() { try { return !!(A && A.billingAvailable && A.billingAvailable()); } catch (e) { return false; } }
+  function billInfo() { try { return A && A.billingInfo ? JSON.parse(A.billingInfo()) : {}; } catch (e) { return {}; } }
   var KI_BASE = 'https://velora-ki.toni-sagmeister11.workers.dev', KI_ID = 'velora-2026';
 
   function dayKey(t) { var d = new Date(t); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
@@ -18,12 +20,14 @@
   function rnd(n) { var c = 'abcdefghijkmnpqrstuvwxyz23456789', o = ''; for (var i = 0; i < n; i++) o += c[Math.floor(Math.random() * c.length)]; return o; }
 
   // =====================================================================
-  // BikeOra Plus (Bezahlung kommt spaeter ueber Google Play, bis dahin zum Testen freischaltbar)
+  // BikeOra Plus: Abo ueber Google Play (monatlich/jaehrlich), im Tester zum Ausprobieren freischaltbar
   // =====================================================================
   var P = V.load('plus', { on: false });
   function isPlus() { return !!P.on; }
-  VX.setPlusQuiet = function (on) { P.on = !!on; V.store('plus', P); applyLook(); };
-  function setPlus(on) { P.on = on; P.since = on ? Date.now() : 0; V.store('plus', P); applyLook(); updWidget(); if (VX.onPlus) VX.onPlus(on); }
+  // src: 'play' (Abo bei Google Play), 'server' (am Konto bestaetigt), 'test' (nur im Tester)
+  VX.setPlusQuiet = function (on, src) { P.on = !!on; if (src) P.src = on ? src : null; V.store('plus', P); applyLook(); updWidget(); };
+  VX.plusSource = function () { return P.on ? P.src || null : null; };
+  function setPlus(on) { P.on = on; P.since = on ? Date.now() : 0; if (!on) P.src = null; V.store('plus', P); applyLook(); updWidget(); if (VX.onPlus) VX.onPlus(on); }
   var TAG = '<span class="plustag">PLUS</span>';
   var FEATS = [
     ['juno', 'Juno als Reiseführer', 'Erzählt unterwegs, an welchen Orten du gerade vorbeifährst.'],
@@ -48,8 +52,19 @@
     return el;
   }
   function closeModal() { var m = $('vxm'); if (m) m.remove(); }
+  var BILL = false, BINFO = {};
+  function planOf(id) { return (BINFO.plans || []).filter(function (p) { return p.id === id; })[0]; }
+  function priceHtml() {
+    var m = planOf('monthly'), y = planOf('yearly');
+    var mp = m ? m.price : '2,99 €', yp = y ? y.price : '19,99 €', save = '', perMonth = '';
+    if (m && y && m.micros > 0) { var pc = Math.round((1 - y.micros / (m.micros * 12)) * 100); if (pc > 0) save = '<em>Spare ' + pc + ' %</em>'; perMonth = 'nur ' + (y.micros / 12e6).toFixed(2).replace('.', ',') + ' ' + (y.currency === 'EUR' ? '€' : y.currency) + ' im Monat'; }
+    else if (!m && !y) { save = '<em>Spare 44 %</em>'; perMonth = 'nur 1,67 € im Monat'; }
+    return '<div class="px-price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><span class="px-pl">Monatlich</span><b>' + esc(mp) + '</b><span>pro Monat</span></button>' +
+      '<button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '">' + save + '<span class="px-pl">Jährlich</span><b>' + esc(yp) + '</b><span>' + perMonth + '</span></button></div>';
+  }
   function paywall(why) {
     if (isPlus()) { plusActive(); return; }
+    BILL = billing(); BINFO = billInfo();
     closeModal(); var old = $('plusx'); if (old) old.remove();
     var el = document.createElement('div'); el.id = 'plusx';
     var stars = ''; for (var i = 0; i < 26; i++) stars += '<i style="left:' + Math.round(Math.random() * 100) + '%;top:' + Math.round(Math.random() * 100) + '%;animation-delay:' + (Math.random() * 3).toFixed(2) + 's;transform:scale(' + (0.4 + Math.random()).toFixed(2) + ')"></i>';
@@ -59,26 +74,58 @@
       '<div class="px-logo">BIKEORA <span class="px-rb">PLUS</span></div>' +
       '<div class="px-sub">' + (why ? esc(why) + ' gehört zu BikeOra Plus.' : 'Mehr Juno, mehr Touren, mehr Abenteuer.') + '</div>' +
       '<div class="px-feats">' + FEATS.map(function (f, i) { return '<div class="px-card" style="animation-delay:' + (0.15 + i * 0.06).toFixed(2) + 's"><div class="px-ic">' + svg(f[0], '#ffffff', 20, 2.3) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') + '</div>' +
-      '<div class="px-price"><button data-price="month" class="' + (PRICE === 'month' ? 'on' : '') + '"><span class="px-pl">Monatlich</span><b>2,99 €</b><span>pro Monat</span></button>' +
-      '<button data-price="year" class="' + (PRICE === 'year' ? 'on' : '') + '"><em>Spare 44 %</em><span class="px-pl">Jährlich</span><b>19,99 €</b><span>nur 1,67 € im Monat</span></button></div>' +
-      (BILLING || TESTER ? '<button class="px-cta" id="plusGo"><span>' + (BILLING ? 'Plus kaufen' : 'Zum Ausprobieren freischalten (Test)') + '</span></button>' : '<button class="px-cta soon" id="plusGo" disabled><span>Bald über Google Play</span></button>') +
+      priceHtml() +
+      (BILL || TESTER ? '<button class="px-cta" id="plusGo"><span>' + (BILL ? 'Plus abonnieren' : 'Zum Ausprobieren freischalten (Test)') + '</span></button>' : '<button class="px-cta soon" id="plusGo" disabled><span>Bald über Google Play</span></button>') +
+      (BINFO.ready ? '<button class="px-restore" id="plusRestore">Kauf wiederherstellen</button>' : '') +
       '<div class="px-free">Kostenlos bleiben: Navigation weltweit, Rundtouren, Rückenwind-Touren, Routen speichern, Fahrten-Tagebuch mit Kalorien, Wochenziel und Rückblick, alle Abzeichen, Serie mit Velo, Live-Standort, Widget, ein Offline-Gebiet und die KI Juno.</div>' +
-      '<div class="px-note">' + (BILLING ? 'Bezahlung und Kündigung über dein Google-Play-Konto.' : TESTER ? 'Testversion: Plus wird hier nur zum Ausprobieren freigeschaltet.' : 'BikeOra Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.') + '</div></div>';
+      '<div class="px-note">' + (BILL ? 'Das Abo verlängert sich automatisch und ist jederzeit im Play Store kündbar. Bezahlung über dein Google-Play-Konto.' : TESTER ? 'Testversion: Plus wird hier nur zum Ausprobieren freigeschaltet.' : 'BikeOra Plus kann man bald direkt über Google Play kaufen. Alles andere ist kostenlos.') + '</div></div>';
     document.body.appendChild(el);
     hap('soft');
     function close() { el.classList.add('out'); setTimeout(function () { el.remove(); }, 300); }
     $('pxClose').onclick = close;
     el.querySelectorAll('[data-price]').forEach(function (b) { b.onclick = function () { PRICE = b.getAttribute('data-price'); V.store('price', PRICE); el.querySelectorAll('[data-price]').forEach(function (x) { x.classList.toggle('on', x === b); }); hap('click'); }; });
+    if ($('plusRestore')) $('plusRestore').onclick = function () { hap('tick'); restoring = true; try { A.billingRefresh(); } catch (e) { } V.toast('Käufe werden geprüft ...'); };
     $('plusGo').onclick = function () {
-      if (BILLING) { try { A.buyPlus(PRICE); } catch (e) { V.toast('Der Kauf ist gerade nicht möglich.'); } return; }
+      if (BILL) { hap('click'); try { A.buyPlus(PRICE); } catch (e) { V.toast('Der Kauf ist gerade nicht möglich.'); } return; }
       if (!TESTER) return;
-      setPlus(true); close(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
+      P.src = 'test'; setPlus(true); close(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
   }
+  // Ereignisse von Google Play Billing (Billing.java)
+  var restoring = false;
+  VX.billingEv = function (type, d) {
+    d = d || {};
+    if (type === 'info') { BINFO = d; return; }
+    if (type === 'bought') {
+      var px = $('plusx'); if (px) { px.classList.add('out'); setTimeout(function () { px.remove(); }, 300); }
+      P.src = 'play'; setPlus(true); hap('celebrate');
+      celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Danke für deine Unterstützung! Alle Plus-Funktionen sind jetzt freigeschaltet.' });
+      if (VX.verifyPlus) VX.verifyPlus(d.token);
+      if (V.state === 'menu') V.showMenu();
+      return;
+    }
+    if (type === 'status') {
+      if (d.on) {
+        var was = isPlus();
+        VX.setPlusQuiet(true, 'play');
+        if (!was) { if (VX.onPlus) VX.onPlus(true); if (restoring) V.toast('Dein Plus-Abo ist wieder aktiv.'); }
+        if (VX.verifyPlus && d.token) VX.verifyPlus(d.token);
+      } else if (P.src === 'play') {
+        // abgelaufen oder gekuendigt: Google Play liefert das Abo nicht mehr
+        VX.setPlusQuiet(false);
+        if (restoring) V.toast('Kein aktives Plus-Abo gefunden.');
+      } else if (restoring) V.toast('Kein aktives Plus-Abo gefunden.');
+      restoring = false;
+      return;
+    }
+    if (type === 'pending') { V.toast('Die Zahlung wird noch bearbeitet. Plus wird freigeschaltet, sobald sie bestätigt ist.'); return; }
+    if (type === 'error') { V.toast(d.msg || 'Der Kauf hat nicht geklappt.'); return; }
+  };
   // Plus aktiv: schlicht
   function plusActive() {
     var m = modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('thumbs', 70) + '<div class="grow"><h2>BikeOra Plus</h2><div class="sub">Plus ist aktiv. Danke für deine Unterstützung!</div></div></div>' +
       '<div class="pbox ok"><div class="sub">' + 'Reiseführer, Tagesplaner, Akkuplaner, Regenwarnung, Bestzeiten, GPX, Offline-Karten ohne Grenze, alle Farben und Pfeile.</div></div>' +
-      '<div class="btns">' + (TESTER ? '<button class="go sec" id="plusOff">Plus beenden (Test)</button>' : '') + '<button class="go" id="plusOk">Schließen</button></div>');
+      '<div class="btns">' + (TESTER && P.src !== 'play' ? '<button class="go sec" id="plusOff">Plus beenden (Test)</button>' : '') + (P.src === 'play' && A && A.manageSubscription ? '<button class="go sec" id="plusManage">Abo verwalten</button>' : '') + '<button class="go" id="plusOk">Schließen</button></div>');
+    if ($('plusManage')) $('plusManage').onclick = function () { try { A.manageSubscription(); } catch (e) { } };
     if ($('plusOff')) $('plusOff').onclick = function () { setPlus(false); closeModal(); if (V.state === 'menu') V.showMenu(); };
     $('plusOk').onclick = closeModal;
   }

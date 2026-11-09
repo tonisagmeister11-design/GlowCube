@@ -14,7 +14,7 @@ mkdir -p "$W"/llm && cp "$LLW"/llama-server.exe "$LLW"/llama-server-impl.dll "$L
 cp /tmp/llm/llama.cpp/LICENSE "$W"/llm/LICENSE-llama.cpp 2>/dev/null || true
 cp -r app/assets "$W"/assets
 cp desktop/icon.png desktop/icon.ico "$W"/
-VER=$(grep -o 'versionName="[^"]*"' app/AndroidManifest.xml | cut -d'"' -f2)
+VER=$(grep -o "appVersionName = '[^']*'" app/build.gradle | cut -d"'" -f2)
 cat > "$W"/package.json <<JSON
 {
   "name": "velora", "productName": "BikeOra", "version": "$VER.0", "description": "Fahrrad-Navigation", "main": "main.js", "author": "BikeOra",
