@@ -66,13 +66,13 @@ button:active,.chip:active,.card:active,.quick button:active{transform:scale(.95
 
 /* Nachtmodus */
 body.night{--bg:#0f1720;--panel:#16212c;--panel2:#1d2a37;--panel3:#26364a;--line:#2a3a4c;--text:#e8eef4;--mute:#93a3b4;--ink:#06231a}
-body.night #map canvas{filter:invert(.9) hue-rotate(180deg) brightness(.95) contrast(.92) saturate(.8)}
 body.night .chip:not(.on){background:rgba(22,33,44,.96);color:var(--mute)}
 body.night .seg button.on{background:var(--panel3)}
 body.night #splash{background:radial-gradient(circle at 50% 40%,#1d2a37,#0f1720 70%)}
 body.night #splash .wm{color:#e8eef4}
 body.night .maplibregl-ctrl-attrib,body.night .maplibregl-ctrl-scale{background:rgba(22,33,44,.85)!important;color:#93a3b4!important}
 body.night .go{box-shadow:0 4px 0 rgba(0,0,0,.3)}
+body.night #speedo,body.night #climbBox{background:rgba(22,33,44,.96);border-color:var(--line)}
 
 /* Eigener Standort: Punkt, Blickkegel und Pfeil */
 .me.me2{width:60px;height:60px}
@@ -565,3 +565,7 @@ body.night .dark-hint{background:#3a2a10;border-color:#7a5418;color:#ffd9a0}
 #flyBar .fly-p{flex:1;height:6px;border-radius:3px;background:var(--panel3);overflow:hidden}#flyBar .fly-p i{display:block;height:100%;width:0;background:var(--lime);border-radius:3px}
 #flyBar button{flex:none;height:40px;padding:0 14px;border:0;border-radius:12px;background:var(--lime);color:var(--ink);font-weight:700;font-family:inherit}
 .px-restore{display:block;margin:10px auto 0;border:0;background:none;color:rgba(255,255,255,.85);font-size:14px;text-decoration:underline;text-underline-offset:3px;font-family:inherit}
+
+/* Velo in 3D (fox3d.js): die Leinwand liegt ueber dem 2D-Fuchs, der erst nach dem ersten 3D-Bild verschwindet */
+.fxw .f3d-cv{position:absolute;left:-12%;top:-8%;width:124%;height:116%;display:block;pointer-events:none}
+.fxw.f3d>svg{visibility:hidden}

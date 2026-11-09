@@ -89,7 +89,7 @@
         '<label class="ob-chk"><input type="checkbox" id="obAnon"' + (F.anon ? ' checked' : '') + '><span>' + tx('anon') + '</span></label>' +
         '<div class="ob-err" id="obErr"></div><button class="ob-go" id="obNext">' + tx('create') + '</button>';
     } else {
-      h = '<div class="ob-hero big">' + mascot('cheer', 190) + '</div><h1>' + tx('hi') + ' ' + esc(ACC.user.name) + '!</h1><p>' + tx('ready') + '</p><button class="ob-go" id="obNext">' + tx('done') + '</button>';
+      h = '<div class="ob-hero big">' + mascot('celebrate', 190) + '</div><h1>' + tx('hi') + ' ' + esc(ACC.user.name) + '!</h1><p>' + tx('ready') + '</p><button class="ob-go" id="obNext">' + tx('done') + '</button>';
     }
     el.innerHTML = '<div class="ob-box">' + (step < 5 ? dots : '') + h + '</div>';
     el.querySelector('.ob-box').classList.add('ob-in-anim');

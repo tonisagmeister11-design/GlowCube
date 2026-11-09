@@ -24,6 +24,7 @@ NAVIGATION MIT ANSAGEN
 • Automatische Neuberechnung, wenn du falsch abbiegst
 • Warnung vor Anstiegen, Hinweis bei GPS-Ausfall
 • Läuft auch mit ausgeschaltetem Bildschirm weiter
+• Flüssige Karte mit 3D-Gebäuden, optional 3D-Gelände, Nachtkarte und mitdrehender Navi-Ansicht
 
 TOUREN UND ORTE
 • Rundtouren ab deinem Standort: Dauer, Schwierigkeit, Rückenwind auf dem Heimweg
@@ -33,16 +34,21 @@ TOUREN UND ORTE
 DEIN FAHRTENBUCH
 • Jede Fahrt mit Strecke, Zeit, Schnitt, Höhenmetern und Kalorien
 • Wochenziel mit Serie: Velo, der Fuchs, zündet deine Flamme an
+• Velo als 3D-Figur mit 20 Animationen: er jubelt, tanzt, fährt Rad und reagiert, wenn du ihn antippst
 • Abzeichen, Statistik und Wochenrückblick, Widget für den Startbildschirm
 • Teile deine Fahrt als schönes Bild mit Strecke und Werten
 
-SOUL, DEINE RAD-KI
+JUNO, DEINE RAD-KI
 • Frag Juno, was du willst: „Plan mir eine 2-Stunden-Tour“, „Regnet es morgen?“, „Wie flicke ich einen Platten?“
 • Juno kennt deine Fahrdaten, findet echte Orte und plant Routen für dich
 • Unanständige oder falsche Antworten kannst du direkt melden
 
+BIKEORA PLUS (OPTIONALES ABO)
+• Juno als Reiseführer, Tagesplaner, Akkuplaner für E-Bikes, Rekorde an Anstiegen, weitere Farben und Navigationspfeile
+• Monatlich oder jährlich über Google Play, jederzeit kündbar
+
 PRIVAT UND FAIR
-• Ohne Konto nutzbar, keine Werbung
+• Ohne Konto und ohne Abo nutzbar, keine Werbung
 • Fahrten bleiben auf deinem Gerät
 • Live-Standort teilen nur, wenn du es startest
 
@@ -73,6 +79,7 @@ VOICE NAVIGATION
 • Automatic rerouting when you take a wrong turn
 • Climb warnings and a notice when GPS is lost
 • Keeps running with the screen off
+• Smooth map with 3D buildings, optional 3D terrain, night map and a navigation view that turns with you
 
 TOURS AND PLACES
 • Round trips from where you are: duration, difficulty, tailwind on the way home
@@ -82,16 +89,21 @@ TOURS AND PLACES
 YOUR RIDE LOG
 • Every ride with distance, time, average speed, climbing and calories
 • Weekly goal with streak: Velo the fox lights your flame
+• Velo as a 3D character with 20 animations: he cheers, dances, rides and reacts when you tap him
 • Badges, statistics, weekly recap and a home screen widget
 • Share your ride as a beautiful image with route and stats
 
-SOUL, YOUR CYCLING AI
+JUNO, YOUR CYCLING AI
 • Ask Juno anything: “Plan a 2-hour tour”, “Will it rain tomorrow?”, “How do I fix a flat?”
 • Juno knows your rides, finds real places and plans routes for you
 • You can report inappropriate or wrong answers right in the chat
 
+BIKEORA PLUS (OPTIONAL SUBSCRIPTION)
+• Juno as a tour guide, day planner, e-bike battery planner, climb records, extra colours and navigation arrows
+• Monthly or yearly via Google Play, cancel anytime
+
 PRIVATE AND FAIR
-• Works without an account, no ads
+• Works without an account or subscription, no ads
 • Your rides stay on your device
 • Live location sharing only when you start it
 

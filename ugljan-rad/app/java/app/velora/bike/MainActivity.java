@@ -484,7 +484,7 @@ public class MainActivity extends Activity implements LocationListener {
                             try {
                                 HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
                                 c.setConnectTimeout(15000); c.setReadTimeout(20000);
-                                c.setRequestProperty("User-Agent", "BikeOra/7.3 (Android)");
+                                c.setRequestProperty("User-Agent", "BikeOra/8.0 (Android)");
                                 int code = c.getResponseCode();
                                 if (code == 200) {
                                     File tmp = new File(f.getPath() + ".tmp");

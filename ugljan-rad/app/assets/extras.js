@@ -166,12 +166,14 @@
     }
     fly.raf = requestAnimationFrame(frame);
   }
+  VX.flying = function () { return !!fly; };
   function stopFly(why) {
     if (!fly) return;
     window.__flyStop = why || (new Error().stack || '').split('\n')[2];
     var r = fly.r; cancelAnimationFrame(fly.raf); map.off('dragstart', fly.onDrag); fly = null;
     var b = $('flyBar'); if (b) b.remove();
     try { map.setTerrain(null); } catch (e) { }
+    if (V.upd3d) V.upd3d();   // eigenes 3D-Gelaende des Nutzers wieder an
     V.sheetEl.classList.remove('mini');
     map.easeTo({ pitch: 0, bearing: 0, duration: 500 });
     setTimeout(function () { if (V.cur === r) V.fitTo(V.boundsOf(V.routeLL(r))); }, 520);
@@ -271,7 +273,8 @@
       g.fillStyle = '#ffffff'; g.font = '800 54px ' + font; g.fillText(st[0], x + 30, y);
       g.globalAlpha = 0.8; g.font = '600 26px ' + font; g.fillText(st[1].toUpperCase(), x + 30, y + 34); g.globalAlpha = 1;
     });
-    // Velo, der Fuchs
+    // Velo, der Fuchs (in 3D, wenn moeglich)
+    if (window.Fox3D && Fox3D.ok && Fox3D.enabled) { try { g.drawImage(Fox3D.still('cheer', 330, 380, 0.25), W - 330, 10, 330, 380); return Promise.resolve(c); } catch (e) { } }
     var foxSvg = window.Fox ? Fox.svg('cheer') : null;
     if (!foxSvg) return Promise.resolve(c);
     var fx = foxSvg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="252" height="290" ').replace('class="fox"', 'class="fox fx-cheer"');

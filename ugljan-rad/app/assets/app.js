@@ -88,7 +88,7 @@
   S = {
     bike: BIKES[S.bike] ? S.bike : 'city', fit: FIT[S.fit] ? S.fit : 'normal', style: STYLES[S.style] ? S.style : 'scenic', headUp: !!S.headUp,
     voice: S.voice !== false, wind: S.wind !== false, relief: S.relief !== false, contours: S.contours !== false,
-    routes: S.routes !== false, labels: S.labels !== false,
+    routes: S.routes !== false, labels: S.labels !== false, b3d: S.b3d !== false, terrain3d: !!S.terrain3d,
     maxG: S.maxG || 0, wkGoal: S.wkGoal || 0, hap: S.hap != null ? S.hap : 2, night: S.night || 'auto', theme: S.theme || 'mint', arrow: S.arrow || '3d', goalKm: S.goalKm || 30, weight: S.weight || 75,
     guide: S.guide !== false, tailwind: !!S.tailwind, batt: S.batt || 500, assist: S.assist || 'tour', hu2: !!S.hu2,
     tourDur: S.tourDur || 120, tourDiff: S.tourDiff != null ? S.tourDiff : 1, tourBeauty: S.tourBeauty != null ? S.tourBeauty : 2
@@ -523,6 +523,7 @@
       { id: 'o-main-casing', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': wz(6.5), 'line-opacity': 0.7 } },
       { id: 'o-main', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'class'], 'motorway', '#e0533f', '#f28c5b'], 'line-width': wz(4) } },
       { id: 'o-cycleway', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 10, filter: ['all', ['==', ['get', 'class'], 'path'], ['==', ['get', 'subclass'], 'cycleway']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0fae73', 'line-width': wz(3.4) } },
+      { id: 'o-building', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 14, filter: ['!=', ['get', 'hide_3d'], true], paint: { 'fill-extrusion-color': '#ddd6cc', 'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15.5, ['coalesce', ['get', 'render_height'], 6]], 'fill-extrusion-base': ['interpolate', ['linear'], ['zoom'], 14, 0, 15.5, ['coalesce', ['get', 'render_min_height'], 0]], 'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, 0.85] } },
       { id: 'o-routes', type: 'raster', source: 'wmt', minzoom: 6, paint: { 'raster-opacity': 0.6, 'raster-fade-duration': 0 } },
       { id: 'o-poi', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['in', ['get', 'class'], ['literal', ['restaurant', 'fast_food', 'cafe', 'ice_cream', 'bakery', 'bar', 'beer', 'drinking_water', 'toilets', 'bicycle', 'attraction', 'castle', 'monument', 'museum', 'grocery', 'pharmacy', 'hospital', 'ferry_terminal', 'lodging', 'campsite']]], layout: { 'icon-image': ['match', ['get', 'class'], 'restaurant', 'poi-food', 'fast_food', 'poi-snack', 'cafe', 'poi-cafe', 'ice_cream', 'poi-cafe', 'bakery', 'poi-cafe', 'bar', 'poi-bar', 'beer', 'poi-bar', 'drinking_water', 'poi-water', 'toilets', 'poi-wc', 'bicycle', 'poi-bike', 'grocery', 'poi-shop', 'pharmacy', 'poi-health', 'hospital', 'poi-health', 'ferry_terminal', 'poi-ferry', 'lodging', 'poi-stay', 'campsite', 'poi-stay', 'poi-sight'], 'icon-allow-overlap': false, 'icon-padding': 9, 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.82, 17, 1] } },
       { id: 'o-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11, layout: { 'text-field': ['concat', ['coalesce', ['get', 'name:de'], ['get', 'name:latin'], ['get', 'name']], ['case', ['has', 'ele'], ['concat', ' ', ['to-string', ['get', 'ele']], ' m'], '']], 'text-font': ['NotoSansMedium'], 'text-size': 10.5 }, paint: L_({ 'text-color': '#6b4f2a' }) },
@@ -593,8 +594,12 @@
     map = new maplibregl.Map({
       container: 'map', style: style, center: [15.17, 44.075], zoom: 11.5, minZoom: 2, maxZoom: 19.5,
       attributionControl: false, pitchWithRotate: false, dragRotate: true,
-      touchPitch: false, maxPitch: 60, fadeDuration: 0, localIdeographFontFamily: false
+      touchPitch: true, maxPitch: 65, fadeDuration: 180, localIdeographFontFamily: false,
+      // Auf Handys mit 3-facher Pixeldichte nur doppelt rendern: sieht gleich scharf aus, aber deutlich mehr Bilder pro Sekunde
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2), bearingSnap: 10, refreshExpiredTiles: false
     });
+    // Verschieben mit Schwung: gleitet weich aus wie bei Google Maps
+    map.dragPan.enable({ linearity: 0.22, easing: function (t) { return 1 - Math.pow(1 - t, 3); }, maxSpeed: 1800, deceleration: 1900 });
   } catch (e) {
     NO_MAP = true; map = fakeMap();
     maplibregl.Marker = function () { this.setLngLat = function () { return this; }; this.addTo = function () { return this; }; this.remove = function () {}; this.setRotation = function () { return this; }; };
@@ -608,7 +613,7 @@
   map.on('sourcedata', function (e) {
     if (!online && e.sourceId === 'ofm' && e.tile && e.tile.state === 'loaded') {
       online = true;
-      map.setPaintProperty('bg', 'background-color', '#eef2e6');
+      map.setPaintProperty('bg', 'background-color', mapNightOn ? '#18222c' : '#eef2e6');
       setVis('others', false);
     }
   });
@@ -645,8 +650,43 @@
     var at = document.querySelector('.maplibregl-ctrl-attrib'); if (at) at.classList.remove('maplibregl-compact-show');
     Object.keys(pendingSrc).forEach(function (k) { map.getSource(k).setData(pendingSrc[k]); });
     pendingSrc = {};
-    updLayers(); updPois();
+    updLayers(); updPois(); upd3d(); mapNight(mapNightOn);
   });
+  // ---------- Nachtkarte: eigene Farben im Kartenstil (ein CSS-Filter auf der Karte kostet bei jedem Bild Leistung) ----------
+  var NIGHT = [
+    ['o-landuse', 'fill-color', '#1f2a35'], ['o-grass', 'fill-color', '#1b2b25'], ['o-wood', 'fill-color', '#19302a'], ['o-park', 'fill-color', '#19302a'],
+    ['o-water', 'fill-color', '#0e2233'], ['o-waterway', 'line-color', '#1f4a6b'],
+    ['o-hillshade', 'hillshade-shadow-color', '#000000'], ['o-hillshade', 'hillshade-highlight-color', 'rgba(255,255,255,0.06)'], ['o-hillshade', 'hillshade-accent-color', '#0b1116'],
+    ['o-path', 'line-color', '#a88b6a'], ['o-track', 'line-color', '#b88a55'], ['o-minor', 'line-color', '#3e5164'], ['o-mid', 'line-color', '#8f6d2d'],
+    ['o-main-casing', 'line-color', '#0f1720'], ['o-main', 'line-color', ['match', ['get', 'class'], 'motorway', '#b5503f', '#a0613f']], ['o-cycleway', 'line-color', '#25cf8f'],
+    ['o-building', 'fill-extrusion-color', '#2a3644'], ['o-routes', 'raster-brightness-max', 0.7],
+    ['o-peak', 'text-color', '#c9a77a'], ['o-water-name', 'text-color', '#6fa8d0'], ['o-place-small', 'text-color', '#9fb0c0'], ['o-place-town', 'text-color', '#d5dee8'],
+    ['o-place-city', 'text-color', '#e8eef4'], ['o-country', 'text-color', '#8fa1b3'],
+    ['others', 'fill-color', '#1b252f'], ['coast', 'line-color', '#2c5878'], ['land', 'fill-color', '#18222c'], ['green', 'fill-color', '#19302a'], ['built', 'fill-color', '#232e3a'],
+    ['relief', 'raster-brightness-max', 0.35], ['contours', 'line-color', '#6e5a3e'], ['cont-lbl', 'text-color', '#b39a75'], ['peaks', 'text-color', '#c9a77a']
+  ];
+  var mapNightOn = false, dayPaint = null;
+  function mapNight(on) {
+    on = !!on; if (!mapReady || NO_MAP) { mapNightOn = on; return; }
+    if (!dayPaint) {
+      dayPaint = [];
+      NIGHT.forEach(function (n) { if (map.getLayer(n[0])) dayPaint.push([n[0], n[1], map.getPaintProperty(n[0], n[1]), n[2]]); });
+      map.getStyle().layers.forEach(function (l) { if (l.type === 'symbol' && l.paint && l.paint['text-halo-color']) dayPaint.push([l.id, 'text-halo-color', l.paint['text-halo-color'], 'rgba(15,23,32,0.92)']); });
+    }
+    if (on === mapNightOn && dayPaint.applied) return;
+    mapNightOn = on; dayPaint.applied = true;
+    dayPaint.forEach(function (d) { try { map.setPaintProperty(d[0], d[1], on ? d[3] : (d[2] === undefined ? null : d[2])); } catch (e) {} });
+    map.setPaintProperty('bg', 'background-color', online ? (on ? '#18222c' : '#eef2e6') : (on ? '#0e2233' : '#a8d5f2'));
+  }
+  // 3D-Gelaende (Berge in echt) und 3D-Gebaeude
+  function upd3d() {
+    if (!mapReady || NO_MAP) return;
+    setVis('o-building', S.b3d);
+    try {
+      if (S.terrain3d) { if (!map.getSource('dem3d')) map.addSource('dem3d', { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 14, encoding: 'terrarium' }); map.setTerrain({ source: 'dem3d', exaggeration: 1.3 }); }
+      else if (!HOOK('flying')) map.setTerrain(null);
+    } catch (e) {}
+  }
   function padding() {
     var p = { top: topH(), bottom: fs ? 20 : sheetH() + 10, left: 20, right: fs ? 20 : 64 };
     // Fahrtrichtung oben: eigener Punkt im unteren Drittel, damit man voraus mehr sieht
@@ -665,7 +705,7 @@
   function fitIsland() { fitTo(bounds, 0); }
 
   function updLayers() {
-    setVis('relief', S.relief);
+    setVis('relief', S.relief); setVis('o-hillshade', S.relief);
     setVis('contours', S.contours); setVis('cont-lbl', S.contours && S.labels);
     setVis('routeglow', S.routes);
     ['pl-village', 'pl-small', 'pl-bay', 'pl-island', 'pl-loc', 'peaks'].forEach(function (id) { setVis(id, S.labels); });
@@ -772,7 +812,7 @@
   // =====================================================================
   // Standort
   // =====================================================================
-  var me = null, meMarker = null, follow = false, lastSpeed = -1, lastFix = 0, meShown = null, meAnim = null;
+  var me = null, meMarker = null, follow = false, lastSpeed = -1, lastFix = 0, meShown = null;
   // Folgen: Zoomen und Drehen bleiben dann genau auf der eigenen Position
   function setFollow(on) {
     if (follow === on) return;
@@ -786,24 +826,50 @@
     for (var k = 0; k <= 48; k++) { var a = k / 48 * 2 * Math.PI; c.push([lat + Math.sin(a) * r / ky, lon + Math.cos(a) * r / kx]); }
     return fc([polyF(c)]);
   }
-  function camBearing() { return nav && !nav.free && S.headUp && me && me.brg >= 0 && lastSpeed > 4 ? me.brg : null; }
-  // Punkt gleitet zwischen zwei GPS-Messungen (wie bei Google Maps), Karte folgt synchron
+  // Fahrtrichtung oben: bleibt auch an der Ampel stehen (wie bei Google Maps), erst ab 4 km/h neu bestimmt
+  var stickyBrg = null;
+  function camBearing() { return nav && !nav.free && S.headUp && stickyBrg !== null ? stickyBrg : null; }
+  // ---------- Standortpunkt und Kamera in einem gemeinsamen Takt (wie Google Maps) ----------
+  // Zwischen zwei GPS-Punkten wird mit Tempo und Richtung vorausgerechnet; Punkt, Karte, Drehung und Neigung gleiten
+  // weich nach. Steht man still und alles ist angekommen, ruht der Takt (spart Akku).
+  var fix = null, puck = null, pTick = 0, pLast = 0, camB = null, camP = 0, camPad = null;
+  function angDiff(a, b) { return ((b - a + 540) % 360) - 180; }
   function moveMe(lat, lon) {
-    if (!meShown) meShown = { lat: lat, lon: lon };
-    var a = { lat: meShown.lat, lon: meShown.lon }, t0 = performance.now(), dur = dist(a.lat, a.lon, lat, lon) > 150 ? 0 : 900;
-    if (meAnim) cancelAnimationFrame(meAnim);
-    (function step(now) {
-      var f = dur ? Math.min(1, (now - t0) / dur) : 1;
-      meShown = { lat: a.lat + (lat - a.lat) * f, lon: a.lon + (lon - a.lon) * f };
-      meMarker.setLngLat([meShown.lon, meShown.lat]);
-      if (f < 1) meAnim = requestAnimationFrame(step); else meAnim = null;
-    })(t0);
-    if (follow) {
-      var o = { center: [lon, lat], padding: padding(), duration: dur || 300, easing: function (t) { return t; } };
-      var b = camBearing(); if (b !== null) { o.bearing = b; o.pitch = 45; }
-      map.easeTo(o);
-    }
+    var now = performance.now(), far = !puck || dist(puck.lat, puck.lon, lat, lon) > 150;
+    fix = { lat: lat, lon: lon, t: now, v: lastSpeed > 3 && me && me.brg >= 0 ? lastSpeed / 3.6 : 0, brg: me && me.brg >= 0 ? me.brg : -1, pad: padding() };
+    if (far) { puck = { lat: lat, lon: lon }; meShown = puck; meMarker.setLngLat([lon, lat]); if (follow && !map.isMoving()) { camPad = fix.pad; map.jumpTo({ center: [lon, lat], padding: camPad }); } }
+    if (!pTick) { pLast = 0; pTick = requestAnimationFrame(puckFrame); }
   }
+  function puckFrame(ts) {
+    pTick = -1;   // laeuft gerade (verhindert einen zweiten Takt ueber moveend)
+    if (!fix || !puck || !meMarker) { pTick = 0; return; }
+    var dt = pLast ? Math.min(0.1, (ts - pLast) / 1000) : 1 / 60; pLast = ts;
+    var age = (ts - fix.t) / 1000, ahead = Math.max(0, Math.min(1.5, age)), tl = fix.lat, tn = fix.lon;
+    if (fix.v > 0 && fix.brg >= 0) { var dd = fix.v * ahead, br = fix.brg * RAD; tl += dd * Math.cos(br) / 110540; tn += dd * Math.sin(br) / (111320 * Math.cos(fix.lat * RAD)); }
+    var k = 1 - Math.exp(-dt * 6);
+    puck.lat += (tl - puck.lat) * k; puck.lon += (tn - puck.lon) * k; meShown = puck;
+    meMarker.setLngLat([puck.lon, puck.lat]);
+    var busy = Math.abs(tl - puck.lat) > 2e-7 || Math.abs(tn - puck.lon) > 2e-7 || (fix.v > 0 && age < 1.6);
+    if (follow && !map.isMoving()) {
+      var o = { center: [puck.lon, puck.lat] }, cb = camBearing(), kc = 1 - Math.exp(-dt * 3);
+      // Kartenrand weich anpassen (z. B. wenn beim Navigieren der eigene Punkt ins untere Drittel wandert)
+      if (!camPad) camPad = map.getPadding();
+      var pd = {}, pm = false;
+      ['top', 'bottom', 'left', 'right'].forEach(function (s) { var a = camPad[s] || 0, b = fix.pad[s] || 0; pd[s] = Math.abs(b - a) < 0.5 ? b : a + (b - a) * kc; if (pd[s] !== a) pm = true; });
+      camPad = pd; if (pm) { o.padding = pd; busy = true; }
+      if (cb !== null) {
+        if (camB === null) { camB = map.getBearing(); camP = map.getPitch(); }
+        var db = angDiff(camB, cb); camB += db * kc; camP += (45 - camP) * kc;
+        o.bearing = camB; o.pitch = camP;
+        if (Math.abs(db) > 0.05 || Math.abs(45 - camP) > 0.05) busy = true;
+      } else camB = null;
+      var c = map.getCenter();
+      if (pm || o.bearing !== undefined || Math.abs(c.lng - puck.lon) > 1e-8 || Math.abs(c.lat - puck.lat) > 1e-8) map.jumpTo(o);
+    } else { camB = null; camPad = null; if (follow) busy = true; }
+    pTick = busy ? requestAnimationFrame(puckFrame) : 0;
+  }
+  // Kamera nach einer Geste/Animation wieder anlaufen lassen
+  map.on('moveend', function () { if (follow && fix && !pTick) { pLast = 0; pTick = requestAnimationFrame(puckFrame); } });
   var PREKO = (function () {
     var f = D.pois.filter(function (p) { return p[0] === 'ferry' && /Preko/i.test(p[3]); })[0] || D.pois.filter(function (p) { return p[0] === 'ferry'; })[0];
     return f ? { lat: f[1], lon: f[2], name: 'Fähre Preko' } : { lat: 44.0764, lon: 15.1944, name: 'Preko' };
@@ -910,6 +976,7 @@
     if (me && (brg < 0 || speed < 1.5) && dist(me.lat, me.lon, lat, lon) > Math.max(4, acc)) brg = bearing(me.lat, me.lon, lat, lon);
     var altS = alt == null ? null : (me && me.alt != null ? me.alt * 0.7 + alt * 0.3 : alt);
     me = { lat: lat, lon: lon, acc: acc, gps: !!isGps, alt: altS, brg: brg >= 0 ? brg : (me ? me.brg : -1) };
+    if (!nav) stickyBrg = null; else if (me.brg >= 0 && (speed * 3.6 > 4 || stickyBrg === null && speed < 0)) stickyBrg = me.brg;
     lastFix = now;
     if (speed >= 0) { lastSpeed = speed * 3.6; lastGoodSpeedT = now; } else if (now - lastGoodSpeedT > 5000) lastSpeed = -1;
     if (!meMarker) {
@@ -1013,7 +1080,7 @@
     var bTarget = camBearing() !== null ? camBearing() : 0, off = Math.abs(((map.getBearing() - bTarget + 540) % 360) - 180) > 0.5 || (bTarget === 0 && map.getPitch() > 1);
     if (nav && idle > 8000) {
       if (ref && !follow) { setFollow(true); var o = { center: [ref.lon, ref.lat], zoom: Math.max(map.getZoom(), 16), padding: padding(), duration: 900 }; if (camBearing() !== null) { o.bearing = bTarget; o.pitch = 45; } else { o.bearing = 0; o.pitch = 0; } map.easeTo(o); }
-      else if (off) map.easeTo({ bearing: bTarget, pitch: bTarget ? 45 : 0, duration: 800, padding: padding() });
+      else if (off && !(follow && camBearing() !== null)) map.easeTo({ bearing: bTarget, pitch: bTarget ? 45 : 0, duration: 800, padding: padding() });   // Fahrtrichtung: macht der Kamera-Takt
     } else if (!nav && idle > 20000) {
       if (ref && !follow && (state === 'home' || state === 'near')) { setFollow(true); map.easeTo({ center: [ref.lon, ref.lat], zoom: Math.max(map.getZoom(), 15), bearing: 0, pitch: 0, padding: padding(), duration: 900 }); }
       else if (off) smoothBearing(0, 800);
@@ -1974,6 +2041,8 @@
       '<div class="opt"><div class="grow">Höhenlinien (alle 25 m)</div>' + sw('swCont', S.contours) + '</div>' +
       '<div class="opt"><div class="grow">Radrouten hervorheben</div>' + sw('swRoutes', S.routes) + '</div>' +
       '<div class="opt"><div class="grow">Ortsnamen</div>' + sw('swLabels', S.labels) + '</div>' +
+      '<div class="opt"><div class="grow">3D-Gebäude<div class="sub">Ab Straßen-Zoom, mit zwei Fingern nach oben schieben zum Kippen</div></div>' + sw('swB3d', S.b3d) + '</div>' +
+      '<div class="opt"><div class="grow">3D-Gelände<div class="sub">Berge und Täler in echt. Braucht mehr Akku und Internet.</div></div>' + sw('swTer', S.terrain3d) + '</div>' +
       '<h3>Legende</h3>' + legendHtml() +
       '<h3>Meine Fahrten</h3>' +
       (rides.length ? rides.map(function (r, k) {
@@ -1981,7 +2050,7 @@
         return '<div class="row" data-ride="' + k + '"><div class="ico">' + svg('bike', '#0fae73', 18) + '</div><div class="grow"><div class="t">' + d.toLocaleDateString('de-DE') + ', ' + hhmm(d) + '</div><div class="s">' + fmtTime(r.mv) + ' in Bewegung &middot; ' + Math.round(r.asc) + ' m bergauf &middot; ' + (r.mv > 0 ? (r.dist / r.mv * 3.6).toFixed(1).replace('.', ',') : '0') + ' km/h</div></div><div class="r"><b>' + fmtDist(r.dist) + '</b></div></div>';
       }).join('') : '<div class="empty">Noch keine Fahrten. Jede Navigation und jede freie Fahrt wird aufgezeichnet.</div>') +
       '<div class="btns"><button class="go" id="mFree">Freie Fahrt starten</button></div>' +
-      '<h3>Über die App</h3><div class="sub">BikeOra 7.3 mit der KI Juno (echtes Sprachmodell über den BikeOra-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet.</div>';
+      '<h3>Über die App</h3><div class="sub">BikeOra 8.0 mit der KI Juno (echtes Sprachmodell über den BikeOra-Server, optional offline auf dem Gerät). Fahrrad-Navigation weltweit: Karte und Routen kommen online (OpenFreeMap, BRouter, waymarkedtrails.org). Karte: OpenStreetMap, gezeichnet mit MapLibre GL (' + D.ways.length + ' Wege, ' + D.pois.length + ' Orte). Höhen: Copernicus DEM 90 m. Wetter: Open-Meteo (nur mit Internet). Fahrzeiten werden physikalisch aus Leistung, Gewicht, Rollwiderstand je Belag, Luftwiderstand, Steigung und Wind berechnet. Velo in 3D: three.js (MIT-Lizenz).</div>';
     sheet(html);
     sheetEl.querySelectorAll('[data-mbike]').forEach(function (b) { b.onclick = function () { if (HOOK('bikeLocked', b.getAttribute('data-mbike'))) return; S.bike = b.getAttribute('data-mbike'); saveS(); computeCosts(); showMenu(); }; });
     sheetEl.querySelectorAll('[data-fit]').forEach(function (b) { b.onclick = function () { S.fit = b.getAttribute('data-fit'); saveS(); computeCosts(); showMenu(); }; });
@@ -1990,6 +2059,7 @@
     tg('swVoice', 'voice', function () { if (S.voice) say('Sprachansagen eingeschaltet'); });
     tg('swWind', 'wind', computeCosts);
     tg('swRelief', 'relief', updLayers); tg('swCont', 'contours', updLayers); tg('swRoutes', 'routes', updLayers); tg('swLabels', 'labels', updLayers);
+    tg('swB3d', 'b3d', upd3d); tg('swTer', 'terrain3d', function () { upd3d(); if (S.terrain3d && map.getPitch() < 30) map.easeTo({ pitch: 55, duration: 900 }); });
     $('mFree').onclick = startFree;
     sheetEl.querySelectorAll('[data-ride]').forEach(function (b) { b.onclick = function () { showRide(+b.getAttribute('data-ride')); }; });
     HOOK('menuBound');
@@ -2661,7 +2731,7 @@
     computeCosts: computeCosts, drawHome: drawHome, drawRouteSheet: drawRouteSheet, fetchExt: fetchExt, isLocal: isLocal, showExtPoint: showExtPoint, onlinePois: onlinePois, hereRef: hereRef, nearIsl: nearIsl, showMenu: showMenu, showJuno: showJuno, askJuno: askJuno, showTours: showTours, setSrc: setSrc, fc: fc, lineF: lineF, ptF: ptF,
     fitTo: fitTo, boundsOf: boundsOf, view: view, setFollow: setFollow, padding: padding, sunTimes: sunTimes, idxAt: idxAt, routeLL: routeLL, profileSvg: profileSvg,
     get state() { return state; }, set state(v) { state = v; }, get nav() { return nav; }, get rec() { return rec; }, get cur() { return cur; }, get plan() { return plan; }, get me() { return me; }, get WX() { return WX; }, get mapReady() { return mapReady; },
-    get lastSpeed() { return lastSpeed; }, meMarker: function () { return meMarker; }, DESKTOP: DESKTOP
+    get lastSpeed() { return lastSpeed; }, meMarker: function () { return meMarker; }, DESKTOP: DESKTOP, mapNight: mapNight, upd3d: upd3d
   };
   HOOK('init');
   window.__ugljan = { kontext: function () { return buildKontext(); }, getCur: function () { return cur; }, map: map, STYLES: STYLES, routeVia: routeVia, nearestNode: nearestNode, S: S, computeCosts: computeCosts, findSpec: findSpec, makeLoops: makeLoops, officialRoutes: officialRoutes, BIKES: BIKES };

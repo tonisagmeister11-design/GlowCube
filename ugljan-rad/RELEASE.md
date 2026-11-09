@@ -1,19 +1,21 @@
 # BikeOra – Release im Google Play Store
 
-Stand: Version 7.1 (versionCode 27), Paket `app.velora.bike`, targetSdk 36, minSdk 24, nur arm64-v8a.
+Stand: Version 8.0 (versionCode 30), Paket `app.velora.bike`, targetSdk 36, minSdk 24, nur arm64-v8a.
+Version und Code stehen nur noch an einer Stelle: `app/build.gradle` (`appVersionCode`, `appVersionName`).
 
 ## 1. Bauen
 
 ```bash
 ./build-native.sh        # nur nötig, wenn sich native/velora_llm.cpp ändert (llama.cpp b12032)
-./build-release.sh       # dist/BikeOra.aab (für die Play Console) + dist/BikeOra-release.apk (gleiche Signatur, zum Testen)
-./build.sh               # dist/BikeOra.apk mit dem Entwickler-Schlüssel (nur zum Ausprobieren)
+./build-release.sh       # Gradle (AGP 8.13, Google Play Billing 8.3): dist/BikeOra.aab (Play Console) + dist/BikeOra-release.apk (gleiche Signatur)
+./build.sh               # dist/BikeOra.apk ohne Gradle, mit dem Entwickler-Schlüssel (nur zum Ausprobieren, ohne Kaufen)
+./build-desktop.sh       # dist/BikeOra.exe (Windows)
 ```
 
 `build-release.sh` signiert mit dem **Upload-Schlüssel**, der nicht im Repository liegt:
 
 ```bash
-BIKEORA_UPLOAD_KS=/sicherer/ort/velora-upload.jks BIKEORA_UPLOAD_PASS='…' ./build-release.sh
+VELORA_UPLOAD_KS=/sicherer/ort/velora-upload.jks VELORA_UPLOAD_PASS='…' ./build-release.sh
 ```
 
 Den Upload-Schlüssel (`velora-upload.jks`, Alias `upload`) und sein Passwort sicher aufbewahren (zum Beispiel im Passwort-Manager und auf einem USB-Stick).
@@ -41,7 +43,7 @@ SHA-256 des Upload-Zertifikats: `13:6F:8B:10:98:4C:50:7F:5A:3E:67:65:7E:E1:30:20
 **Konto löschen (URL, Pflicht für Apps mit Konten):** https://velora-ki.toni-sagmeister11.workers.dev/konto-loeschen
 (In der App: Einstellungen → Konto löschen.)
 
-**Werbung:** Nein. **In-App-Käufe:** derzeit keine (siehe Abschnitt 5).
+**Werbung:** Nein. **In-App-Käufe:** Ja, ein Abo „BikeOra Plus“ (siehe Abschnitt 5).
 
 **Zielgruppe:** 13–15, 16–17 und 18+ (nicht unter 13, damit gilt nicht die Familienrichtlinie). Für ein Konto verlangt die Datenschutzerklärung mindestens 14 Jahre.
 
@@ -69,21 +71,39 @@ Daten werden verschlüsselt übertragen (HTTPS). Nutzer können die Löschung ih
 ## 4. Server (Cloudflare Worker `velora-ki`)
 
 - `/soul` KI-Antworten mit Kostenbremse (höchstens 9.000 von 10.000 Gratis-Neuronen pro Tag, exakter Zähler im Durable Object), `/soul/report` Meldungen
+- `/billing/verify` prüft ein Play-Abo (mit `GOOGLE_PLAY_SA`), `/me` prüft abgelaufene Abos erneut
 - `/auth/*`, `/me` Konten (Passwörter nur als PBKDF2-Hash), `/konto-loeschen` Löschseite, `/datenschutz`, `/admin` Dashboard
 - `/admin/api/summary` nur anonyme Summen, mit Statistik-Schlüssel (für das Dashboard-Artefakt)
 - Deploy: `cd server && npx wrangler deploy`
 
-## 5. BikeOra Plus (noch nicht verkaufsbereit)
+## 5. BikeOra Plus (Abo über Google Play)
 
-Der Kauf über Google Play Billing ist noch nicht eingebaut. Deshalb zeigt die App „Bald über Google Play“ und schaltet nichts frei; der Server ignoriert Plus-Anfragen der App.
-Zum Einbauen nötig:
-1. In der Play Console ein Abo-Produkt anlegen (z. B. `velora_plus`, monatlich 2,99 € und jährlich 19,99 €).
-2. Die Play Billing Library einbinden (benötigt den Gradle-Build, weil die Bibliothek viele Abhängigkeiten hat).
-3. Kauf in der App über `Android.buyPlus()` und `Android.billingAvailable()` (in `plus.js` schon vorbereitet).
-4. Kauf auf dem Server mit der Google Play Developer API prüfen (Dienstkonto als Cloudflare-Secret) und erst dann `plus` setzen.
+Der Kauf ist fertig eingebaut (Google Play Billing Library 8.3). Die App fragt Google Play nach den Preisen, startet den Kauf,
+bestätigt ihn (sonst erstattet Google nach 3 Tagen automatisch), stellt Käufe auf einem neuen Handy wieder her („Kauf wiederherstellen“)
+und öffnet zum Kündigen die Abo-Verwaltung von Google Play. Ein gekündigtes oder abgelaufenes Abo schaltet Plus beim nächsten Start ab.
+
+**In der Play Console anlegen (einmalig, erst nach dem ersten Hochladen eines AAB möglich):**
+1. *Monetarisieren → Produkte → Abos → Abo erstellen*: Produkt-ID **`bikeora_plus`**, Name „BikeOra Plus“.
+2. Zwei **Basis-Abos** anlegen und aktivieren:
+   - ID **`monthly`**, automatisch verlängernd, Abrechnungszeitraum 1 Monat, Preis z. B. 2,99 €
+   - ID **`yearly`**, automatisch verlängernd, Abrechnungszeitraum 1 Jahr, Preis z. B. 19,99 €
+3. Optional ein Angebot (z. B. 7 Tage gratis) für ein Basis-Abo: die App nimmt es automatisch.
+4. *Einrichtung → Lizenztests*: eigene Google-Konten als Lizenztester eintragen. Testkäufe kosten dann nichts und verlängern sich im Minutentakt.
+
+Die IDs müssen genau so heißen, sonst zeigt die App „Produkt bikeora_plus nicht gefunden“ und verkauft nichts.
+
+**Prüfung auf dem Server (empfohlen):** Damit Plus auch am Konto hängt (zweites Gerät, Desktop) und niemand den Kauf vortäuschen kann,
+prüft der Server das Abo bei Google:
+1. In der Google Cloud Console ein Dienstkonto anlegen und einen JSON-Schlüssel erzeugen.
+2. In der Play Console unter *Nutzer und Berechtigungen* das Dienstkonto einladen, Berechtigung „Finanzdaten ansehen“ und „Bestellungen und Abos verwalten“.
+3. Den Inhalt der JSON-Datei im Cloudflare-Dashboard als Secret **`GOOGLE_PLAY_SA`** beim Worker `velora-ki` eintragen (nicht in den Chat, nicht ins Repository).
+
+Ohne dieses Secret funktioniert der Kauf in der App trotzdem; der Server merkt sich den Kauf dann nur als „noch nicht geprüft“.
 
 ## 6. Bekannte Einschränkungen
 
 - Nur arm64-Geräte (64-Bit). Ältere reine 32-Bit-Handys sehen die App im Store nicht.
 - Sprachansagen brauchen die entsprechende Stimme auf dem Gerät; fehlt sie, wird Deutsch verwendet.
 - Offline-Karten und der Offline-Modus von Juno brauchen viel Speicher; beides ist freiwillig.
+- 3D-Gelände ist aus Akku-Gründen standardmäßig aus (Einstellungen → Karte). 3D-Gebäude und der 3D-Fuchs lassen sich dort ebenfalls abschalten.
+- Ohne 3D-Grafik (WebGL) zeigt die App den 2D-Fuchs; die Karte braucht WebGL.

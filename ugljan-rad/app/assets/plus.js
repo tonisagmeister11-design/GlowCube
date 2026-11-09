@@ -70,7 +70,7 @@
     var stars = ''; for (var i = 0; i < 26; i++) stars += '<i style="left:' + Math.round(Math.random() * 100) + '%;top:' + Math.round(Math.random() * 100) + '%;animation-delay:' + (Math.random() * 3).toFixed(2) + 's;transform:scale(' + (0.4 + Math.random()).toFixed(2) + ')"></i>';
     el.innerHTML = '<div class="px-aurora"></div><div class="px-stars">' + stars + '</div>' +
       '<button class="px-close" id="pxClose" aria-label="Schließen"><svg width="22" height="22" viewBox="0 0 24 24" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>' +
-      '<div class="px-scroll"><div class="px-hero"><div class="px-ring"></div>' + mascot('cheer', 150) + '</div>' +
+      '<div class="px-scroll"><div class="px-hero"><div class="px-ring"></div>' + mascot('dance', 150) + '</div>' +
       '<div class="px-logo">BIKEORA <span class="px-rb">PLUS</span></div>' +
       '<div class="px-sub">' + (why ? esc(why) + ' gehört zu BikeOra Plus.' : 'Mehr Juno, mehr Touren, mehr Abenteuer.') + '</div>' +
       '<div class="px-feats">' + FEATS.map(function (f, i) { return '<div class="px-card" style="animation-delay:' + (0.15 + i * 0.06).toFixed(2) + 's"><div class="px-ic">' + svg(f[0], '#ffffff', 20, 2.3) + '</div><div class="grow"><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>'; }).join('') + '</div>' +
@@ -88,7 +88,7 @@
     $('plusGo').onclick = function () {
       if (BILL) { hap('click'); try { A.buyPlus(PRICE); } catch (e) { V.toast('Der Kauf ist gerade nicht möglich.'); } return; }
       if (!TESTER) return;
-      P.src = 'test'; setPlus(true); close(); celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
+      P.src = 'test'; setPlus(true); close(); celebrate({ mood: 'celebrate', title: 'Willkommen bei Plus!', text: 'Alle Funktionen sind jetzt freigeschaltet. Viel Spaß beim Fahren!' }); if (V.state === 'menu') V.showMenu(); };
   }
   // Ereignisse von Google Play Billing (Billing.java)
   var restoring = false;
@@ -98,7 +98,7 @@
     if (type === 'bought') {
       var px = $('plusx'); if (px) { px.classList.add('out'); setTimeout(function () { px.remove(); }, 300); }
       P.src = 'play'; setPlus(true); hap('celebrate');
-      celebrate({ mood: 'cheer', title: 'Willkommen bei Plus!', text: 'Danke für deine Unterstützung! Alle Plus-Funktionen sind jetzt freigeschaltet.' });
+      celebrate({ mood: 'celebrate', title: 'Willkommen bei Plus!', text: 'Danke für deine Unterstützung! Alle Plus-Funktionen sind jetzt freigeschaltet.' });
       if (VX.verifyPlus) VX.verifyPlus(d.token);
       if (V.state === 'menu') V.showMenu();
       return;
@@ -122,7 +122,7 @@
   };
   // Plus aktiv: schlicht
   function plusActive() {
-    var m = modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('thumbs', 70) + '<div class="grow"><h2>BikeOra Plus</h2><div class="sub">Plus ist aktiv. Danke für deine Unterstützung!</div></div></div>' +
+    var m = modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('love', 70) + '<div class="grow"><h2>BikeOra Plus</h2><div class="sub">Plus ist aktiv. Danke für deine Unterstützung!</div></div></div>' +
       '<div class="pbox ok"><div class="sub">' + 'Reiseführer, Tagesplaner, Akkuplaner, Regenwarnung, Bestzeiten, GPX, Offline-Karten ohne Grenze, alle Farben und Pfeile.</div></div>' +
       '<div class="btns">' + (TESTER && P.src !== 'play' ? '<button class="go sec" id="plusOff">Plus beenden (Test)</button>' : '') + (P.src === 'play' && A && A.manageSubscription ? '<button class="go sec" id="plusManage">Abo verwalten</button>' : '') + '<button class="go" id="plusOk">Schließen</button></div>');
     if ($('plusManage')) $('plusManage').onclick = function () { try { A.manageSubscription(); } catch (e) { } };
@@ -164,9 +164,12 @@
   // =====================================================================
   // Maskottchen Velo, der Fuchs (fox.js) und seine Animationen
   // =====================================================================
+  // 20 Posen fuer den 3D-Fuchs (fox3d.js); der 2D-Fuchs (fox.js) kennt 10 davon, die anderen bekommen die naechstliegende
+  var SVGMOOD = { idle: 'idle', wave: 'wave', cheer: 'cheer', sad: 'sad', ride: 'ride', think: 'think', thumbs: 'thumbs', sleep: 'sleep', trophy: 'trophy', torch: 'torch',
+    dance: 'cheer', celebrate: 'cheer', run: 'cheer', spin: 'cheer', laugh: 'thumbs', surprised: 'think', love: 'thumbs', flex: 'thumbs', point: 'wave', wink: 'thumbs' };
   function mascot(mood, size) {
-    var m = { idle: 'idle', wave: 'wave', cheer: 'cheer', sad: 'sad', ride: 'ride', think: 'think', thumbs: 'thumbs', sleep: 'sleep', trophy: 'trophy', torch: 'torch' }[mood] || 'idle';
-    return '<div class="fxw fx-' + m + '" style="width:' + Math.round(size * 0.87) + 'px;height:' + size + 'px">' + (window.Fox ? Fox.svg(m) : '') + '</div>';
+    var pose = SVGMOOD[mood] ? mood : 'idle', m = SVGMOOD[pose];
+    return '<div class="fxw fx-' + m + '" data-pose="' + pose + '" style="width:' + Math.round(size * 0.87) + 'px;height:' + size + 'px">' + (window.Fox ? Fox.svg(m) : '') + '</div>';
   }
   VX.mascot = mascot;
   // Velo reagiert: kurzer Auftritt mit 3D-Drehung oben links, nie waehrend der Navigation, nie aufdringlich
@@ -325,7 +328,7 @@
   }
   // Abzeichen: faellt wirbelnd vom Himmel, Velo faengt es, Lichtstrahlen
   function badgeHtml(o) {
-    return '<div class="bscene"><div class="rays"></div><div class="bdrop">' + badgeSvg(o.fam, o.tier, false, true) + '</div><div class="sbits"></div><div class="bfox2">' + mascot('cheer', 92) + '</div></div>' +
+    return '<div class="bscene"><div class="rays"></div><div class="bdrop">' + badgeSvg(o.fam, o.tier, false, true) + '</div><div class="sbits"></div><div class="bfox2">' + mascot('trophy', 92) + '</div></div>' +
       '<div class="blate"><div class="btier" style="color:' + TIERS[o.tier - 1][2] + '">' + TIERS[o.tier - 1][0] + '</div><h2>' + esc(o.fam[1]) + '</h2><div class="sub">' + esc(o.text) + '</div></div>';
   }
   function runBadge(el) {
@@ -500,7 +503,7 @@
       if (!b || c.t < b.t) {
         var old = b ? b.t : null;
         BEST[c.key] = { name: (b && b.name) || c.name, t: c.t, gain: Math.round(c.gain), len: Math.round(c.len), when: ride.t, prev: old };
-        if (old && isPlus()) celebrate({ mood: 'cheer', big: fmtMin(c.t).replace(' min', ''), title: 'Neuer Rekord!', text: c.name + ': ' + Math.round(old - c.t) + ' Sekunden schneller als deine alte Bestzeit.', say: 'Neuer Rekord am Anstieg' });
+        if (old && isPlus()) celebrate({ mood: 'trophy', big: fmtMin(c.t).replace(' min', ''), title: 'Neuer Rekord!', text: c.name + ': ' + Math.round(old - c.t) + ' Sekunden schneller als deine alte Bestzeit.', say: 'Neuer Rekord am Anstieg' });
       }
     });
     V.store('bests', BEST);
@@ -528,7 +531,7 @@
   };
   checkBadges(false);
   function askWeekGoal() {
-    var m = modal('<div style="text-align:center">' + mascot('thumbs', 120) + '<h2>Wie oft willst du pro Woche fahren?</h2><div class="sub">Schaffst du dein Ziel jede Woche, brennt deine Flamme weiter. Du kannst es jederzeit in der Statistik ändern.</div>' +
+    var m = modal('<div style="text-align:center">' + mascot('flex', 120) + '<h2>Wie oft willst du pro Woche fahren?</h2><div class="sub">Schaffst du dein Ziel jede Woche, brennt deine Flamme weiter. Du kannst es jederzeit in der Statistik ändern.</div>' +
       '<div class="wkpick">' + [1, 2, 3, 4].map(function (g) { return '<button data-wg="' + g + '"><b>' + g + '</b><span>' + (g === 1 ? 'Fahrt' : 'Fahrten') + '</span></button>'; }).join('') + '</div></div>');
     m.querySelectorAll('[data-wg]').forEach(function (b) { b.onclick = function () { S.wkGoal = +b.getAttribute('data-wg'); V.saveS(); hap('success'); closeModal(); V.drawHome(); updWidget(); }; });
   }
@@ -566,7 +569,7 @@
     var hr = new Date().getHours();
     var W = function (n) { return n + (n === 1 ? ' Woche' : ' Wochen'); }, F = function (n) { return n + (n === 1 ? ' Fahrt' : ' Fahrten'); };
     if (!LOG.length) { mood = 'wave'; head = 'Hallo, ich bin Velo!'; txt = 'Fahr ' + F(st.target) + ' pro Woche, dann zünde ich deine Flamme an.'; }
-    else if (st.done) { mood = 'thumbs'; head = st.cur > 1 ? W(st.cur) + ' in Folge!' : 'Wochenziel geschafft!'; txt = 'Diese Woche: ' + F(st.week) + ', ' + km(wk.d) + ' km. Die Flamme brennt bis nächste Woche.'; }
+    else if (st.done) { mood = st.cur > 2 ? 'dance' : 'thumbs'; head = st.cur > 1 ? W(st.cur) + ' in Folge!' : 'Wochenziel geschafft!'; txt = 'Diese Woche: ' + F(st.week) + ', ' + km(wk.d) + ' km. Die Flamme brennt bis nächste Woche.'; }
     else if (hr >= 22 || hr < 6) { mood = 'sleep'; head = 'Gute Nacht!'; txt = 'Diese Woche noch ' + F(st.left) + ' für deine Flamme' + (st.cur ? ' (' + W(st.cur) + ')' : '') + '.'; }
     else if (st.left >= st.daysLeft) { mood = 'sad'; head = 'Jetzt wird es knapp!'; txt = 'Noch ' + F(st.left) + ' bis Sonntag, sonst geht die Flamme aus.'; }
     else if (st.daysLeft <= 3) { mood = 'wave'; head = 'Noch ' + F(st.left) + ' bis Sonntag'; txt = st.cur ? 'Deine Flamme brennt seit ' + W(st.cur) + '. Halte sie am Leben!' : 'Dann brennt deine Flamme.'; }
@@ -725,7 +728,7 @@
   }
   function showSaved() {
     V.state = 'saved';
-    V.sheet('<h2>Gespeicherte Routen</h2>' + (SAVED.length ? SAVED.map(function (x, i) { return '<div class="row" data-sv="' + i + '"><div class="ico">' + svg(x.opt.loop ? 'loop' : 'flag', 'currentColor', 18) + '</div><div class="grow"><div class="t ell">' + esc(x.title) + '</div><div class="s">' + V.fmtDist(x.len) + ' &middot; ' + V.fmtTime(x.secs) + ' &middot; ' + Math.round(x.asc) + ' m bergauf</div></div><button class="chip sm" data-svdel="' + i + '">Löschen</button></div>'; }).join('') : '<div class="velo-card">' + mascot('think', 50) + '<div class="bubble"><span>Noch keine Routen. Plane eine Route und tippe auf "Speichern".</span></div></div>') +
+    V.sheet('<h2>Gespeicherte Routen</h2>' + (SAVED.length ? SAVED.map(function (x, i) { return '<div class="row" data-sv="' + i + '"><div class="ico">' + svg(x.opt.loop ? 'loop' : 'flag', 'currentColor', 18) + '</div><div class="grow"><div class="t ell">' + esc(x.title) + '</div><div class="s">' + V.fmtDist(x.len) + ' &middot; ' + V.fmtTime(x.secs) + ' &middot; ' + Math.round(x.asc) + ' m bergauf</div></div><button class="chip sm" data-svdel="' + i + '">Löschen</button></div>'; }).join('') : '<div class="velo-card">' + mascot('point', 50) + '<div class="bubble"><span>Noch keine Routen. Plane eine Route und tippe auf "Speichern".</span></div></div>') +
       '<div class="btns"><button class="go sec" id="gpxIn">GPX importieren' + (isPlus() ? '' : TAG) + '</button></div><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml" style="display:none">' +
       '<div class="btns"><button class="go sec" id="svBack">Zurück</button></div>');
     V.sheetEl.querySelectorAll('[data-sv]').forEach(function (b) { b.onclick = function (e) { if (e.target.closest('[data-svdel]')) return; var x = SAVED[+b.getAttribute('data-sv')]; V.planRoute(x.pts, x.title, { picked: true, loop: x.opt.loop, tour: x.opt.tour, style: x.opt.style }); }; });
@@ -846,7 +849,7 @@
     if (!live) { live = { id: rnd(12), key: rnd(28), t: Date.now() }; V.store('live', live); }
     var url = KI_BASE + '/l/' + live.id;
     liveT = 0; if (V.meRef()) liveSend(V.meRef(), V.cur, V.nav ? V.nav.lastAlong : 0);
-    modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('wave', 56) + '<div class="grow"><h2>Live teilen</h2><div class="sub">Wer den Link hat, sieht während dieser Fahrt deinen Standort. Er endet mit der Fahrt.</div></div></div>' +
+    modal('<div style="display:flex;align-items:center;gap:12px">' + mascot('wink', 56) + '<div class="grow"><h2>Live teilen</h2><div class="sub">Wer den Link hat, sieht während dieser Fahrt deinen Standort. Er endet mit der Fahrt.</div></div></div>' +
       '<div class="pbox"><div class="t" style="word-break:break-all;font-size:14px">' + esc(url) + '</div></div>' +
       '<div class="btns"><button class="go" id="liveShare">Link teilen</button><button class="go sec" id="liveCopy">Kopieren</button></div>' +
       '<div class="btns"><button class="go sec" id="liveBack">Zurück zur Navigation</button></div>');
@@ -1059,7 +1062,7 @@
     V.state = 'offline';
     var areas = V.load('offAreas', 0);
     var info = A && A.tileInfo ? A.tileInfo().split(',') : null;
-    V.sheet('<div style="display:flex;align-items:center;gap:12px">' + mascot('idle', 56) + '<div class="grow"><h2>Offline-Karten</h2><div class="sub">Karte auf das Gebiet schieben, das du ohne Internet brauchst, und speichern.</div></div></div>' +
+    V.sheet('<div style="display:flex;align-items:center;gap:12px">' + mascot('point', 56) + '<div class="grow"><h2>Offline-Karten</h2><div class="sub">Karte auf das Gebiet schieben, das du ohne Internet brauchst, und speichern.</div></div></div>' +
       (A && A.downloadTiles ? '<div class="pbox"><div class="t">Gespeichert</div><div class="sub">' + (info ? info[0] + ' Kartenteile, ' + num((info[1] / 1048576).toFixed(1)) + ' MB' : '-') + '</div></div>' +
         (isPlus() ? '' : '<div class="sub" style="font-size:13px;margin-bottom:6px">Gratis: ein Gebiet (etwa eine Stadt mit Umgebung). Mit Plus beliebig viele und größere.</div>') + '<div class="btns"><button class="go" id="dlGo">Sichtbaren Bereich speichern</button></div><div id="dlBox"></div><div class="btns"><button class="go sec" id="dlClear">Alle löschen</button></div>' +
         '<div class="sub" style="font-size:12px;margin-top:8px">Gespeichert werden Karte, Relief und Radrouten bis Zoomstufe 14. Neue Routen berechnen braucht weiterhin Internet.</div>'
@@ -1102,7 +1105,7 @@
   function themeFree(t) { return THEMES.some(function (x) { return x[0] === t && !x[3]; }); }
   VX.menuTop = function () {
     return (isPlus() ? '<div class="plusbar" data-act="plus"><div class="ico">' + svg('flag', '#6b4dff', 18) + '</div><div class="grow"><b>BikeOra Plus ist aktiv</b><span>Alle Funktionen freigeschaltet</span></div></div>'
-      : '<div class="plusbar" data-act="plus">' + mascot('thumbs', 56) + '<div class="grow"><b>BikeOra Plus</b><span>Reiseführer, Tagesplaner, Akkuplaner und mehr</span></div><button class="go plus" style="width:auto;padding:0 14px;height:40px;font-size:14px">Ansehen</button></div>') +
+      : '<div class="plusbar" data-act="plus">' + mascot('wink', 56) + '<div class="grow"><b>BikeOra Plus</b><span>Reiseführer, Tagesplaner, Akkuplaner und mehr</span></div><button class="go plus" style="width:auto;padding:0 14px;height:40px;font-size:14px">Ansehen</button></div>') +
       '<div class="linkrow"><button data-act="stats">' + svg('list', 'currentColor', 18) + 'Statistik</button><button id="mSaved">' + svg('flag', 'currentColor', 18) + 'Meine Routen</button>' +
       '<button data-act="dayplan">' + svg('loop', 'currentColor', 18) + 'Tagesplaner</button><button id="mOffline">' + svg('road', 'currentColor', 18) + 'Offline-Karten</button></div>';
   };
@@ -1115,6 +1118,7 @@
       '<div class="opt"><div class="grow">Farbe</div></div><div class="hscroll" style="margin-top:0">' + THEMES.map(function (t, i) { return '<button class="chip' + (S.theme === t[0] ? ' on' : '') + '" data-theme="' + t[0] + '"><i style="width:12px;height:12px;border-radius:50%;background:' + t[2] + ';display:inline-block"></i>' + t[1] + (t[3] && !plus ? TAG : '') + '</button>'; }).join('') + '</div>' +
       '<div class="opt"><div class="grow">Navigationspfeil</div></div><div class="hscroll" style="margin-top:0">' + Object.keys(ARROWS).map(function (k) { return '<button class="chip' + (S.arrow === k ? ' on' : '') + '" data-arrow="' + k + '"><span style="width:18px;height:20px;display:inline-block">' + ARROWS[k][1] + '</span>' + ARROWS[k][0] + (plus || k === '3d' || k === 'pfeil' ? '' : TAG) + '</button>'; }).join('') + '</div>' +
       '<div class="opt"><div class="grow">Juno als Reiseführer' + (plus ? '' : TAG) + '<div class="sub">Erzählt unterwegs über Orte, an denen du vorbeifährst</div></div>' + '<div class="sw' + (S.guide && plus ? ' on' : '') + '" id="swGuide"></div></div>' +
+      (window.Fox3D && Fox3D.ok ? '<div class="opt"><div class="grow">Velo in 3D<div class="sub">Der Fuchs als 3D-Figur mit Animationen. Aus spart etwas Akku.</div></div><div class="sw' + (Fox3D.enabled ? ' on' : '') + '" id="swFox3d"></div></div>' : '') +
       (S.bike === 'road' ? '<div class="opt"><div class="grow">Rennrad: maximale Steigung</div></div><div class="seg" style="margin-top:0">' + [[0, 'Egal'], [0.06, '6 %'], [0.08, '8 %'], [0.1, '10 %']].map(function (x) { return '<button data-maxg="' + x[0] + '" class="' + (S.maxG === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; }).join('') + '</div>' : '');
   };
   VX.menuBound = function () {
@@ -1126,6 +1130,7 @@
     el.querySelectorAll('[data-arrow]').forEach(function (b) { b.onclick = function () { var a = b.getAttribute('data-arrow'); if (a !== '3d' && a !== 'pfeil' && !gate('Navigationspfeile')) return; S.arrow = a; V.saveS(); setArrowSkin(); V.showMenu(); }; });
     el.querySelectorAll('[data-maxg]').forEach(function (b) { b.onclick = function () { S.maxG = +b.getAttribute('data-maxg'); V.saveS(); V.computeCosts(); V.showMenu(); }; });
     if ($('swGuide')) $('swGuide').onclick = function () { if (!gate('Juno als Reiseführer')) return; S.guide = !S.guide; V.saveS(); this.classList.toggle('on', S.guide); };
+    if ($('swFox3d')) $('swFox3d').onclick = function () { Fox3D.setEnabled(!Fox3D.enabled); this.classList.toggle('on', Fox3D.enabled); };
     if ($('mSaved')) $('mSaved').onclick = showSaved;
     if ($('mOffline')) $('mOffline').onclick = showOffline;
   };
@@ -1148,6 +1153,7 @@
     if (theme === 'mint') document.body.removeAttribute('data-theme'); else document.body.setAttribute('data-theme', theme);
     var night = S.night === 'on' || (S.night === 'auto' && isNight());
     document.body.classList.toggle('night', night);
+    if (V.mapNight) V.mapNight(night);
     var tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.content = night ? '#0f1720' : '#ffffff';
   }
   applyLook(); setInterval(applyLook, 60000);
