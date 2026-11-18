@@ -109,6 +109,7 @@ function UI.init(ctx)
 	UI.buildMenu(base)
 	UI.buildOverlays(base)
 	UI.buildExtras(base)
+	UI.buildHeroControls()
 	return UI
 end
 
@@ -302,7 +303,7 @@ function UI.buildMenu(base)
 		UI.modeBtns[m] = { btn = b, stroke = st }
 	end
 	UI.lobbyHint = label({ Text = "Tippe auf ein Team, um mitzukämpfen. Ist ein Team leer, spielt der Computer.", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 40), Max = 16, LayoutOrder = 7, TextWrapped = true, Parent = play })
-	local help = "Steuerung PC: 1–7 Krieger · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · A/D oder Mausrad: Kamera\nHandy: Knöpfe unten antippen, übers Feld wischen = Kamera"
+	local help = "Steuerung PC: 1–7 Krieger · A/D Held laufen · Leertaste Held schlägt · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · Mausrad: Kamera\nHandy: ◀ ▶ ⚔ steuern deinen Helden, Knöpfe unten beschwören Krieger"
 	label({ Text = help, TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 44), Max = 14, LayoutOrder = 8, TextWrapped = true, Font = Enum.Font.Gotham, Parent = play })
 	label({ Text = "TOP 10 SIEGE", TextColor3 = GOLD, Font = DISPLAY, Size = UDim2.new(1, 0, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, Max = 20, LayoutOrder = -2, Parent = play })
 	UI.topLabel = label({ Text = "Noch keine Einträge", TextColor3 = PAPER, Size = UDim2.new(1, -10, 0, 48), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, Max = 15, Font = Enum.Font.Gotham, LayoutOrder = -1, Parent = play })
@@ -452,6 +453,31 @@ function UI.buildExtras(base)
 		local bg = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, Size = UDim2.new(0.5, -4, 0, 16), Position = UDim2.new(s == 1 and 0 or 0.5, s == 1 and 0 or 4, 0, 22), Parent = UI.hillFrame }, { corner(8) })
 		UI.hillBars[s] = make("Frame", { BackgroundColor3 = s == 1 and Color3.fromRGB(30, 30, 36) or PAPER, Size = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(s == 1 and 1 or 0, 0), Position = UDim2.fromScale(s == 1 and 1 or 0, 0), Parent = bg }, { corner(8), stroke(GOLD, 1, 0.4) })
 	end
+end
+
+-- Steuerknöpfe für den eigenen Helden (Handy und Maus)
+function UI.buildHeroControls()
+	local hud = UI.hud
+	UI.heroPad = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -24, 0, 110), Position = UDim2.new(0, 12, 1, -250), Parent = hud })
+	local function holdButton(text, pos, size, color, onDown, onUp)
+		local b = make("TextButton", { Text = text, Font = DISPLAY, TextScaled = true, TextColor3 = PAPER, AutoButtonColor = true, BackgroundColor3 = color,
+			BackgroundTransparency = 0.15, Size = size, Position = pos, Parent = UI.heroPad }, {
+			make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 3, Transparency = 0.4 }),
+			make("UITextSizeConstraint", { MaxTextSize = 44 }),
+		})
+		b.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then onDown() end
+		end)
+		b.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then onUp() end
+		end)
+		return b
+	end
+	holdButton("◀", UDim2.fromOffset(0, 10), UDim2.fromOffset(96, 96), Color3.fromRGB(40, 40, 50), function() UI.heroMove = -1 end, function() if UI.heroMove == -1 then UI.heroMove = 0 end end)
+	holdButton("▶", UDim2.fromOffset(110, 10), UDim2.fromOffset(96, 96), Color3.fromRGB(40, 40, 50), function() UI.heroMove = 1 end, function() if UI.heroMove == 1 then UI.heroMove = 0 end end)
+	holdButton("⚔", UDim2.new(1, -106, 0, 0), UDim2.fromOffset(106, 106), Color3.fromRGB(200, 40, 40), function() UI.heroAtk = true end, function() UI.heroAtk = false end)
+	label({ Text = "DEIN HELD", Font = DISPLAY, TextColor3 = GOLD, Size = UDim2.fromOffset(206, 18), Position = UDim2.fromOffset(0, -12), Max = 16, TextStrokeTransparency = 0.3, Parent = UI.heroPad })
+	UI.stealLabel = label({ Text = "", Font = DISPLAY, TextColor3 = GOLD, Size = UDim2.fromOffset(360, 40), Position = UDim2.new(0.5, 0, 0, 118), AnchorPoint = Vector2.new(0.5, 0), Max = 34, TextStrokeTransparency = 0.2, Visible = false, Parent = hud })
 end
 
 function UI.showDaily(r)
@@ -649,6 +675,12 @@ function UI.update(view)
 			UI.searchTitle.Text = T("SUCHE GEGNER …")
 			UI.searchInfo.Text = T("Kommt niemand, startet der Kampf in %d s gegen den Computer.", math.max(0, math.ceil(sEnd - now)))
 		end
+	end
+	UI.heroPad.Visible = UI.heroAlive == true and phase == "battle"
+	if not UI.heroPad.Visible then UI.heroMove = 0; UI.heroAtk = false end
+	UI.stealLabel.Visible = mode == "steal" and (phase == "battle" or phase == "countdown")
+	if UI.stealLabel.Visible then
+		UI.stealLabel.Text = "⚫ " .. (S:GetAttribute("Score1") or 0) .. "  :  " .. (S:GetAttribute("Score2") or 0) .. " ⚪"
 	end
 	UI.hillFrame.Visible = mode == "hill" and (phase == "battle" or phase == "countdown")
 	if UI.hillFrame.Visible then

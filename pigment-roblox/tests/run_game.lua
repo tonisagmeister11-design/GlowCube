@@ -83,6 +83,27 @@ return function(M, S, out, decode)
 	out("   Phase " .. tostring(phase()) .. ", Arena " .. tostring(state:GetAttribute("Arena")))
 	tick(4.5); check("Countdown")
 	assert(phase() == "battle", "kein Kampf gestartet")
+	-- eigener Held: finden, nach rechts laufen, zuschlagen
+	local function myHeroCfg()
+		for _, c in ipairs(state.Units:GetChildren()) do
+			if c:GetAttribute("Hero") and c:GetAttribute("Owner") == 101 and (c:GetAttribute("HP") or 0) > 0 then return c end
+		end
+	end
+	tick(1)
+	local hc = myHeroCfg()
+	assert(hc, "Kein eigener Held im Kampf")
+	local x0 = hc:GetAttribute("X")
+	local inp = { UserInputType = M.Enum.UserInputType.Keyboard, KeyCode = M.Enum.KeyCode.D }
+	uis.InputBegan:Fire(inp, false); tick(1.5); uis.InputEnded:Fire(inp, false); tick(0.3)
+	hc = myHeroCfg()
+	if hc then
+		local x1 = hc:GetAttribute("X")
+		out(string.format("   Held lief von %.0f nach %.0f", x0, x1))
+		assert(x1 > x0 + 80, "Held läuft nicht")
+		local sp = { UserInputType = M.Enum.UserInputType.Keyboard, KeyCode = M.Enum.KeyCode.Space }
+		uis.InputBegan:Fire(sp, false); tick(2); uis.InputEnded:Fire(sp, false)
+	end
+	check("Eigener Held: erscheint, läuft mit D, schlägt mit Leertaste")
 	local keys = { "One", "Two", "Three", "Four", "Five", "Six", "Seven" }
 	for rnd = 1, 40 do
 		for _, k in ipairs(keys) do key(k); tick(0.12) end
@@ -95,6 +116,7 @@ return function(M, S, out, decode)
 		if phase() ~= "battle" then break end
 	end
 	check("Kampf: alle 7 Krieger, Meteor, Kriegsschrei, Heilwelle, Befehle")
+
 	out(string.format("   Gold %s, Burgen %s / %s, Einheiten %d, bewegte Teile %d",
 		tostring(state:GetAttribute("Gold1")), tostring(state:GetAttribute("BaseHP1")), tostring(state:GetAttribute("BaseHP2")), #state.Units:GetChildren(), M.moved or 0))
 	for _ = 1, 500 do
@@ -173,6 +195,7 @@ return function(M, S, out, decode)
 	tick(5)
 	assert(phase() == "battle", "Training startet nicht sofort: " .. tostring(phase()))
 	for _ = 1, 60 do key("One"); key("Seven"); key("Six"); tick(1) end
+	action:FireServer("modeVote", "steal"); tick(0.2)
 	check("Boss-Ansturm als Team Weiß mit VIP-Krone (Phase " .. tostring(phase()) .. ", Boss " .. tostring(state:GetAttribute("BossId")) .. ")")
 	out("   Server-Aktionen " .. tostring(M.serverEvents) .. ", Effekt-Pakete " .. tostring(M.clientEvents))
 	-- Zweiter Spieler: SPIELEN -> kommt ins andere Team, Computer wird ersetzt

@@ -14,11 +14,19 @@ run = lua.eval('''function(Core, cfg, arena, human, seed, mode)
     b:configureSide(1, { ai = false, tower = 2, mine = 2, ab = { meteor = 2, rage = 2, heal = 2 } })
   end
   b:startCountdown(3)
+  if human then b:wantHero(1, 42, { tier = 3, name = "Tester" }) end
   local t = 0
   local order = cfg.UNIT_ORDER
   while not b.over and t < 900 do
     b:update(1/30); t = t + 1/30
     if human then
+      local h = b.heroes[42]
+      if h then
+        local goal = (mode == "steal" and h.carry) and b.bases[1].x or b.bases[2].x
+        local mv = goal > h.x and 1 or -1
+        if math.random() < 0.15 then mv = -mv end
+        b:heroInput(42, mv, math.random() < 0.5)
+      end
       local k = order[math.random(1, #order)]
       b:spawn(1, k, { tier = 3, helmet = "face", owner = 42 })
       if b:canUse(1, "meteor") then b:useAbility(1, "meteor", b.bases[2].x - 300, 42) end
@@ -30,10 +38,10 @@ run = lua.eval('''function(Core, cfg, arena, human, seed, mode)
   for i = 1, 90 do b:update(1/30) end
   local s = ""
   for k, v in pairs(counts) do s = s .. k .. "=" .. v .. " " end
-  return b.result, t, b.bases[1].hp, b.bases[2].hp, b.kills[42] or 0, s, b.wave .. " hill " .. math.floor(b.hill[1]) .. "/" .. math.floor(b.hill[2])
+  return b.result, t, b.bases[1].hp, b.bases[2].hp, b.kills[42] or 0, s, b.wave .. " hill " .. math.floor(b.hill[1]) .. "/" .. math.floor(b.hill[2]) .. " raub " .. b.score[1] .. ":" .. b.score[2]
 end''')
 fails = 0
-for mode in ('classic', 'turbo', 'boss', 'waves', 'hill', 'sudden'):
+for mode in ('classic', 'steal', 'turbo', 'boss', 'waves', 'hill', 'sudden'):
   for arena in (1, 3, 5):
     for human in ((True,) if mode == 'waves' else (False, True)):
         for seed in (1, 2):

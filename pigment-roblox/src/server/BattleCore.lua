@@ -25,6 +25,11 @@ function Core.new(Config, arenaIdx, fx, mode)
 	self.waveSpawnT = 0
 	self.bossT = { 50, 50 }
 	self.hill = { 0, 0 }
+	self.heroes = {}    -- Besitzer -> Held (Besitzer = Spieler-ID oder "ai1"/"ai2")
+	self.heroWant = {}  -- Besitzer -> { side, p }
+	self.respawn = {}   -- Besitzer -> Zeitpunkt
+	self.pig = { 5, 5 } -- Pigment-Raub: Farbe in jeder Burg
+	self.score = { 0, 0 }
 	self.hillOwner = 0
 	self.HILL_X = Config.WORLD_W / 2
 	self.HILL_R = 170
@@ -81,6 +86,7 @@ function Core:configureSide(side, opts)
 	end
 	if self.mode == "turbo" then self.income[side] = self.income[side] * 2.2 end
 	if self.mode == "boss" and opts.ai then self.income[side] = self.income[side] * 0.6 end
+	if self.mode == "steal" then b.maxHp = b.maxHp * 2 end
 	if self.mode == "sudden" then
 		b.maxHp = b.maxHp * 0.35
 		self.gold[side] = 350
@@ -257,6 +263,19 @@ function Core:update(dt)
 		end
 		if self.mode == "waves" then self:updateWaves(dt) end
 		if self.mode == "hill" then self:updateHill(dt) end
+		-- Computer-Helden (außer im Überleben-Modus)
+		for s = 1, 2 do
+			local key = "ai" .. s
+			if self.ai[s].on and self.mode ~= "waves" then
+				if not self.heroWant[key] then self:wantHero(s, key, { ai = true, helmet = "crown", name = "CPU" }) end
+			elseif self.heroWant[key] then
+				self:dropHero(key)
+			end
+		end
+		for owner, t in pairs(self.respawn) do
+			if self.time >= t then self.respawn[owner] = nil; self:spawnHero(owner) end
+		end
+		if self.mode == "steal" then self:updateSteal(dt) end
 		-- Verlängerung: nach 8 Minuten bröckeln beide Burgen, damit jede Runde endet
 		if self.mode ~= "waves" and self.time > 480 then
 			if not self.overtime then
@@ -308,6 +327,126 @@ function Core:updateWaves(dt)
 	elseif #self.waveQueue == 0 and self.waveBoss then
 		self.waveBoss = false
 		self:spawnBoss(2)
+	end
+end
+
+------------------------------------------------------------------ Helden (selbst gesteuert)
+function Core:wantHero(side, owner, p)
+	local h = self.heroes[owner]
+	if h and not h.dead and h.side ~= side then self:dropHero(owner) end
+	self.heroWant[owner] = { side = side, p = p or {} }
+	if not self.heroes[owner] and not self.respawn[owner] then self.respawn[owner] = self.time end
+end
+
+function Core:dropHero(owner)
+	self.heroWant[owner] = nil
+	self.respawn[owner] = nil
+	local h = self.heroes[owner]
+	if h and not h.dead then
+		h.dead = true
+		h.state = "dead"
+		self:dropCarry(h)
+		self.fx("death", { id = h.id, unit = h, dir = -h.dir, power = 0.5, cut = false })
+	end
+	self.heroes[owner] = nil
+end
+
+function Core:spawnHero(owner)
+	local w = self.heroWant[owner]
+	if not w or self.over then return end
+	local side, p = w.side, w.p
+	local def = self.C.UNITS.hero
+	local tier, hpMul = p.tier or 1, p.hpMul or 1
+	if p.ai then tier = clamp(self.arenaIdx, 1, 5); hpMul = self.aiMul[side] end
+	local b = self.bases[side]
+	local dir = self.C.SIDES[side].dir
+	self.nextId = self.nextId + 1
+	local u = {
+		id = self.nextId, side = side, type = "sword", def = def, dir = dir, x = b.x + dir * 70, z = 17,
+		hp = def.hp * hpMul, maxHp = def.hp * hpMul, dmg = def.dmg * (1 + (tier - 1) * 0.28), tier = tier,
+		helmet = p.helmet or "none", owner = type(owner) == "number" and owner or nil, heroOwner = owner, hero = true,
+		ai = p.ai == true, name = p.name, skin = p.skin,
+		state = "walk", atkT = 0, cdLeft = 0.3, kbx = 0, spawnT = 0.5, blockT = 0, cheer = 0, scale = def.scale,
+		moving = false, combo = 0, attackN = 0, seed = math.random() * 100, ctrl = { move = 0, atk = false, t = -1 },
+	}
+	table.insert(self.units, u)
+	self.heroes[owner] = u
+	self.fx("spawn", u)
+end
+
+function Core:heroInput(owner, move, atk)
+	local h = self.heroes[owner]
+	if not h or h.dead then return end
+	h.ctrl.move = clamp(tonumber(move) or 0, -1, 1)
+	h.ctrl.atk = atk == true
+	h.ctrl.t = self.time
+end
+
+function Core:updateHeroHuman(u, dt, rm)
+	local c = u.ctrl
+	if self.time - c.t > 0.6 then c.move = 0; c.atk = false end
+	if c.atk and u.cdLeft <= 0 then
+		if c.move ~= 0 then u.dir = c.move end
+		u.moving = false
+		self:startAttack(u, { heroSwing = true, x = u.x + u.dir * 30 })
+		return
+	end
+	if c.move ~= 0 then
+		u.dir = c.move
+		u.moving = true
+		u.x = clamp(u.x + c.move * u.def.speed * rm * (u.carry and 0.75 or 1) * dt, 40, self.W - 40)
+	else
+		u.moving = false
+	end
+end
+
+-- Held schlägt alles vor sich (bis zu 4 Gegner), jeder 3. Schlag schleudert weg
+function Core:heroHit(u)
+	local reach = u.def.range + 25
+	local hits = 0
+	local heavy = u.combo % 3 == 2
+	for _, e in ipairs(self.units) do
+		if hits < 4 and e.side ~= u.side and not e.dead and (e.x - u.x) * u.dir > -10 and math.abs(e.x - u.x) < reach * (e.scale > 1.5 and 1.3 or 1) then
+			self:damage(e, u.dmg, u, heavy, false)
+			hits = hits + 1
+		end
+	end
+	local eb = self.bases[3 - u.side]
+	if math.abs(eb.x - u.x) < reach + 46 then self:damageBase(eb, u.dmg * 0.8, u) end
+	if heavy then self.fx("slam", { x = u.x + u.dir * 30, z = u.z, r = 50 }) end
+end
+
+------------------------------------------------------------------ Pigment-Raub
+function Core:dropCarry(h)
+	if not h.carry then return end
+	h.carry = false
+	self.pig[3 - h.side] = self.pig[3 - h.side] + 1
+	if not self.over then self.fx("announce", { text = "PIGMENT ZURÜCK!", cls = "ok" }) end
+end
+
+function Core:updateSteal(dt)
+	for _, h in pairs(self.heroes) do
+		if not h.dead and h.spawnT <= 0 and not self.over then
+			local es, hb, eb = 3 - h.side, self.bases[h.side], self.bases[3 - h.side]
+			if not h.carry then
+				if math.abs(h.x - eb.x) < 95 and self.pig[es] > 0 then
+					h.stealT = (h.stealT or 0) + dt
+					if h.stealT >= 1.5 then
+						h.stealT = 0
+						h.carry = true
+						self.pig[es] = self.pig[es] - 1
+						self.fx("announce", { text = "PIGMENT GEKLAUT!", cls = "warn" })
+					end
+				else
+					h.stealT = 0
+				end
+			elseif math.abs(h.x - hb.x) < 95 then
+				h.carry = false
+				self.score[h.side] = self.score[h.side] + 1
+				self.fx("announce", { text = "PUNKT!", cls = "ok" })
+				if self.score[h.side] >= 3 then self:finish(h.side); return end
+			end
+		end
 	end
 end
 
@@ -432,10 +571,29 @@ function Core:updateUnit(u, dt)
 		return
 	end
 
+	if u.hero and not u.ai then self:updateHeroHuman(u, dt, rm); return end
+
 	local def = u.def
 	local target = self:findTarget(u)
 	local eb = self.bases[3 - u.side]
 	local goal = nil
+	-- Computer-Held im Pigment-Raub: mit Beute direkt nach Hause, sonst zur feindlichen Burg
+	if u.hero and self.mode == "steal" then
+		if u.carry then target = nil end
+		-- nur kämpfen, wenn der Gegner direkt im Weg steht
+		if target and not target.isBase and math.abs(target.x - u.x) > 55 then target = nil end
+		if not target then
+			goal = u.carry and self.bases[u.side].x or eb.x
+			local d = goal > u.x and 1 or -1
+			if math.abs(goal - u.x) > 20 then
+				u.dir = d; u.moving = true
+				u.x = u.x + d * def.speed * rm * (u.carry and 0.75 or 1) * dt
+			else
+				u.moving = false
+			end
+			return
+		end
+	end
 	if target then
 		local dist = math.abs(target.x - u.x) - (target.isBase and 46 or 0)
 		if dist <= def.range then
@@ -508,6 +666,7 @@ local function handPos(u)
 end
 
 function Core:doHit(u)
+	if u.hero then self:heroHit(u); return end
 	local t = u.target
 	if not t then return end
 	if u.type == "mage" or u.type == "archer" then
@@ -585,6 +744,12 @@ function Core:kill(e, dir, heavy, src)
 	e.state = "dead"
 	local power = heavy and rand(1.0, 1.5) or rand(0.4, 0.7)
 	local cut = false -- keine abfliegenden Köpfe (kinderfreundlich)
+	if e.hero then
+		power = power * 1.4
+		if self.heroes[e.heroOwner] == e then self.heroes[e.heroOwner] = nil end
+		if self.heroWant[e.heroOwner] then self.respawn[e.heroOwner] = self.time + 6 end
+		self:dropCarry(e)
+	end
 	if e.boss then
 		e.boss = false
 		self.boss = nil

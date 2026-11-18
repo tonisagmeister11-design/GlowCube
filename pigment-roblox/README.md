@@ -43,6 +43,13 @@ Es gehen zwei Fenster auf. Wähle in jedem Fenster ein anderes Team.
   Außerdem Krieger, die aus Tintenpfützen steigen, eine Burg, die in Trümmer zerfällt, Kamera-Wackeln und Schadenszahlen.
 - **Speichern:** Münzen, Helme und Waffen bleiben erhalten, sobald das Spiel veröffentlicht ist (siehe unten).
 
+## Neu in Version 4
+
+- **Dein eigener Held:** In jedem Kampf steuerst du einen starken Stickman-Helden mit deinem Namen über dem Kopf.
+  PC: `A`/`D` laufen, `Leertaste` zuschlagen. Handy: ◀ ▶ und ⚔. Jeder 3. Schlag schleudert Gegner weg. Nach dem Tod kommt er nach 6 Sekunden zurück.
+- **Neuer Modus Pigment-Raub** (wie die „Steal a …“-Spiele): Lauf mit deinem Helden zur feindlichen Burg, klau die Farbe und bring sie heim. 3 Punkte gewinnen.
+- **Verlängerung:** Nach 8 Minuten bröckeln beide Burgen, damit jede Runde endet.
+
 ## Neu in Version 3
 
 - **SPIELEN** sucht einen Gegner und teilt die Teams fair ein. Kommt in 15 Sekunden niemand, spielst du gegen den Computer.

@@ -47,6 +47,14 @@ end
 
 local function sideOf(player) return player:GetAttribute("Side") or 0 end
 
+-- Helden-Werte eines Spielers
+local function heroParams(player)
+	local d = Data.get(player)
+	if not d then return {} end
+	return { tier = d.wlv.sword, helmet = d.helmet, hpMul = 1 + d.armor * 0.15, name = player.DisplayName,
+		skin = player:GetAttribute("Pass_rainbow") and "rainbow" or nil }
+end
+
 local function playersOn(side)
 	local list = {}
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -78,6 +86,10 @@ local function onFx(kind, d)
 		c:SetAttribute("Dir", u.dir)
 		c:SetAttribute("Cheer", u.cheer > 0)
 		c:SetAttribute("Skin", u.skin or "")
+		c:SetAttribute("Hero", u.hero == true)
+		c:SetAttribute("Name", u.name or "")
+		c:SetAttribute("Owner", u.owner or 0)
+		c:SetAttribute("Carry", false)
 		c.Parent = UnitsFolder
 		unitInst[u.id] = c
 		lastSent[u.id] = { x = u.x, hp = u.hp, moving = false, dir = u.dir }
@@ -189,6 +201,10 @@ local function startRound()
 	Arena.build(arenaIdx)
 	battle = Core.new(Config, arenaIdx, onFx, mode)
 	for s = 1, 2 do battle:configureSide(s, sideOpts(s)) end
+	for _, p in ipairs(Players:GetPlayers()) do
+		local s = sideOf(p)
+		if s == 1 or s == 2 then battle:wantHero(s, p.UserId, heroParams(p)) end
+	end
 	battle:startCountdown(4)
 	setPhase("countdown", 4)
 	table.insert(fxQueue, { "round", arenaIdx })
@@ -272,7 +288,17 @@ end
 
 -- Spieler-Aktionen ------------------------------------------------------
 local lastAction = {}
+local heroInputT = {}
+
 Action.OnServerEvent:Connect(function(player, kind, a, b)
+	-- Helden-Steuerung: eigene, großzügigere Bremse (max. 30 pro Sekunde)
+	if kind == "hero" then
+		local t = os.clock()
+		if t - (heroInputT[player] or 0) < 0.033 then return end
+		heroInputT[player] = t
+		if battle and (phase == "battle" or phase == "countdown") then battle:heroInput(player.UserId, a, b == true) end
+		return
+	end
 	-- einfache Flutbremse
 	local now = os.clock()
 	local la = lastAction[player] or 0
@@ -292,6 +318,7 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 			local o = sideOpts(s)
 			battle:setControl(s, false)
 			battle.abLv[s] = o.ab
+			battle:wantHero(s, player.UserId, heroParams(player))
 			if wasAI and #playersOn(3 - s) > 0 then
 				table.insert(fxQueue, { "announce", { text = "EIN GEGNER IST BEIGETRETEN!", cls = "boss" } })
 			end
@@ -325,6 +352,7 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 	elseif kind == "menu" then
 		player:SetAttribute("Side", 0)
 		player:SetAttribute("Ready", false)
+		if battle then battle:dropHero(player.UserId) end
 	elseif kind == "spawn" and battle and (side == 1 or side == 2) and Config.UNITS[a] and phase == "battle" then
 		battle:spawn(side, a, { tier = d.wlv[a], helmet = d.helmet, hpMul = 1 + d.armor * 0.15, owner = player.UserId,
 			skin = player:GetAttribute("Pass_rainbow") and "rainbow" or nil })
@@ -412,6 +440,8 @@ for _, p in ipairs(Players:GetPlayers()) do
 end
 Players.PlayerRemoving:Connect(function(player)
 	local s = sideOf(player)
+	heroInputT[player] = nil
+	if battle then battle:dropHero(player.UserId) end
 	Data.release(player)
 	lastAction[player] = nil
 	task.defer(function()
@@ -441,6 +471,8 @@ local function sync()
 	State:SetAttribute("BossId", battle.boss and battle.boss.id or 0)
 	State:SetAttribute("Hill1", math.floor(battle.hill[1]))
 	State:SetAttribute("Hill2", math.floor(battle.hill[2]))
+	State:SetAttribute("Pig1", battle.pig[1]); State:SetAttribute("Pig2", battle.pig[2])
+	State:SetAttribute("Score1", battle.score[1]); State:SetAttribute("Score2", battle.score[2])
 	for _, u in ipairs(battle.units) do
 		local c = unitInst[u.id]
 		local ls = lastSent[u.id]
@@ -451,6 +483,7 @@ local function sync()
 			if ls.dir ~= u.dir then c:SetAttribute("Dir", u.dir); ls.dir = u.dir end
 			local ch = u.cheer > 0
 			if c:GetAttribute("Cheer") ~= ch then c:SetAttribute("Cheer", ch) end
+			if u.hero and c:GetAttribute("Carry") ~= (u.carry == true) then c:SetAttribute("Carry", u.carry == true) end
 			local vic = u.victory == true
 			if vic and not c:GetAttribute("Victory") then c:SetAttribute("Victory", true) end
 		end

@@ -20,6 +20,7 @@ Config.UNITS = {
 	shield = { name = "Schild", hp = 330, dmg = 11, range = 30, cd = 1.15, atk = 0.55, speed = 52, cost = 75, spawnCd = 3.0, scale = 1.08, desc = "Blockt von vorne" },
 	ninja  = { name = "Ninja", hp = 95, dmg = 12, range = 28, cd = 0.30, atk = 0.26, speed = 135, cost = 70, spawnCd = 2.6, scale = 0.92, desc = "Blitzschnelle Dolche" },
 	mage   = { name = "Magier", hp = 90, dmg = 34, range = 300, cd = 2.6, atk = 1.10, speed = 62, cost = 95, spawnCd = 4.0, scale = 1.0, desc = "Explodierende Kugeln", ranged = true, aoe = 62 },
+	hero   = { name = "Held", hp = 650, dmg = 40, range = 40, cd = 0.55, atk = 0.5, speed = 150, cost = 0, spawnCd = 0, scale = 1.35, desc = "Das bist du!" },
 	giant  = { name = "Titan", hp = 720, dmg = 62, range = 60, cd = 2.10, atk = 1.15, speed = 40, cost = 160, spawnCd = 6.0, scale = 1.75, desc = "Hammer mit Flächenschaden", aoe = 85 },
 }
 Config.HIT_AT = { sword = 0.5, spear = 0.55, archer = 0.62, ninja = 0.5, giant = 0.58, shield = 0.52, mage = 0.64 }
@@ -51,7 +52,7 @@ Config.HELMETS = {
 }
 
 -- Spielmodi (Abstimmung im Menü)
-Config.MODE_ORDER = { "classic", "hill", "sudden", "turbo", "boss", "waves" }
+Config.MODE_ORDER = { "classic", "steal", "hill", "sudden", "turbo", "boss", "waves" }
 Config.MODES = {
 	classic = { name = "Klassisch", desc = "Zerstöre die feindliche Burg" },
 	waves = { name = "Überleben", desc = "Halte gegen endlose Wellen durch (alle im Team Schwarz)" },
@@ -59,6 +60,7 @@ Config.MODES = {
 	turbo = { name = "Turbo", desc = "Doppelt so viel Gold, halbe Wartezeiten" },
 	hill = { name = "Hügel-König", desc = "Halte die Mitte! Wer zuerst 100 Punkte hat, gewinnt" },
 	sudden = { name = "Sudden Death", desc = "Schwache Burgen, harte Treffer, schnelle Runden" },
+	steal = { name = "Pigment-Raub", desc = "Klau mit deinem Helden die Farbe des Gegners! 3 Punkte gewinnen" },
 }
 
 -- Robux-Shop. Die IDs bekommst du auf create.roblox.com (siehe README, Abschnitt Robux-Shop).
@@ -354,8 +356,8 @@ local EN = {
 	["ARENA WÄHLEN (Abstimmung für die nächste Runde)"] = "CHOOSE ARENA (vote for next round)",
 	["SPIELMODUS (Abstimmung)"] = "GAME MODE (vote)",
 	["Tippe auf ein Team, um mitzukämpfen. Ist ein Team leer, spielt der Computer."] = "Tap PLAY to find an opponent. If nobody joins, the computer takes over.",
-	["Steuerung PC: 1–7 Krieger · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · A/D oder Mausrad: Kamera\nHandy: Knöpfe unten antippen, übers Feld wischen = Kamera"] =
-		"PC: 1–7 units · R Meteor · F War Cry · H Heal Wave · Q/E Defend/Attack · A/D or mouse wheel: camera\nMobile: tap the buttons, swipe the field = camera",
+	["Steuerung PC: 1–7 Krieger · A/D Held laufen · Leertaste Held schlägt · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · Mausrad: Kamera\nHandy: ◀ ▶ ⚔ steuern deinen Helden, Knöpfe unten beschwören Krieger"] =
+		"PC: 1–7 units · A/D move hero · Space hero strikes · R Meteor · F War Cry · H Heal Wave · Q/E Defend/Attack · mouse wheel: camera\nMobile: ◀ ▶ ⚔ control your hero, bottom buttons spawn units",
 	["Computer"] = "Computer", ["COMPUTER"] = "COMPUTER", ["DEIN TEAM"] = "YOUR TEAM", ["Spieler"] = "players",
 	["Spieler online"] = "players online", ["FREUNDE EINLADEN"] = "INVITE FRIENDS", ["TOP 10 SIEGE"] = "TOP 10 WINS",
 	["Noch keine Einträge"] = "No entries yet", ["Siege"] = "Wins",
@@ -372,6 +374,11 @@ local EN = {
 	["Raum konnte nicht gespeichert werden"] = "Could not save the room", ["Teleport fehlgeschlagen, bitte nochmal versuchen"] = "Teleport failed, please try again",
 	["Ungültiger Code"] = "Invalid code", ["Der Code hat 5 Zeichen"] = "The code has 5 characters", ["Diesen Raum gibt es nicht (mehr)"] = "This room doesn't exist (anymore)",
 	["Einladen ist gerade nicht möglich"] = "Inviting is not possible right now",
+	["DEIN HELD"] = "YOUR HERO", ["Dein Held ist gefallen – zurück in 6 s"] = "Your hero fell – back in 6 s",
+	["PIGMENT GEKLAUT!"] = "PIGMENT STOLEN!", ["PIGMENT ZURÜCK!"] = "PIGMENT RETURNED!", ["PUNKT!"] = "POINT!",
+	["Pigment-Raub"] = "Pigment Heist", ["Klau mit deinem Helden die Farbe des Gegners! 3 Punkte gewinnen"] = "Steal the enemy's paint with your hero! 3 points win",
+	["Held"] = "Hero", ["Das bist du!"] = "That's you!",
+	["Steuere deinen Helden: A/D laufen, Leertaste schlagen"] = "Control your hero: A/D to move, Space to strike",
 	-- HUD
 	["MENÜ"] = "MENU", ["VERTEIDIGEN (Q)"] = "DEFEND (Q)", ["ANGRIFF (E)"] = "ATTACK (E)", ["BOSS-TITAN"] = "BOSS TITAN",
 	["Tippe aufs Schlachtfeld für den Meteor"] = "Tap the battlefield to drop the meteor", ["Abbrechen"] = "Cancel",
@@ -505,6 +512,14 @@ end
 
 local function sideOf(player) return player:GetAttribute("Side") or 0 end
 
+-- Helden-Werte eines Spielers
+local function heroParams(player)
+	local d = Data.get(player)
+	if not d then return {} end
+	return { tier = d.wlv.sword, helmet = d.helmet, hpMul = 1 + d.armor * 0.15, name = player.DisplayName,
+		skin = player:GetAttribute("Pass_rainbow") and "rainbow" or nil }
+end
+
 local function playersOn(side)
 	local list = {}
 	for _, p in ipairs(Players:GetPlayers()) do
@@ -536,6 +551,10 @@ local function onFx(kind, d)
 		c:SetAttribute("Dir", u.dir)
 		c:SetAttribute("Cheer", u.cheer > 0)
 		c:SetAttribute("Skin", u.skin or "")
+		c:SetAttribute("Hero", u.hero == true)
+		c:SetAttribute("Name", u.name or "")
+		c:SetAttribute("Owner", u.owner or 0)
+		c:SetAttribute("Carry", false)
 		c.Parent = UnitsFolder
 		unitInst[u.id] = c
 		lastSent[u.id] = { x = u.x, hp = u.hp, moving = false, dir = u.dir }
@@ -647,6 +666,10 @@ local function startRound()
 	Arena.build(arenaIdx)
 	battle = Core.new(Config, arenaIdx, onFx, mode)
 	for s = 1, 2 do battle:configureSide(s, sideOpts(s)) end
+	for _, p in ipairs(Players:GetPlayers()) do
+		local s = sideOf(p)
+		if s == 1 or s == 2 then battle:wantHero(s, p.UserId, heroParams(p)) end
+	end
 	battle:startCountdown(4)
 	setPhase("countdown", 4)
 	table.insert(fxQueue, { "round", arenaIdx })
@@ -730,7 +753,17 @@ end
 
 -- Spieler-Aktionen ------------------------------------------------------
 local lastAction = {}
+local heroInputT = {}
+
 Action.OnServerEvent:Connect(function(player, kind, a, b)
+	-- Helden-Steuerung: eigene, großzügigere Bremse (max. 30 pro Sekunde)
+	if kind == "hero" then
+		local t = os.clock()
+		if t - (heroInputT[player] or 0) < 0.033 then return end
+		heroInputT[player] = t
+		if battle and (phase == "battle" or phase == "countdown") then battle:heroInput(player.UserId, a, b == true) end
+		return
+	end
 	-- einfache Flutbremse
 	local now = os.clock()
 	local la = lastAction[player] or 0
@@ -750,6 +783,7 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 			local o = sideOpts(s)
 			battle:setControl(s, false)
 			battle.abLv[s] = o.ab
+			battle:wantHero(s, player.UserId, heroParams(player))
 			if wasAI and #playersOn(3 - s) > 0 then
 				table.insert(fxQueue, { "announce", { text = "EIN GEGNER IST BEIGETRETEN!", cls = "boss" } })
 			end
@@ -783,6 +817,7 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 	elseif kind == "menu" then
 		player:SetAttribute("Side", 0)
 		player:SetAttribute("Ready", false)
+		if battle then battle:dropHero(player.UserId) end
 	elseif kind == "spawn" and battle and (side == 1 or side == 2) and Config.UNITS[a] and phase == "battle" then
 		battle:spawn(side, a, { tier = d.wlv[a], helmet = d.helmet, hpMul = 1 + d.armor * 0.15, owner = player.UserId,
 			skin = player:GetAttribute("Pass_rainbow") and "rainbow" or nil })
@@ -870,6 +905,8 @@ for _, p in ipairs(Players:GetPlayers()) do
 end
 Players.PlayerRemoving:Connect(function(player)
 	local s = sideOf(player)
+	heroInputT[player] = nil
+	if battle then battle:dropHero(player.UserId) end
 	Data.release(player)
 	lastAction[player] = nil
 	task.defer(function()
@@ -899,6 +936,8 @@ local function sync()
 	State:SetAttribute("BossId", battle.boss and battle.boss.id or 0)
 	State:SetAttribute("Hill1", math.floor(battle.hill[1]))
 	State:SetAttribute("Hill2", math.floor(battle.hill[2]))
+	State:SetAttribute("Pig1", battle.pig[1]); State:SetAttribute("Pig2", battle.pig[2])
+	State:SetAttribute("Score1", battle.score[1]); State:SetAttribute("Score2", battle.score[2])
 	for _, u in ipairs(battle.units) do
 		local c = unitInst[u.id]
 		local ls = lastSent[u.id]
@@ -909,6 +948,7 @@ local function sync()
 			if ls.dir ~= u.dir then c:SetAttribute("Dir", u.dir); ls.dir = u.dir end
 			local ch = u.cheer > 0
 			if c:GetAttribute("Cheer") ~= ch then c:SetAttribute("Cheer", ch) end
+			if u.hero and c:GetAttribute("Carry") ~= (u.carry == true) then c:SetAttribute("Carry", u.carry == true) end
 			local vic = u.victory == true
 			if vic and not c:GetAttribute("Victory") then c:SetAttribute("Victory", true) end
 		end
@@ -1031,6 +1071,11 @@ function Core.new(Config, arenaIdx, fx, mode)
 	self.waveSpawnT = 0
 	self.bossT = { 50, 50 }
 	self.hill = { 0, 0 }
+	self.heroes = {}    -- Besitzer -> Held (Besitzer = Spieler-ID oder "ai1"/"ai2")
+	self.heroWant = {}  -- Besitzer -> { side, p }
+	self.respawn = {}   -- Besitzer -> Zeitpunkt
+	self.pig = { 5, 5 } -- Pigment-Raub: Farbe in jeder Burg
+	self.score = { 0, 0 }
 	self.hillOwner = 0
 	self.HILL_X = Config.WORLD_W / 2
 	self.HILL_R = 170
@@ -1087,6 +1132,7 @@ function Core:configureSide(side, opts)
 	end
 	if self.mode == "turbo" then self.income[side] = self.income[side] * 2.2 end
 	if self.mode == "boss" and opts.ai then self.income[side] = self.income[side] * 0.6 end
+	if self.mode == "steal" then b.maxHp = b.maxHp * 2 end
 	if self.mode == "sudden" then
 		b.maxHp = b.maxHp * 0.35
 		self.gold[side] = 350
@@ -1263,6 +1309,19 @@ function Core:update(dt)
 		end
 		if self.mode == "waves" then self:updateWaves(dt) end
 		if self.mode == "hill" then self:updateHill(dt) end
+		-- Computer-Helden (außer im Überleben-Modus)
+		for s = 1, 2 do
+			local key = "ai" .. s
+			if self.ai[s].on and self.mode ~= "waves" then
+				if not self.heroWant[key] then self:wantHero(s, key, { ai = true, helmet = "crown", name = "CPU" }) end
+			elseif self.heroWant[key] then
+				self:dropHero(key)
+			end
+		end
+		for owner, t in pairs(self.respawn) do
+			if self.time >= t then self.respawn[owner] = nil; self:spawnHero(owner) end
+		end
+		if self.mode == "steal" then self:updateSteal(dt) end
 		-- Verlängerung: nach 8 Minuten bröckeln beide Burgen, damit jede Runde endet
 		if self.mode ~= "waves" and self.time > 480 then
 			if not self.overtime then
@@ -1314,6 +1373,126 @@ function Core:updateWaves(dt)
 	elseif #self.waveQueue == 0 and self.waveBoss then
 		self.waveBoss = false
 		self:spawnBoss(2)
+	end
+end
+
+------------------------------------------------------------------ Helden (selbst gesteuert)
+function Core:wantHero(side, owner, p)
+	local h = self.heroes[owner]
+	if h and not h.dead and h.side ~= side then self:dropHero(owner) end
+	self.heroWant[owner] = { side = side, p = p or {} }
+	if not self.heroes[owner] and not self.respawn[owner] then self.respawn[owner] = self.time end
+end
+
+function Core:dropHero(owner)
+	self.heroWant[owner] = nil
+	self.respawn[owner] = nil
+	local h = self.heroes[owner]
+	if h and not h.dead then
+		h.dead = true
+		h.state = "dead"
+		self:dropCarry(h)
+		self.fx("death", { id = h.id, unit = h, dir = -h.dir, power = 0.5, cut = false })
+	end
+	self.heroes[owner] = nil
+end
+
+function Core:spawnHero(owner)
+	local w = self.heroWant[owner]
+	if not w or self.over then return end
+	local side, p = w.side, w.p
+	local def = self.C.UNITS.hero
+	local tier, hpMul = p.tier or 1, p.hpMul or 1
+	if p.ai then tier = clamp(self.arenaIdx, 1, 5); hpMul = self.aiMul[side] end
+	local b = self.bases[side]
+	local dir = self.C.SIDES[side].dir
+	self.nextId = self.nextId + 1
+	local u = {
+		id = self.nextId, side = side, type = "sword", def = def, dir = dir, x = b.x + dir * 70, z = 17,
+		hp = def.hp * hpMul, maxHp = def.hp * hpMul, dmg = def.dmg * (1 + (tier - 1) * 0.28), tier = tier,
+		helmet = p.helmet or "none", owner = type(owner) == "number" and owner or nil, heroOwner = owner, hero = true,
+		ai = p.ai == true, name = p.name, skin = p.skin,
+		state = "walk", atkT = 0, cdLeft = 0.3, kbx = 0, spawnT = 0.5, blockT = 0, cheer = 0, scale = def.scale,
+		moving = false, combo = 0, attackN = 0, seed = math.random() * 100, ctrl = { move = 0, atk = false, t = -1 },
+	}
+	table.insert(self.units, u)
+	self.heroes[owner] = u
+	self.fx("spawn", u)
+end
+
+function Core:heroInput(owner, move, atk)
+	local h = self.heroes[owner]
+	if not h or h.dead then return end
+	h.ctrl.move = clamp(tonumber(move) or 0, -1, 1)
+	h.ctrl.atk = atk == true
+	h.ctrl.t = self.time
+end
+
+function Core:updateHeroHuman(u, dt, rm)
+	local c = u.ctrl
+	if self.time - c.t > 0.6 then c.move = 0; c.atk = false end
+	if c.atk and u.cdLeft <= 0 then
+		if c.move ~= 0 then u.dir = c.move end
+		u.moving = false
+		self:startAttack(u, { heroSwing = true, x = u.x + u.dir * 30 })
+		return
+	end
+	if c.move ~= 0 then
+		u.dir = c.move
+		u.moving = true
+		u.x = clamp(u.x + c.move * u.def.speed * rm * (u.carry and 0.75 or 1) * dt, 40, self.W - 40)
+	else
+		u.moving = false
+	end
+end
+
+-- Held schlägt alles vor sich (bis zu 4 Gegner), jeder 3. Schlag schleudert weg
+function Core:heroHit(u)
+	local reach = u.def.range + 25
+	local hits = 0
+	local heavy = u.combo % 3 == 2
+	for _, e in ipairs(self.units) do
+		if hits < 4 and e.side ~= u.side and not e.dead and (e.x - u.x) * u.dir > -10 and math.abs(e.x - u.x) < reach * (e.scale > 1.5 and 1.3 or 1) then
+			self:damage(e, u.dmg, u, heavy, false)
+			hits = hits + 1
+		end
+	end
+	local eb = self.bases[3 - u.side]
+	if math.abs(eb.x - u.x) < reach + 46 then self:damageBase(eb, u.dmg * 0.8, u) end
+	if heavy then self.fx("slam", { x = u.x + u.dir * 30, z = u.z, r = 50 }) end
+end
+
+------------------------------------------------------------------ Pigment-Raub
+function Core:dropCarry(h)
+	if not h.carry then return end
+	h.carry = false
+	self.pig[3 - h.side] = self.pig[3 - h.side] + 1
+	if not self.over then self.fx("announce", { text = "PIGMENT ZURÜCK!", cls = "ok" }) end
+end
+
+function Core:updateSteal(dt)
+	for _, h in pairs(self.heroes) do
+		if not h.dead and h.spawnT <= 0 and not self.over then
+			local es, hb, eb = 3 - h.side, self.bases[h.side], self.bases[3 - h.side]
+			if not h.carry then
+				if math.abs(h.x - eb.x) < 95 and self.pig[es] > 0 then
+					h.stealT = (h.stealT or 0) + dt
+					if h.stealT >= 1.5 then
+						h.stealT = 0
+						h.carry = true
+						self.pig[es] = self.pig[es] - 1
+						self.fx("announce", { text = "PIGMENT GEKLAUT!", cls = "warn" })
+					end
+				else
+					h.stealT = 0
+				end
+			elseif math.abs(h.x - hb.x) < 95 then
+				h.carry = false
+				self.score[h.side] = self.score[h.side] + 1
+				self.fx("announce", { text = "PUNKT!", cls = "ok" })
+				if self.score[h.side] >= 3 then self:finish(h.side); return end
+			end
+		end
 	end
 end
 
@@ -1438,10 +1617,29 @@ function Core:updateUnit(u, dt)
 		return
 	end
 
+	if u.hero and not u.ai then self:updateHeroHuman(u, dt, rm); return end
+
 	local def = u.def
 	local target = self:findTarget(u)
 	local eb = self.bases[3 - u.side]
 	local goal = nil
+	-- Computer-Held im Pigment-Raub: mit Beute direkt nach Hause, sonst zur feindlichen Burg
+	if u.hero and self.mode == "steal" then
+		if u.carry then target = nil end
+		-- nur kämpfen, wenn der Gegner direkt im Weg steht
+		if target and not target.isBase and math.abs(target.x - u.x) > 55 then target = nil end
+		if not target then
+			goal = u.carry and self.bases[u.side].x or eb.x
+			local d = goal > u.x and 1 or -1
+			if math.abs(goal - u.x) > 20 then
+				u.dir = d; u.moving = true
+				u.x = u.x + d * def.speed * rm * (u.carry and 0.75 or 1) * dt
+			else
+				u.moving = false
+			end
+			return
+		end
+	end
 	if target then
 		local dist = math.abs(target.x - u.x) - (target.isBase and 46 or 0)
 		if dist <= def.range then
@@ -1514,6 +1712,7 @@ local function handPos(u)
 end
 
 function Core:doHit(u)
+	if u.hero then self:heroHit(u); return end
 	local t = u.target
 	if not t then return end
 	if u.type == "mage" or u.type == "archer" then
@@ -1591,6 +1790,12 @@ function Core:kill(e, dir, heavy, src)
 	e.state = "dead"
 	local power = heavy and rand(1.0, 1.5) or rand(0.4, 0.7)
 	local cut = false -- keine abfliegenden Köpfe (kinderfreundlich)
+	if e.hero then
+		power = power * 1.4
+		if self.heroes[e.heroOwner] == e then self.heroes[e.heroOwner] = nil end
+		if self.heroWant[e.heroOwner] then self.respawn[e.heroOwner] = self.time + 6 end
+		self:dropCarry(e)
+	end
 	if e.boss then
 		e.boss = false
 		self.boss = nil
@@ -2219,6 +2424,33 @@ local function addUnit(cfg)
 		boss = cfg:GetAttribute("Boss") == true,
 	}
 	units[id] = u
+	if cfg:GetAttribute("Hero") then
+		u.hero = true
+		u.mine = cfg:GetAttribute("Owner") == player.UserId
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromOffset(160, 30)
+		bb.StudsOffsetWorldSpace = Vector3.new(0, 2.6 * u.scale, 0)
+		bb.AlwaysOnTop = true
+		bb.LightInfluence = 0
+		bb.Adornee = st.head
+		local tl = Instance.new("TextLabel")
+		tl.BackgroundTransparency = 1
+		tl.Size = UDim2.fromScale(1, 1)
+		tl.Font = Enum.Font.FredokaOne
+		tl.TextScaled = true
+		tl.Text = u.mine and ("★ " .. (cfg:GetAttribute("Name") or "")) or (cfg:GetAttribute("Name") or "")
+		tl.TextColor3 = u.mine and Color3.fromRGB(255, 214, 61) or (u.side == 1 and Color3.fromRGB(40, 40, 46) or Color3.new(1, 1, 1))
+		tl.TextStrokeTransparency = 0.2
+		tl.TextStrokeColor3 = u.side == 1 and Color3.new(1, 1, 1) or Color3.new(0, 0, 0)
+		tl.Parent = bb
+		bb.Parent = st.model
+		local orb = Render.newPart(st.model, u.side == 1 and Color3.new(1, 1, 1) or Color3.fromRGB(20, 20, 24), Enum.PartType.Ball, Enum.Material.Neon, Vector3.new(1.3, 1.3, 1.3))
+		orb.CastShadow = false
+		orb.Transparency = 1
+		local l = Instance.new("PointLight"); l.Range = 10; l.Brightness = 2; l.Color = Color3.fromRGB(255, 220, 120); l.Enabled = false; l.Parent = orb
+		u.orb = orb
+		table.insert(st.all, orb)
+	end
 	Render.splat(u.x, u.z, 14 * u.scale, u.side)
 	Render.emit("ink" .. u.side, Render.W(u.x, -2, u.z), 10, 0)
 	if u.side == mySide() then sound("spawn", 0.35, 1.2, 0.08) end
@@ -2264,19 +2496,31 @@ local function clampCam()
 	if hw * 2 > WORLD + 12 then camX = WORLD / 2 else camX = clamp(camX, hw - 6, WORLD - hw + 6) end
 end
 
+local function myHero()
+	for _, u in pairs(units) do
+		if u.mine and not u.dead then return u end
+	end
+	return nil
+end
+
 local function updateCamera(dt)
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.FieldOfView = FOV
 	local side = mySide()
 	local phase = State:GetAttribute("Phase")
-	if keys.left then camX = camX - 60 * dt; autoT = 3 end
-	if keys.right then camX = camX + 60 * dt; autoT = 3 end
+	local mh = myHero()
+	if not mh then
+		if keys.left then camX = camX - 60 * dt; autoT = 3 end
+		if keys.right then camX = camX + 60 * dt; autoT = 3 end
+	end
 	autoT = autoT - dt
 	if autoT <= 0 then
 		local target
 		if phase == "end" then
 			local w = State:GetAttribute("Winner") or 0
 			if w ~= 0 then target = (w == 1 and Config.WORLD_W - 130 or 130) * K end
+		elseif mh then
+			target = mh.x * K + mh.dir * halfWidth() * 0.15
 		elseif side ~= 0 then
 			local dir = Config.SIDES[side].dir
 			local front = nil
@@ -2381,6 +2625,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 		elseif kc == Enum.KeyCode.E then UI.onCmd("attack")
 		elseif kc == Enum.KeyCode.A or kc == Enum.KeyCode.Left then keys.left = true
 		elseif kc == Enum.KeyCode.D or kc == Enum.KeyCode.Right then keys.right = true
+		elseif kc == Enum.KeyCode.Space then keys.atk = true
 		elseif kc == Enum.KeyCode.Escape then cancelAim()
 		elseif kc == Enum.KeyCode.M then UI.menuForced = not UI.menuForced end
 	end
@@ -2408,6 +2653,7 @@ UserInputService.InputEnded:Connect(function(input)
 		local kc = input.KeyCode
 		if kc == Enum.KeyCode.A or kc == Enum.KeyCode.Left then keys.left = false end
 		if kc == Enum.KeyCode.D or kc == Enum.KeyCode.Right then keys.right = false end
+		if kc == Enum.KeyCode.Space then keys.atk = false end
 	end
 	if drag and (t == Enum.UserInputType.MouseButton1 or (t == Enum.UserInputType.Touch and input == drag.input)) then
 		if targeting and drag.moved < 12 then
@@ -2443,6 +2689,7 @@ handlers.death = function(e)
 	local id, dir, power, cut, owner = e[2], e[3], e[4], e[5], e[6]
 	local u = units[id]
 	if not u or u.dead then return end
+	if u.mine then UI.toast(T("Dein Held ist gefallen – zurück in 6 s"), 3) end
 	local J = currentJoints(u)
 	local rd = Render.makeRagdoll(J, dir * 380 * power, -480 * power, u.scale)
 	if cut then rd.cut = true; rd.bleed = 0.7; rd.P[1].px = rd.P[1].px - dir * 5; rd.P[1].py = rd.P[1].py + 7 end
@@ -2584,6 +2831,53 @@ FxEvent.OnClientEvent:Connect(function(batch)
 	end
 end)
 
+------------------------------------------------------------------ Held steuern
+local lastMove, lastAtk, sendT = 0, false, 0
+local function sendHeroInput(dt)
+	local h = myHero()
+	UI.heroAlive = h ~= nil
+	if not h then lastMove, lastAtk = 0, false; return end
+	local mv = (keys.right and 1 or 0) - (keys.left and 1 or 0) + (UI.heroMove or 0)
+	mv = math.clamp(mv, -1, 1)
+	local atk = keys.atk == true or UI.heroAtk == true
+	sendT = sendT - dt
+	if mv ~= lastMove or atk ~= lastAtk or ((mv ~= 0 or atk) and sendT <= 0) then
+		Action:FireServer("hero", mv, atk)
+		lastMove, lastAtk = mv, atk
+		sendT = 0.2
+		autoT = 0
+	end
+end
+
+------------------------------------------------------------------ Pigment-Raub: Farbe an den Burgen
+local pigBoards = {}
+for s2 = 1, 2 do
+	local a = Instance.new("Attachment")
+	a.WorldPosition = Vector3.new((s2 == 1 and 130 or Config.WORLD_W - 130) * K, 34, -1)
+	a.Parent = workspace.Terrain
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(150, 50)
+	bb.AlwaysOnTop = true
+	bb.Enabled = false
+	bb.Parent = a
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.Font = Enum.Font.FredokaOne
+	tl.TextScaled = true
+	tl.TextColor3 = Color3.fromRGB(255, 214, 61)
+	tl.TextStrokeTransparency = 0
+	tl.Parent = bb
+	pigBoards[s2] = { bb = bb, tl = tl }
+end
+local function updatePigBoards()
+	local on = State:GetAttribute("Mode") == "steal" and State:GetAttribute("Phase") ~= "lobby"
+	for s2 = 1, 2 do
+		pigBoards[s2].bb.Enabled = on
+		if on then pigBoards[s2].tl.Text = "🎨 x" .. tostring(State:GetAttribute("Pig" .. s2) or 0) end
+	end
+end
+
 ------------------------------------------------------------------ Hügel-Zone
 local hillPart = Render.newPart(Render.root, Color3.fromRGB(255, 204, 61), Enum.PartType.Cylinder, Enum.Material.Neon, Vector3.new(0.12, 34, 34))
 hillPart.CastShadow = false
@@ -2662,6 +2956,15 @@ RunService:BindToRenderStep("PigmentKrieg", Enum.RenderPriority.Camera.Value + 1
 				if type(v) == "table" then J[k] = { v[1] + u.x, v[2] + yOff } end
 			end
 			Render.place(u.st, J, u.z, u.dir, p, time, parts, cfs)
+			if u.orb then
+				local carry = cfg:GetAttribute("Carry") == true
+				u.orb.Transparency = carry and 0.1 or 1
+				u.orb.PointLight.Enabled = carry
+				if carry then
+					table.insert(parts, u.orb)
+					table.insert(cfs, CFrame.new(Render.W(J.head[1], J.head[2] - 26 * u.scale - math.sin(time * 5) * 3, u.z)))
+				end
+			end
 			local mode = "normal"
 			if u.flash > 0 then mode = "flash" elseif u.healT > 0 then mode = "heal" elseif rage then mode = "rage" end
 			Render.setColorMode(u.st, mode)
@@ -2677,6 +2980,8 @@ RunService:BindToRenderStep("PigmentKrieg", Enum.RenderPriority.Camera.Value + 1
 	if #parts > 0 then workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged) end
 	Render.updateDecals(dt)
 	updateHill(dt)
+	sendHeroInput(dt)
+	updatePigBoards()
 	updateCamera(dt)
 	UI.update()
 end)
@@ -3471,6 +3776,7 @@ function UI.init(ctx)
 	UI.buildMenu(base)
 	UI.buildOverlays(base)
 	UI.buildExtras(base)
+	UI.buildHeroControls()
 	return UI
 end
 
@@ -3664,7 +3970,7 @@ function UI.buildMenu(base)
 		UI.modeBtns[m] = { btn = b, stroke = st }
 	end
 	UI.lobbyHint = label({ Text = "Tippe auf ein Team, um mitzukämpfen. Ist ein Team leer, spielt der Computer.", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 40), Max = 16, LayoutOrder = 7, TextWrapped = true, Parent = play })
-	local help = "Steuerung PC: 1–7 Krieger · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · A/D oder Mausrad: Kamera\nHandy: Knöpfe unten antippen, übers Feld wischen = Kamera"
+	local help = "Steuerung PC: 1–7 Krieger · A/D Held laufen · Leertaste Held schlägt · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · Mausrad: Kamera\nHandy: ◀ ▶ ⚔ steuern deinen Helden, Knöpfe unten beschwören Krieger"
 	label({ Text = help, TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 44), Max = 14, LayoutOrder = 8, TextWrapped = true, Font = Enum.Font.Gotham, Parent = play })
 	label({ Text = "TOP 10 SIEGE", TextColor3 = GOLD, Font = DISPLAY, Size = UDim2.new(1, 0, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, Max = 20, LayoutOrder = -2, Parent = play })
 	UI.topLabel = label({ Text = "Noch keine Einträge", TextColor3 = PAPER, Size = UDim2.new(1, -10, 0, 48), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, Max = 15, Font = Enum.Font.Gotham, LayoutOrder = -1, Parent = play })
@@ -3814,6 +4120,31 @@ function UI.buildExtras(base)
 		local bg = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, Size = UDim2.new(0.5, -4, 0, 16), Position = UDim2.new(s == 1 and 0 or 0.5, s == 1 and 0 or 4, 0, 22), Parent = UI.hillFrame }, { corner(8) })
 		UI.hillBars[s] = make("Frame", { BackgroundColor3 = s == 1 and Color3.fromRGB(30, 30, 36) or PAPER, Size = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(s == 1 and 1 or 0, 0), Position = UDim2.fromScale(s == 1 and 1 or 0, 0), Parent = bg }, { corner(8), stroke(GOLD, 1, 0.4) })
 	end
+end
+
+-- Steuerknöpfe für den eigenen Helden (Handy und Maus)
+function UI.buildHeroControls()
+	local hud = UI.hud
+	UI.heroPad = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -24, 0, 110), Position = UDim2.new(0, 12, 1, -250), Parent = hud })
+	local function holdButton(text, pos, size, color, onDown, onUp)
+		local b = make("TextButton", { Text = text, Font = DISPLAY, TextScaled = true, TextColor3 = PAPER, AutoButtonColor = true, BackgroundColor3 = color,
+			BackgroundTransparency = 0.15, Size = size, Position = pos, Parent = UI.heroPad }, {
+			make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 3, Transparency = 0.4 }),
+			make("UITextSizeConstraint", { MaxTextSize = 44 }),
+		})
+		b.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then onDown() end
+		end)
+		b.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.Touch or i.UserInputType == Enum.UserInputType.MouseButton1 then onUp() end
+		end)
+		return b
+	end
+	holdButton("◀", UDim2.fromOffset(0, 10), UDim2.fromOffset(96, 96), Color3.fromRGB(40, 40, 50), function() UI.heroMove = -1 end, function() if UI.heroMove == -1 then UI.heroMove = 0 end end)
+	holdButton("▶", UDim2.fromOffset(110, 10), UDim2.fromOffset(96, 96), Color3.fromRGB(40, 40, 50), function() UI.heroMove = 1 end, function() if UI.heroMove == 1 then UI.heroMove = 0 end end)
+	holdButton("⚔", UDim2.new(1, -106, 0, 0), UDim2.fromOffset(106, 106), Color3.fromRGB(200, 40, 40), function() UI.heroAtk = true end, function() UI.heroAtk = false end)
+	label({ Text = "DEIN HELD", Font = DISPLAY, TextColor3 = GOLD, Size = UDim2.fromOffset(206, 18), Position = UDim2.fromOffset(0, -12), Max = 16, TextStrokeTransparency = 0.3, Parent = UI.heroPad })
+	UI.stealLabel = label({ Text = "", Font = DISPLAY, TextColor3 = GOLD, Size = UDim2.fromOffset(360, 40), Position = UDim2.new(0.5, 0, 0, 118), AnchorPoint = Vector2.new(0.5, 0), Max = 34, TextStrokeTransparency = 0.2, Visible = false, Parent = hud })
 end
 
 function UI.showDaily(r)
@@ -4011,6 +4342,12 @@ function UI.update(view)
 			UI.searchTitle.Text = T("SUCHE GEGNER …")
 			UI.searchInfo.Text = T("Kommt niemand, startet der Kampf in %d s gegen den Computer.", math.max(0, math.ceil(sEnd - now)))
 		end
+	end
+	UI.heroPad.Visible = UI.heroAlive == true and phase == "battle"
+	if not UI.heroPad.Visible then UI.heroMove = 0; UI.heroAtk = false end
+	UI.stealLabel.Visible = mode == "steal" and (phase == "battle" or phase == "countdown")
+	if UI.stealLabel.Visible then
+		UI.stealLabel.Text = "⚫ " .. (S:GetAttribute("Score1") or 0) .. "  :  " .. (S:GetAttribute("Score2") or 0) .. " ⚪"
 	end
 	UI.hillFrame.Visible = mode == "hill" and (phase == "battle" or phase == "countdown")
 	if UI.hillFrame.Visible then

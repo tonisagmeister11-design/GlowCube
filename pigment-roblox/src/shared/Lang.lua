@@ -13,8 +13,8 @@ local EN = {
 	["ARENA WÄHLEN (Abstimmung für die nächste Runde)"] = "CHOOSE ARENA (vote for next round)",
 	["SPIELMODUS (Abstimmung)"] = "GAME MODE (vote)",
 	["Tippe auf ein Team, um mitzukämpfen. Ist ein Team leer, spielt der Computer."] = "Tap PLAY to find an opponent. If nobody joins, the computer takes over.",
-	["Steuerung PC: 1–7 Krieger · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · A/D oder Mausrad: Kamera\nHandy: Knöpfe unten antippen, übers Feld wischen = Kamera"] =
-		"PC: 1–7 units · R Meteor · F War Cry · H Heal Wave · Q/E Defend/Attack · A/D or mouse wheel: camera\nMobile: tap the buttons, swipe the field = camera",
+	["Steuerung PC: 1–7 Krieger · A/D Held laufen · Leertaste Held schlägt · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · Mausrad: Kamera\nHandy: ◀ ▶ ⚔ steuern deinen Helden, Knöpfe unten beschwören Krieger"] =
+		"PC: 1–7 units · A/D move hero · Space hero strikes · R Meteor · F War Cry · H Heal Wave · Q/E Defend/Attack · mouse wheel: camera\nMobile: ◀ ▶ ⚔ control your hero, bottom buttons spawn units",
 	["Computer"] = "Computer", ["COMPUTER"] = "COMPUTER", ["DEIN TEAM"] = "YOUR TEAM", ["Spieler"] = "players",
 	["Spieler online"] = "players online", ["FREUNDE EINLADEN"] = "INVITE FRIENDS", ["TOP 10 SIEGE"] = "TOP 10 WINS",
 	["Noch keine Einträge"] = "No entries yet", ["Siege"] = "Wins",
@@ -31,6 +31,11 @@ local EN = {
 	["Raum konnte nicht gespeichert werden"] = "Could not save the room", ["Teleport fehlgeschlagen, bitte nochmal versuchen"] = "Teleport failed, please try again",
 	["Ungültiger Code"] = "Invalid code", ["Der Code hat 5 Zeichen"] = "The code has 5 characters", ["Diesen Raum gibt es nicht (mehr)"] = "This room doesn't exist (anymore)",
 	["Einladen ist gerade nicht möglich"] = "Inviting is not possible right now",
+	["DEIN HELD"] = "YOUR HERO", ["Dein Held ist gefallen – zurück in 6 s"] = "Your hero fell – back in 6 s",
+	["PIGMENT GEKLAUT!"] = "PIGMENT STOLEN!", ["PIGMENT ZURÜCK!"] = "PIGMENT RETURNED!", ["PUNKT!"] = "POINT!",
+	["Pigment-Raub"] = "Pigment Heist", ["Klau mit deinem Helden die Farbe des Gegners! 3 Punkte gewinnen"] = "Steal the enemy's paint with your hero! 3 points win",
+	["Held"] = "Hero", ["Das bist du!"] = "That's you!",
+	["Steuere deinen Helden: A/D laufen, Leertaste schlagen"] = "Control your hero: A/D to move, Space to strike",
 	-- HUD
 	["MENÜ"] = "MENU", ["VERTEIDIGEN (Q)"] = "DEFEND (Q)", ["ANGRIFF (E)"] = "ATTACK (E)", ["BOSS-TITAN"] = "BOSS TITAN",
 	["Tippe aufs Schlachtfeld für den Meteor"] = "Tap the battlefield to drop the meteor", ["Abbrechen"] = "Cancel",

@@ -20,6 +20,7 @@ Config.UNITS = {
 	shield = { name = "Schild", hp = 330, dmg = 11, range = 30, cd = 1.15, atk = 0.55, speed = 52, cost = 75, spawnCd = 3.0, scale = 1.08, desc = "Blockt von vorne" },
 	ninja  = { name = "Ninja", hp = 95, dmg = 12, range = 28, cd = 0.30, atk = 0.26, speed = 135, cost = 70, spawnCd = 2.6, scale = 0.92, desc = "Blitzschnelle Dolche" },
 	mage   = { name = "Magier", hp = 90, dmg = 34, range = 300, cd = 2.6, atk = 1.10, speed = 62, cost = 95, spawnCd = 4.0, scale = 1.0, desc = "Explodierende Kugeln", ranged = true, aoe = 62 },
+	hero   = { name = "Held", hp = 650, dmg = 40, range = 40, cd = 0.55, atk = 0.5, speed = 150, cost = 0, spawnCd = 0, scale = 1.35, desc = "Das bist du!" },
 	giant  = { name = "Titan", hp = 720, dmg = 62, range = 60, cd = 2.10, atk = 1.15, speed = 40, cost = 160, spawnCd = 6.0, scale = 1.75, desc = "Hammer mit Flächenschaden", aoe = 85 },
 }
 Config.HIT_AT = { sword = 0.5, spear = 0.55, archer = 0.62, ninja = 0.5, giant = 0.58, shield = 0.52, mage = 0.64 }
@@ -51,7 +52,7 @@ Config.HELMETS = {
 }
 
 -- Spielmodi (Abstimmung im Menü)
-Config.MODE_ORDER = { "classic", "hill", "sudden", "turbo", "boss", "waves" }
+Config.MODE_ORDER = { "classic", "steal", "hill", "sudden", "turbo", "boss", "waves" }
 Config.MODES = {
 	classic = { name = "Klassisch", desc = "Zerstöre die feindliche Burg" },
 	waves = { name = "Überleben", desc = "Halte gegen endlose Wellen durch (alle im Team Schwarz)" },
@@ -59,6 +60,7 @@ Config.MODES = {
 	turbo = { name = "Turbo", desc = "Doppelt so viel Gold, halbe Wartezeiten" },
 	hill = { name = "Hügel-König", desc = "Halte die Mitte! Wer zuerst 100 Punkte hat, gewinnt" },
 	sudden = { name = "Sudden Death", desc = "Schwache Burgen, harte Treffer, schnelle Runden" },
+	steal = { name = "Pigment-Raub", desc = "Klau mit deinem Helden die Farbe des Gegners! 3 Punkte gewinnen" },
 }
 
 -- Robux-Shop. Die IDs bekommst du auf create.roblox.com (siehe README, Abschnitt Robux-Shop).

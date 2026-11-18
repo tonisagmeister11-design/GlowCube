@@ -73,6 +73,33 @@ local function addUnit(cfg)
 		boss = cfg:GetAttribute("Boss") == true,
 	}
 	units[id] = u
+	if cfg:GetAttribute("Hero") then
+		u.hero = true
+		u.mine = cfg:GetAttribute("Owner") == player.UserId
+		local bb = Instance.new("BillboardGui")
+		bb.Size = UDim2.fromOffset(160, 30)
+		bb.StudsOffsetWorldSpace = Vector3.new(0, 2.6 * u.scale, 0)
+		bb.AlwaysOnTop = true
+		bb.LightInfluence = 0
+		bb.Adornee = st.head
+		local tl = Instance.new("TextLabel")
+		tl.BackgroundTransparency = 1
+		tl.Size = UDim2.fromScale(1, 1)
+		tl.Font = Enum.Font.FredokaOne
+		tl.TextScaled = true
+		tl.Text = u.mine and ("★ " .. (cfg:GetAttribute("Name") or "")) or (cfg:GetAttribute("Name") or "")
+		tl.TextColor3 = u.mine and Color3.fromRGB(255, 214, 61) or (u.side == 1 and Color3.fromRGB(40, 40, 46) or Color3.new(1, 1, 1))
+		tl.TextStrokeTransparency = 0.2
+		tl.TextStrokeColor3 = u.side == 1 and Color3.new(1, 1, 1) or Color3.new(0, 0, 0)
+		tl.Parent = bb
+		bb.Parent = st.model
+		local orb = Render.newPart(st.model, u.side == 1 and Color3.new(1, 1, 1) or Color3.fromRGB(20, 20, 24), Enum.PartType.Ball, Enum.Material.Neon, Vector3.new(1.3, 1.3, 1.3))
+		orb.CastShadow = false
+		orb.Transparency = 1
+		local l = Instance.new("PointLight"); l.Range = 10; l.Brightness = 2; l.Color = Color3.fromRGB(255, 220, 120); l.Enabled = false; l.Parent = orb
+		u.orb = orb
+		table.insert(st.all, orb)
+	end
 	Render.splat(u.x, u.z, 14 * u.scale, u.side)
 	Render.emit("ink" .. u.side, Render.W(u.x, -2, u.z), 10, 0)
 	if u.side == mySide() then sound("spawn", 0.35, 1.2, 0.08) end
@@ -118,19 +145,31 @@ local function clampCam()
 	if hw * 2 > WORLD + 12 then camX = WORLD / 2 else camX = clamp(camX, hw - 6, WORLD - hw + 6) end
 end
 
+local function myHero()
+	for _, u in pairs(units) do
+		if u.mine and not u.dead then return u end
+	end
+	return nil
+end
+
 local function updateCamera(dt)
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.FieldOfView = FOV
 	local side = mySide()
 	local phase = State:GetAttribute("Phase")
-	if keys.left then camX = camX - 60 * dt; autoT = 3 end
-	if keys.right then camX = camX + 60 * dt; autoT = 3 end
+	local mh = myHero()
+	if not mh then
+		if keys.left then camX = camX - 60 * dt; autoT = 3 end
+		if keys.right then camX = camX + 60 * dt; autoT = 3 end
+	end
 	autoT = autoT - dt
 	if autoT <= 0 then
 		local target
 		if phase == "end" then
 			local w = State:GetAttribute("Winner") or 0
 			if w ~= 0 then target = (w == 1 and Config.WORLD_W - 130 or 130) * K end
+		elseif mh then
+			target = mh.x * K + mh.dir * halfWidth() * 0.15
 		elseif side ~= 0 then
 			local dir = Config.SIDES[side].dir
 			local front = nil
@@ -235,6 +274,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 		elseif kc == Enum.KeyCode.E then UI.onCmd("attack")
 		elseif kc == Enum.KeyCode.A or kc == Enum.KeyCode.Left then keys.left = true
 		elseif kc == Enum.KeyCode.D or kc == Enum.KeyCode.Right then keys.right = true
+		elseif kc == Enum.KeyCode.Space then keys.atk = true
 		elseif kc == Enum.KeyCode.Escape then cancelAim()
 		elseif kc == Enum.KeyCode.M then UI.menuForced = not UI.menuForced end
 	end
@@ -262,6 +302,7 @@ UserInputService.InputEnded:Connect(function(input)
 		local kc = input.KeyCode
 		if kc == Enum.KeyCode.A or kc == Enum.KeyCode.Left then keys.left = false end
 		if kc == Enum.KeyCode.D or kc == Enum.KeyCode.Right then keys.right = false end
+		if kc == Enum.KeyCode.Space then keys.atk = false end
 	end
 	if drag and (t == Enum.UserInputType.MouseButton1 or (t == Enum.UserInputType.Touch and input == drag.input)) then
 		if targeting and drag.moved < 12 then
@@ -297,6 +338,7 @@ handlers.death = function(e)
 	local id, dir, power, cut, owner = e[2], e[3], e[4], e[5], e[6]
 	local u = units[id]
 	if not u or u.dead then return end
+	if u.mine then UI.toast(T("Dein Held ist gefallen – zurück in 6 s"), 3) end
 	local J = currentJoints(u)
 	local rd = Render.makeRagdoll(J, dir * 380 * power, -480 * power, u.scale)
 	if cut then rd.cut = true; rd.bleed = 0.7; rd.P[1].px = rd.P[1].px - dir * 5; rd.P[1].py = rd.P[1].py + 7 end
@@ -438,6 +480,53 @@ FxEvent.OnClientEvent:Connect(function(batch)
 	end
 end)
 
+------------------------------------------------------------------ Held steuern
+local lastMove, lastAtk, sendT = 0, false, 0
+local function sendHeroInput(dt)
+	local h = myHero()
+	UI.heroAlive = h ~= nil
+	if not h then lastMove, lastAtk = 0, false; return end
+	local mv = (keys.right and 1 or 0) - (keys.left and 1 or 0) + (UI.heroMove or 0)
+	mv = math.clamp(mv, -1, 1)
+	local atk = keys.atk == true or UI.heroAtk == true
+	sendT = sendT - dt
+	if mv ~= lastMove or atk ~= lastAtk or ((mv ~= 0 or atk) and sendT <= 0) then
+		Action:FireServer("hero", mv, atk)
+		lastMove, lastAtk = mv, atk
+		sendT = 0.2
+		autoT = 0
+	end
+end
+
+------------------------------------------------------------------ Pigment-Raub: Farbe an den Burgen
+local pigBoards = {}
+for s2 = 1, 2 do
+	local a = Instance.new("Attachment")
+	a.WorldPosition = Vector3.new((s2 == 1 and 130 or Config.WORLD_W - 130) * K, 34, -1)
+	a.Parent = workspace.Terrain
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromOffset(150, 50)
+	bb.AlwaysOnTop = true
+	bb.Enabled = false
+	bb.Parent = a
+	local tl = Instance.new("TextLabel")
+	tl.BackgroundTransparency = 1
+	tl.Size = UDim2.fromScale(1, 1)
+	tl.Font = Enum.Font.FredokaOne
+	tl.TextScaled = true
+	tl.TextColor3 = Color3.fromRGB(255, 214, 61)
+	tl.TextStrokeTransparency = 0
+	tl.Parent = bb
+	pigBoards[s2] = { bb = bb, tl = tl }
+end
+local function updatePigBoards()
+	local on = State:GetAttribute("Mode") == "steal" and State:GetAttribute("Phase") ~= "lobby"
+	for s2 = 1, 2 do
+		pigBoards[s2].bb.Enabled = on
+		if on then pigBoards[s2].tl.Text = "🎨 x" .. tostring(State:GetAttribute("Pig" .. s2) or 0) end
+	end
+end
+
 ------------------------------------------------------------------ Hügel-Zone
 local hillPart = Render.newPart(Render.root, Color3.fromRGB(255, 204, 61), Enum.PartType.Cylinder, Enum.Material.Neon, Vector3.new(0.12, 34, 34))
 hillPart.CastShadow = false
@@ -516,6 +605,15 @@ RunService:BindToRenderStep("PigmentKrieg", Enum.RenderPriority.Camera.Value + 1
 				if type(v) == "table" then J[k] = { v[1] + u.x, v[2] + yOff } end
 			end
 			Render.place(u.st, J, u.z, u.dir, p, time, parts, cfs)
+			if u.orb then
+				local carry = cfg:GetAttribute("Carry") == true
+				u.orb.Transparency = carry and 0.1 or 1
+				u.orb.PointLight.Enabled = carry
+				if carry then
+					table.insert(parts, u.orb)
+					table.insert(cfs, CFrame.new(Render.W(J.head[1], J.head[2] - 26 * u.scale - math.sin(time * 5) * 3, u.z)))
+				end
+			end
 			local mode = "normal"
 			if u.flash > 0 then mode = "flash" elseif u.healT > 0 then mode = "heal" elseif rage then mode = "rage" end
 			Render.setColorMode(u.st, mode)
@@ -531,6 +629,8 @@ RunService:BindToRenderStep("PigmentKrieg", Enum.RenderPriority.Camera.Value + 1
 	if #parts > 0 then workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged) end
 	Render.updateDecals(dt)
 	updateHill(dt)
+	sendHeroInput(dt)
+	updatePigBoards()
 	updateCamera(dt)
 	UI.update()
 end)
