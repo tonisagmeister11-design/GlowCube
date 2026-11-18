@@ -1,0 +1,312 @@
+-- Pigment Krieg: Server. Steuert Runden, KI, Kauf-Anfragen und schickt den Zustand an alle Clients.
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+Players.CharacterAutoLoads = false
+
+local PK = ReplicatedStorage:WaitForChild("PK")
+local Config = require(PK:WaitForChild("Config"))
+local Core = require(script:WaitForChild("BattleCore"))
+local Data = require(script:WaitForChild("Data"))
+local Arena = require(script:WaitForChild("Arena"))
+
+-- Netzwerk -------------------------------------------------------------
+local remotes = Instance.new("Folder")
+remotes.Name = "Remotes"
+local FxEvent = Instance.new("RemoteEvent"); FxEvent.Name = "Fx"; FxEvent.Parent = remotes
+local Action = Instance.new("RemoteEvent"); Action.Name = "Action"; Action.Parent = remotes
+remotes.Parent = PK
+
+local State = Instance.new("Folder")
+State.Name = "State"
+local UnitsFolder = Instance.new("Folder"); UnitsFolder.Name = "Units"; UnitsFolder.Parent = State
+State.Parent = PK
+
+local battle = nil
+local phase = "lobby"
+local phaseEnd = 0
+local arenaIdx = 1
+local unitInst = {}   -- id -> Configuration
+local fxQueue = {}
+local lastSent = {}   -- id -> {x, hp, moving, dir}
+
+local function setPhase(p, duration)
+	phase = p
+	phaseEnd = duration and (workspace:GetServerTimeNow() + duration) or 0
+	State:SetAttribute("Phase", p)
+	State:SetAttribute("PhaseEnd", phaseEnd)
+end
+
+local function sideOf(player) return player:GetAttribute("Side") or 0 end
+
+local function playersOn(side)
+	local list = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if sideOf(p) == side then table.insert(list, p) end
+	end
+	return list
+end
+
+-- Effekte bündeln: ein Remote-Aufruf pro Frame --------------------------
+local function round1(x) return math.floor(x * 10 + 0.5) / 10 end
+
+local function onFx(kind, d)
+	if kind == "spawn" then
+		local u = d
+		local c = Instance.new("Configuration")
+		c.Name = tostring(u.id)
+		c:SetAttribute("Type", u.type)
+		c:SetAttribute("Side", u.side)
+		c:SetAttribute("X", round1(u.x))
+		c:SetAttribute("Z", round1(u.z))
+		c:SetAttribute("HP", math.ceil(u.hp))
+		c:SetAttribute("MaxHP", math.ceil(u.maxHp))
+		c:SetAttribute("Tier", u.tier)
+		c:SetAttribute("Helmet", u.helmet)
+		c:SetAttribute("Scale", u.scale)
+		c:SetAttribute("Boss", u.boss == true)
+		c:SetAttribute("Speed", u.def.speed)
+		c:SetAttribute("Moving", false)
+		c:SetAttribute("Dir", u.dir)
+		c:SetAttribute("Cheer", u.cheer > 0)
+		c.Parent = UnitsFolder
+		unitInst[u.id] = c
+		lastSent[u.id] = { x = u.x, hp = u.hp, moving = false, dir = u.dir }
+		return
+	elseif kind == "attack" then
+		table.insert(fxQueue, { "attack", d.id, d.attackN, d.atkDur, d.combo })
+		return
+	elseif kind == "death" then
+		local c = unitInst[d.id]
+		if c then
+			c:SetAttribute("HP", 0)
+			c:SetAttribute("X", round1(d.unit.x))
+			unitInst[d.id] = nil
+			lastSent[d.id] = nil
+			task.delay(3, function() c:Destroy() end)
+		end
+		table.insert(fxQueue, { "death", d.id, d.dir, round1(d.power), d.cut, d.owner or 0 })
+		return
+	elseif kind == "proj" then
+		local k = d.meteor and "meteor" or (d.orb and "orb" or (d.bolt and "bolt" or "arrow"))
+		table.insert(fxQueue, { "proj", d.id, k, round1(d.x), round1(d.y), round1(d.z), round1(d.tz), round1(d.vx), round1(d.vy), d.g, d.side, d.tier })
+		return
+	elseif kind == "over" then
+		table.insert(fxQueue, { "over", d.winner })
+		Arena.collapse(3 - d.winner)
+		return
+	end
+	-- alles andere als Tabelle ohne Einheiten-Verweise weiterreichen
+	local copy = { kind }
+	local t = {}
+	for k, v in pairs(d) do
+		local tv = type(v)
+		if tv == "number" or tv == "string" or tv == "boolean" then t[k] = v
+		elseif k == "ids" then t[k] = v end
+	end
+	copy[2] = t
+	table.insert(fxQueue, copy)
+end
+
+-- Runden ----------------------------------------------------------------
+local function chooseArena()
+	local votes = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		local v = p:GetAttribute("Vote")
+		if v and Config.ARENAS[v] then votes[v] = (votes[v] or 0) + 1 end
+	end
+	local best, bc = nil, 0
+	for i = 1, #Config.ARENAS do
+		if (votes[i] or 0) > bc then best = i; bc = votes[i] end
+	end
+	return best or arenaIdx
+end
+
+-- stärkste Werte der Spieler auf einer Seite (Turm, Mine, Fähigkeiten)
+local function sideOpts(side)
+	local list = playersOn(side)
+	if #list == 0 then return { ai = true } end
+	local o = { ai = false, tower = 0, mine = 0, ab = { meteor = 1, rage = 1, heal = 1 } }
+	for _, p in ipairs(list) do
+		local d = Data.get(p)
+		if d then
+			o.tower = math.max(o.tower, d.tower)
+			o.mine = math.max(o.mine, d.mine)
+			for k in pairs(o.ab) do o.ab[k] = math.max(o.ab[k], d.ab[k]) end
+		end
+	end
+	return o
+end
+
+local function clearUnits()
+	for _, c in ipairs(UnitsFolder:GetChildren()) do c:Destroy() end
+	unitInst = {}
+	lastSent = {}
+end
+
+local function startRound()
+	clearUnits()
+	arenaIdx = chooseArena()
+	State:SetAttribute("Arena", arenaIdx)
+	State:SetAttribute("Winner", 0)
+	Arena.build(arenaIdx)
+	battle = Core.new(Config, arenaIdx, onFx)
+	for s = 1, 2 do battle:configureSide(s, sideOpts(s)) end
+	battle:startCountdown(4)
+	setPhase("countdown", 4)
+	table.insert(fxQueue, { "round", arenaIdx })
+end
+
+local function endRound(winner)
+	State:SetAttribute("Winner", winner)
+	local a = Config.ARENAS[arenaIdx]
+	for _, p in ipairs(Players:GetPlayers()) do
+		local s = sideOf(p)
+		if s == 1 or s == 2 then
+			local kills = battle.kills[p.UserId] or 0
+			local won = s == winner
+			local coins = (won and a.reward or 25) + kills * 3
+			Data.reward(p, coins, won, kills)
+			FxEvent:FireClient(p, { { "reward", { coins = coins, won = won, kills = kills } } })
+		end
+	end
+	setPhase("end", 9)
+end
+
+-- Spieler-Aktionen ------------------------------------------------------
+local lastAction = {}
+Action.OnServerEvent:Connect(function(player, kind, a, b)
+	-- einfache Flutbremse
+	local now = os.clock()
+	local la = lastAction[player] or 0
+	if now - la < 0.05 then return end
+	lastAction[player] = now
+
+	local d = Data.get(player)
+	if not d then return end
+	local side = sideOf(player)
+
+	if kind == "side" and (a == 1 or a == 2) then
+		player:SetAttribute("Side", a)
+		if battle and not battle.over then
+			local o = sideOpts(a)
+			battle:setControl(a, false)
+			battle.abLv[a] = o.ab
+		end
+	elseif kind == "vote" and Config.ARENAS[a] then
+		player:SetAttribute("Vote", a)
+	elseif kind == "spawn" and battle and (side == 1 or side == 2) and Config.UNITS[a] and phase == "battle" then
+		battle:spawn(side, a, { tier = d.wlv[a], helmet = d.helmet, hpMul = 1 + d.armor * 0.15, owner = player.UserId })
+	elseif kind == "ability" and battle and (side == 1 or side == 2) and Config.ABILITIES[a] and phase == "battle" then
+		battle.abLv[side][a] = math.max(battle.abLv[side][a] or 1, d.ab[a])
+		battle:useAbility(side, a, tonumber(b), player.UserId)
+	elseif kind == "cmd" and battle and (side == 1 or side == 2) and (a == "attack" or a == "defend") then
+		battle.cmd[side] = a
+	elseif kind == "helmet" and type(a) == "string" then
+		Data.buyHelmet(player, a)
+	elseif kind == "upgrade" and type(a) == "string" then
+		Data.upgradeWeapon(player, a)
+	elseif kind == "abilityUp" and type(a) == "string" then
+		Data.upgradeAbility(player, a)
+	elseif kind == "extra" and type(a) == "string" then
+		Data.upgradeExtra(player, a)
+	end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	player:SetAttribute("Side", 0)
+	Data.load(player)
+	if player.Character then player.Character:Destroy() end
+end)
+for _, p in ipairs(Players:GetPlayers()) do
+	task.spawn(function()
+		p:SetAttribute("Side", 0)
+		Data.load(p)
+	end)
+end
+Players.PlayerRemoving:Connect(function(player)
+	local s = sideOf(player)
+	Data.release(player)
+	lastAction[player] = nil
+	task.defer(function()
+		if battle and (s == 1 or s == 2) and #playersOn(s) == 0 then battle:setControl(s, true) end
+	end)
+end)
+
+-- Zustand an Clients ----------------------------------------------------
+local syncAcc = 0
+local function sync()
+	for s = 1, 2 do
+		State:SetAttribute("Gold" .. s, math.floor(battle.gold[s]))
+		State:SetAttribute("BaseHP" .. s, math.max(0, math.ceil(battle.bases[s].hp)))
+		State:SetAttribute("BaseMax" .. s, math.ceil(battle.bases[s].maxHp))
+		State:SetAttribute("Cmd" .. s, battle.cmd[s])
+		State:SetAttribute("Rage" .. s, round1(battle.rage[s]))
+		State:SetAttribute("AI" .. s, battle.ai[s].on)
+		State:SetAttribute("Kills" .. s, battle.sideKills[s])
+		for _, t in ipairs(Config.UNIT_ORDER) do
+			State:SetAttribute("Cd" .. s .. "_" .. t, round1(math.max(0, battle.spawnCd[s][t] or 0)))
+		end
+		for _, k in ipairs(Config.ABILITY_ORDER) do
+			State:SetAttribute("Ab" .. s .. "_" .. k, round1(math.max(0, battle.abCd[s][k] or 0)))
+			State:SetAttribute("AbMax" .. s .. "_" .. k, round1(battle:abilityCd(s, k)))
+		end
+	end
+	State:SetAttribute("BossId", battle.boss and battle.boss.id or 0)
+	for _, u in ipairs(battle.units) do
+		local c = unitInst[u.id]
+		local ls = lastSent[u.id]
+		if c and ls then
+			if math.abs(ls.x - u.x) > 0.5 then c:SetAttribute("X", round1(u.x)); ls.x = u.x end
+			if math.abs(ls.hp - u.hp) > 0.5 then c:SetAttribute("HP", math.max(0, math.ceil(u.hp))); ls.hp = u.hp end
+			if ls.moving ~= u.moving then c:SetAttribute("Moving", u.moving); ls.moving = u.moving end
+			if ls.dir ~= u.dir then c:SetAttribute("Dir", u.dir); ls.dir = u.dir end
+			local ch = u.cheer > 0
+			if c:GetAttribute("Cheer") ~= ch then c:SetAttribute("Cheer", ch) end
+			local vic = u.victory == true
+			if vic and not c:GetAttribute("Victory") then c:SetAttribute("Victory", true) end
+		end
+	end
+end
+
+RunService.Heartbeat:Connect(function(dt)
+	dt = math.min(dt, 0.1)
+	local now = workspace:GetServerTimeNow()
+	local anyPlayer = #playersOn(1) + #playersOn(2) > 0
+
+	if phase == "lobby" then
+		if anyPlayer then startRound() end
+	elseif phase == "countdown" or phase == "battle" then
+		battle:update(dt)
+		if phase == "countdown" and now >= phaseEnd then setPhase("battle") end
+		if battle.over and phase == "battle" then endRound(battle.result) end
+		if not anyPlayer and phase == "battle" and not battle.over then
+			-- niemand spielt mehr: Runde abbrechen
+			clearUnits()
+			setPhase("lobby")
+		end
+	elseif phase == "end" then
+		battle:update(dt)
+		if now >= phaseEnd then
+			if anyPlayer then startRound() else clearUnits(); setPhase("lobby") end
+		end
+	end
+
+	if battle then
+		syncAcc = syncAcc + dt
+		if syncAcc >= 1 / 12 then
+			syncAcc = 0
+			sync()
+		end
+	end
+	if #fxQueue > 0 then
+		FxEvent:FireAllClients(fxQueue)
+		fxQueue = {}
+	end
+end)
+
+setPhase("lobby")
+State:SetAttribute("Arena", arenaIdx)
+Arena.build(arenaIdx)
+print("[PigmentKrieg] Server bereit")

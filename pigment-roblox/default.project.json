@@ -1,0 +1,30 @@
+{
+  "name": "PigmentKrieg",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "PK": {
+        "$className": "Folder",
+        "Config": { "$path": "src/shared/Config.lua" },
+        "Pose": { "$path": "src/shared/Pose.lua" }
+      }
+    },
+    "ServerScriptService": {
+      "PigmentKriegServer": {
+        "$path": "src/server/Main.server.lua",
+        "BattleCore": { "$path": "src/server/BattleCore.lua" },
+        "Data": { "$path": "src/server/Data.lua" },
+        "Arena": { "$path": "src/server/Arena.lua" }
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "PigmentKriegClient": {
+          "$path": "src/client/Main.client.lua",
+          "Render": { "$path": "src/client/Render.lua" },
+          "UI": { "$path": "src/client/UI.lua" }
+        }
+      }
+    }
+  }
+}

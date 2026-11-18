@@ -1,0 +1,116 @@
+-- Szenario: kompletter Spielablauf in der Roblox-Attrappe. Gibt Zeilen über out() aus.
+return function(M, S, out, decode)
+	local I = M.Instance
+	local game = M.game
+	local function mk(cls, name, parent, source)
+		local o = I.new(cls); o.Name = name
+		if source then o.Source = source end
+		o.Parent = parent
+		return o
+	end
+	local function check(stage)
+		if #M.errors > 0 then
+			out("FEHLER bei: " .. stage)
+			for i = 1, math.min(8, #M.errors) do out("   " .. M.errors[i]) end
+			error("abgebrochen")
+		end
+		out("ok: " .. stage)
+	end
+	local RS = game:GetService("ReplicatedStorage")
+	local SSS = game:GetService("ServerScriptService")
+	local pk = mk("Folder", "PK", RS)
+	mk("ModuleScript", "Config", pk, S["shared/Config.lua"])
+	mk("ModuleScript", "Pose", pk, S["shared/Pose.lua"])
+	local server = mk("Script", "PigmentKriegServer", SSS, S["server/Main.server.lua"])
+	for _, n in ipairs({ "BattleCore", "Data", "Arena" }) do mk("ModuleScript", n, server, S["server/" .. n .. ".lua"]) end
+	local client = I.new("LocalScript"); client.Name = "PigmentKriegClient"; client.Source = S["client/Main.client.lua"]
+	for _, n in ipairs({ "Render", "UI" }) do mk("ModuleScript", n, client, S["client/" .. n .. ".lua"]) end
+
+	M.run(server); check("Server startet")
+	local p = M.addPlayer(101); check("Spieler tritt bei, Daten geladen")
+	M.run(client); check("Client startet (Oberfläche, Renderer)")
+	local state = pk.State
+	local action = pk.Remotes.Action
+	local dt = 1 / 30
+	local function tick(sec)
+		for _ = 1, math.floor(sec / dt + 0.5) do
+			M.heartbeat:Fire(dt)
+			M.render.PigmentKrieg(dt)
+			M.advance(dt)
+		end
+	end
+	local uis = M.uis
+	local function key(kc)
+		local inp = { UserInputType = M.Enum.UserInputType.Keyboard, KeyCode = M.Enum.KeyCode[kc] }
+		uis.InputBegan:Fire(inp, false); uis.InputEnded:Fire(inp, false)
+	end
+	local function click(x, y)
+		local inp = { UserInputType = M.Enum.UserInputType.MouseButton1, Position = M.Vector2.new(x, y) }
+		uis.InputBegan:Fire(inp, false); uis.InputEnded:Fire(inp, false)
+	end
+	local function phase() return state:GetAttribute("Phase") end
+
+	tick(2); check("Lobby läuft (Phase " .. tostring(phase()) .. ")")
+	local gui = p.PlayerGui.PigmentKrieg
+	local nb = 0
+	for _, d in ipairs(gui:GetDescendants()) do if d._class == "TextButton" then nb = nb + 1 end end
+	out("   Knöpfe in der Oberfläche: " .. nb)
+	-- echte Menü-Knöpfe drücken: Arena 2 abstimmen, dann Team Schwarz
+	local function pressWithText(txt)
+		for _, d in ipairs(gui:GetDescendants()) do
+			if d._class == "TextButton" then
+				for _, c in ipairs(d:GetDescendants()) do
+					if c._class == "TextLabel" and c.Text == txt then
+						d.MouseButton1Click:Fire(); return true
+					end
+				end
+			end
+		end
+		return false
+	end
+	assert(pressWithText("Vulkankrater"), "Arena-Knopf nicht gefunden")
+	tick(0.1)
+	assert(pressWithText("SCHWARZ"), "Team-Knopf nicht gefunden")
+	tick(0.3); check("Arena gewählt und Team Schwarz beigetreten")
+	out("   Phase " .. tostring(phase()) .. ", Arena " .. tostring(state:GetAttribute("Arena")))
+	tick(4.5); check("Countdown")
+	assert(phase() == "battle", "kein Kampf gestartet")
+	local keys = { "One", "Two", "Three", "Four", "Five", "Six", "Seven" }
+	for rnd = 1, 40 do
+		for _, k in ipairs(keys) do key(k); tick(0.12) end
+		if rnd % 6 == 1 then key("R"); tick(0.05); click(900, 500) end
+		if rnd % 9 == 1 then key("F") end
+		if rnd % 11 == 1 then key("H") end
+		if rnd == 15 then key("Q") end
+		if rnd == 18 then key("E") end
+		tick(2)
+		if phase() ~= "battle" then break end
+	end
+	check("Kampf: alle 7 Krieger, Meteor, Kriegsschrei, Heilwelle, Befehle")
+	out(string.format("   Gold %s, Burgen %s / %s, Einheiten %d, bewegte Teile %d",
+		tostring(state:GetAttribute("Gold1")), tostring(state:GetAttribute("BaseHP1")), tostring(state:GetAttribute("BaseHP2")), #state.Units:GetChildren(), M.moved or 0))
+	for _ = 1, 500 do
+		if phase() == "end" then break end
+		key("One"); key("Five"); key("Seven"); key("Two"); key("Six"); tick(1)
+	end
+	check("Runde zu Ende gespielt")
+	out("   Phase " .. tostring(phase()) .. ", Gewinner Seite " .. tostring(state:GetAttribute("Winner")))
+	local d = decode(p:GetAttribute("Data"))
+	out("   Münzen " .. d.coins .. ", Spiele " .. d.games .. ", Kills " .. d.kills)
+	action:FireServer("helmet", "face"); tick(0.1)
+	action:FireServer("upgrade", "sword"); tick(0.1)
+	action:FireServer("abilityUp", "meteor"); tick(0.1)
+	action:FireServer("extra", "mine"); tick(0.1)
+	d = decode(p:GetAttribute("Data"))
+	out("   Nach Einkauf: Münzen " .. d.coins .. ", Helm " .. d.helmet .. ", Klinge Stufe " .. d.wlv.sword .. ", Meteor Stufe " .. d.ab.meteor .. ", Mine " .. d.mine)
+	tick(1); check("Shop und Schmiede, Oberfläche aktualisiert")
+	tick(12); check("Nächste Runde startet (Phase " .. tostring(phase()) .. ")")
+	for _ = 1, 25 do key("One"); key("Four"); tick(1) end
+	check("Zweite Runde mit Gesichts-Helm")
+	out("   Server-Aktionen " .. tostring(M.serverEvents) .. ", Effekt-Pakete " .. tostring(M.clientEvents))
+	-- Spieler verlässt das Spiel
+	p.Parent = nil
+	M.players._signals.PlayerRemoving = M.players._signals.PlayerRemoving
+	tick(2); check("Spieler verlässt Spiel")
+	return true
+end
