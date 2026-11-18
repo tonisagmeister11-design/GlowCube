@@ -13,6 +13,8 @@ local Config = require(PK:WaitForChild("Config"))
 local Core = require(script:WaitForChild("BattleCore"))
 local Data = require(script:WaitForChild("Data"))
 local Arena = require(script:WaitForChild("Arena"))
+local Rooms = require(script:WaitForChild("Rooms"))
+local isRoom = Rooms.isRoom()
 
 -- Netzwerk -------------------------------------------------------------
 local remotes = Instance.new("Folder")
@@ -307,6 +309,13 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 	elseif kind == "training" then
 		player:SetAttribute("Training", true)
 		if sideOf(player) == 0 then joinSide(1) end
+	elseif kind == "roomCreate" or kind == "roomJoin" then
+		local last = player:GetAttribute("RoomT") or 0
+		if os.clock() - last < 3 then return end
+		player:SetAttribute("RoomT", os.clock())
+		local ok, res
+		if kind == "roomCreate" then ok, res = Rooms.create(player) else ok, res = Rooms.join(player, a) end
+		FxEvent:FireClient(player, { { "room", { ok = ok, msg = ok and "" or res, code = ok and res or "" } } })
 	elseif kind == "vote" and Config.ARENAS[a] then
 		player:SetAttribute("Vote", a)
 	elseif kind == "modeVote" and type(a) == "string" and Config.MODES[a] then
@@ -374,6 +383,10 @@ end
 
 local function welcome(player)
 	updateLeaderstats(player)
+	if isRoom and (State:GetAttribute("Room") or "") == "" then
+		local code = Rooms.codeFromJoin(player)
+		if code then State:SetAttribute("Room", code) end
+	end
 	local r = Data.daily(player)
 	if r then
 		task.delay(4, function()
@@ -459,6 +472,9 @@ RunService.Heartbeat:Connect(function(dt)
 			if searchEnd then searchEnd = nil; State:SetAttribute("SearchEnd", 0) end
 		elseif (h1 > 0 and h2 > 0) or training or chooseMode() == "waves" then
 			startRound()
+		elseif isRoom then
+			-- privater Raum: auf den Freund warten, kein Computer
+			if searchEnd then searchEnd = nil; State:SetAttribute("SearchEnd", 0) end
 		else
 			if not searchEnd then
 				searchEnd = now + Config.SEARCH_TIME

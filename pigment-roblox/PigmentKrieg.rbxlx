@@ -362,6 +362,15 @@ local EN = {
 	["Kommt niemand, startet der Kampf in %d s gegen den Computer."] = "If nobody joins, the battle starts vs the computer in %d s.",
 	["TÄGLICHE BELOHNUNG"] = "DAILY REWARD", ["Tag %d in Folge!"] = "Day %d in a row!", ["ABHOLEN"] = "CLAIM",
 	["EIN GEGNER IST BEIGETRETEN!"] = "AN OPPONENT JOINED!",
+	["MIT FREUNDEN SPIELEN"] = "PLAY WITH FRIENDS", ["RAUM ERSTELLEN"] = "CREATE ROOM", ["BEITRETEN"] = "JOIN",
+	["Code eingeben"] = "Enter code", ["Erstelle einen privaten Raum und gib deinem Freund den Code."] = "Create a private room and give your friend the code.",
+	["WARTE AUF DEINEN FREUND"] = "WAITING FOR YOUR FRIEND", ["Raum-Code: %s  ·  Sag ihn deinem Freund!"] = "Room code: %s  ·  Tell your friend!",
+	["RAUM %s"] = "ROOM %s", ["Wird verbunden …"] = "Connecting …",
+	["Räume sind gerade nicht verfügbar"] = "Rooms are not available right now",
+	["In Roblox Studio gehen Räume nicht. Teste sie im veröffentlichten Spiel."] = "Rooms don't work in Roblox Studio. Test them in the published game.",
+	["Raum konnte nicht gespeichert werden"] = "Could not save the room", ["Teleport fehlgeschlagen, bitte nochmal versuchen"] = "Teleport failed, please try again",
+	["Ungültiger Code"] = "Invalid code", ["Der Code hat 5 Zeichen"] = "The code has 5 characters", ["Diesen Raum gibt es nicht (mehr)"] = "This room doesn't exist (anymore)",
+	["Einladen ist gerade nicht möglich"] = "Inviting is not possible right now",
 	-- HUD
 	["MENÜ"] = "MENU", ["VERTEIDIGEN (Q)"] = "DEFEND (Q)", ["ANGRIFF (E)"] = "ATTACK (E)", ["BOSS-TITAN"] = "BOSS TITAN",
 	["Tippe aufs Schlachtfeld für den Meteor"] = "Tap the battlefield to drop the meteor", ["Abbrechen"] = "Cancel",
@@ -446,7 +455,7 @@ function Lang.say(text)
 end
 
 return Lang
-]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX0000000000000000000000000000000A"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX00000000000000000000000000000009"><Properties><string name="Name">PigmentKriegServer</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Server. Steuert Runden, KI, Kauf-Anfragen und schickt den Zustand an alle Clients.
+]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX0000000000000000000000000000000B"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX0000000000000000000000000000000A"><Properties><string name="Name">PigmentKriegServer</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Server. Steuert Runden, KI, Kauf-Anfragen und schickt den Zustand an alle Clients.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -461,6 +470,8 @@ local Config = require(PK:WaitForChild("Config"))
 local Core = require(script:WaitForChild("BattleCore"))
 local Data = require(script:WaitForChild("Data"))
 local Arena = require(script:WaitForChild("Arena"))
+local Rooms = require(script:WaitForChild("Rooms"))
+local isRoom = Rooms.isRoom()
 
 -- Netzwerk -------------------------------------------------------------
 local remotes = Instance.new("Folder")
@@ -755,6 +766,13 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 	elseif kind == "training" then
 		player:SetAttribute("Training", true)
 		if sideOf(player) == 0 then joinSide(1) end
+	elseif kind == "roomCreate" or kind == "roomJoin" then
+		local last = player:GetAttribute("RoomT") or 0
+		if os.clock() - last < 3 then return end
+		player:SetAttribute("RoomT", os.clock())
+		local ok, res
+		if kind == "roomCreate" then ok, res = Rooms.create(player) else ok, res = Rooms.join(player, a) end
+		FxEvent:FireClient(player, { { "room", { ok = ok, msg = ok and "" or res, code = ok and res or "" } } })
 	elseif kind == "vote" and Config.ARENAS[a] then
 		player:SetAttribute("Vote", a)
 	elseif kind == "modeVote" and type(a) == "string" and Config.MODES[a] then
@@ -822,6 +840,10 @@ end
 
 local function welcome(player)
 	updateLeaderstats(player)
+	if isRoom and (State:GetAttribute("Room") or "") == "" then
+		local code = Rooms.codeFromJoin(player)
+		if code then State:SetAttribute("Room", code) end
+	end
 	local r = Data.daily(player)
 	if r then
 		task.delay(4, function()
@@ -907,6 +929,9 @@ RunService.Heartbeat:Connect(function(dt)
 			if searchEnd then searchEnd = nil; State:SetAttribute("SearchEnd", 0) end
 		elseif (h1 > 0 and h2 > 0) or training or chooseMode() == "waves" then
 			startRound()
+		elseif isRoom then
+			-- privater Raum: auf den Freund warten, kein Computer
+			if searchEnd then searchEnd = nil; State:SetAttribute("SearchEnd", 0) end
 		else
 			if not searchEnd then
 				searchEnd = now + Config.SEARCH_TIME
@@ -2022,7 +2047,80 @@ function Arena.collapse(side)
 end
 
 return Arena
-]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX0000000000000000000000000000000F"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX0000000000000000000000000000000E"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX0000000000000000000000000000000D"><Properties><string name="Name">PigmentKriegClient</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Client. Kamera, Steuerung, Animation aller Einheiten, Effekte.
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000000000000000000000000000009"><Properties><string name="Name">Rooms</string><ProtectedString name="Source"><![CDATA[-- Private Räume: Ein Spieler erstellt einen Raum mit Code, Freunde treten mit dem Code bei.
+-- Technisch: ein reservierter Server (TeleportService) + Code-Tabelle im MemoryStore (über alle Server hinweg).
+local TeleportService = game:GetService("TeleportService")
+local MemoryStoreService = game:GetService("MemoryStoreService")
+
+local Rooms = {}
+local map = nil
+pcall(function() map = MemoryStoreService:GetSortedMap("PK_Rooms_v1") end)
+
+local LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" -- ohne 0/O und 1/I, damit man nichts verwechselt
+local function newCode()
+	local t = {}
+	for i = 1, 5 do
+		local k = math.random(1, #LETTERS)
+		t[i] = LETTERS:sub(k, k)
+	end
+	return table.concat(t)
+end
+
+-- Ist dieser Server selbst ein privater Raum?
+function Rooms.isRoom()
+	return game.PrivateServerId ~= "" and game.PrivateServerOwnerId == 0
+end
+
+-- Raum-Code aus den Teleport-Daten eines beitretenden Spielers
+function Rooms.codeFromJoin(player)
+	local ok, data = pcall(function() return player:GetJoinData() end)
+	if ok and type(data) == "table" and type(data.TeleportData) == "table" then
+		return data.TeleportData.room
+	end
+	return nil
+end
+
+local function teleport(player, access, code)
+	local opts = Instance.new("TeleportOptions")
+	opts.ReservedServerAccessCode = access
+	opts:SetTeleportData({ room = code })
+	local ok, err = pcall(function() TeleportService:TeleportAsync(game.PlaceId, { player }, opts) end)
+	return ok, err
+end
+
+-- gibt (true, code) oder (false, Fehlertext) zurück
+function Rooms.create(player)
+	if not map then return false, "Räume sind gerade nicht verfügbar" end
+	local okR, access = pcall(function() return TeleportService:ReserveServer(game.PlaceId) end)
+	if not okR or not access then return false, "In Roblox Studio gehen Räume nicht. Teste sie im veröffentlichten Spiel." end
+	local code
+	for _ = 1, 5 do
+		code = newCode()
+		local okG, existing = pcall(function() return map:GetAsync(code) end)
+		if okG and existing == nil then break end
+	end
+	local okS = pcall(function() map:SetAsync(code, access, 3 * 3600) end)
+	if not okS then return false, "Raum konnte nicht gespeichert werden" end
+	local okT = teleport(player, access, code)
+	if not okT then return false, "Teleport fehlgeschlagen, bitte nochmal versuchen" end
+	return true, code
+end
+
+function Rooms.join(player, code)
+	if type(code) ~= "string" then return false, "Ungültiger Code" end
+	code = code:upper():gsub("[^A-Z0-9]", "")
+	if #code ~= 5 then return false, "Der Code hat 5 Zeichen" end
+	if not map then return false, "Räume sind gerade nicht verfügbar" end
+	local okG, access = pcall(function() return map:GetAsync(code) end)
+	if not okG then return false, "Räume sind gerade nicht verfügbar" end
+	if not access then return false, "Diesen Raum gibt es nicht (mehr)" end
+	local okT = teleport(player, access, code)
+	if not okT then return false, "Teleport fehlgeschlagen, bitte nochmal versuchen" end
+	return true, code
+end
+
+return Rooms
+]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX00000000000000000000000000000010"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX0000000000000000000000000000000F"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX0000000000000000000000000000000E"><Properties><string name="Name">PigmentKriegClient</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Client. Kamera, Steuerung, Animation aller Einheiten, Effekte.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -2439,6 +2537,10 @@ handlers.bought = function(e)
 	UI.toast(T("Gekauft: %s  Danke!", T(tostring(e[2].name))), 3)
 	sound("ping", 0.6, 1.2, 0.1)
 end
+handlers.room = function(e)
+	local d = e[2]
+	if not d.ok then UI.toast(T(d.msg), 3.5) end
+end
 handlers.daily = function(e)
 	UI.showDaily(e[2])
 	sound("ping", 0.6, 1.5, 0.1)
@@ -2558,7 +2660,7 @@ end)
 -- Charakter wird nicht gebraucht (Strategie-Ansicht)
 player.CharacterAdded:Connect(function(c) task.defer(function() c:Destroy() end) end)
 print("[PigmentKrieg] Client bereit")
-]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX0000000000000000000000000000000B"><Properties><string name="Name">Render</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: zeichnet Stickmen, Waffen, Helme, Ragdolls, Projektile und Effekte (nur auf dem Client).
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX0000000000000000000000000000000C"><Properties><string name="Name">Render</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: zeichnet Stickmen, Waffen, Helme, Ragdolls, Projektile und Effekte (nur auf dem Client).
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -3231,7 +3333,7 @@ function Render.clearProjs()
 end
 
 return Render
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX0000000000000000000000000000000C"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: komplette Benutzeroberfläche (Menü, Shop, Schmiede, Kampf-HUD). Funktioniert mit Maus und Touch.
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX0000000000000000000000000000000D"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: komplette Benutzeroberfläche (Menü, Shop, Schmiede, Kampf-HUD). Funktioniert mit Maus und Touch.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -3478,6 +3580,15 @@ function UI.buildMenu(base)
 	UI.playBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("play"); UI.menuForced = false end)
 	UI.trainBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("training"); UI.menuForced = false end)
 	UI.inviteBtn.MouseButton1Click:Connect(function() UI.invite() end)
+	-- Mit Freunden: privater Raum per Code
+	local fr = make("Frame", { BackgroundColor3 = Color3.fromRGB(0, 70, 140), BackgroundTransparency = 0.2, Size = UDim2.new(1, -10, 0, 104), LayoutOrder = 0, Parent = play }, { corner(14), stroke(Color3.fromRGB(80, 170, 255), 2, 0.3) })
+	label({ Text = "MIT FREUNDEN SPIELEN", Font = DISPLAY, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.fromOffset(12, 8), TextXAlignment = Enum.TextXAlignment.Left, Max = 22, Parent = fr })
+	label({ Text = "Erstelle einen privaten Raum und gib deinem Freund den Code.", TextColor3 = Color3.fromRGB(200, 225, 255), Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(12, 34), TextXAlignment = Enum.TextXAlignment.Left, Max = 14, Font = Enum.Font.Gotham, Parent = fr })
+	local create = button({ Text = "RAUM ERSTELLEN", BackgroundColor3 = GOLD, TextColor3 = INK, Size = UDim2.new(0.34, -12, 0, 42), Position = UDim2.new(0, 12, 1, -50), Font = DISPLAY, Max = 18, Parent = fr })
+	UI.codeBox = make("TextBox", { Text = "", PlaceholderText = T("Code eingeben"), ClearTextOnFocus = false, Font = DISPLAY, TextScaled = true, TextColor3 = INK, PlaceholderColor3 = Color3.fromRGB(120, 120, 120), BackgroundColor3 = PAPER, Size = UDim2.new(0.33, -12, 0, 42), Position = UDim2.new(0.34, 6, 1, -50), Parent = fr }, { corner(12), make("UITextSizeConstraint", { MaxTextSize = 22 }), pad(6) })
+	local join = button({ Text = "BEITRETEN", BackgroundColor3 = Color3.fromRGB(40, 200, 90), Size = UDim2.new(0.33, -12, 0, 42), Position = UDim2.new(0.67, 0, 1, -50), Font = DISPLAY, Max = 18, Parent = fr })
+	create.MouseButton1Click:Connect(function() UI.Action:FireServer("roomCreate"); UI.toast("Wird verbunden …", 3) end)
+	join.MouseButton1Click:Connect(function() UI.Action:FireServer("roomJoin", UI.codeBox.Text); UI.toast("Wird verbunden …", 3) end)
 	label({ Text = "ODER WÄHLE DEIN TEAM", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, Max = 16, LayoutOrder = 1, Parent = play })
 	local teams = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -10, 0, 120), LayoutOrder = 2, Parent = play }, {
 		make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 12) }),
@@ -3838,7 +3949,8 @@ function UI.update(view)
 
 	local arenaIdx = S:GetAttribute("Arena") or 1
 	local mode = S:GetAttribute("Mode") or "classic"
-	UI.arenaLabel.Text = string.upper(T(Config.ARENAS[arenaIdx].name) .. "  ·  " .. T(Config.MODES[mode].name))
+	local roomCode = S:GetAttribute("Room") or ""
+	UI.arenaLabel.Text = (roomCode ~= "" and (T("RAUM %s", roomCode) .. "  ·  ") or "") .. string.upper(T(Config.ARENAS[arenaIdx].name) .. "  ·  " .. T(Config.MODES[mode].name))
 	local wave = S:GetAttribute("Wave") or 0
 	UI.waveLabel.Text = (mode == "waves" and wave > 0) and T("WELLE %d", wave) or ""
 	for s = 1, 2 do
@@ -3862,9 +3974,16 @@ function UI.update(view)
 		end
 	end
 	local sEnd = S:GetAttribute("SearchEnd") or 0
-	UI.searchPanel.Visible = side ~= 0 and phase == "lobby" and sEnd > now and not menuOpen
+	local room = S:GetAttribute("Room") or ""
+	UI.searchPanel.Visible = side ~= 0 and phase == "lobby" and (sEnd > now or room ~= "") and not menuOpen
 	if UI.searchPanel.Visible then
-		UI.searchInfo.Text = T("Kommt niemand, startet der Kampf in %d s gegen den Computer.", math.max(0, math.ceil(sEnd - now)))
+		if room ~= "" then
+			UI.searchTitle.Text = T("WARTE AUF DEINEN FREUND")
+			UI.searchInfo.Text = T("Raum-Code: %s  ·  Sag ihn deinem Freund!", room)
+		else
+			UI.searchTitle.Text = T("SUCHE GEGNER …")
+			UI.searchInfo.Text = T("Kommt niemand, startet der Kampf in %d s gegen den Computer.", math.max(0, math.ceil(sEnd - now)))
+		end
 	end
 	UI.hillFrame.Visible = mode == "hill" and (phase == "battle" or phase == "countdown")
 	if UI.hillFrame.Visible then

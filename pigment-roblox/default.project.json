@@ -15,7 +15,8 @@
         "$path": "src/server/Main.server.lua",
         "BattleCore": { "$path": "src/server/BattleCore.lua" },
         "Data": { "$path": "src/server/Data.lua" },
-        "Arena": { "$path": "src/server/Arena.lua" }
+        "Arena": { "$path": "src/server/Arena.lua" },
+        "Rooms": { "$path": "src/server/Rooms.lua" }
       }
     },
     "StarterPlayer": {

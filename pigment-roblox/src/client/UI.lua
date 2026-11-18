@@ -245,6 +245,15 @@ function UI.buildMenu(base)
 	UI.playBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("play"); UI.menuForced = false end)
 	UI.trainBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("training"); UI.menuForced = false end)
 	UI.inviteBtn.MouseButton1Click:Connect(function() UI.invite() end)
+	-- Mit Freunden: privater Raum per Code
+	local fr = make("Frame", { BackgroundColor3 = Color3.fromRGB(0, 70, 140), BackgroundTransparency = 0.2, Size = UDim2.new(1, -10, 0, 104), LayoutOrder = 0, Parent = play }, { corner(14), stroke(Color3.fromRGB(80, 170, 255), 2, 0.3) })
+	label({ Text = "MIT FREUNDEN SPIELEN", Font = DISPLAY, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.fromOffset(12, 8), TextXAlignment = Enum.TextXAlignment.Left, Max = 22, Parent = fr })
+	label({ Text = "Erstelle einen privaten Raum und gib deinem Freund den Code.", TextColor3 = Color3.fromRGB(200, 225, 255), Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(12, 34), TextXAlignment = Enum.TextXAlignment.Left, Max = 14, Font = Enum.Font.Gotham, Parent = fr })
+	local create = button({ Text = "RAUM ERSTELLEN", BackgroundColor3 = GOLD, TextColor3 = INK, Size = UDim2.new(0.34, -12, 0, 42), Position = UDim2.new(0, 12, 1, -50), Font = DISPLAY, Max = 18, Parent = fr })
+	UI.codeBox = make("TextBox", { Text = "", PlaceholderText = T("Code eingeben"), ClearTextOnFocus = false, Font = DISPLAY, TextScaled = true, TextColor3 = INK, PlaceholderColor3 = Color3.fromRGB(120, 120, 120), BackgroundColor3 = PAPER, Size = UDim2.new(0.33, -12, 0, 42), Position = UDim2.new(0.34, 6, 1, -50), Parent = fr }, { corner(12), make("UITextSizeConstraint", { MaxTextSize = 22 }), pad(6) })
+	local join = button({ Text = "BEITRETEN", BackgroundColor3 = Color3.fromRGB(40, 200, 90), Size = UDim2.new(0.33, -12, 0, 42), Position = UDim2.new(0.67, 0, 1, -50), Font = DISPLAY, Max = 18, Parent = fr })
+	create.MouseButton1Click:Connect(function() UI.Action:FireServer("roomCreate"); UI.toast("Wird verbunden …", 3) end)
+	join.MouseButton1Click:Connect(function() UI.Action:FireServer("roomJoin", UI.codeBox.Text); UI.toast("Wird verbunden …", 3) end)
 	label({ Text = "ODER WÄHLE DEIN TEAM", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, Max = 16, LayoutOrder = 1, Parent = play })
 	local teams = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -10, 0, 120), LayoutOrder = 2, Parent = play }, {
 		make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 12) }),
@@ -605,7 +614,8 @@ function UI.update(view)
 
 	local arenaIdx = S:GetAttribute("Arena") or 1
 	local mode = S:GetAttribute("Mode") or "classic"
-	UI.arenaLabel.Text = string.upper(T(Config.ARENAS[arenaIdx].name) .. "  ·  " .. T(Config.MODES[mode].name))
+	local roomCode = S:GetAttribute("Room") or ""
+	UI.arenaLabel.Text = (roomCode ~= "" and (T("RAUM %s", roomCode) .. "  ·  ") or "") .. string.upper(T(Config.ARENAS[arenaIdx].name) .. "  ·  " .. T(Config.MODES[mode].name))
 	local wave = S:GetAttribute("Wave") or 0
 	UI.waveLabel.Text = (mode == "waves" and wave > 0) and T("WELLE %d", wave) or ""
 	for s = 1, 2 do
@@ -629,9 +639,16 @@ function UI.update(view)
 		end
 	end
 	local sEnd = S:GetAttribute("SearchEnd") or 0
-	UI.searchPanel.Visible = side ~= 0 and phase == "lobby" and sEnd > now and not menuOpen
+	local room = S:GetAttribute("Room") or ""
+	UI.searchPanel.Visible = side ~= 0 and phase == "lobby" and (sEnd > now or room ~= "") and not menuOpen
 	if UI.searchPanel.Visible then
-		UI.searchInfo.Text = T("Kommt niemand, startet der Kampf in %d s gegen den Computer.", math.max(0, math.ceil(sEnd - now)))
+		if room ~= "" then
+			UI.searchTitle.Text = T("WARTE AUF DEINEN FREUND")
+			UI.searchInfo.Text = T("Raum-Code: %s  ·  Sag ihn deinem Freund!", room)
+		else
+			UI.searchTitle.Text = T("SUCHE GEGNER …")
+			UI.searchInfo.Text = T("Kommt niemand, startet der Kampf in %d s gegen den Computer.", math.max(0, math.ceil(sEnd - now)))
+		end
 	end
 	UI.hillFrame.Visible = mode == "hill" and (phase == "battle" or phase == "countdown")
 	if UI.hillFrame.Visible then

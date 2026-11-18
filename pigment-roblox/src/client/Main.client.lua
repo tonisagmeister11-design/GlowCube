@@ -415,6 +415,10 @@ handlers.bought = function(e)
 	UI.toast(T("Gekauft: %s  Danke!", T(tostring(e[2].name))), 3)
 	sound("ping", 0.6, 1.2, 0.1)
 end
+handlers.room = function(e)
+	local d = e[2]
+	if not d.ok then UI.toast(T(d.msg), 3.5) end
+end
 handlers.daily = function(e)
 	UI.showDaily(e[2])
 	sound("ping", 0.6, 1.5, 0.1)

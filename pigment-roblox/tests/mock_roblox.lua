@@ -159,9 +159,11 @@ function methods:GetAttributeChangedSignal() return Signal() end
 function methods:Clone() return newInstance(self._class, self._props.Name) end
 function methods:Emit(n) assert(type(n) == "number", "Emit braucht Zahl") end
 function methods:Play() end
+function methods:SetTeleportData(d) self._props.TeleportData = d end
+function methods:GetJoinData() return {} end
 function methods:FireServer(...) M.serverEvents = (M.serverEvents or 0) + 1; local s = self._signals.OnServerEvent; if s then s:Fire(M.localPlayer, ...) end end
 function methods:FireAllClients(...) M.clientEvents = (M.clientEvents or 0) + 1; local s = self._signals.OnClientEvent; if s then s:Fire(...) end end
-function methods:FireClient(p, ...) local s = self._signals.OnClientEvent; if s then s:Fire(...) end end
+function methods:FireClient(p, ...) M.lastClientFx = { ... }; local s = self._signals.OnClientEvent; if s then s:Fire(...) end end
 
 IMT.__index = function(o, k)
 	local m = methods[k]
@@ -242,6 +244,16 @@ service("Debris", { AddItem = function() end })
 service("TweenService", { Create = function() return { Play = function() end } end })
 service("GuiService", { GetGuiInset = function() return V2(0, 36), V2() end })
 M.uis = service("UserInputService", { GetMouseLocation = function() return V2(640, 400) end })
+M.teleports = {}
+local memMap = {}
+service("MemoryStoreService", { GetSortedMap = function() return {
+	GetAsync = function(self, k) return memMap[k] end,
+	SetAsync = function(self, k, v) memMap[k] = v; return true end,
+} end })
+service("TeleportService", {
+	ReserveServer = function() return "ACCESS-" .. tostring(#M.teleports + 1) end,
+	TeleportAsync = function(self, placeId, list, opts) table.insert(M.teleports, { players = list, access = opts.ReservedServerAccessCode }) end,
+})
 service("SocialService", { CanSendGameInviteAsync = function() return true end, PromptGameInvite = function() M.invites = (M.invites or 0) + 1 end })
 service("DataStoreService", { GetOrderedDataStore = function() return {
 	GetSortedAsync = function() error("Studio hat keinen API-Zugriff (Test)") end,
@@ -255,6 +267,9 @@ service("HttpService", {
 	JSONEncode = function(self, t) return M.json.encode(t) end,
 	JSONDecode = function(self, s) return M.json.decode(s) end,
 })
+game._props.PrivateServerId = ""
+game._props.PrivateServerOwnerId = 0
+game._props.PlaceId = 117942910559953
 rawset(game, "_svc", {
 	GetService = function(self, n) return services[n] or error("Dienst fehlt in Attrappe: " .. n) end,
 	BindToClose = function() end,

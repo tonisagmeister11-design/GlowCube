@@ -37,6 +37,7 @@ tree = [
             module('BattleCore', 'server/BattleCore.lua'),
             module('Data', 'server/Data.lua'),
             module('Arena', 'server/Arena.lua'),
+            module('Rooms', 'server/Rooms.lua'),
         ], source=read('server/Main.server.lua')),
     ]),
     item('StarterPlayer', 'StarterPlayer', [

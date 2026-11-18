@@ -23,7 +23,7 @@ return function(M, S, out, decode)
 	mk("ModuleScript", "Pose", pk, S["shared/Pose.lua"])
 	mk("ModuleScript", "Lang", pk, S["shared/Lang.lua"])
 	local server = mk("Script", "PigmentKriegServer", SSS, S["server/Main.server.lua"])
-	for _, n in ipairs({ "BattleCore", "Data", "Arena" }) do mk("ModuleScript", n, server, S["server/" .. n .. ".lua"]) end
+	for _, n in ipairs({ "BattleCore", "Data", "Arena", "Rooms" }) do mk("ModuleScript", n, server, S["server/" .. n .. ".lua"]) end
 	local client = I.new("LocalScript"); client.Name = "PigmentKriegClient"; client.Source = S["client/Main.client.lua"]
 	for _, n in ipairs({ "Render", "UI" }) do mk("ModuleScript", n, client, S["client/" .. n .. ".lua"]) end
 
@@ -199,6 +199,18 @@ return function(M, S, out, decode)
 	check("Hügel-König PvP: Punkte " .. tostring(state:GetAttribute("Hill1")) .. " / " .. tostring(state:GetAttribute("Hill2")) .. ", Gewinner " .. tostring(state:GetAttribute("Winner")))
 	local ls = p.leaderstats
 	out("   Rangliste von Spieler 1: Wins " .. ls.Wins.Value .. ", Kills " .. ls.Kills.Value .. ", Einladungen " .. tostring(M.invites))
+	-- Private Räume: erstellen und mit Code beitreten
+	action:FireServer("roomCreate"); tick(0.2)
+	assert(#M.teleports == 1, "Raum erstellen teleportiert nicht")
+	local fx = M.lastClientFx[1][1]
+	assert(fx[1] == "room" and fx[2].ok and #fx[2].code == 5, "Kein Raum-Code zurück")
+	local code = fx[2].code
+	action.OnServerEvent:Fire(p2, "roomJoin", "zzzzz"); tick(0.2)
+	assert(#M.teleports == 1, "Falscher Code darf nicht teleportieren")
+	tick(3.5)
+	action.OnServerEvent:Fire(p2, "roomJoin", string.lower(code)); tick(0.2)
+	assert(#M.teleports == 2 and M.teleports[2].access == M.teleports[1].access, "Freund landet nicht im selben Raum")
+	check("Private Räume: Code " .. code .. " erstellt, Freund tritt bei, falscher Code abgelehnt")
 	-- Spieler verlässt das Spiel
 	p.Parent = nil
 	M.players._signals.PlayerRemoving = M.players._signals.PlayerRemoving

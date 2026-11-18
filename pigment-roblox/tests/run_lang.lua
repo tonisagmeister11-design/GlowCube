@@ -6,7 +6,7 @@ return function(M, S, out)
 	local pk = mk("Folder", "PK", game:GetService("ReplicatedStorage"))
 	for _, n in ipairs({ "Config", "Pose", "Lang" }) do mk("ModuleScript", n, pk, S["shared/" .. n .. ".lua"]) end
 	local server = mk("Script", "S", game:GetService("ServerScriptService"), S["server/Main.server.lua"])
-	for _, n in ipairs({ "BattleCore", "Data", "Arena" }) do mk("ModuleScript", n, server, S["server/" .. n .. ".lua"]) end
+	for _, n in ipairs({ "BattleCore", "Data", "Arena", "Rooms" }) do mk("ModuleScript", n, server, S["server/" .. n .. ".lua"]) end
 	local client = I.new("LocalScript"); client.Name = "C"; client.Source = S["client/Main.client.lua"]
 	for _, n in ipairs({ "Render", "UI" }) do mk("ModuleScript", n, client, S["client/" .. n .. ".lua"]) end
 	M.run(server); local p = M.addPlayer(7); M.run(client)

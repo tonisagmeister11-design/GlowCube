@@ -49,6 +49,7 @@ Es gehen zwei Fenster auf. Wähle in jedem Fenster ein anderes Team.
   **TRAINING** startet sofort gegen den Computer. Tritt mitten im Kampf ein Spieler bei, ersetzt er den Computer.
 - **2 neue Modi:** Hügel-König (halte die Mitte, 100 Punkte gewinnen) und Sudden Death (schwache Burgen, harte Treffer).
 - **Rangliste** neben den Spielernamen (Wins, Kills) und **Top 10** der meisten Siege im Menü.
+- **Mit Freunden spielen:** „RAUM ERSTELLEN“ gibt einen 5-stelligen Code. Freunde geben ihn ein und landen im selben privaten Server, ohne Fremde und ohne Computer. Räume funktionieren nur im veröffentlichten Spiel, nicht in Studio.
 - **Freunde einladen** per Knopf, **tägliche Belohnung** mit Serie bis 7 Tage.
 - **Englisch und Deutsch** automatisch nach der Sprache des Spielers.
 - **Cover und Icon** in `marketing/`: `thumbnail_1920x1080.png` und `icon_512.png`.
