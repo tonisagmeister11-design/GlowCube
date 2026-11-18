@@ -38,8 +38,8 @@ Es gehen zwei Fenster auf. Wähle in jedem Fenster ein anderes Team.
 - **Boss-Titan:** Fällt die Burg des Computers unter die Hälfte, kommt er mit Krone.
 - **5 Arenen** mit eigenem Licht: Graue Steppe, Vulkankrater, Eiswüste, Neon-Kolosseum, Goldener Tempel.
 - **Waffen schmieden:** Holz → Eisen → Gold → Diamant → Plasma. Dazu Rüstung, Pigment-Mine und Burg-Turm.
-- **Helme:** Ritter, Ninja-Band, Wikinger, Spartaner, Krone und Gesichts-Helm.
-- **Animationen:** Schwung-Spuren an den Waffen, Ragdoll-Physik beim Tod, abfliegende Köpfe, Tintenspritzer und Tintenflecken.
+- **Helme:** Ritter, Ninja-Band, Wikinger, Spartaner, Krone.
+- **Animationen:** Schwung-Spuren an den Waffen, Ragdoll-Physik beim Tod, Tintenspritzer und Tintenflecken.
   Außerdem Krieger, die aus Tintenpfützen steigen, eine Burg, die in Trümmer zerfällt, Kamera-Wackeln und Schadenszahlen.
 - **Speichern:** Münzen, Helme und Waffen bleiben erhalten, sobald das Spiel veröffentlicht ist (siehe unten).
 
@@ -80,20 +80,6 @@ Von jedem Kauf in deinem Spiel bekommst du ungefähr 70 % der Robux, den Rest be
 Robux in echtes Geld umtauschen geht nur über das *Developer Exchange*-Programm.
 Dafür musst du mindestens 13 Jahre alt sein und viele Robux verdient haben. Das macht man zusammen mit den Eltern.
 
-## Gesichts-Helm mit deinem Foto (optional)
-
-Ohne eigenes Bild zeigt der Gesichts-Helm das klassische Roblox-Gesicht.
-So kommt dein Foto drauf:
-
-1. In Studio den **Asset-Manager** öffnen (im Menü *Fenster* oder *Ansicht*).
-2. Dort **Bilder** wählen, auf **Importieren** klicken und `face.png` auswählen.
-3. Rechtsklick auf das hochgeladene Bild → **ID kopieren** (*Copy Asset ID*).
-4. Im *Explorer*: `ReplicatedStorage → PK → Config` doppelklicken. In der Zeile
-   `Config.FACE_IMAGE = ""` die Nummer zwischen die Anführungszeichen setzen, zum Beispiel
-   `Config.FACE_IMAGE = "1234567890"`. Oder schick die Nummer an Claude, dann wird sie eingebaut.
-
-Roblox prüft jedes hochgeladene Bild. Fotos von echten Gesichtern werden dabei oft abgelehnt.
-Und wenn das Spiel öffentlich ist, kann jeder das Foto sehen. Sprich das vorher mit deinen Eltern ab.
 
 ## Veröffentlichen (kostenlos)
 

@@ -39,7 +39,6 @@ Config.HELMETS = {
 	{ id = "ninja", name = "Ninja-Band", price = 150 },
 	{ id = "viking", name = "Wikingerhelm", price = 180 },
 	{ id = "sparta", name = "Spartaner", price = 220 },
-	{ id = "face", name = "Gesichts-Helm", price = 250 },
 	{ id = "crown", name = "Königskrone", price = 400 },
 	-- Premium: mit vielen Münzen ODER Robux
 	{ id = "halo", name = "Heiligenschein", price = 3000, robux = "halo", premium = true },
@@ -78,8 +77,7 @@ Config.PRODUCTS = {
 }
 Config.SEARCH_TIME = 15 -- Sekunden Gegnersuche, danach Kampf gegen den Computer
 Config.PRODUCT_ORDER = { "coins1", "coins2", "coins3", "halo", "visor", "flame", "dragon" }
--- Gesichts-Helm: Lade assets/face.png in Roblox Studio als Bild hoch und trage die ID hier ein,
--- z. B. "1234567890" oder "rbxassetid://1234567890". Leer = Gesichts-Helm zeigt ein gezeichnetes Gesicht.
+-- (Gesichts-Helm wurde entfernt; der Wert bleibt leer.)
 Config.FACE_IMAGE = ""
 
 Config.ABILITY_ORDER = { "meteor", "rage", "heal" }

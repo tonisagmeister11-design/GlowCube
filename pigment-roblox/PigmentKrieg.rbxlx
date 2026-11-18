@@ -39,7 +39,6 @@ Config.HELMETS = {
 	{ id = "ninja", name = "Ninja-Band", price = 150 },
 	{ id = "viking", name = "Wikingerhelm", price = 180 },
 	{ id = "sparta", name = "Spartaner", price = 220 },
-	{ id = "face", name = "Gesichts-Helm", price = 250 },
 	{ id = "crown", name = "Königskrone", price = 400 },
 	-- Premium: mit vielen Münzen ODER Robux
 	{ id = "halo", name = "Heiligenschein", price = 3000, robux = "halo", premium = true },
@@ -78,8 +77,7 @@ Config.PRODUCTS = {
 }
 Config.SEARCH_TIME = 15 -- Sekunden Gegnersuche, danach Kampf gegen den Computer
 Config.PRODUCT_ORDER = { "coins1", "coins2", "coins3", "halo", "visor", "flame", "dragon" }
--- Gesichts-Helm: Lade assets/face.png in Roblox Studio als Bild hoch und trage die ID hier ein,
--- z. B. "1234567890" oder "rbxassetid://1234567890". Leer = Gesichts-Helm zeigt ein gezeichnetes Gesicht.
+-- (Gesichts-Helm wurde entfernt; der Wert bleibt leer.)
 Config.FACE_IMAGE = ""
 
 Config.ABILITY_ORDER = { "meteor", "rage", "heal" }
@@ -380,7 +378,7 @@ local EN = {
 	["KAMPF!"] = "FIGHT!", ["BOSS ERSCHEINT!"] = "BOSS INCOMING!", ["BOSS BESIEGT!"] = "BOSS DEFEATED!",
 	["BURG WIRD ANGEGRIFFEN!"] = "CASTLE UNDER ATTACK!", ["BURG ZERSTÖRT!"] = "CASTLE DESTROYED!", ["BURG GEFALLEN!"] = "CASTLE FALLEN!",
 	["KRIEGSSCHREI!"] = "WAR CRY!", ["DOPPEL-KILL"] = "DOUBLE KILL", ["TRIPPEL-KILL"] = "TRIPLE KILL", ["MASSAKER!"] = "RAMPAGE!",
-	["UNAUFHALTBAR!"] = "UNSTOPPABLE!", ["HÜGEL EROBERT!"] = "HILL CAPTURED!", ["WELLE %d"] = "WAVE %d", ["BLOCK"] = "BLOCK",
+	["UNAUFHALTBAR!"] = "UNSTOPPABLE!", ["HÜGEL EROBERT!"] = "HILL CAPTURED!", ["VERLÄNGERUNG!"] = "OVERTIME!", ["WELLE %d"] = "WAVE %d", ["BLOCK"] = "BLOCK",
 	-- Ende
 	["SIEG!"] = "VICTORY!", ["NIEDERLAGE"] = "DEFEAT", ["NOCHMAL  ▶"] = "PLAY AGAIN  ▶", ["BEREIT ✓"] = "READY ✓",
 	["ZUM MENÜ  (Shop · Waffen · Modus)"] = "MENU  (Shop · Weapons · Mode)",
@@ -783,7 +781,7 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 		player:SetAttribute("Side", 0)
 		player:SetAttribute("Ready", false)
 	elseif kind == "spawn" and battle and (side == 1 or side == 2) and Config.UNITS[a] and phase == "battle" then
-		battle:spawn(side, a, { tier = d.wlv[a], helmet = d.helmet, hpMul = 1 + d.armor * 0.15, owner = player.UserId,
+		battle:spawn(side, a, { tier = d.wlv[a], helmet = (d.helmet ~= "face") and d.helmet or "none", hpMul = 1 + d.armor * 0.15, owner = player.UserId,
 			skin = player:GetAttribute("Pass_rainbow") and "rainbow" or nil })
 	elseif kind == "ability" and battle and (side == 1 or side == 2) and Config.ABILITIES[a] and phase == "battle" then
 		battle.abLv[side][a] = math.max(battle.abLv[side][a] or 1, d.ab[a])
@@ -1247,6 +1245,14 @@ function Core:update(dt)
 		end
 		if self.mode == "waves" then self:updateWaves(dt) end
 		if self.mode == "hill" then self:updateHill(dt) end
+		-- Verlängerung: nach 8 Minuten bröckeln beide Burgen, damit jede Runde endet
+		if self.mode ~= "waves" and self.time > 480 then
+			if not self.overtime then
+				self.overtime = true
+				self.fx("announce", { text = "VERLÄNGERUNG!", cls = "boss" })
+			end
+			for _, b in ipairs(self.bases) do b.hp = b.hp - b.maxHp * 0.008 * dt end
+		end
 	end
 	for _, u in ipairs(self.units) do
 		if not u.dead then self:updateUnit(u, dt) end
@@ -1566,7 +1572,7 @@ function Core:kill(e, dir, heavy, src)
 	e.dead = true
 	e.state = "dead"
 	local power = heavy and rand(1.0, 1.5) or rand(0.4, 0.7)
-	local cut = heavy and math.random() < 0.3
+	local cut = false -- keine abfliegenden Köpfe (kinderfreundlich)
 	if e.boss then
 		e.boss = false
 		self.boss = nil
@@ -1718,6 +1724,9 @@ local function merge(d)
 	for k, v in pairs(base.wlv) do if d.wlv[k] == nil then d.wlv[k] = v end end
 	for k, v in pairs(base.ab) do if d.ab[k] == nil then d.ab[k] = v end end
 	d.owned.none = true
+	-- Gesichts-Helm wurde entfernt
+	if d.helmet == "face" then d.helmet = "none" end
+	d.owned.face = nil
 	return d
 end
 

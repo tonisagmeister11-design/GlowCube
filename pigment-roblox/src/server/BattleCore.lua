@@ -257,6 +257,14 @@ function Core:update(dt)
 		end
 		if self.mode == "waves" then self:updateWaves(dt) end
 		if self.mode == "hill" then self:updateHill(dt) end
+		-- Verlängerung: nach 8 Minuten bröckeln beide Burgen, damit jede Runde endet
+		if self.mode ~= "waves" and self.time > 480 then
+			if not self.overtime then
+				self.overtime = true
+				self.fx("announce", { text = "VERLÄNGERUNG!", cls = "boss" })
+			end
+			for _, b in ipairs(self.bases) do b.hp = b.hp - b.maxHp * 0.008 * dt end
+		end
 	end
 	for _, u in ipairs(self.units) do
 		if not u.dead then self:updateUnit(u, dt) end
@@ -576,7 +584,7 @@ function Core:kill(e, dir, heavy, src)
 	e.dead = true
 	e.state = "dead"
 	local power = heavy and rand(1.0, 1.5) or rand(0.4, 0.7)
-	local cut = heavy and math.random() < 0.3
+	local cut = false -- keine abfliegenden Köpfe (kinderfreundlich)
 	if e.boss then
 		e.boss = false
 		self.boss = nil
