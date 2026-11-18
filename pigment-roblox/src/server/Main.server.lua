@@ -326,7 +326,7 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 		player:SetAttribute("Side", 0)
 		player:SetAttribute("Ready", false)
 	elseif kind == "spawn" and battle and (side == 1 or side == 2) and Config.UNITS[a] and phase == "battle" then
-		battle:spawn(side, a, { tier = d.wlv[a], helmet = (d.helmet ~= "face") and d.helmet or "none", hpMul = 1 + d.armor * 0.15, owner = player.UserId,
+		battle:spawn(side, a, { tier = d.wlv[a], helmet = d.helmet, hpMul = 1 + d.armor * 0.15, owner = player.UserId,
 			skin = player:GetAttribute("Pass_rainbow") and "rainbow" or nil })
 	elseif kind == "ability" and battle and (side == 1 or side == 2) and Config.ABILITIES[a] and phase == "battle" then
 		battle.abLv[side][a] = math.max(battle.abLv[side][a] or 1, d.ab[a])
@@ -525,6 +525,21 @@ RunService.Heartbeat:Connect(function(dt)
 		FxEvent:FireAllClients(fxQueue)
 		fxQueue = {}
 	end
+end)
+
+-- Gesichtsbild: aus der Decal-Nummer die eigentliche Bild-ID holen
+task.spawn(function()
+	local img = tostring(Config.FACE_IMAGE or "")
+	if img == "" and (Config.FACE_DECAL or 0) ~= 0 then
+		local ok, model = pcall(function() return game:GetService("InsertService"):LoadAsset(Config.FACE_DECAL) end)
+		if ok and model then
+			local dec = model:FindFirstChildWhichIsA("Decal", true)
+			if dec then img = dec.Texture end
+			model:Destroy()
+		end
+	end
+	if img:match("^%d+$") then img = "rbxassetid://" .. img end
+	State:SetAttribute("FaceImage", img)
 end)
 
 setPhase("lobby")

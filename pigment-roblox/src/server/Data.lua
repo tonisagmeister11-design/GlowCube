@@ -23,9 +23,6 @@ local function merge(d)
 	for k, v in pairs(base.wlv) do if d.wlv[k] == nil then d.wlv[k] = v end end
 	for k, v in pairs(base.ab) do if d.ab[k] == nil then d.ab[k] = v end end
 	d.owned.none = true
-	-- Gesichts-Helm wurde entfernt
-	if d.helmet == "face" then d.helmet = "none" end
-	d.owned.face = nil
 	return d
 end
 

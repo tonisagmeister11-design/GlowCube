@@ -39,6 +39,7 @@ Config.HELMETS = {
 	{ id = "ninja", name = "Ninja-Band", price = 150 },
 	{ id = "viking", name = "Wikingerhelm", price = 180 },
 	{ id = "sparta", name = "Spartaner", price = 220 },
+	{ id = "face", name = "Gesichts-Helm", price = 250 },
 	{ id = "crown", name = "Königskrone", price = 400 },
 	-- Premium: mit vielen Münzen ODER Robux
 	{ id = "halo", name = "Heiligenschein", price = 3000, robux = "halo", premium = true },
@@ -77,7 +78,9 @@ Config.PRODUCTS = {
 }
 Config.SEARCH_TIME = 15 -- Sekunden Gegnersuche, danach Kampf gegen den Computer
 Config.PRODUCT_ORDER = { "coins1", "coins2", "coins3", "halo", "visor", "flame", "dragon" }
--- (Gesichts-Helm wurde entfernt; der Wert bleibt leer.)
+-- Gesichts-Helm: Bild-Nummer (Image-ID) ODER Decal-Nummer bei FACE_DECAL.
+-- Der Server wandelt eine Decal-Nummer beim Start automatisch in das Bild um.
+Config.FACE_DECAL = 0
 Config.FACE_IMAGE = ""
 
 Config.ABILITY_ORDER = { "meteor", "rage", "heal" }

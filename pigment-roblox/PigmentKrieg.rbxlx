@@ -39,6 +39,7 @@ Config.HELMETS = {
 	{ id = "ninja", name = "Ninja-Band", price = 150 },
 	{ id = "viking", name = "Wikingerhelm", price = 180 },
 	{ id = "sparta", name = "Spartaner", price = 220 },
+	{ id = "face", name = "Gesichts-Helm", price = 250 },
 	{ id = "crown", name = "Königskrone", price = 400 },
 	-- Premium: mit vielen Münzen ODER Robux
 	{ id = "halo", name = "Heiligenschein", price = 3000, robux = "halo", premium = true },
@@ -77,7 +78,9 @@ Config.PRODUCTS = {
 }
 Config.SEARCH_TIME = 15 -- Sekunden Gegnersuche, danach Kampf gegen den Computer
 Config.PRODUCT_ORDER = { "coins1", "coins2", "coins3", "halo", "visor", "flame", "dragon" }
--- (Gesichts-Helm wurde entfernt; der Wert bleibt leer.)
+-- Gesichts-Helm: Bild-Nummer (Image-ID) ODER Decal-Nummer bei FACE_DECAL.
+-- Der Server wandelt eine Decal-Nummer beim Start automatisch in das Bild um.
+Config.FACE_DECAL = 0
 Config.FACE_IMAGE = ""
 
 Config.ABILITY_ORDER = { "meteor", "rage", "heal" }
@@ -781,7 +784,7 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 		player:SetAttribute("Side", 0)
 		player:SetAttribute("Ready", false)
 	elseif kind == "spawn" and battle and (side == 1 or side == 2) and Config.UNITS[a] and phase == "battle" then
-		battle:spawn(side, a, { tier = d.wlv[a], helmet = (d.helmet ~= "face") and d.helmet or "none", hpMul = 1 + d.armor * 0.15, owner = player.UserId,
+		battle:spawn(side, a, { tier = d.wlv[a], helmet = d.helmet, hpMul = 1 + d.armor * 0.15, owner = player.UserId,
 			skin = player:GetAttribute("Pass_rainbow") and "rainbow" or nil })
 	elseif kind == "ability" and battle and (side == 1 or side == 2) and Config.ABILITIES[a] and phase == "battle" then
 		battle.abLv[side][a] = math.max(battle.abLv[side][a] or 1, d.ab[a])
@@ -980,6 +983,21 @@ RunService.Heartbeat:Connect(function(dt)
 		FxEvent:FireAllClients(fxQueue)
 		fxQueue = {}
 	end
+end)
+
+-- Gesichtsbild: aus der Decal-Nummer die eigentliche Bild-ID holen
+task.spawn(function()
+	local img = tostring(Config.FACE_IMAGE or "")
+	if img == "" and (Config.FACE_DECAL or 0) ~= 0 then
+		local ok, model = pcall(function() return game:GetService("InsertService"):LoadAsset(Config.FACE_DECAL) end)
+		if ok and model then
+			local dec = model:FindFirstChildWhichIsA("Decal", true)
+			if dec then img = dec.Texture end
+			model:Destroy()
+		end
+	end
+	if img:match("^%d+$") then img = "rbxassetid://" .. img end
+	State:SetAttribute("FaceImage", img)
 end)
 
 setPhase("lobby")
@@ -1724,9 +1742,6 @@ local function merge(d)
 	for k, v in pairs(base.wlv) do if d.wlv[k] == nil then d.wlv[k] = v end end
 	for k, v in pairs(base.ab) do if d.ab[k] == nil then d.ab[k] = v end end
 	d.owned.none = true
-	-- Gesichts-Helm wurde entfernt
-	if d.helmet == "face" then d.helmet = "none" end
-	d.owned.face = nil
 	return d
 end
 
@@ -2896,7 +2911,8 @@ local function buildHelmet(m, id, s, side)
 		local sp = Instance.new("Sparkles"); sp.SparkleColor = Color3.fromRGB(255, 220, 120); sp.Parent = gem
 	elseif id == "face" then
 		-- Bild auf einer unsichtbaren Platte vor dem Kopf; der Kopf dahinter bildet den Helmrand
-		local faceId = tostring(Config.FACE_IMAGE or "")
+		local stateF = PK:FindFirstChild("State")
+		local faceId = tostring((stateF and stateF:GetAttribute("FaceImage")) or Config.FACE_IMAGE or "")
 		if faceId:match("^%d+$") then faceId = "rbxassetid://" .. faceId end
 		local custom = faceId ~= ""
 		local plate = add(nil, SKIN, Enum.Material.SmoothPlastic, custom and V3(r * 2.3, r * 3.1, 0.04) or V3(r * 1.9, r * 1.9, 0.04), 0, custom and r * 0.25 or 0, r * (custom and 1.3 or 1.15))
@@ -2931,7 +2947,9 @@ function Render.buildStick(info, parent)
 	local hd = hr * 2
 	local headCol = BODY[side]
 	if info.helmet == "face" then
-		if tostring(Config.FACE_IMAGE or "") ~= "" then hd = hr * 2.6 else hd = hr * 2.4; headCol = SKIN; st.skinHead = true end
+		local stateF = PK:FindFirstChild("State")
+		local fimg = tostring((stateF and stateF:GetAttribute("FaceImage")) or Config.FACE_IMAGE or "")
+		if fimg ~= "" then hd = hr * 2.6 else hd = hr * 2.4; headCol = SKIN; st.skinHead = true end
 	end
 	st.head = newPart(m, headCol, Enum.PartType.Ball, nil, V3(hd, hd, hd))
 	st.weapon, st.weapon2, st.board, st.trail = buildWeapon(m, info.type, info.tier or 1, s, side)

@@ -225,7 +225,8 @@ local function buildHelmet(m, id, s, side)
 		local sp = Instance.new("Sparkles"); sp.SparkleColor = Color3.fromRGB(255, 220, 120); sp.Parent = gem
 	elseif id == "face" then
 		-- Bild auf einer unsichtbaren Platte vor dem Kopf; der Kopf dahinter bildet den Helmrand
-		local faceId = tostring(Config.FACE_IMAGE or "")
+		local stateF = PK:FindFirstChild("State")
+		local faceId = tostring((stateF and stateF:GetAttribute("FaceImage")) or Config.FACE_IMAGE or "")
 		if faceId:match("^%d+$") then faceId = "rbxassetid://" .. faceId end
 		local custom = faceId ~= ""
 		local plate = add(nil, SKIN, Enum.Material.SmoothPlastic, custom and V3(r * 2.3, r * 3.1, 0.04) or V3(r * 1.9, r * 1.9, 0.04), 0, custom and r * 0.25 or 0, r * (custom and 1.3 or 1.15))
@@ -260,7 +261,9 @@ function Render.buildStick(info, parent)
 	local hd = hr * 2
 	local headCol = BODY[side]
 	if info.helmet == "face" then
-		if tostring(Config.FACE_IMAGE or "") ~= "" then hd = hr * 2.6 else hd = hr * 2.4; headCol = SKIN; st.skinHead = true end
+		local stateF = PK:FindFirstChild("State")
+		local fimg = tostring((stateF and stateF:GetAttribute("FaceImage")) or Config.FACE_IMAGE or "")
+		if fimg ~= "" then hd = hr * 2.6 else hd = hr * 2.4; headCol = SKIN; st.skinHead = true end
 	end
 	st.head = newPart(m, headCol, Enum.PartType.Ball, nil, V3(hd, hd, hd))
 	st.weapon, st.weapon2, st.board, st.trail = buildWeapon(m, info.type, info.tier or 1, s, side)
