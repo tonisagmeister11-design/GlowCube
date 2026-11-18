@@ -188,15 +188,52 @@ local function buildHelmet(m, id, s, side)
 			add(nil, Color3.fromRGB(255, 215, 70), Enum.Material.Metal, V3(r * 0.32, r * 0.7, r * 0.32), i * r * 0.62, r * 1.5, r * 0.6, CFrame.Angles(0, 0, -i * 0.25))
 		end
 		add(Enum.PartType.Ball, Color3.fromRGB(224, 32, 74), Enum.Material.Neon, V3(1, 1, 1) * r * 0.38, 0, r * 0.95, r * 0.95)
+	elseif id == "halo" then
+		local ring = add(Enum.PartType.Cylinder, Color3.fromRGB(255, 230, 120), Enum.Material.Neon, V3(r * 0.12, r * 2.1, r * 2.1), 0, r * 1.75, 0, CFrame.Angles(0.55, 0, PI / 2))
+		ring.Transparency = 0.15
+		ring.CastShadow = false
+		local l = Instance.new("PointLight"); l.Color = ring.Color; l.Range = 8; l.Brightness = 2; l.Parent = ring
+		add(Enum.PartType.Ball, Color3.fromRGB(255, 255, 255), Enum.Material.Neon, V3(1, 1, 1) * r * 0.3, r * 0.42, r * 0.1, r * 0.85)
+	elseif id == "visor" then
+		add(Enum.PartType.Ball, Color3.fromRGB(30, 32, 40), Enum.Material.Metal, V3(1, 1, 1) * r * 2.3, 0, r * 0.08, 0)
+		local band = add(nil, Color3.fromRGB(60, 240, 255), Enum.Material.Neon, V3(r * 1.25, r * 0.38, r * 2.4), r * 0.4, r * 0.05, 0)
+		local l = Instance.new("PointLight"); l.Color = band.Color; l.Range = 7; l.Brightness = 2; l.Parent = band
+		add(nil, Color3.fromRGB(60, 240, 255), Enum.Material.Neon, V3(r * 0.2, r * 1.2, r * 0.2), -r * 0.2, r * 1.4, 0, CFrame.Angles(0, 0, math.rad(-20)))
+	elseif id == "flame" then
+		add(Enum.PartType.Cylinder, Color3.fromRGB(255, 120, 30), Enum.Material.Neon, V3(r * 0.4, r * 2.15, r * 2.15), 0, r * 0.45, 0, CFrame.Angles(0, 0, PI / 2))
+		local top = add(nil, Color3.fromRGB(255, 120, 30), Enum.Material.Neon, V3(r * 0.4, r * 0.4, r * 0.4), 0, r * 0.95, 0)
+		top.Transparency = 1
+		local f = Instance.new("Fire"); f.Size = math.max(2, r * 4); f.Heat = 9; f.Color = Color3.fromRGB(255, 150, 40); f.SecondaryColor = Color3.fromRGB(255, 40, 10); f.Parent = top
+		local l = Instance.new("PointLight"); l.Color = Color3.fromRGB(255, 130, 40); l.Range = 9; l.Brightness = 2.5; l.Parent = top
+	elseif id == "dragon" then
+		local red = Color3.fromRGB(120, 16, 16)
+		add(Enum.PartType.Ball, red, Enum.Material.Slate, V3(1, 1, 1) * r * 2.4, 0, r * 0.1, 0)
+		add(nil, Color3.fromRGB(240, 225, 190), Enum.Material.SmoothPlastic, V3(r * 0.45, r * 1.9, r * 0.45), -r * 0.75, r * 1.25, r * 0.55, CFrame.Angles(0, 0, math.rad(40)))
+		add(nil, Color3.fromRGB(240, 225, 190), Enum.Material.SmoothPlastic, V3(r * 0.45, r * 1.9, r * 0.45), -r * 0.75, r * 1.25, -r * 0.55, CFrame.Angles(0, 0, math.rad(40)))
+		for i = 0, 2 do
+			add(nil, Color3.fromRGB(70, 8, 8), Enum.Material.Slate, V3(r * 0.45, r * 0.45, r * 0.2), r * (0.5 - i * 0.6), r * (1.15 - i * 0.12), 0, CFrame.Angles(0, 0, PI / 4))
+		end
+		local eye = add(nil, Color3.fromRGB(255, 220, 40), Enum.Material.Neon, V3(r * 0.5, r * 0.22, 0.05), r * 0.55, r * 0.1, r * 1.0)
+		eye.CastShadow = false
+	elseif id == "vipcrown" then
+		local gold = Color3.fromRGB(255, 200, 40)
+		add(Enum.PartType.Cylinder, gold, Enum.Material.Metal, V3(r * 0.8, r * 2.2, r * 2.2), 0, r * 1.0, 0, CFrame.Angles(0, 0, PI / 2))
+		for i = -2, 2 do
+			add(nil, gold, Enum.Material.Metal, V3(r * 0.3, r * 0.95, r * 0.3), i * r * 0.45, r * 1.7, r * 0.75, CFrame.Angles(0, 0, -i * 0.15))
+		end
+		local gem = add(Enum.PartType.Ball, Color3.fromRGB(180, 60, 255), Enum.Material.Neon, V3(1, 1, 1) * r * 0.45, 0, r * 1.0, r * 1.1)
+		local sp = Instance.new("Sparkles"); sp.SparkleColor = Color3.fromRGB(255, 220, 120); sp.Parent = gem
 	elseif id == "face" then
 		-- Bild auf einer unsichtbaren Platte vor dem Kopf; der Kopf dahinter bildet den Helmrand
-		local custom = Config.FACE_IMAGE ~= ""
+		local faceId = tostring(Config.FACE_IMAGE or "")
+		if faceId:match("^%d+$") then faceId = "rbxassetid://" .. faceId end
+		local custom = faceId ~= ""
 		local plate = add(nil, SKIN, Enum.Material.SmoothPlastic, custom and V3(r * 2.3, r * 3.1, 0.04) or V3(r * 1.9, r * 1.9, 0.04), 0, custom and r * 0.25 or 0, r * (custom and 1.3 or 1.15))
 		plate.Transparency = 1
 		plate.CastShadow = false
 		local dec = Instance.new("Decal")
 		dec.Face = Enum.NormalId.Back
-		dec.Texture = custom and Config.FACE_IMAGE or "rbxasset://textures/face.png"
+		dec.Texture = custom and faceId or "rbxasset://textures/face.png"
 		dec.Parent = plate
 	end
 	return list
@@ -223,11 +260,22 @@ function Render.buildStick(info, parent)
 	local hd = hr * 2
 	local headCol = BODY[side]
 	if info.helmet == "face" then
-		if Config.FACE_IMAGE ~= "" then hd = hr * 2.6 else hd = hr * 2.4; headCol = SKIN; st.skinHead = true end
+		if tostring(Config.FACE_IMAGE or "") ~= "" then hd = hr * 2.6 else hd = hr * 2.4; headCol = SKIN; st.skinHead = true end
 	end
 	st.head = newPart(m, headCol, Enum.PartType.Ball, nil, V3(hd, hd, hd))
 	st.weapon, st.weapon2, st.board, st.trail = buildWeapon(m, info.type, info.tier or 1, s, side)
 	st.helmet = buildHelmet(m, info.helmet or "none", s, side)
+	if info.skin == "rainbow" then
+		st.rainbow = {}
+		for _, L in ipairs({ st.weapon or {}, st.weapon2 or {} }) do
+			for _, e in ipairs(L) do
+				if e.p.Material ~= Enum.Material.Wood and e.p.Transparency < 1 then
+					e.p.Material = Enum.Material.Neon
+					table.insert(st.rainbow, e.p)
+				end
+			end
+		end
+	end
 	st.helmetId = info.helmet
 	-- Längen der Knochen einmalig (bleiben konstant)
 	local lens = { 15, 15, 15, 15, 24, 12, 12, 12, 12 }
@@ -239,6 +287,14 @@ function Render.buildStick(info, parent)
 	end
 	st.colorMode = "normal"
 	return st
+end
+
+function Render.updateSkin(st, time)
+	if not st.rainbow then return end
+	for i, p in ipairs(st.rainbow) do
+		p.Color = Color3.fromHSV((time * 0.45 + i * 0.12) % 1, 0.85, 1)
+	end
+	if st.trail then st.trail.Color = ColorSequence.new(Color3.fromHSV((time * 0.45) % 1, 0.85, 1)) end
 end
 
 function Render.setColorMode(st, mode)

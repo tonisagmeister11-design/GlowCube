@@ -15,8 +15,15 @@ local function sign(x)
 	return 0
 end
 
-function Core.new(Config, arenaIdx, fx)
+-- mode: "classic" | "waves" (Überleben) | "boss" (Boss-Ansturm) | "turbo"
+function Core.new(Config, arenaIdx, fx, mode)
 	local self = setmetatable({}, Core)
+	self.mode = mode or "classic"
+	self.wave = 0
+	self.waveT = 8
+	self.waveQueue = {}
+	self.waveSpawnT = 0
+	self.bossT = { 50, 50 }
 	self.C = Config
 	self.W = Config.WORLD_W
 	self.arenaIdx = arenaIdx
@@ -68,6 +75,14 @@ function Core:configureSide(side, opts)
 		self.aiMul[side] = 1
 		if opts.ab then self.abLv[side] = opts.ab end
 	end
+	if self.mode == "turbo" then self.income[side] = self.income[side] * 2.2 end
+	if self.mode == "boss" and opts.ai then self.income[side] = self.income[side] * 0.6 end
+	if self.mode == "waves" and side == 2 then
+		-- Wellen statt normaler KI, Burg unzerstörbar
+		self.ai[2].on = false
+		self.income[2] = 0
+		b.maxHp = 999999
+	end
 	b.hp = b.maxHp
 end
 
@@ -98,14 +113,18 @@ function Core:canSpawn(side, type)
 end
 
 function Core:spawn(side, type, p)
-	local ok, why = self:canSpawn(side, type)
-	if not ok then return nil, why end
 	p = p or {}
 	local def = self.C.UNITS[type]
-	self.gold[side] = self.gold[side] - def.cost
-	self.spawnCd[side][type] = def.spawnCd
+	if p.free then
+		if self.over or not def or self:aliveCount(side) >= self.C.MAX_UNITS then return nil, "full" end
+	else
+		local ok, why = self:canSpawn(side, type)
+		if not ok then return nil, why end
+		self.gold[side] = self.gold[side] - def.cost
+		self.spawnCd[side][type] = def.spawnCd * (self.mode == "turbo" and 0.5 or 1)
+	end
 	local tier, helmet, hpMul
-	if self.ai[side].on and not p.owner then
+	if self.ai[side].on and not p.owner and not p.tier then
 		tier = clamp(self.arenaIdx, 1, 5)
 		helmet = self.arenaIdx >= 4 and "knight" or "none"
 		hpMul = self.aiMul[side]
@@ -122,7 +141,7 @@ function Core:spawn(side, type, p)
 		x = b.x + dir * 50, z = rand(0, 34), hp = def.hp * hpMul, maxHp = def.hp * hpMul,
 		dmg = def.dmg * (1 + (tier - 1) * 0.28), tier = tier, helmet = helmet, owner = p.owner,
 		state = "walk", atkT = 0, cdLeft = 0.3, kbx = 0, spawnT = 0.5, blockT = 0, cheer = 0,
-		scale = def.scale, moving = false, combo = 0, attackN = 0, seed = math.random() * 100,
+		scale = def.scale, moving = false, combo = 0, attackN = 0, seed = math.random() * 100, skin = p.skin,
 	}
 	table.insert(self.units, u)
 	self.fx("spawn", u)
@@ -157,7 +176,7 @@ end
 ------------------------------------------------------------------ Fähigkeiten
 function Core:abilityCd(side, k)
 	local lv = self.abLv[side][k] or 1
-	return self.C.ABILITIES[k].cd * (1 - (lv - 1) * 0.08)
+	return self.C.ABILITIES[k].cd * (1 - (lv - 1) * 0.08) * (self.mode == "turbo" and 0.5 or 1)
 end
 
 function Core:canUse(side, k)
@@ -217,10 +236,18 @@ function Core:update(dt)
 		for s = 1, 2 do
 			if self.ai[s].on then self:runAI(s, dt) end
 			local b = self.bases[s]
-			if self.ai[s].on and not self.bossDone[s] and not self.ai[3 - s].on and b.hp < b.maxHp * 0.55 then
+			if self.mode ~= "boss" and self.ai[s].on and not self.bossDone[s] and not self.ai[3 - s].on and b.hp < b.maxHp * 0.55 then
 				self:spawnBoss(s)
 			end
+			if self.mode == "boss" and self.ai[s].on then
+				self.bossT[s] = self.bossT[s] - dt
+				if self.bossT[s] <= 0 and not self.boss then
+					self.bossT[s] = 45
+					self:spawnBoss(s)
+				end
+			end
 		end
+		if self.mode == "waves" then self:updateWaves(dt) end
 	end
 	for _, u in ipairs(self.units) do
 		if not u.dead then self:updateUnit(u, dt) end
@@ -235,6 +262,35 @@ function Core:update(dt)
 	if not self.over then
 		if self.bases[2].hp <= 0 then self:finish(1)
 		elseif self.bases[1].hp <= 0 then self:finish(2) end
+	end
+end
+
+------------------------------------------------------------------ Überleben (Wellen)
+local WAVE_TYPES = { "sword", "sword", "spear", "archer", "shield", "ninja", "mage", "giant" }
+function Core:updateWaves(dt)
+	self.waveT = self.waveT - dt
+	if self.waveT <= 0 then
+		self.wave = self.wave + 1
+		local w = self.wave
+		self.waveT = 24
+		local n = 3 + w * 2
+		local maxIdx = math.min(#WAVE_TYPES, 3 + w)
+		for i = 1, n do
+			table.insert(self.waveQueue, WAVE_TYPES[math.random(1, maxIdx)])
+		end
+		if w % 5 == 0 then self.waveBoss = true end
+		self.fx("announce", { text = "WELLE " .. w, cls = w % 5 == 0 and "boss" or "warn" })
+		self.fx("wave", { wave = w })
+	end
+	self.waveSpawnT = self.waveSpawnT - dt
+	if #self.waveQueue > 0 and self.waveSpawnT <= 0 then
+		self.waveSpawnT = 0.45
+		local t = table.remove(self.waveQueue, 1)
+		local w = self.wave
+		self:spawn(2, t, { free = true, tier = clamp(1 + math.floor(w / 3), 1, 5), helmet = w >= 6 and "knight" or "none", hpMul = 0.75 + w * 0.09 })
+	elseif #self.waveQueue == 0 and self.waveBoss then
+		self.waveBoss = false
+		self:spawnBoss(2)
 	end
 end
 
@@ -526,6 +582,7 @@ end
 
 function Core:damageBase(b, amount, src)
 	if self.over then return end
+	if self.mode == "waves" and b.side == 2 then return end
 	b.hp = b.hp - amount
 	self.fx("base", { side = b.side, amount = amount, x = b.x })
 end

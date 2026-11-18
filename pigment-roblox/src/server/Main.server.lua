@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 Players.CharacterAutoLoads = false
 
@@ -27,6 +28,7 @@ local battle = nil
 local phase = "lobby"
 local phaseEnd = 0
 local arenaIdx = 1
+local mode = "classic"
 local unitInst = {}   -- id -> Configuration
 local fxQueue = {}
 local lastSent = {}   -- id -> {x, hp, moving, dir}
@@ -70,6 +72,7 @@ local function onFx(kind, d)
 		c:SetAttribute("Moving", false)
 		c:SetAttribute("Dir", u.dir)
 		c:SetAttribute("Cheer", u.cheer > 0)
+		c:SetAttribute("Skin", u.skin or "")
 		c.Parent = UnitsFolder
 		unitInst[u.id] = c
 		lastSent[u.id] = { x = u.x, hp = u.hp, moving = false, dir = u.dir }
@@ -91,6 +94,9 @@ local function onFx(kind, d)
 	elseif kind == "proj" then
 		local k = d.meteor and "meteor" or (d.orb and "orb" or (d.bolt and "bolt" or "arrow"))
 		table.insert(fxQueue, { "proj", d.id, k, round1(d.x), round1(d.y), round1(d.z), round1(d.tz), round1(d.vx), round1(d.vy), d.g, d.side, d.tier })
+		return
+	elseif kind == "wave" then
+		State:SetAttribute("Wave", d.wave)
 		return
 	elseif kind == "over" then
 		table.insert(fxQueue, { "over", d.winner })
@@ -123,6 +129,19 @@ local function chooseArena()
 	return best or arenaIdx
 end
 
+local function chooseMode()
+	local votes = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		local v = p:GetAttribute("ModeVote")
+		if v and Config.MODES[v] then votes[v] = (votes[v] or 0) + 1 end
+	end
+	local best, bc = nil, 0
+	for _, m in ipairs(Config.MODE_ORDER) do
+		if (votes[m] or 0) > bc then best = m; bc = votes[m] end
+	end
+	return best or "classic"
+end
+
 -- stärkste Werte der Spieler auf einer Seite (Turm, Mine, Fähigkeiten)
 local function sideOpts(side)
 	local list = playersOn(side)
@@ -148,10 +167,20 @@ end
 local function startRound()
 	clearUnits()
 	arenaIdx = chooseArena()
+	mode = chooseMode()
+	-- Überleben: alle spielen zusammen im Team Schwarz
+	if mode == "waves" then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if sideOf(p) == 2 then p:SetAttribute("Side", 1) end
+		end
+	end
+	for _, p in ipairs(Players:GetPlayers()) do p:SetAttribute("Ready", false) end
 	State:SetAttribute("Arena", arenaIdx)
+	State:SetAttribute("Mode", mode)
+	State:SetAttribute("Wave", 0)
 	State:SetAttribute("Winner", 0)
 	Arena.build(arenaIdx)
-	battle = Core.new(Config, arenaIdx, onFx)
+	battle = Core.new(Config, arenaIdx, onFx, mode)
 	for s = 1, 2 do battle:configureSide(s, sideOpts(s)) end
 	battle:startCountdown(4)
 	setPhase("countdown", 4)
@@ -166,12 +195,23 @@ local function endRound(winner)
 		if s == 1 or s == 2 then
 			local kills = battle.kills[p.UserId] or 0
 			local won = s == winner
-			local coins = (won and a.reward or 25) + kills * 3
+			local coins
+			if mode == "waves" then
+				won = false
+				coins = 20 + battle.wave * 18 + kills * 3
+				Data.setBestWave(p, battle.wave)
+			else
+				coins = (won and a.reward or 25) + kills * 3
+				if mode == "boss" and won then coins = coins + 60 end
+			end
+			local vip = p:GetAttribute("Pass_vip") == true
+			if vip then coins = coins * 2 end
 			Data.reward(p, coins, won, kills)
-			FxEvent:FireClient(p, { { "reward", { coins = coins, won = won, kills = kills } } })
+			FxEvent:FireClient(p, { { "reward", { coins = coins, won = won, kills = kills, wave = battle.wave, vip = vip } } })
 		end
 	end
-	setPhase("end", 9)
+	-- Nach dem Kampf: Spieler entscheiden selbst (Nochmal oder Menü). Nach 30 s geht es zurück ins Menü.
+	setPhase("end", 30)
 end
 
 -- Spieler-Aktionen ------------------------------------------------------
@@ -188,7 +228,9 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 	local side = sideOf(player)
 
 	if kind == "side" and (a == 1 or a == 2) then
+		if mode == "waves" and battle and not battle.over then a = 1 end
 		player:SetAttribute("Side", a)
+		player:SetAttribute("Ready", false)
 		if battle and not battle.over then
 			local o = sideOpts(a)
 			battle:setControl(a, false)
@@ -196,8 +238,16 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 		end
 	elseif kind == "vote" and Config.ARENAS[a] then
 		player:SetAttribute("Vote", a)
+	elseif kind == "modeVote" and type(a) == "string" and Config.MODES[a] then
+		player:SetAttribute("ModeVote", a)
+	elseif kind == "again" and phase == "end" and (side == 1 or side == 2) then
+		player:SetAttribute("Ready", true)
+	elseif kind == "menu" then
+		player:SetAttribute("Side", 0)
+		player:SetAttribute("Ready", false)
 	elseif kind == "spawn" and battle and (side == 1 or side == 2) and Config.UNITS[a] and phase == "battle" then
-		battle:spawn(side, a, { tier = d.wlv[a], helmet = d.helmet, hpMul = 1 + d.armor * 0.15, owner = player.UserId })
+		battle:spawn(side, a, { tier = d.wlv[a], helmet = d.helmet, hpMul = 1 + d.armor * 0.15, owner = player.UserId,
+			skin = player:GetAttribute("Pass_rainbow") and "rainbow" or nil })
 	elseif kind == "ability" and battle and (side == 1 or side == 2) and Config.ABILITIES[a] and phase == "battle" then
 		battle.abLv[side][a] = math.max(battle.abLv[side][a] or 1, d.ab[a])
 		battle:useAbility(side, a, tonumber(b), player.UserId)
@@ -214,15 +264,54 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 	end
 end)
 
+-- Robux: Game-Pässe prüfen ----------------------------------------------
+local function checkPasses(player)
+	for key, pass in pairs(Config.PASSES) do
+		if pass.id ~= 0 then
+			local ok, owns = pcall(function() return MarketplaceService:UserOwnsGamePassAsync(player.UserId, pass.id) end)
+			if ok and owns then player:SetAttribute("Pass_" .. key, true) end
+		end
+	end
+	if player:GetAttribute("Pass_vip") then
+		local d = Data.get(player)
+		if d and not d.owned.vipcrown then d.owned.vipcrown = true; Data.publish(player) end
+	end
+end
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, bought)
+	if not bought then return end
+	for key, pass in pairs(Config.PASSES) do
+		if pass.id == passId then player:SetAttribute("Pass_" .. key, true) end
+	end
+	checkPasses(player)
+end)
+
+-- Robux: Entwickler-Produkte (Münzen, Premium-Helme) ----------------------
+MarketplaceService.ProcessReceipt = function(info)
+	local player = Players:GetPlayerByUserId(info.PlayerId)
+	if not player or not Data.get(player) then return Enum.ProductPurchaseDecision.NotProcessedYet end
+	for key, prod in pairs(Config.PRODUCTS) do
+		if prod.id ~= 0 and prod.id == info.ProductId then
+			if Data.grantProduct(player, key, info.PurchaseId) then
+				FxEvent:FireClient(player, { { "bought", { name = prod.name } } })
+				return Enum.ProductPurchaseDecision.PurchaseGranted
+			end
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+	end
+	return Enum.ProductPurchaseDecision.NotProcessedYet
+end
+
 Players.PlayerAdded:Connect(function(player)
 	player:SetAttribute("Side", 0)
 	Data.load(player)
+	checkPasses(player)
 	if player.Character then player.Character:Destroy() end
 end)
 for _, p in ipairs(Players:GetPlayers()) do
 	task.spawn(function()
 		p:SetAttribute("Side", 0)
 		Data.load(p)
+		checkPasses(p)
 	end)
 end
 Players.PlayerRemoving:Connect(function(player)
@@ -288,8 +377,24 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	elseif phase == "end" then
 		battle:update(dt)
-		if now >= phaseEnd then
-			if anyPlayer then startRound() else clearUnits(); setPhase("lobby") end
+		local sided, ready = 0, 0
+		for _, p in ipairs(Players:GetPlayers()) do
+			local s = sideOf(p)
+			if s == 1 or s == 2 then
+				sided = sided + 1
+				if p:GetAttribute("Ready") then ready = ready + 1 end
+			end
+		end
+		if sided == 0 then
+			clearUnits(); setPhase("lobby")
+		elseif ready == sided then
+			startRound()
+		elseif now >= phaseEnd then
+			-- wer nicht "Nochmal" gedrückt hat, kommt ins Menü
+			for _, p in ipairs(Players:GetPlayers()) do
+				if not p:GetAttribute("Ready") then p:SetAttribute("Side", 0) end
+			end
+			if ready > 0 then startRound() else clearUnits(); setPhase("lobby") end
 		end
 	end
 

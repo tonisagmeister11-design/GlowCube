@@ -35,8 +35,9 @@ function Data.load(player)
 	local d = nil
 	if store then
 		local ok, res = pcall(function() return store:GetAsync("p_" .. player.UserId) end)
-		if ok then d = res
-		else warn("[PigmentKrieg] DataStore nicht erreichbar (in Studio: Game Settings > Security > API Services). Fortschritt wird nicht gespeichert.") end
+		if ok then d = res; Data.storeWorks = true
+		else
+			Data.storeWorks = false warn("[PigmentKrieg] DataStore nicht erreichbar (in Studio: Game Settings > Security > API Services). Fortschritt wird nicht gespeichert.") end
 	end
 	cache[player] = merge(d)
 	Data.publish(player)
@@ -69,6 +70,7 @@ end
 function Data.buyHelmet(player, id)
 	local d, h = cache[player], helmetById(id)
 	if not d or not h then return false end
+	if h.pass and not player:GetAttribute("Pass_" .. h.pass) then return false end
 	if not d.owned[id] then
 		if d.coins < h.price then return false end
 		d.coins = d.coins - h.price
@@ -132,6 +134,30 @@ function Data.reward(player, coins, won, kills)
 	if won then d.wins = d.wins + 1 end
 	Data.publish(player)
 	task.spawn(Data.save, player)
+end
+
+-- Robux-Kauf gutschreiben (einmal pro Kauf-ID). Gibt true zurück, wenn gespeichert.
+function Data.grantProduct(player, key, purchaseId)
+	local d = cache[player]
+	local prod = Config.PRODUCTS[key]
+	if not d or not prod then return false end
+	d.receipts = d.receipts or {}
+	if d.receipts[purchaseId] then return true end
+	if prod.coins then d.coins = d.coins + prod.coins end
+	if prod.helmet then d.owned[prod.helmet] = true; d.helmet = prod.helmet end
+	d.receipts[purchaseId] = true
+	Data.publish(player)
+	-- In Studio ohne Speicherzugriff gilt der Kauf nur für diese Sitzung
+	if store and Data.storeWorks ~= false then
+		local ok = pcall(function() store:SetAsync("p_" .. player.UserId, d) end)
+		return ok
+	end
+	return true
+end
+
+function Data.setBestWave(player, w)
+	local d = cache[player]
+	if d and w > (d.bestWave or 0) then d.bestWave = w; Data.publish(player) end
 end
 
 -- Autosave

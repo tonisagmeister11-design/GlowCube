@@ -43,16 +43,43 @@ Es gehen zwei Fenster auf. Wähle in jedem Fenster ein anderes Team.
   Außerdem Krieger, die aus Tintenpfützen steigen, eine Burg, die in Trümmer zerfällt, Kamera-Wackeln und Schadenszahlen.
 - **Speichern:** Münzen, Helme und Waffen bleiben erhalten, sobald das Spiel veröffentlicht ist (siehe unten).
 
+## Neu in Version 2
+
+- **Spielmodi** (im Menü abstimmen): Klassisch, **Überleben** (endlose Wellen, alle zusammen im Team Schwarz),
+  **Boss-Ansturm** (alle 45 Sekunden ein Boss) und **Turbo** (doppelt Gold, halbe Wartezeiten).
+- **Nach dem Kampf** entscheidest du selbst: **NOCHMAL** oder **ZUM MENÜ**. Es startet nichts mehr von allein.
+  Ohne Auswahl geht es nach 30 Sekunden zurück ins Menü.
+- **Premium-Helme:** Heiligenschein, Neon-Visier, Flammenkopf (brennt!), Drachenhelm, VIP-Krone.
+- **Robux-Shop** (Reiter „SHOP R$“): VIP-Pass, Regenbogen-Waffen, Münzpakete, Premium-Helme.
+
+## Robux-Shop einrichten (damit du Robux verdienst)
+
+Die Artikel sind schon im Spiel. Roblox braucht aber für jeden Artikel eine Nummer (ID),
+die nur der Besitzer des Spiels anlegen kann. Solange eine ID fehlt, steht beim Kaufen „noch nicht eingerichtet“.
+
+1. Spiel veröffentlichen (siehe unten).
+2. Auf <https://create.roblox.com> → *Kreationen* → dein Spiel → *Monetarisierung*:
+   - unter **Pässe** zwei Pässe anlegen: „VIP“ (z. B. 199 Robux) und „Regenbogen-Waffen“ (z. B. 149 Robux), jeweils *Zum Verkauf* einschalten;
+   - unter **Entwicklerprodukte** sieben Produkte anlegen: 1.000 / 6.000 / 20.000 Münzen, Heiligenschein, Neon-Visier, Flammenkopf, Drachenhelm.
+3. Die IDs (Zahlen) in `ReplicatedStorage → PK → Config` bei `Config.PASSES` und `Config.PRODUCTS` statt `id = 0` eintragen.
+   Die Robux-Preise dort sollten zu den Preisen auf der Webseite passen, denn sie werden im Spiel angezeigt.
+4. Testen: In Studio sind Käufe nur Test-Käufe und kosten nichts.
+
+Von jedem Kauf in deinem Spiel bekommst du ungefähr 70 % der Robux, den Rest behält Roblox.
+Robux in echtes Geld umtauschen geht nur über das *Developer Exchange*-Programm.
+Dafür musst du mindestens 13 Jahre alt sein und viele Robux verdient haben. Das macht man zusammen mit den Eltern.
+
 ## Gesichts-Helm mit deinem Foto (optional)
 
 Ohne eigenes Bild zeigt der Gesichts-Helm das klassische Roblox-Gesicht.
 So kommt dein Foto drauf:
 
-1. In Studio: *Fenster → Asset Manager* öffnen → **Bulk Import** → `assets/face.png` wählen.
-2. Rechtsklick auf das hochgeladene Bild → **Copy Asset ID**.
-3. Im *Explorer*: `ReplicatedStorage → PK → Config` doppelklicken. In der Zeile
-   `Config.FACE_IMAGE = ""` die ID zwischen die Anführungszeichen setzen, zum Beispiel
-   `Config.FACE_IMAGE = "rbxassetid://1234567890"`.
+1. In Studio den **Asset-Manager** öffnen (im Menü *Fenster* oder *Ansicht*).
+2. Dort **Bilder** wählen, auf **Importieren** klicken und `face.png` auswählen.
+3. Rechtsklick auf das hochgeladene Bild → **ID kopieren** (*Copy Asset ID*).
+4. Im *Explorer*: `ReplicatedStorage → PK → Config` doppelklicken. In der Zeile
+   `Config.FACE_IMAGE = ""` die Nummer zwischen die Anführungszeichen setzen, zum Beispiel
+   `Config.FACE_IMAGE = "1234567890"`. Oder schick die Nummer an Claude, dann wird sie eingebaut.
 
 Roblox prüft jedes hochgeladene Bild. Fotos von echten Gesichtern werden dabei oft abgelehnt.
 Und wenn das Spiel öffentlich ist, kann jeder das Foto sehen. Sprich das vorher mit deinen Eltern ab.

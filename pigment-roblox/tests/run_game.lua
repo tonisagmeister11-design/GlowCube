@@ -104,9 +104,67 @@ return function(M, S, out, decode)
 	d = decode(p:GetAttribute("Data"))
 	out("   Nach Einkauf: Münzen " .. d.coins .. ", Helm " .. d.helmet .. ", Klinge Stufe " .. d.wlv.sword .. ", Meteor Stufe " .. d.ab.meteor .. ", Mine " .. d.mine)
 	tick(1); check("Shop und Schmiede, Oberfläche aktualisiert")
-	tick(12); check("Nächste Runde startet (Phase " .. tostring(phase()) .. ")")
-	for _ = 1, 25 do key("One"); key("Four"); tick(1) end
-	check("Zweite Runde mit Gesichts-Helm")
+	-- Nach dem Kampf: es darf NICHT automatisch weitergehen
+	tick(12)
+	assert(phase() == "end", "Runde startete ohne Nochmal, Phase " .. tostring(phase()))
+	check("Endbildschirm wartet auf Entscheidung")
+	-- Modus Überleben wählen, Nochmal drücken (über echte Knöpfe)
+	assert(pressWithText("Überleben"), "Modus-Knopf fehlt")
+	tick(0.2)
+	local again
+	for _, d in ipairs(gui:GetDescendants()) do if d._class == "TextButton" and tostring(d.Text):find("NOCHMAL") then again = d end end
+	assert(again, "Nochmal-Knopf fehlt")
+	again.MouseButton1Click:Fire()
+	tick(0.5)
+	assert(phase() == "countdown", "Nochmal startet keine Runde: " .. tostring(phase()))
+	assert(state:GetAttribute("Mode") == "waves", "Modus nicht übernommen")
+	tick(4.5)
+	for _ = 1, 400 do
+		if phase() == "end" then break end
+		key("One"); key("Four"); key("Three"); key("Seven"); tick(1)
+	end
+	check("Überleben gespielt bis Welle " .. tostring(state:GetAttribute("Wave")))
+	d = decode(p:GetAttribute("Data"))
+	out("   Beste Welle " .. tostring(d.bestWave) .. ", Münzen " .. d.coins)
+	-- Zum Menü
+	local toMenu
+	for _, x in ipairs(gui:GetDescendants()) do if x._class == "TextButton" and tostring(x.Text):find("ZUM MENÜ") then toMenu = x end end
+	toMenu.MouseButton1Click:Fire()
+	tick(0.5)
+	assert(p:GetAttribute("Side") == 0 and phase() == "lobby", "Zum-Menü-Knopf geht nicht")
+	check("Zum Menü zurück, Lobby")
+	-- Robux: Produkt und Pass simulieren
+	local Cfg
+	for _, v in pairs(M.requireCache) do if type(v) == "table" and v.PRODUCTS then Cfg = v end end
+	Cfg.PRODUCTS.coins1.id = 111
+	Cfg.PRODUCTS.dragon.id = 112
+	Cfg.PASSES.vip.id = 222
+	local MS = game:GetService("MarketplaceService")
+	local before = decode(p:GetAttribute("Data")).coins
+	assert(MS.ProcessReceipt({ PlayerId = 101, ProductId = 111, PurchaseId = "kauf1" }) == M.Enum.ProductPurchaseDecision.PurchaseGranted, "Kauf nicht bestätigt")
+	MS.ProcessReceipt({ PlayerId = 101, ProductId = 111, PurchaseId = "kauf1" })
+	MS.ProcessReceipt({ PlayerId = 101, ProductId = 112, PurchaseId = "kauf2" })
+	d = decode(p:GetAttribute("Data"))
+	assert(d.coins == before + 1000, "Münzpaket falsch gutgeschrieben: " .. d.coins .. " statt " .. (before + 1000))
+	assert(d.owned.dragon and d.helmet == "dragon", "Drachenhelm nicht freigeschaltet")
+	M.ownedPasses[222] = true
+	MS.PromptGamePassPurchaseFinished:Fire(p, 222, true)
+	assert(p:GetAttribute("Pass_vip") == true, "VIP nicht erkannt")
+	d = decode(p:GetAttribute("Data"))
+	assert(d.owned.vipcrown, "VIP-Krone fehlt")
+	action:FireServer("helmet", "vipcrown"); tick(0.1)
+	check("Robux: Münzpaket (doppelt geschützt), Drachenhelm, VIP-Pass, VIP-Krone")
+	-- Robux-Shop-Knöpfe im Menü lösen Kauf-Dialog aus
+	local before2 = M.prompts
+	for _, x in ipairs(gui:GetDescendants()) do if x._class == "TextButton" and tostring(x.Text):find("^R%$") then x.MouseButton1Click:Fire() end end
+	out("   Kauf-Dialoge geöffnet: " .. (M.prompts - before2))
+	-- Neue Runde: Boss-Ansturm mit VIP-Krone
+	assert(pressWithText("Boss-Ansturm"))
+	tick(0.2)
+	assert(pressWithText("WEISS"))
+	tick(5)
+	for _ = 1, 60 do key("One"); key("Seven"); key("Six"); tick(1) end
+	check("Boss-Ansturm als Team Weiß mit VIP-Krone (Phase " .. tostring(phase()) .. ", Boss " .. tostring(state:GetAttribute("BossId")) .. ")")
 	out("   Server-Aktionen " .. tostring(M.serverEvents) .. ", Effekt-Pakete " .. tostring(M.clientEvents))
 	-- Spieler verlässt das Spiel
 	p.Parent = nil

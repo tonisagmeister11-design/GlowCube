@@ -59,6 +59,7 @@ local CFrame = {
 }
 local Color3 = {
 	new = function(r, g, b) return { R = r, G = g, B = b } end,
+	fromHSV = function(h, s, v) assert(h >= 0 and h <= 1, "fromHSV h außerhalb 0..1"); return { R = v, G = v, B = v } end,
 	fromRGB = function(r, g, b)
 		assert(type(r) == "number" and type(g) == "number" and type(b) == "number", "fromRGB braucht Zahlen")
 		return { R = r / 255, G = g / 255, B = b / 255 }
@@ -166,7 +167,7 @@ IMT.__index = function(o, k)
 	if svc and svc[k] ~= nil then return svc[k] end
 	local v = o._props[k]
 	if v ~= nil then return v end
-	if k == "ChildAdded" or k == "ChildRemoved" or k:match("^On") or k:match("Click") or k:match("Button1") or k == "Heartbeat" or k == "Changed" or k == "Event" or k:match("Added$") or k:match("Removing$") or k:match("^Input") then
+	if k == "ChildAdded" or k == "ChildRemoved" or k:match("^On") or k:match("Click") or k:match("Button1") or k == "Heartbeat" or k == "Changed" or k == "Event" or k:match("Added$") or k:match("Removing$") or k:match("^Input") or k:match("Finished$") then
 		o._signals[k] = o._signals[k] or Signal()
 		return o._signals[k]
 	end
@@ -222,7 +223,14 @@ service("RunService", {
 	BindToRenderStep = function(self, name, prio, fn) M.render[name] = fn end,
 	IsStudio = function() return true end,
 })
-local players = service("Players", { GetPlayers = function(self) local t = {}; for _, c in ipairs(self._children) do if c._class == "Player" then table.insert(t, c) end end; return t end })
+M.ownedPasses = {}
+M.prompts = 0
+service("MarketplaceService", {
+	UserOwnsGamePassAsync = function(self, uid, id) return M.ownedPasses[id] == true end,
+	PromptProductPurchase = function() M.prompts = M.prompts + 1 end,
+	PromptGamePassPurchase = function() M.prompts = M.prompts + 1 end,
+})
+local players = service("Players", { GetPlayerByUserId = function(self, id) for _, c in ipairs(self._children) do if c._props.UserId == id then return c end end; return nil end, GetPlayers = function(self) local t = {}; for _, c in ipairs(self._children) do if c._class == "Player" then table.insert(t, c) end end; return t end })
 service("ReplicatedStorage")
 service("ServerScriptService")
 service("Lighting")
@@ -285,6 +293,7 @@ function M.now() return clock end
 -- Skripte laden -------------------------------------------------------
 local mathx = setmetatable({ atan2 = function(y, x) return math.atan(y, x) end, clamp = function(v, a, b) if v < a then return a elseif v > b then return b end; return v end }, { __index = math })
 local cache = {}
+M.requireCache = cache
 local function envFor(scriptInst)
 	local env = {
 		game = game, workspace = workspace, script = scriptInst, Instance = Instance, Vector3 = Vector3, Vector2 = Vector2,

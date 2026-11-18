@@ -59,6 +59,7 @@ local function addUnit(cfg)
 	local info = {
 		type = cfg:GetAttribute("Type"), side = cfg:GetAttribute("Side"), tier = cfg:GetAttribute("Tier") or 1,
 		helmet = cfg:GetAttribute("Helmet") or "none", scale = cfg:GetAttribute("Scale") or 1,
+		skin = cfg:GetAttribute("Skin"),
 	}
 	if not info.type or not info.side then return end
 	local st = Render.buildStick(info)
@@ -408,6 +409,10 @@ handlers.round = function(e)
 	camX = (s == 2 and Config.WORLD_W - 300 or 300) * K
 	UI.reward = nil
 end
+handlers.bought = function(e)
+	UI.toast("Gekauft: " .. tostring(e[2].name) .. "  Danke!", 3)
+	sound("ping", 0.6, 1.2, 0.1)
+end
 handlers.reward = function(e)
 	UI.showReward(e[2])
 	sound("ping", 0.5, 1, 0.1)
@@ -487,6 +492,7 @@ RunService:BindToRenderStep("PigmentKrieg", Enum.RenderPriority.Camera.Value + 1
 			local mode = "normal"
 			if u.flash > 0 then mode = "flash" elseif u.healT > 0 then mode = "heal" elseif rage then mode = "rage" end
 			Render.setColorMode(u.st, mode)
+			Render.updateSkin(u.st, time)
 			if u.st.trail then
 				local w = TRAIL_WIN[u.type]
 				u.st.trail.Enabled = u.attacking and w ~= nil and u.atkT >= w[1] and u.atkT <= w[2]

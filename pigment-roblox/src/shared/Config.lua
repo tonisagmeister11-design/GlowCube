@@ -41,9 +41,42 @@ Config.HELMETS = {
 	{ id = "sparta", name = "Spartaner", price = 220 },
 	{ id = "face", name = "Gesichts-Helm", price = 250 },
 	{ id = "crown", name = "Königskrone", price = 400 },
+	-- Premium: mit vielen Münzen ODER Robux
+	{ id = "halo", name = "Heiligenschein", price = 3000, robux = "halo", premium = true },
+	{ id = "visor", name = "Neon-Visier", price = 4000, robux = "visor", premium = true },
+	{ id = "flame", name = "Flammenkopf", price = 6000, robux = "flame", premium = true },
+	{ id = "dragon", name = "Drachenhelm", price = 8000, robux = "dragon", premium = true },
+	-- nur mit dem VIP-Pass
+	{ id = "vipcrown", name = "VIP-Krone", price = 0, pass = "vip", premium = true },
 }
+
+-- Spielmodi (Abstimmung im Menü)
+Config.MODE_ORDER = { "classic", "waves", "boss", "turbo" }
+Config.MODES = {
+	classic = { name = "Klassisch", desc = "Zerstöre die feindliche Burg" },
+	waves = { name = "Überleben", desc = "Halte gegen endlose Wellen durch (alle im Team Schwarz)" },
+	boss = { name = "Boss-Ansturm", desc = "Alle 45 Sekunden kommt ein Boss-Titan" },
+	turbo = { name = "Turbo", desc = "Doppelt so viel Gold, halbe Wartezeiten" },
+}
+
+-- Robux-Shop. Die IDs bekommst du auf create.roblox.com (siehe README, Abschnitt Robux-Shop).
+-- id = 0 bedeutet: noch nicht eingerichtet -> der Knopf zeigt "Bald".
+Config.PASSES = {
+	vip = { id = 0, name = "VIP", robux = 199, desc = "Doppelte Münzen nach jedem Kampf + VIP-Krone" },
+	rainbow = { id = 0, name = "Regenbogen-Waffen", robux = 149, desc = "Alle deine Waffen leuchten in Regenbogenfarben" },
+}
+Config.PRODUCTS = {
+	coins1 = { id = 0, name = "1.000 Münzen", robux = 25, coins = 1000 },
+	coins2 = { id = 0, name = "6.000 Münzen", robux = 99, coins = 6000 },
+	coins3 = { id = 0, name = "20.000 Münzen", robux = 249, coins = 20000 },
+	halo = { id = 0, name = "Heiligenschein", robux = 49, helmet = "halo" },
+	visor = { id = 0, name = "Neon-Visier", robux = 75, helmet = "visor" },
+	flame = { id = 0, name = "Flammenkopf", robux = 99, helmet = "flame" },
+	dragon = { id = 0, name = "Drachenhelm", robux = 149, helmet = "dragon" },
+}
+Config.PRODUCT_ORDER = { "coins1", "coins2", "coins3", "halo", "visor", "flame", "dragon" }
 -- Gesichts-Helm: Lade assets/face.png in Roblox Studio als Bild hoch und trage die ID hier ein,
--- z. B. "rbxassetid://1234567890". Leer = Gesichts-Helm zeigt ein gezeichnetes Gesicht.
+-- z. B. "1234567890" oder "rbxassetid://1234567890". Leer = Gesichts-Helm zeigt ein gezeichnetes Gesicht.
 Config.FACE_IMAGE = ""
 
 Config.ABILITY_ORDER = { "meteor", "rage", "heal" }
@@ -76,7 +109,8 @@ function Config.newData()
 		wlv = { sword = 1, spear = 1, archer = 1, shield = 1, ninja = 1, mage = 1, giant = 1 },
 		ab = { meteor = 1, rage = 1, heal = 1 },
 		armor = 0, mine = 0, tower = 0,
-		wins = 0, kills = 0, games = 0,
+		wins = 0, kills = 0, games = 0, bestWave = 0,
+		receipts = {},
 	}
 end
 
