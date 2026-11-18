@@ -57,12 +57,15 @@ local CFrame = {
 	lookAt = function(p, t, up) assert(getmetatable(p) == V3mt and getmetatable(t) == V3mt, "lookAt braucht Vector3"); return CFr(p) end,
 	fromMatrix = function(p, x, y) assert(getmetatable(p) == V3mt and getmetatable(x) == V3mt and getmetatable(y) == V3mt, "fromMatrix braucht Vector3"); return CFr(p) end,
 }
+local C3mt = {}
+C3mt.__index = { Lerp = function(a, b, t) return setmetatable({ R = a.R + (b.R - a.R) * t, G = a.G + (b.G - a.G) * t, B = a.B + (b.B - a.B) * t }, C3mt) end }
+local function C3(r, g, b) return setmetatable({ R = r, G = g, B = b }, C3mt) end
 local Color3 = {
-	new = function(r, g, b) return { R = r, G = g, B = b } end,
-	fromHSV = function(h, s, v) assert(h >= 0 and h <= 1, "fromHSV h außerhalb 0..1"); return { R = v, G = v, B = v } end,
+	new = function(r, g, b) return C3(r, g, b) end,
+	fromHSV = function(h, s, v) assert(h >= 0 and h <= 1, "fromHSV h außerhalb 0..1"); return C3(v, v, v) end,
 	fromRGB = function(r, g, b)
 		assert(type(r) == "number" and type(g) == "number" and type(b) == "number", "fromRGB braucht Zahlen")
-		return { R = r / 255, G = g / 255, B = b / 255 }
+		return C3(r / 255, g / 255, b / 255)
 	end,
 }
 local UDim = { new = function(s, o) return { Scale = s, Offset = o } end }
@@ -230,7 +233,7 @@ service("MarketplaceService", {
 	PromptProductPurchase = function() M.prompts = M.prompts + 1 end,
 	PromptGamePassPurchase = function() M.prompts = M.prompts + 1 end,
 })
-local players = service("Players", { GetPlayerByUserId = function(self, id) for _, c in ipairs(self._children) do if c._props.UserId == id then return c end end; return nil end, GetPlayers = function(self) local t = {}; for _, c in ipairs(self._children) do if c._class == "Player" then table.insert(t, c) end end; return t end })
+local players = service("Players", { GetNameFromUserIdAsync = function(self, id) return "Spieler" .. id end, GetPlayerByUserId = function(self, id) for _, c in ipairs(self._children) do if c._props.UserId == id then return c end end; return nil end, GetPlayers = function(self) local t = {}; for _, c in ipairs(self._children) do if c._class == "Player" then table.insert(t, c) end end; return t end })
 service("ReplicatedStorage")
 service("ServerScriptService")
 service("Lighting")
@@ -239,7 +242,11 @@ service("Debris", { AddItem = function() end })
 service("TweenService", { Create = function() return { Play = function() end } end })
 service("GuiService", { GetGuiInset = function() return V2(0, 36), V2() end })
 M.uis = service("UserInputService", { GetMouseLocation = function() return V2(640, 400) end })
-service("DataStoreService", { GetDataStore = function() return {
+service("SocialService", { CanSendGameInviteAsync = function() return true end, PromptGameInvite = function() M.invites = (M.invites or 0) + 1 end })
+service("DataStoreService", { GetOrderedDataStore = function() return {
+	GetSortedAsync = function() error("Studio hat keinen API-Zugriff (Test)") end,
+	SetAsync = function() error("Studio hat keinen API-Zugriff (Test)") end,
+} end, GetDataStore = function() return {
 	GetAsync = function() error("Studio hat keinen API-Zugriff (Test)") end,
 	SetAsync = function() error("Studio hat keinen API-Zugriff (Test)") end,
 } end })
@@ -324,10 +331,13 @@ end
 function M.addPlayer(id)
 	local p = newInstance("Player", "Tester" .. id)
 	p._props.UserId = id
+	p._props.LocaleId = M.locale or "de-de"
 	newInstance("PlayerGui", "PlayerGui").Parent = p
 	p.Parent = players
-	players._props.LocalPlayer = p
-	M.localPlayer = p
+	if not M.localPlayer then
+		players._props.LocalPlayer = p
+		M.localPlayer = p
+	end
 	if players._signals.PlayerAdded then players._signals.PlayerAdded:Fire(p) end
 	return p
 end

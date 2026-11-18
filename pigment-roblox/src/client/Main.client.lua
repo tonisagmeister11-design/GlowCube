@@ -10,6 +10,8 @@ local player = Players.LocalPlayer
 local PK = ReplicatedStorage:WaitForChild("PK")
 local Config = require(PK:WaitForChild("Config"))
 local Pose = require(PK:WaitForChild("Pose"))
+local Lang = require(PK:WaitForChild("Lang"))
+local T = Lang.t
 local Render = require(script:WaitForChild("Render"))
 local UI = require(script:WaitForChild("UI"))
 local remotes = PK:WaitForChild("Remotes")
@@ -190,13 +192,13 @@ UI.onSpawn = function(t)
 	if not canAct() then return end
 	local def = Config.UNITS[t]
 	local gold = State:GetAttribute("Gold" .. mySide()) or 0
-	if gold < def.cost then UI.toast("Zu wenig Gold für " .. def.name, 1.2); return end
+	if gold < def.cost then UI.toast(T("Zu wenig Gold für %s", T(def.name)), 1.2); return end
 	Action:FireServer("spawn", t)
 end
 UI.onAbility = function(k)
 	if not canAct() then return end
 	local cd = State:GetAttribute("Ab" .. mySide() .. "_" .. k) or 0
-	if cd > 0 then UI.toast(Config.ABILITIES[k].name .. " lädt noch " .. math.ceil(cd) .. " s", 1.2); return end
+	if cd > 0 then UI.toast(T("%s lädt noch %d s", T(Config.ABILITIES[k].name), math.ceil(cd)), 1.2); return end
 	if k == "meteor" then
 		if targeting then cancelAim(); return end
 		targeting = true
@@ -410,8 +412,12 @@ handlers.round = function(e)
 	UI.reward = nil
 end
 handlers.bought = function(e)
-	UI.toast("Gekauft: " .. tostring(e[2].name) .. "  Danke!", 3)
+	UI.toast(T("Gekauft: %s  Danke!", T(tostring(e[2].name))), 3)
 	sound("ping", 0.6, 1.2, 0.1)
+end
+handlers.daily = function(e)
+	UI.showDaily(e[2])
+	sound("ping", 0.6, 1.5, 0.1)
 end
 handlers.reward = function(e)
 	UI.showReward(e[2])
@@ -427,6 +433,23 @@ FxEvent.OnClientEvent:Connect(function(batch)
 		end
 	end
 end)
+
+------------------------------------------------------------------ Hügel-Zone
+local hillPart = Render.newPart(Render.root, Color3.fromRGB(255, 204, 61), Enum.PartType.Cylinder, Enum.Material.Neon, Vector3.new(0.12, 34, 34))
+hillPart.CastShadow = false
+hillPart.Transparency = 1
+hillPart.CFrame = CFrame.new(Config.WORLD_W / 2 * K, 0.08, 0) * CFrame.Angles(0, 0, math.pi / 2)
+local lastHill = { 0, 0 }
+local function updateHill(dt)
+	local on = State:GetAttribute("Mode") == "hill" and (State:GetAttribute("Phase") == "battle" or State:GetAttribute("Phase") == "countdown")
+	if not on then hillPart.Transparency = 1; return end
+	local h1, h2 = State:GetAttribute("Hill1") or 0, State:GetAttribute("Hill2") or 0
+	local col = Color3.fromRGB(255, 204, 61)
+	if h1 > lastHill[1] then col = Color3.fromRGB(40, 40, 48) elseif h2 > lastHill[2] then col = Color3.fromRGB(250, 250, 250) end
+	lastHill[1], lastHill[2] = h1, h2
+	hillPart.Color = hillPart.Color:Lerp(col, math.min(1, dt * 3))
+	hillPart.Transparency = 0.55 + math.sin(time * 3) * 0.1
+end
 
 ------------------------------------------------------------------ Bild-Schleife
 local TRAIL_WIN = { sword = { 0.36, 0.62 }, spear = { 0.47, 0.62 }, ninja = { 0.35, 0.66 }, giant = { 0.46, 0.62 }, shield = { 0.38, 0.58 } }
@@ -503,6 +526,7 @@ RunService:BindToRenderStep("PigmentKrieg", Enum.RenderPriority.Camera.Value + 1
 	Render.updateProjs(dt, parts, cfs)
 	if #parts > 0 then workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged) end
 	Render.updateDecals(dt)
+	updateHill(dt)
 	updateCamera(dt)
 	UI.update()
 end)

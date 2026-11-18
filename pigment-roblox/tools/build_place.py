@@ -30,7 +30,7 @@ def module(name, rel):
 
 tree = [
     item('ReplicatedStorage', 'ReplicatedStorage', [
-        item('Folder', 'PK', [module('Config', 'shared/Config.lua'), module('Pose', 'shared/Pose.lua')]),
+        item('Folder', 'PK', [module('Config', 'shared/Config.lua'), module('Pose', 'shared/Pose.lua'), module('Lang', 'shared/Lang.lua')]),
     ]),
     item('ServerScriptService', 'ServerScriptService', [
         item('Script', 'PigmentKriegServer', [

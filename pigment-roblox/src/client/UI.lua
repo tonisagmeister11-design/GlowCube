@@ -9,6 +9,9 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local PK = ReplicatedStorage:WaitForChild("PK")
 local Config = require(PK:WaitForChild("Config"))
 local Pose = require(PK:WaitForChild("Pose"))
+local Lang = require(PK:WaitForChild("Lang"))
+local T = Lang.t
+local SocialService = game:GetService("SocialService")
 
 local UI = {}
 local player = Players.LocalPlayer
@@ -38,6 +41,7 @@ local function pad(n) return make("UIPadding", { PaddingLeft = UDim.new(0, n), P
 local function label(props)
 	local max = props.Max or 40
 	props.Max = nil
+	if props.Text then props.Text = T(props.Text) end
 	props.BackgroundTransparency = 1
 	props.Font = props.Font or BODY
 	props.TextColor3 = props.TextColor3 or PAPER
@@ -48,6 +52,7 @@ local function button(props, children)
 	local max, r = props.Max or 22, props.R or 12
 	props.Max = nil
 	props.R = nil
+	if props.Text then props.Text = T(props.Text) end
 	props.AutoButtonColor = true
 	props.Font = props.Font or BODY
 	props.TextColor3 = props.TextColor3 or PAPER
@@ -80,6 +85,7 @@ end
 
 ------------------------------------------------------------------ Aufbau
 function UI.init(ctx)
+	Lang.setLocale(player.LocaleId)
 	UI.Render = ctx.Render
 	UI.Action = ctx.Action
 	UI.State = ctx.State
@@ -102,6 +108,7 @@ function UI.init(ctx)
 	UI.buildHud(base)
 	UI.buildMenu(base)
 	UI.buildOverlays(base)
+	UI.buildExtras(base)
 	return UI
 end
 
@@ -167,7 +174,7 @@ function UI.buildHud(base)
 		local holder = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 1, -30), Position = UDim2.fromOffset(4, 6), Parent = b })
 		label({ Text = tostring(def.cost), Font = DISPLAY, TextColor3 = GOLD, Size = UDim2.fromOffset(44, 18), Position = UDim2.new(1, -6, 0, 4), AnchorPoint = Vector2.new(1, 0), TextXAlignment = Enum.TextXAlignment.Right, Max = 16, TextStrokeTransparency = 0.5, ZIndex = 3, Parent = b })
 		label({ Text = tostring(i), Size = UDim2.fromOffset(16, 14), Position = UDim2.fromOffset(6, 5), TextColor3 = MUTE, Max = 12, ZIndex = 3, Parent = b })
-		label({ Text = string.upper(def.name), Size = UDim2.new(1, -6, 0, 18), Position = UDim2.new(0.5, 0, 1, -5), AnchorPoint = Vector2.new(0.5, 1), Max = 14, ZIndex = 3, Parent = b })
+		label({ Text = string.upper(T(def.name)), Size = UDim2.new(1, -6, 0, 18), Position = UDim2.new(0.5, 0, 1, -5), AnchorPoint = Vector2.new(0.5, 1), Max = 14, ZIndex = 3, Parent = b })
 		local cd = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, Size = UDim2.fromScale(1, 0), Position = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(0, 1), ZIndex = 4, Parent = b }, { corner(14) })
 		b.MouseButton1Down:Connect(function() UI.onSpawn(t) end)
 		UI.unitBtns[t] = { btn = b, holder = holder, cd = cd, stroke = b:FindFirstChildOfClass("UIStroke") }
@@ -180,7 +187,7 @@ function UI.buildHud(base)
 			make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIStroke", { Color = Color3.fromRGB(255, 106, 60), Transparency = 0.6, Thickness = 2 }),
 		})
 		label({ Text = A.icon, Font = DISPLAY, Size = UDim2.new(1, 0, 0.55, 0), Position = UDim2.fromScale(0, 0.08), Max = 32, ZIndex = 3, Parent = b })
-		label({ Text = string.upper(A.name), Size = UDim2.new(0.9, 0, 0.2, 0), Position = UDim2.fromScale(0.05, 0.62), Max = 11, ZIndex = 3, Parent = b })
+		label({ Text = string.upper(T(A.name)), Size = UDim2.new(0.9, 0, 0.2, 0), Position = UDim2.fromScale(0.05, 0.62), Max = 11, ZIndex = 3, Parent = b })
 		label({ Text = A.key, Size = UDim2.fromOffset(18, 16), Position = UDim2.new(1, -4, 0, 0), AnchorPoint = Vector2.new(1, 0), TextColor3 = MUTE, Max = 12, ZIndex = 3, Parent = b })
 		local cd = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.35, Size = UDim2.fromScale(1, 0), Position = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(0, 1), ZIndex = 4, Parent = b }, { make("UICorner", { CornerRadius = UDim.new(1, 0) }) })
 		b.MouseButton1Down:Connect(function() UI.onAbility(k) end)
@@ -225,7 +232,20 @@ function UI.buildMenu(base)
 	-- Schlacht: Team + Arena
 	local play = UI.panes.play
 	make("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = play })
-	label({ Text = "WÄHLE DEIN TEAM", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, Max = 16, LayoutOrder = 1, Parent = play })
+	-- Großer Spielen-Bereich
+	local top = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -10, 0, 96), LayoutOrder = -3, Parent = play })
+	UI.playBtn = button({ Text = "SPIELEN", BackgroundColor3 = Color3.fromRGB(40, 200, 90), TextColor3 = PAPER, Size = UDim2.new(0.5, -6, 1, -26), Font = DISPLAY, Max = 46, R = 18, Parent = top })
+	make("UIStroke", { Color = Color3.fromRGB(10, 90, 40), Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = UI.playBtn })
+	make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(170, 170, 170)), Parent = UI.playBtn })
+	label({ Text = "Gegen echte Spieler", TextColor3 = GREEN, Size = UDim2.new(0.5, -6, 0, 22), Position = UDim2.new(0, 0, 1, -22), Max = 16, Parent = top })
+	UI.trainBtn = button({ Text = "TRAINING", BackgroundColor3 = Color3.fromRGB(70, 72, 84), TextColor3 = PAPER, Size = UDim2.new(0.25, -6, 1, -26), Position = UDim2.new(0.5, 6, 0, 0), Font = DISPLAY, Max = 28, R = 18, Parent = top })
+	label({ Text = "Gegen den Computer", TextColor3 = MUTE, Size = UDim2.new(0.25, -6, 0, 22), Position = UDim2.new(0.5, 6, 1, -22), Max = 14, Parent = top })
+	UI.inviteBtn = button({ Text = "FREUNDE EINLADEN", BackgroundColor3 = Color3.fromRGB(0, 120, 220), TextColor3 = PAPER, Size = UDim2.new(0.25, -6, 1, -26), Position = UDim2.new(0.75, 6, 0, 0), Font = DISPLAY, Max = 20, R = 18, Parent = top })
+	UI.onlineLabel = label({ Text = "", TextColor3 = MUTE, Size = UDim2.new(0.25, -6, 0, 22), Position = UDim2.new(0.75, 6, 1, -22), Max = 14, Parent = top })
+	UI.playBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("play"); UI.menuForced = false end)
+	UI.trainBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("training"); UI.menuForced = false end)
+	UI.inviteBtn.MouseButton1Click:Connect(function() UI.invite() end)
+	label({ Text = "ODER WÄHLE DEIN TEAM", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, Max = 16, LayoutOrder = 1, Parent = play })
 	local teams = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -10, 0, 120), LayoutOrder = 2, Parent = play }, {
 		make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 12) }),
 	})
@@ -253,7 +273,7 @@ function UI.buildMenu(base)
 		make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(a.sky[1], a.sky[2], a.sky[3]), Color3.fromRGB(a.ground[1], a.ground[2], a.ground[3])), Parent = b })
 		local st = make("UIStroke", { Color = GOLD, Thickness = 3, Transparency = 1, Parent = b })
 		label({ Text = a.name, Font = DISPLAY, Size = UDim2.new(1, -12, 0, 24), Position = UDim2.new(0, 6, 1, -48), TextXAlignment = Enum.TextXAlignment.Left, Max = 18, TextStrokeTransparency = 0.3, Parent = b })
-		label({ Text = string.rep("●", i) .. string.rep("○", 5 - i) .. "   +" .. a.reward .. " Münzen", TextColor3 = GOLD, Size = UDim2.new(1, -12, 0, 18), Position = UDim2.new(0, 6, 1, -22), TextXAlignment = Enum.TextXAlignment.Left, Max = 13, TextStrokeTransparency = 0.3, Parent = b })
+		label({ Text = string.rep("●", i) .. string.rep("○", 5 - i) .. "   +" .. a.reward .. " " .. T("Münzen"), TextColor3 = GOLD, Size = UDim2.new(1, -12, 0, 18), Position = UDim2.new(0, 6, 1, -22), TextXAlignment = Enum.TextXAlignment.Left, Max = 13, TextStrokeTransparency = 0.3, Parent = b })
 		b.MouseButton1Click:Connect(function() UI.Action:FireServer("vote", i); UI.myVote = i end)
 		UI.arenaBtns[i] = { btn = b, stroke = st }
 	end
@@ -275,6 +295,8 @@ function UI.buildMenu(base)
 	UI.lobbyHint = label({ Text = "Tippe auf ein Team, um mitzukämpfen. Ist ein Team leer, spielt der Computer.", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 40), Max = 16, LayoutOrder = 7, TextWrapped = true, Parent = play })
 	local help = "Steuerung PC: 1–7 Krieger · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · A/D oder Mausrad: Kamera\nHandy: Knöpfe unten antippen, übers Feld wischen = Kamera"
 	label({ Text = help, TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 44), Max = 14, LayoutOrder = 8, TextWrapped = true, Font = Enum.Font.Gotham, Parent = play })
+	label({ Text = "TOP 10 SIEGE", TextColor3 = GOLD, Font = DISPLAY, Size = UDim2.new(1, 0, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, Max = 20, LayoutOrder = -2, Parent = play })
+	UI.topLabel = label({ Text = "Noch keine Einträge", TextColor3 = PAPER, Size = UDim2.new(1, -10, 0, 48), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, Max = 15, Font = Enum.Font.Gotham, LayoutOrder = -1, Parent = play })
 
 	-- Shop
 	local shop = UI.panes.shop
@@ -338,13 +360,13 @@ function UI.buildMenu(base)
 	for _, key in ipairs({ "vip", "rainbow" }) do
 		local P = Config.PASSES[key]
 		o = o + 1
-		UI.passBtns[key] = card(o, (key == "vip" and "👑 " or "🌈 ") .. P.name, P.desc .. " · für immer", P.robux, key == "vip" and Color3.fromRGB(150, 110, 10) or Color3.fromRGB(120, 40, 160), function() UI.buyPass(key) end)
+		UI.passBtns[key] = card(o, (key == "vip" and "👑 " or "🌈 ") .. T(P.name), T(P.desc) .. T(" · für immer"), P.robux, key == "vip" and Color3.fromRGB(150, 110, 10) or Color3.fromRGB(120, 40, 160), function() UI.buyPass(key) end)
 	end
 	for _, key in ipairs(Config.PRODUCT_ORDER) do
 		local P = Config.PRODUCTS[key]
 		o = o + 1
 		local desc = P.coins and "Sofort aufs Konto, für Waffen und Helme" or "Premium-Helm für deine ganze Armee"
-		card(o, (P.coins and "🪙 " or "⛑ ") .. P.name, desc, P.robux, P.coins and Color3.fromRGB(40, 90, 60) or Color3.fromRGB(70, 30, 90), function() UI.buyProduct(key) end)
+		card(o, (P.coins and "🪙 " or "⛑ ") .. T(P.name), T(desc), P.robux, P.coins and Color3.fromRGB(40, 90, 60) or Color3.fromRGB(70, 30, 90), function() UI.buyProduct(key) end)
 	end
 
 	UI.setTab("play")
@@ -357,7 +379,7 @@ function UI.buyProduct(key)
 end
 function UI.buyPass(key)
 	local P = Config.PASSES[key]
-	if player:GetAttribute("Pass_" .. key) then UI.toast("Du hast " .. P.name .. " schon!", 2); return end
+	if player:GetAttribute("Pass_" .. key) then UI.toast(T("Du hast %s schon!", T(P.name)), 2); return end
 	if not P or P.id == 0 then UI.toast("Dieser Pass ist noch nicht eingerichtet (Pass-ID fehlt)", 2.5); return end
 	MarketplaceService:PromptGamePassPurchase(player, P.id)
 end
@@ -376,10 +398,12 @@ function UI.buildOverlays(base)
 	UI.announce = label({ Text = "", Font = DISPLAY, Size = UDim2.fromOffset(900, 110), Position = UDim2.fromScale(0.5, 0.3), AnchorPoint = Vector2.new(0.5, 0.5), Max = 96, TextStrokeTransparency = 0, Visible = false, ZIndex = 20, Parent = base })
 	UI.annScale = make("UIScale", { Parent = UI.announce })
 	UI.toastLabel = make("TextLabel", { Text = "", Font = DISPLAY, TextColor3 = INK, BackgroundColor3 = PAPER, Size = UDim2.fromOffset(560, 44), Position = UDim2.fromScale(0.5, 0.17), AnchorPoint = Vector2.new(0.5, 0.5), TextScaled = true, Visible = false, ZIndex = 21, Parent = base }, { corner(22), pad(8), make("UITextSizeConstraint", { MaxTextSize = 20 }) })
-	UI.endPanel = make("Frame", { BackgroundColor3 = GLASS, BackgroundTransparency = 0.05, Size = UDim2.fromOffset(480, 380), Position = UDim2.fromScale(0.5, 0.48), AnchorPoint = Vector2.new(0.5, 0.5), Visible = false, ZIndex = 15, Parent = base }, { corner(20), stroke(nil, 1, 0.8) })
+	UI.endPanel = make("Frame", { BackgroundColor3 = GLASS, BackgroundTransparency = 0.05, Size = UDim2.fromOffset(480, 430), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), Visible = false, ZIndex = 15, Parent = base }, { corner(20), stroke(nil, 1, 0.8) })
 	UI.againBtn = button({ Text = "NOCHMAL  ▶", BackgroundColor3 = GOLD, TextColor3 = INK, Size = UDim2.new(1, -40, 0, 58), Position = UDim2.fromOffset(20, 236), Font = DISPLAY, Max = 28, ZIndex = 16, Parent = UI.endPanel })
 	UI.toMenuBtn = button({ Text = "ZUM MENÜ  (Shop · Waffen · Modus)", BackgroundColor3 = PAPER, TextColor3 = INK, Size = UDim2.new(1, -40, 0, 50), Position = UDim2.fromOffset(20, 302), Font = DISPLAY, Max = 20, ZIndex = 16, Parent = UI.endPanel })
 	UI.againBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("again"); UI.againPressed = true end)
+	local inv2 = button({ Text = "FREUNDE EINLADEN", BackgroundColor3 = Color3.fromRGB(0, 120, 220), Size = UDim2.new(1, -40, 0, 40), Position = UDim2.fromOffset(20, 362), Font = DISPLAY, Max = 18, ZIndex = 16, Parent = UI.endPanel })
+	inv2.MouseButton1Click:Connect(function() UI.invite() end)
 	UI.toMenuBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("menu"); UI.menuForced = false; UI.setTab("play") end)
 	UI.endTitle = label({ Text = "SIEG!", Font = DISPLAY, Size = UDim2.new(1, -20, 0, 80), Position = UDim2.fromOffset(10, 16), Max = 72, ZIndex = 16, Parent = UI.endPanel })
 	UI.endSub = label({ Text = "", TextColor3 = MUTE, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.fromOffset(10, 100), Max = 18, ZIndex = 16, Parent = UI.endPanel })
@@ -388,13 +412,52 @@ function UI.buildOverlays(base)
 	UI.waveLabel = label({ Text = "", Font = DISPLAY, TextColor3 = Color3.fromRGB(255, 140, 90), Size = UDim2.fromOffset(300, 30), Position = UDim2.new(0.5, 0, 0, 84), AnchorPoint = Vector2.new(0.5, 0), Max = 26, TextStrokeTransparency = 0.3, Parent = UI.hud })
 end
 
+function UI.invite()
+	local ok, can = pcall(function() return SocialService:CanSendGameInviteAsync(player) end)
+	if ok and can then pcall(function() SocialService:PromptGameInvite(player) end)
+	else UI.toast("Einladen ist gerade nicht möglich", 2) end
+end
+
+function UI.buildExtras(base)
+	-- Gegnersuche
+	UI.searchPanel = make("Frame", { BackgroundColor3 = GLASS, BackgroundTransparency = 0.05, Size = UDim2.fromOffset(520, 230), Position = UDim2.fromScale(0.5, 0.42), AnchorPoint = Vector2.new(0.5, 0.5), Visible = false, ZIndex = 14, Parent = base }, { corner(20), stroke(GREEN, 2, 0.3) })
+	UI.searchTitle = label({ Text = "SUCHE GEGNER …", Font = DISPLAY, TextColor3 = GREEN, Size = UDim2.new(1, -20, 0, 50), Position = UDim2.fromOffset(10, 12), Max = 40, ZIndex = 15, Parent = UI.searchPanel })
+	UI.searchInfo = label({ Text = "", TextColor3 = MUTE, Size = UDim2.new(1, -30, 0, 40), Position = UDim2.fromOffset(15, 66), Max = 16, TextWrapped = true, ZIndex = 15, Parent = UI.searchPanel })
+	local b1 = button({ Text = "Jetzt gegen Computer", BackgroundColor3 = Color3.fromRGB(70, 72, 84), Size = UDim2.new(0.5, -25, 0, 52), Position = UDim2.new(0, 20, 1, -72), Font = DISPLAY, Max = 18, ZIndex = 15, Parent = UI.searchPanel })
+	local b2 = button({ Text = "FREUNDE EINLADEN", BackgroundColor3 = Color3.fromRGB(0, 120, 220), Size = UDim2.new(0.5, -25, 0, 52), Position = UDim2.new(0.5, 5, 1, -72), Font = DISPLAY, Max = 18, ZIndex = 15, Parent = UI.searchPanel })
+	b1.MouseButton1Click:Connect(function() UI.Action:FireServer("training") end)
+	b2.MouseButton1Click:Connect(function() UI.invite() end)
+	-- Tägliche Belohnung
+	UI.dailyPanel = make("Frame", { BackgroundColor3 = Color3.fromRGB(60, 40, 0), Size = UDim2.fromOffset(420, 260), Position = UDim2.fromScale(0.5, 0.45), AnchorPoint = Vector2.new(0.5, 0.5), Visible = false, ZIndex = 30, Parent = base }, { corner(22), stroke(GOLD, 3, 0) })
+	make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(150, 90, 10)), Parent = UI.dailyPanel })
+	label({ Text = "TÄGLICHE BELOHNUNG", Font = DISPLAY, Size = UDim2.new(1, -20, 0, 40), Position = UDim2.fromOffset(10, 14), Max = 30, TextStrokeTransparency = 0.3, ZIndex = 31, Parent = UI.dailyPanel })
+	UI.dailyStreak = label({ Text = "", Size = UDim2.new(1, -20, 0, 24), Position = UDim2.fromOffset(10, 60), Max = 18, TextStrokeTransparency = 0.5, ZIndex = 31, Parent = UI.dailyPanel })
+	UI.dailyCoins = label({ Text = "", Font = DISPLAY, TextColor3 = PAPER, Size = UDim2.new(1, -20, 0, 60), Position = UDim2.fromOffset(10, 94), Max = 52, TextStrokeTransparency = 0.2, ZIndex = 31, Parent = UI.dailyPanel })
+	local claim = button({ Text = "ABHOLEN", BackgroundColor3 = Color3.fromRGB(40, 200, 90), Size = UDim2.new(1, -60, 0, 54), Position = UDim2.new(0, 30, 1, -72), Font = DISPLAY, Max = 28, ZIndex = 31, Parent = UI.dailyPanel })
+	claim.MouseButton1Click:Connect(function() UI.dailyPanel.Visible = false end)
+	-- Hügel-Punkte
+	UI.hillFrame = make("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(420, 44), Position = UDim2.new(0.5, 0, 0, 118), AnchorPoint = Vector2.new(0.5, 0), Visible = false, Parent = UI.hud })
+	label({ Text = "HÜGEL", Font = DISPLAY, TextColor3 = GOLD, Size = UDim2.new(1, 0, 0, 16), Max = 16, TextStrokeTransparency = 0.3, Parent = UI.hillFrame })
+	UI.hillBars = {}
+	for s = 1, 2 do
+		local bg = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, Size = UDim2.new(0.5, -4, 0, 16), Position = UDim2.new(s == 1 and 0 or 0.5, s == 1 and 0 or 4, 0, 22), Parent = UI.hillFrame }, { corner(8) })
+		UI.hillBars[s] = make("Frame", { BackgroundColor3 = s == 1 and Color3.fromRGB(30, 30, 36) or PAPER, Size = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(s == 1 and 1 or 0, 0), Position = UDim2.fromScale(s == 1 and 1 or 0, 0), Parent = bg }, { corner(8), stroke(GOLD, 1, 0.4) })
+	end
+end
+
+function UI.showDaily(r)
+	UI.dailyStreak.Text = T("Tag %d in Folge!", r.streak)
+	UI.dailyCoins.Text = "+" .. r.coins .. " 🪙"
+	UI.dailyPanel.Visible = true
+end
+
 local annToken = 0
 function UI.say(text, cls)
 	annToken = annToken + 1
 	local my = annToken
 	local a = UI.announce
 	local colors = { ok = GOLD, boss = Color3.fromRGB(255, 61, 61), kill = Color3.fromRGB(255, 90, 90), warn = Color3.fromRGB(255, 179, 71), rage = Color3.fromRGB(255, 106, 60), count = PAPER }
-	a.Text = text
+	a.Text = Lang.say(text)
 	a.TextColor3 = colors[cls] or PAPER
 	a.Visible = true
 	a.Rotation = cls == "count" and 0 or -3
@@ -413,7 +476,7 @@ local toastToken = 0
 function UI.toast(msg, t)
 	toastToken = toastToken + 1
 	local my = toastToken
-	UI.toastLabel.Text = msg
+	UI.toastLabel.Text = T(msg)
 	UI.toastLabel.Visible = true
 	task.delay(t or 2, function() if my == toastToken then UI.toastLabel.Visible = false end end)
 end
@@ -432,7 +495,7 @@ function UI.refreshData(force)
 	local d = UI.data()
 	if not d then return end
 	local viewSide = side == 0 and 1 or side
-	UI.coinLabel.Text = d.coins .. " Münzen"
+	UI.coinLabel.Text = T("%d Münzen", d.coins)
 	-- Team-Karten
 	for s = 1, 2 do
 		local tb = UI.teamBtns[s]
@@ -453,12 +516,12 @@ function UI.refreshData(force)
 		local eq = d.helmet == id
 		it.stroke.Transparency = eq and 0 or 1
 		if it.rbtn then it.rbtn.Visible = not owned end
-		if eq then it.btn.Text = "Ausgerüstet"; it.btn.BackgroundColor3 = Color3.fromRGB(58, 58, 64); it.btn.TextColor3 = MUTE
-		elseif owned then it.btn.Text = "Anziehen"; it.btn.BackgroundColor3 = PAPER; it.btn.TextColor3 = INK
+		if eq then it.btn.Text = T("Ausgerüstet"); it.btn.BackgroundColor3 = Color3.fromRGB(58, 58, 64); it.btn.TextColor3 = MUTE
+		elseif owned then it.btn.Text = T("Anziehen"); it.btn.BackgroundColor3 = PAPER; it.btn.TextColor3 = INK
 		elseif it.def.pass then
-			it.btn.Text = "Mit VIP-Pass"; it.btn.BackgroundColor3 = Color3.fromRGB(0, 150, 70); it.btn.TextColor3 = PAPER
+			it.btn.Text = T("Mit VIP-Pass"); it.btn.BackgroundColor3 = Color3.fromRGB(0, 150, 70); it.btn.TextColor3 = PAPER
 		else
-			it.btn.Text = it.def.price .. " Münzen"
+			it.btn.Text = T("%d Münzen", it.def.price)
 			local can = d.coins >= it.def.price
 			it.btn.BackgroundColor3 = can and GOLD or Color3.fromRGB(58, 58, 64)
 			it.btn.TextColor3 = can and INK or MUTE
@@ -478,7 +541,7 @@ function UI.refreshData(force)
 		local lv, max, cost, title
 		if r.kind == "upgrade" then
 			lv = d.wlv[key]; max = 5; cost = Config.UPGRADE_COST[lv]
-			title = Config.UNITS[key].name .. "  ·  " .. Config.TIERS[lv].name
+			title = T(Config.UNITS[key].name) .. "  ·  " .. T(Config.TIERS[lv].name)
 			pips(r.pips, lv, 5, tierCols)
 			if not r.hasPreview or r.previewTier ~= lv or r.previewSide ~= viewSide or r.previewHelmet ~= d.helmet then
 				for _, c in ipairs(r.holder:GetChildren()) do if c:IsA("ViewportFrame") then c:Destroy() end end
@@ -487,7 +550,7 @@ function UI.refreshData(force)
 			end
 		elseif r.kind == "abilityUp" then
 			lv = d.ab[key]; max = 3; cost = Config.ABILITY_COST[lv]
-			title = Config.ABILITIES[key].name .. "  ·  Stufe " .. lv
+			title = T(Config.ABILITIES[key].name) .. "  ·  " .. T("Stufe %d", lv)
 			pips(r.pips, lv, 3, Color3.fromRGB(255, 106, 60))
 			if not r.hasPreview then
 				label({ Text = Config.ABILITIES[key].icon, Font = DISPLAY, Size = UDim2.fromScale(1, 1), Max = 40, Parent = r.holder })
@@ -497,7 +560,7 @@ function UI.refreshData(force)
 			local x
 			for _, e in ipairs(Config.EXTRAS) do if e.id == key then x = e end end
 			lv = d[key]; max = x.max; cost = Config.extraCost(x, lv)
-			title = x.name .. "  ·  Stufe " .. lv
+			title = T(x.name) .. "  ·  " .. T("Stufe %d", lv)
 			pips(r.pips, lv, max, GOLD)
 			if not r.hasPreview then
 				label({ Text = key == "armor" and "🛡" or (key == "mine" and "⛏" or "🏰"), Size = UDim2.fromScale(1, 1), Max = 40, Parent = r.holder })
@@ -508,8 +571,8 @@ function UI.refreshData(force)
 		local maxed = lv >= max
 		local can = not maxed and d.coins >= cost
 		if maxed then r.btn.Text = "MAX"
-		elseif r.kind == "upgrade" then r.btn.Text = Config.TIERS[lv + 1].name .. " · " .. cost
-		else r.btn.Text = "Verbessern · " .. cost end
+		elseif r.kind == "upgrade" then r.btn.Text = T(Config.TIERS[lv + 1].name) .. " · " .. cost
+		else r.btn.Text = T("Verbessern · %d", cost) end
 		r.btn.BackgroundColor3 = can and GOLD or Color3.fromRGB(58, 58, 64)
 		r.btn.TextColor3 = can and INK or MUTE
 	end
@@ -531,33 +594,55 @@ function UI.update(view)
 	for i, ab in pairs(UI.arenaBtns) do ab.stroke.Transparency = (UI.myVote == i) and 0 or 1 end
 	for m, mb in pairs(UI.modeBtns) do mb.stroke.Transparency = ((UI.myMode or "classic") == m) and 0 or 1 end
 	for key, b in pairs(UI.passBtns) do
-		if player:GetAttribute("Pass_" .. key) then b.Text = "Gekauft ✓"; b.BackgroundColor3 = Color3.fromRGB(58, 58, 64) end
+		if player:GetAttribute("Pass_" .. key) then b.Text = T("Gekauft ✓"); b.BackgroundColor3 = Color3.fromRGB(58, 58, 64) end
 	end
 	for s = 1, 2 do
 		local ai = S:GetAttribute("AI" .. s)
 		local n = 0
 		for _, p in ipairs(Players:GetPlayers()) do if p:GetAttribute("Side") == s then n = n + 1 end end
-		UI.teamInfo[s].Text = n > 0 and (n .. " Spieler") or (ai == false and "" or "Computer")
+		UI.teamInfo[s].Text = n > 0 and (n .. " " .. T("Spieler")) or (ai == false and "" or T("Computer"))
 	end
 
 	local arenaIdx = S:GetAttribute("Arena") or 1
 	local mode = S:GetAttribute("Mode") or "classic"
-	UI.arenaLabel.Text = string.upper(Config.ARENAS[arenaIdx].name .. "  ·  " .. Config.MODES[mode].name)
+	UI.arenaLabel.Text = string.upper(T(Config.ARENAS[arenaIdx].name) .. "  ·  " .. T(Config.MODES[mode].name))
 	local wave = S:GetAttribute("Wave") or 0
-	UI.waveLabel.Text = (mode == "waves" and wave > 0) and ("WELLE " .. wave) or ""
+	UI.waveLabel.Text = (mode == "waves" and wave > 0) and T("WELLE %d", wave) or ""
 	for s = 1, 2 do
 		local hp, mx = S:GetAttribute("BaseHP" .. s) or 1, S:GetAttribute("BaseMax" .. s) or 1
 		local fill = s == 1 and UI.hp1 or UI.hp2
 		fill.Size = UDim2.fromScale(math.clamp(hp / math.max(mx, 1), 0, 1), 1)
 		local you = s == 1 and UI.you1 or UI.you2
-		you.Text = (side == s) and "DEIN TEAM" or (S:GetAttribute("AI" .. s) and "COMPUTER" or "")
+		you.Text = (side == s) and T("DEIN TEAM") or (S:GetAttribute("AI" .. s) and T("COMPUTER") or "")
+	end
+
+	-- Online, Bestenliste, Gegnersuche, Hügel
+	UI.onlineLabel.Text = #Players:GetPlayers() .. " " .. T("Spieler online")
+	local topRaw = S:GetAttribute("Top")
+	if topRaw and topRaw ~= UI.lastTop then
+		UI.lastTop = topRaw
+		local ok, list = pcall(function() return HttpService:JSONDecode(topRaw) end)
+		if ok and type(list) == "table" and #list > 0 then
+			local parts = {}
+			for i, e in ipairs(list) do table.insert(parts, i .. ". " .. tostring(e.n) .. "  " .. tostring(e.w)) end
+			UI.topLabel.Text = table.concat(parts, "   ·   ")
+		end
+	end
+	local sEnd = S:GetAttribute("SearchEnd") or 0
+	UI.searchPanel.Visible = side ~= 0 and phase == "lobby" and sEnd > now and not menuOpen
+	if UI.searchPanel.Visible then
+		UI.searchInfo.Text = T("Kommt niemand, startet der Kampf in %d s gegen den Computer.", math.max(0, math.ceil(sEnd - now)))
+	end
+	UI.hillFrame.Visible = mode == "hill" and (phase == "battle" or phase == "countdown")
+	if UI.hillFrame.Visible then
+		for s2 = 1, 2 do UI.hillBars[s2].Size = UDim2.fromScale(math.clamp((S:GetAttribute("Hill" .. s2) or 0) / 100, 0, 1), 1) end
 	end
 
 	-- Phase
 	local pend = S:GetAttribute("PhaseEnd") or 0
 	if phase == "countdown" then
 		local n = math.max(0, math.ceil(pend - now))
-		UI.phaseLabel.Text = "GLEICH GEHT'S LOS"
+		UI.phaseLabel.Text = T("GLEICH GEHT'S LOS")
 		if n ~= lastCount and side ~= 0 then
 			lastCount = n
 			if n > 0 then UI.say(tostring(n), "count") end
@@ -565,11 +650,11 @@ function UI.update(view)
 	elseif phase == "battle" then
 		if lastCount ~= nil and lastCount <= 1 and side ~= 0 then UI.say("KAMPF!", "ok") end
 		lastCount = nil
-		UI.phaseLabel.Text = "KAMPF"
+		UI.phaseLabel.Text = T("KAMPF")
 	elseif phase == "end" then
-		UI.phaseLabel.Text = "RUNDE VORBEI"
+		UI.phaseLabel.Text = T("RUNDE VORBEI")
 	else
-		UI.phaseLabel.Text = "WARTEN"
+		UI.phaseLabel.Text = T("WARTEN")
 	end
 
 	-- Ende
@@ -579,23 +664,24 @@ function UI.update(view)
 		local winner = S:GetAttribute("Winner") or 0
 		local won = winner == side
 		if mode == "waves" then
-			UI.endTitle.Text = "WELLE " .. wave
+			UI.endTitle.Text = T("WELLE %d", wave)
 			UI.endTitle.TextColor3 = Color3.fromRGB(255, 140, 90)
-			UI.endSub.Text = "So lange habt ihr durchgehalten!"
+			UI.endSub.Text = T("So lange habt ihr durchgehalten!")
 		else
-			UI.endTitle.Text = won and "SIEG!" or "NIEDERLAGE"
+			UI.endTitle.Text = T(won and "SIEG!" or "NIEDERLAGE")
 			UI.endTitle.TextColor3 = won and GOLD or RED
-			UI.endSub.Text = won and ("Das " .. Config.SIDES[3 - side].name .. "-Pigment ist zerflossen.") or ("Das " .. Config.SIDES[3 - side].name .. "-Pigment hat gewonnen.")
+			local en = T(Config.SIDES[3 - side].name)
+			UI.endSub.Text = won and T("Das %s-Pigment ist zerflossen.", en) or T("Das %s-Pigment hat gewonnen.", en)
 		end
 		local r = UI.reward
-		UI.endCoins.Text = r and ("+" .. r.coins .. " Münzen  ·  " .. r.kills .. " besiegt" .. (r.vip and "  ·  VIP x2" or "")) or ""
+		UI.endCoins.Text = r and (T("+%d Münzen  ·  %d besiegt", r.coins, r.kills) .. (r.vip and "  ·  VIP x2" or "")) or ""
 		local left = math.max(0, math.ceil(pend - now))
 		if UI.againPressed then
-			UI.endNext.Text = "Warte auf die anderen Spieler … (" .. left .. " s)"
-			UI.againBtn.Text = "BEREIT ✓"
+			UI.endNext.Text = T("Warte auf die anderen Spieler … (%d s)", left)
+			UI.againBtn.Text = T("BEREIT ✓")
 		else
-			UI.endNext.Text = "Ohne Auswahl geht es in " .. left .. " s zurück ins Menü"
-			UI.againBtn.Text = "NOCHMAL  ▶"
+			UI.endNext.Text = T("Ohne Auswahl geht es in %d s zurück ins Menü", left)
+			UI.againBtn.Text = T("NOCHMAL  ▶")
 		end
 	else
 		UI.reward = (phase == "end") and UI.reward or nil
@@ -604,9 +690,9 @@ function UI.update(view)
 
 	if side == 0 then return end
 	local gold = S:GetAttribute("Gold" .. side) or 0
-	UI.goldLabel.Text = "GOLD " .. gold .. "    ☠ " .. (S:GetAttribute("Kills" .. side) or 0)
+	UI.goldLabel.Text = T("GOLD") .. " " .. gold .. "    ☠ " .. (S:GetAttribute("Kills" .. side) or 0)
 	local rage = S:GetAttribute("Rage" .. side) or 0
-	UI.rageLabel.Text = rage > 0 and string.format("KRIEGSSCHREI %.1f s", rage) or ""
+	UI.rageLabel.Text = rage > 0 and T("KRIEGSSCHREI %.1f s", rage) or ""
 	local cmd = S:GetAttribute("Cmd" .. side) or "attack"
 	UI.cmdAtk.BackgroundColor3 = cmd == "attack" and PAPER or GLASS
 	UI.cmdAtk.TextColor3 = cmd == "attack" and INK or PAPER

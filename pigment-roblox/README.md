@@ -1,4 +1,4 @@
-# Pigment Krieg – Roblox-Version
+# Pigment Clash – Roblox-Version (früher Pigment Krieg)
 
 Schwarz gegen Weiß als Roblox-Spiel. Es ist ein Strategiespiel mit Seitenansicht:
 Du beschwörst Stickmen, schmiedest Waffen, kaufst Helme und wählst die Arena.
@@ -42,6 +42,16 @@ Es gehen zwei Fenster auf. Wähle in jedem Fenster ein anderes Team.
 - **Animationen:** Schwung-Spuren an den Waffen, Ragdoll-Physik beim Tod, abfliegende Köpfe, Tintenspritzer und Tintenflecken.
   Außerdem Krieger, die aus Tintenpfützen steigen, eine Burg, die in Trümmer zerfällt, Kamera-Wackeln und Schadenszahlen.
 - **Speichern:** Münzen, Helme und Waffen bleiben erhalten, sobald das Spiel veröffentlicht ist (siehe unten).
+
+## Neu in Version 3
+
+- **SPIELEN** sucht einen Gegner und teilt die Teams fair ein. Kommt in 15 Sekunden niemand, spielst du gegen den Computer.
+  **TRAINING** startet sofort gegen den Computer. Tritt mitten im Kampf ein Spieler bei, ersetzt er den Computer.
+- **2 neue Modi:** Hügel-König (halte die Mitte, 100 Punkte gewinnen) und Sudden Death (schwache Burgen, harte Treffer).
+- **Rangliste** neben den Spielernamen (Wins, Kills) und **Top 10** der meisten Siege im Menü.
+- **Freunde einladen** per Knopf, **tägliche Belohnung** mit Serie bis 7 Tage.
+- **Englisch und Deutsch** automatisch nach der Sprache des Spielers.
+- **Cover und Icon** in `marketing/`: `thumbnail_1920x1080.png` und `icon_512.png`.
 
 ## Neu in Version 2
 

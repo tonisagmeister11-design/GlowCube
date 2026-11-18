@@ -51,12 +51,14 @@ Config.HELMETS = {
 }
 
 -- Spielmodi (Abstimmung im Menü)
-Config.MODE_ORDER = { "classic", "waves", "boss", "turbo" }
+Config.MODE_ORDER = { "classic", "hill", "sudden", "turbo", "boss", "waves" }
 Config.MODES = {
 	classic = { name = "Klassisch", desc = "Zerstöre die feindliche Burg" },
 	waves = { name = "Überleben", desc = "Halte gegen endlose Wellen durch (alle im Team Schwarz)" },
 	boss = { name = "Boss-Ansturm", desc = "Alle 45 Sekunden kommt ein Boss-Titan" },
 	turbo = { name = "Turbo", desc = "Doppelt so viel Gold, halbe Wartezeiten" },
+	hill = { name = "Hügel-König", desc = "Halte die Mitte! Wer zuerst 100 Punkte hat, gewinnt" },
+	sudden = { name = "Sudden Death", desc = "Schwache Burgen, harte Treffer, schnelle Runden" },
 }
 
 -- Robux-Shop. Die IDs bekommst du auf create.roblox.com (siehe README, Abschnitt Robux-Shop).
@@ -74,6 +76,7 @@ Config.PRODUCTS = {
 	flame = { id = 0, name = "Flammenkopf", robux = 99, helmet = "flame" },
 	dragon = { id = 0, name = "Drachenhelm", robux = 149, helmet = "dragon" },
 }
+Config.SEARCH_TIME = 15 -- Sekunden Gegnersuche, danach Kampf gegen den Computer
 Config.PRODUCT_ORDER = { "coins1", "coins2", "coins3", "halo", "visor", "flame", "dragon" }
 -- Gesichts-Helm: Lade assets/face.png in Roblox Studio als Bild hoch und trage die ID hier ein,
 -- z. B. "1234567890" oder "rbxassetid://1234567890". Leer = Gesichts-Helm zeigt ein gezeichnetes Gesicht.
@@ -110,6 +113,7 @@ function Config.newData()
 		ab = { meteor = 1, rage = 1, heal = 1 },
 		armor = 0, mine = 0, tower = 0,
 		wins = 0, kills = 0, games = 0, bestWave = 0,
+		lastDaily = 0, streak = 0,
 		receipts = {},
 	}
 end

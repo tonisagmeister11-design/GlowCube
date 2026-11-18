@@ -30,10 +30,10 @@ run = lua.eval('''function(Core, cfg, arena, human, seed, mode)
   for i = 1, 90 do b:update(1/30) end
   local s = ""
   for k, v in pairs(counts) do s = s .. k .. "=" .. v .. " " end
-  return b.result, t, b.bases[1].hp, b.bases[2].hp, b.kills[42] or 0, s, b.wave
+  return b.result, t, b.bases[1].hp, b.bases[2].hp, b.kills[42] or 0, s, b.wave .. " hill " .. math.floor(b.hill[1]) .. "/" .. math.floor(b.hill[2])
 end''')
 fails = 0
-for mode in ('classic', 'turbo', 'boss', 'waves'):
+for mode in ('classic', 'turbo', 'boss', 'waves', 'hill', 'sudden'):
   for arena in (1, 3, 5):
     for human in ((True,) if mode == 'waves' else (False, True)):
         for seed in (1, 2):

@@ -160,6 +160,20 @@ function Data.setBestWave(player, w)
 	if d and w > (d.bestWave or 0) then d.bestWave = w; Data.publish(player) end
 end
 
+-- Tägliche Belohnung: gibt { coins, streak } zurück oder nil, wenn heute schon abgeholt
+function Data.daily(player)
+	local d = cache[player]
+	if not d then return nil end
+	local today = math.floor(os.time() / 86400)
+	if (d.lastDaily or 0) >= today then return nil end
+	if (d.lastDaily or 0) == today - 1 then d.streak = math.min((d.streak or 0) + 1, 7) else d.streak = 1 end
+	d.lastDaily = today
+	local coins = 75 + d.streak * 25
+	d.coins = d.coins + coins
+	Data.publish(player)
+	return { coins = coins, streak = d.streak }
+end
+
 -- Autosave
 task.spawn(function()
 	while true do

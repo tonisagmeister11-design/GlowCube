@@ -1,4 +1,4 @@
-<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><External>null</External><External>nil</External><Item class="ReplicatedStorage" referent="RBX00000000000000000000000000000004"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX00000000000000000000000000000003"><Properties><string name="Name">PK</string></Properties><Item class="ModuleScript" referent="RBX00000000000000000000000000000001"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: gemeinsame Spieldaten (Server + Client)
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4"><External>null</External><External>nil</External><Item class="ReplicatedStorage" referent="RBX00000000000000000000000000000005"><Properties><string name="Name">ReplicatedStorage</string></Properties><Item class="Folder" referent="RBX00000000000000000000000000000004"><Properties><string name="Name">PK</string></Properties><Item class="ModuleScript" referent="RBX00000000000000000000000000000001"><Properties><string name="Name">Config</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: gemeinsame Spieldaten (Server + Client)
 -- Einheiten im Spiel rechnen in "Pixeln" wie die Web-Version; 1 Pixel = 0.1 Stud.
 local Config = {}
 
@@ -51,12 +51,14 @@ Config.HELMETS = {
 }
 
 -- Spielmodi (Abstimmung im Menü)
-Config.MODE_ORDER = { "classic", "waves", "boss", "turbo" }
+Config.MODE_ORDER = { "classic", "hill", "sudden", "turbo", "boss", "waves" }
 Config.MODES = {
 	classic = { name = "Klassisch", desc = "Zerstöre die feindliche Burg" },
 	waves = { name = "Überleben", desc = "Halte gegen endlose Wellen durch (alle im Team Schwarz)" },
 	boss = { name = "Boss-Ansturm", desc = "Alle 45 Sekunden kommt ein Boss-Titan" },
 	turbo = { name = "Turbo", desc = "Doppelt so viel Gold, halbe Wartezeiten" },
+	hill = { name = "Hügel-König", desc = "Halte die Mitte! Wer zuerst 100 Punkte hat, gewinnt" },
+	sudden = { name = "Sudden Death", desc = "Schwache Burgen, harte Treffer, schnelle Runden" },
 }
 
 -- Robux-Shop. Die IDs bekommst du auf create.roblox.com (siehe README, Abschnitt Robux-Shop).
@@ -74,6 +76,7 @@ Config.PRODUCTS = {
 	flame = { id = 0, name = "Flammenkopf", robux = 99, helmet = "flame" },
 	dragon = { id = 0, name = "Drachenhelm", robux = 149, helmet = "dragon" },
 }
+Config.SEARCH_TIME = 15 -- Sekunden Gegnersuche, danach Kampf gegen den Computer
 Config.PRODUCT_ORDER = { "coins1", "coins2", "coins3", "halo", "visor", "flame", "dragon" }
 -- Gesichts-Helm: Lade assets/face.png in Roblox Studio als Bild hoch und trage die ID hier ein,
 -- z. B. "1234567890" oder "rbxassetid://1234567890". Leer = Gesichts-Helm zeigt ein gezeichnetes Gesicht.
@@ -110,6 +113,7 @@ function Config.newData()
 		ab = { meteor = 1, rage = 1, heal = 1 },
 		armor = 0, mine = 0, tower = 0,
 		wins = 0, kills = 0, games = 0, bestWave = 0,
+		lastDaily = 0, streak = 0,
 		receipts = {},
 	}
 end
@@ -334,11 +338,121 @@ function Pose.solve(p, s, dir)
 end
 
 return Pose
-]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX00000000000000000000000000000009"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX00000000000000000000000000000008"><Properties><string name="Name">PigmentKriegServer</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Server. Steuert Runden, KI, Kauf-Anfragen und schickt den Zustand an alle Clients.
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000000000000000000000000000003"><Properties><string name="Name">Lang</string><ProtectedString name="Source"><![CDATA[-- Sprachen: Deutsch ist der Quelltext, Englisch für alle anderen Spieler.
+-- Lang.t("Deutscher Text") liefert die Übersetzung, wenn der Spieler kein Deutsch eingestellt hat.
+local Lang = {}
+Lang.german = false
+
+local EN = {
+	-- Menü
+	["SCHLACHT"] = "BATTLE", ["HELME"] = "HELMETS", ["WAFFEN"] = "WEAPONS", ["SHOP R$"] = "SHOP R$",
+	["SPIELEN"] = "PLAY", ["TRAINING"] = "TRAINING",
+	["Gegen echte Spieler"] = "Fight real players", ["Gegen den Computer"] = "Against the computer",
+	["WÄHLE DEIN TEAM"] = "CHOOSE YOUR TEAM", ["ODER WÄHLE DEIN TEAM"] = "OR PICK YOUR TEAM",
+	["SCHWARZ"] = "BLACK", ["WEISS"] = "WHITE", ["Schwarz"] = "Black", ["Weiß"] = "White",
+	["ARENA WÄHLEN (Abstimmung für die nächste Runde)"] = "CHOOSE ARENA (vote for next round)",
+	["SPIELMODUS (Abstimmung)"] = "GAME MODE (vote)",
+	["Tippe auf ein Team, um mitzukämpfen. Ist ein Team leer, spielt der Computer."] = "Tap PLAY to find an opponent. If nobody joins, the computer takes over.",
+	["Steuerung PC: 1–7 Krieger · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · A/D oder Mausrad: Kamera\nHandy: Knöpfe unten antippen, übers Feld wischen = Kamera"] =
+		"PC: 1–7 units · R Meteor · F War Cry · H Heal Wave · Q/E Defend/Attack · A/D or mouse wheel: camera\nMobile: tap the buttons, swipe the field = camera",
+	["Computer"] = "Computer", ["COMPUTER"] = "COMPUTER", ["DEIN TEAM"] = "YOUR TEAM", ["Spieler"] = "players",
+	["Spieler online"] = "players online", ["FREUNDE EINLADEN"] = "INVITE FRIENDS", ["TOP 10 SIEGE"] = "TOP 10 WINS",
+	["Noch keine Einträge"] = "No entries yet", ["Siege"] = "Wins",
+	["SUCHE GEGNER …"] = "SEARCHING FOR OPPONENT …", ["Jetzt gegen Computer"] = "Play vs computer now",
+	["Kommt niemand, startet der Kampf in %d s gegen den Computer."] = "If nobody joins, the battle starts vs the computer in %d s.",
+	["TÄGLICHE BELOHNUNG"] = "DAILY REWARD", ["Tag %d in Folge!"] = "Day %d in a row!", ["ABHOLEN"] = "CLAIM",
+	["EIN GEGNER IST BEIGETRETEN!"] = "AN OPPONENT JOINED!",
+	-- HUD
+	["MENÜ"] = "MENU", ["VERTEIDIGEN (Q)"] = "DEFEND (Q)", ["ANGRIFF (E)"] = "ATTACK (E)", ["BOSS-TITAN"] = "BOSS TITAN",
+	["Tippe aufs Schlachtfeld für den Meteor"] = "Tap the battlefield to drop the meteor", ["Abbrechen"] = "Cancel",
+	["GLEICH GEHT'S LOS"] = "GET READY", ["KAMPF"] = "BATTLE", ["RUNDE VORBEI"] = "ROUND OVER", ["WARTEN"] = "WAITING",
+	["GOLD"] = "GOLD", ["KRIEGSSCHREI %.1f s"] = "WAR CRY %.1f s", ["HÜGEL"] = "HILL",
+	-- Ansagen
+	["KAMPF!"] = "FIGHT!", ["BOSS ERSCHEINT!"] = "BOSS INCOMING!", ["BOSS BESIEGT!"] = "BOSS DEFEATED!",
+	["BURG WIRD ANGEGRIFFEN!"] = "CASTLE UNDER ATTACK!", ["BURG ZERSTÖRT!"] = "CASTLE DESTROYED!", ["BURG GEFALLEN!"] = "CASTLE FALLEN!",
+	["KRIEGSSCHREI!"] = "WAR CRY!", ["DOPPEL-KILL"] = "DOUBLE KILL", ["TRIPPEL-KILL"] = "TRIPLE KILL", ["MASSAKER!"] = "RAMPAGE!",
+	["UNAUFHALTBAR!"] = "UNSTOPPABLE!", ["HÜGEL EROBERT!"] = "HILL CAPTURED!", ["WELLE %d"] = "WAVE %d", ["BLOCK"] = "BLOCK",
+	-- Ende
+	["SIEG!"] = "VICTORY!", ["NIEDERLAGE"] = "DEFEAT", ["NOCHMAL  ▶"] = "PLAY AGAIN  ▶", ["BEREIT ✓"] = "READY ✓",
+	["ZUM MENÜ  (Shop · Waffen · Modus)"] = "MENU  (Shop · Weapons · Mode)",
+	["So lange habt ihr durchgehalten!"] = "That's how long you survived!",
+	["Das %s-Pigment ist zerflossen."] = "The %s pigment has melted away.", ["Das %s-Pigment hat gewonnen."] = "The %s pigment won.",
+	["+%d Münzen  ·  %d besiegt"] = "+%d coins  ·  %d defeated",
+	["Warte auf die anderen Spieler … (%d s)"] = "Waiting for other players … (%d s)",
+	["Ohne Auswahl geht es in %d s zurück ins Menü"] = "Back to menu in %d s",
+	-- Shop & Schmiede
+	["Ausgerüstet"] = "Equipped", ["Anziehen"] = "Equip", ["%d Münzen"] = "%d coins", ["Mit VIP-Pass"] = "With VIP Pass",
+	["MAX"] = "MAX", ["Verbessern · %d"] = "Upgrade · %d", ["Stufe %d"] = "Level %d", ["Gekauft ✓"] = "Owned ✓",
+	["Gekauft: %s  Danke!"] = "Purchased: %s  Thank you!", ["Du hast %s schon!"] = "You already own %s!",
+	["Dieser Artikel ist noch nicht eingerichtet (Produkt-ID fehlt)"] = "This item is not set up yet",
+	["Dieser Pass ist noch nicht eingerichtet (Pass-ID fehlt)"] = "This pass is not set up yet",
+	["Sofort aufs Konto, für Waffen und Helme"] = "Instantly added, for weapons and helmets",
+	["Premium-Helm für deine ganze Armee"] = "Premium helmet for your whole army", [" · für immer"] = " · forever",
+	["Zu wenig Gold für %s"] = "Not enough gold for %s", ["%s lädt noch %d s"] = "%s ready in %d s",
+	["Münzen"] = "coins",
+	-- Einheiten
+	["Klinge"] = "Blade", ["Speer"] = "Spear", ["Bogen"] = "Bow", ["Schild"] = "Shield", ["Ninja"] = "Ninja", ["Magier"] = "Mage", ["Titan"] = "Titan",
+	["Schneller Schwertkämpfer"] = "Fast swordsman", ["Lange Reichweite"] = "Long reach", ["Schießt Pfeile"] = "Shoots arrows",
+	["Blockt von vorne"] = "Blocks from the front", ["Blitzschnelle Dolche"] = "Lightning-fast daggers",
+	["Explodierende Kugeln"] = "Exploding orbs", ["Hammer mit Flächenschaden"] = "Hammer with area damage",
+	-- Stufen
+	["Holz"] = "Wood", ["Eisen"] = "Iron", ["Gold"] = "Gold", ["Diamant"] = "Diamond", ["Plasma"] = "Plasma",
+	-- Helme
+	["Ohne Helm"] = "No helmet", ["Ritterhelm"] = "Knight helm", ["Ninja-Band"] = "Ninja band", ["Wikingerhelm"] = "Viking helm",
+	["Spartaner"] = "Spartan", ["Gesichts-Helm"] = "Face helm", ["Königskrone"] = "Royal crown", ["Heiligenschein"] = "Halo",
+	["Neon-Visier"] = "Neon visor", ["Flammenkopf"] = "Flame head", ["Drachenhelm"] = "Dragon helm", ["VIP-Krone"] = "VIP crown",
+	-- Fähigkeiten & Extras
+	["Meteor"] = "Meteor", ["Kriegsschrei"] = "War Cry", ["Heilwelle"] = "Heal Wave",
+	["Meteor auf eine Stelle"] = "Drop a meteor anywhere", ["8 Sek. schneller und stärker"] = "8 s faster and stronger",
+	["Heilt Armee und Burg"] = "Heals army and castle", ["Rüstung"] = "Armor", ["Pigment-Mine"] = "Pigment mine", ["Burg-Turm"] = "Castle tower",
+	["+15 % Leben für alle Krieger"] = "+15% health for all units", ["+3 Gold pro Sekunde"] = "+3 gold per second",
+	["Mehr Burgleben, Turm schießt schneller"] = "More castle health, faster tower",
+	-- Arenen
+	["Graue Steppe"] = "Grey Steppe", ["Vulkankrater"] = "Volcano Crater", ["Eiswüste"] = "Ice Desert",
+	["Neon-Kolosseum"] = "Neon Colosseum", ["Goldener Tempel"] = "Golden Temple",
+	-- Modi
+	["Klassisch"] = "Classic", ["Überleben"] = "Survival", ["Boss-Ansturm"] = "Boss Rush", ["Turbo"] = "Turbo",
+	["Hügel-König"] = "King of the Hill", ["Sudden Death"] = "Sudden Death",
+	["Zerstöre die feindliche Burg"] = "Destroy the enemy castle",
+	["Halte gegen endlose Wellen durch (alle im Team Schwarz)"] = "Survive endless waves together",
+	["Alle 45 Sekunden kommt ein Boss-Titan"] = "A boss titan every 45 seconds",
+	["Doppelt so viel Gold, halbe Wartezeiten"] = "Double gold, half the cooldowns",
+	["Halte die Mitte! Wer zuerst 100 Punkte hat, gewinnt"] = "Hold the middle! First to 100 points wins",
+	["Schwache Burgen, harte Treffer, schnelle Runden"] = "Weak castles, hard hits, fast rounds",
+	-- Robux
+	["VIP"] = "VIP", ["Regenbogen-Waffen"] = "Rainbow Weapons",
+	["Doppelte Münzen nach jedem Kampf + VIP-Krone"] = "Double coins after every battle + VIP crown",
+	["Alle deine Waffen leuchten in Regenbogenfarben"] = "All your weapons glow in rainbow colors",
+	["1.000 Münzen"] = "1,000 coins", ["6.000 Münzen"] = "6,000 coins", ["20.000 Münzen"] = "20,000 coins",
+}
+
+function Lang.setLocale(localeId)
+	Lang.german = type(localeId) == "string" and localeId:sub(1, 2):lower() == "de"
+end
+
+function Lang.t(s, ...)
+	if type(s) ~= "string" then return s end
+	local out = s
+	if not Lang.german and EN[s] then out = EN[s] end
+	if select("#", ...) > 0 then out = string.format(out, ...) end
+	return out
+end
+
+-- Ansage-Texte wie "WELLE 5" übersetzen
+function Lang.say(text)
+	local n = text:match("^WELLE (%d+)$")
+	if n then return Lang.t("WELLE %d", tonumber(n)) end
+	return Lang.t(text)
+end
+
+return Lang
+]]></ProtectedString></Properties></Item></Item></Item><Item class="ServerScriptService" referent="RBX0000000000000000000000000000000A"><Properties><string name="Name">ServerScriptService</string></Properties><Item class="Script" referent="RBX00000000000000000000000000000009"><Properties><string name="Name">PigmentKriegServer</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Server. Steuert Runden, KI, Kauf-Anfragen und schickt den Zustand an alle Clients.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
 
 Players.CharacterAutoLoads = false
 
@@ -365,6 +479,7 @@ local phase = "lobby"
 local phaseEnd = 0
 local arenaIdx = 1
 local mode = "classic"
+local searchEnd = nil
 local unitInst = {}   -- id -> Configuration
 local fxQueue = {}
 local lastSent = {}   -- id -> {x, hp, moving, dir}
@@ -511,6 +626,8 @@ local function startRound()
 		end
 	end
 	for _, p in ipairs(Players:GetPlayers()) do p:SetAttribute("Ready", false) end
+	searchEnd = nil
+	State:SetAttribute("SearchEnd", 0)
 	State:SetAttribute("Arena", arenaIdx)
 	State:SetAttribute("Mode", mode)
 	State:SetAttribute("Wave", 0)
@@ -522,6 +639,50 @@ local function startRound()
 	setPhase("countdown", 4)
 	table.insert(fxQueue, { "round", arenaIdx })
 end
+
+-- Ranglisten -------------------------------------------------------------
+local winsStore = nil
+pcall(function() winsStore = DataStoreService:GetOrderedDataStore("PK_Wins_v1") end)
+local nameCache = {}
+
+local function updateLeaderstats(player)
+	local d = Data.get(player)
+	if not d then return end
+	local ls = player:FindFirstChild("leaderstats")
+	if not ls then
+		ls = Instance.new("Folder")
+		ls.Name = "leaderstats"
+		local w = Instance.new("IntValue"); w.Name = "Wins"; w.Parent = ls
+		local k = Instance.new("IntValue"); k.Name = "Kills"; k.Parent = ls
+		ls.Parent = player
+	end
+	ls.Wins.Value = d.wins
+	ls.Kills.Value = d.kills
+end
+
+local function refreshTop()
+	if not winsStore then return end
+	local ok, pages = pcall(function() return winsStore:GetSortedAsync(false, 10) end)
+	if not ok or not pages then return end
+	local list = {}
+	for _, e in ipairs(pages:GetCurrentPage()) do
+		local id = tonumber(e.key)
+		local name = id and nameCache[id]
+		if id and not name then
+			local okN, n = pcall(function() return Players:GetNameFromUserIdAsync(id) end)
+			name = okN and n or ("#" .. tostring(id))
+			nameCache[id] = name
+		end
+		table.insert(list, { n = name or "?", w = e.value })
+	end
+	State:SetAttribute("Top", HttpService:JSONEncode(list))
+end
+task.spawn(function()
+	while true do
+		refreshTop()
+		task.wait(60)
+	end
+end)
 
 local function endRound(winner)
 	State:SetAttribute("Winner", winner)
@@ -543,6 +704,11 @@ local function endRound(winner)
 			local vip = p:GetAttribute("Pass_vip") == true
 			if vip then coins = coins * 2 end
 			Data.reward(p, coins, won, kills)
+			updateLeaderstats(p)
+			if won and winsStore then
+				local dd = Data.get(p)
+				task.spawn(function() pcall(function() winsStore:SetAsync(tostring(p.UserId), dd.wins) end) end)
+			end
 			FxEvent:FireClient(p, { { "reward", { coins = coins, won = won, kills = kills, wave = battle.wave, vip = vip } } })
 		end
 	end
@@ -563,15 +729,32 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 	if not d then return end
 	local side = sideOf(player)
 
-	if kind == "side" and (a == 1 or a == 2) then
-		if mode == "waves" and battle and not battle.over then a = 1 end
-		player:SetAttribute("Side", a)
+	local function joinSide(s)
+		if mode == "waves" and battle and not battle.over and phase ~= "end" then s = 1 end
+		player:SetAttribute("Side", s)
 		player:SetAttribute("Ready", false)
-		if battle and not battle.over then
-			local o = sideOpts(a)
-			battle:setControl(a, false)
-			battle.abLv[a] = o.ab
+		if battle and not battle.over and (phase == "battle" or phase == "countdown") then
+			local wasAI = battle.ai[s].on
+			local o = sideOpts(s)
+			battle:setControl(s, false)
+			battle.abLv[s] = o.ab
+			if wasAI and #playersOn(3 - s) > 0 then
+				table.insert(fxQueue, { "announce", { text = "EIN GEGNER IST BEIGETRETEN!", cls = "boss" } })
+			end
 		end
+	end
+	if kind == "side" and (a == 1 or a == 2) then
+		player:SetAttribute("Training", false)
+		joinSide(a)
+	elseif kind == "play" then
+		-- Schnelles Spiel: ins Team mit weniger Spielern
+		player:SetAttribute("Training", false)
+		local n1, n2 = #playersOn(1), #playersOn(2)
+		if sideOf(player) == 1 then n1 = n1 - 1 elseif sideOf(player) == 2 then n2 = n2 - 1 end
+		joinSide(n2 < n1 and 2 or 1)
+	elseif kind == "training" then
+		player:SetAttribute("Training", true)
+		if sideOf(player) == 0 then joinSide(1) end
 	elseif kind == "vote" and Config.ARENAS[a] then
 		player:SetAttribute("Vote", a)
 	elseif kind == "modeVote" and type(a) == "string" and Config.MODES[a] then
@@ -637,10 +820,21 @@ MarketplaceService.ProcessReceipt = function(info)
 	return Enum.ProductPurchaseDecision.NotProcessedYet
 end
 
+local function welcome(player)
+	updateLeaderstats(player)
+	local r = Data.daily(player)
+	if r then
+		task.delay(4, function()
+			if player.Parent then FxEvent:FireClient(player, { { "daily", r } }) end
+		end)
+	end
+end
+
 Players.PlayerAdded:Connect(function(player)
 	player:SetAttribute("Side", 0)
 	Data.load(player)
 	checkPasses(player)
+	welcome(player)
 	if player.Character then player.Character:Destroy() end
 end)
 for _, p in ipairs(Players:GetPlayers()) do
@@ -648,6 +842,7 @@ for _, p in ipairs(Players:GetPlayers()) do
 		p:SetAttribute("Side", 0)
 		Data.load(p)
 		checkPasses(p)
+		welcome(p)
 	end)
 end
 Players.PlayerRemoving:Connect(function(player)
@@ -679,6 +874,8 @@ local function sync()
 		end
 	end
 	State:SetAttribute("BossId", battle.boss and battle.boss.id or 0)
+	State:SetAttribute("Hill1", math.floor(battle.hill[1]))
+	State:SetAttribute("Hill2", math.floor(battle.hill[2]))
 	for _, u in ipairs(battle.units) do
 		local c = unitInst[u.id]
 		local ls = lastSent[u.id]
@@ -701,7 +898,22 @@ RunService.Heartbeat:Connect(function(dt)
 	local anyPlayer = #playersOn(1) + #playersOn(2) > 0
 
 	if phase == "lobby" then
-		if anyPlayer then startRound() end
+		local h1, h2 = #playersOn(1), #playersOn(2)
+		local training = false
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p:GetAttribute("Training") and sideOf(p) ~= 0 then training = true end
+		end
+		if h1 + h2 == 0 then
+			if searchEnd then searchEnd = nil; State:SetAttribute("SearchEnd", 0) end
+		elseif (h1 > 0 and h2 > 0) or training or chooseMode() == "waves" then
+			startRound()
+		else
+			if not searchEnd then
+				searchEnd = now + Config.SEARCH_TIME
+				State:SetAttribute("SearchEnd", searchEnd)
+			end
+			if now >= searchEnd then startRound() end
+		end
 	elseif phase == "countdown" or phase == "battle" then
 		battle:update(dt)
 		if phase == "countdown" and now >= phaseEnd then setPhase("battle") end
@@ -751,7 +963,7 @@ setPhase("lobby")
 State:SetAttribute("Arena", arenaIdx)
 Arena.build(arenaIdx)
 print("[PigmentKrieg] Server bereit")
-]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX00000000000000000000000000000005"><Properties><string name="Name">BattleCore</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Kampflogik (reines Lua, ohne Roblox-APIs -> testbar)
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX00000000000000000000000000000006"><Properties><string name="Name">BattleCore</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Kampflogik (reines Lua, ohne Roblox-APIs -> testbar)
 -- Seite 1 = links (läuft nach rechts), Seite 2 = rechts (läuft nach links).
 -- Koordinaten in Spiel-Einheiten: x entlang des Schlachtfelds, y nach unten (negativ = Luft), z = Tiefe 0..34.
 
@@ -777,6 +989,10 @@ function Core.new(Config, arenaIdx, fx, mode)
 	self.waveQueue = {}
 	self.waveSpawnT = 0
 	self.bossT = { 50, 50 }
+	self.hill = { 0, 0 }
+	self.hillOwner = 0
+	self.HILL_X = Config.WORLD_W / 2
+	self.HILL_R = 170
 	self.C = Config
 	self.W = Config.WORLD_W
 	self.arenaIdx = arenaIdx
@@ -830,6 +1046,10 @@ function Core:configureSide(side, opts)
 	end
 	if self.mode == "turbo" then self.income[side] = self.income[side] * 2.2 end
 	if self.mode == "boss" and opts.ai then self.income[side] = self.income[side] * 0.6 end
+	if self.mode == "sudden" then
+		b.maxHp = b.maxHp * 0.35
+		self.gold[side] = 350
+	end
 	if self.mode == "waves" and side == 2 then
 		-- Wellen statt normaler KI, Burg unzerstörbar
 		self.ai[2].on = false
@@ -1001,6 +1221,7 @@ function Core:update(dt)
 			end
 		end
 		if self.mode == "waves" then self:updateWaves(dt) end
+		if self.mode == "hill" then self:updateHill(dt) end
 	end
 	for _, u in ipairs(self.units) do
 		if not u.dead then self:updateUnit(u, dt) end
@@ -1044,6 +1265,24 @@ function Core:updateWaves(dt)
 	elseif #self.waveQueue == 0 and self.waveBoss then
 		self.waveBoss = false
 		self:spawnBoss(2)
+	end
+end
+
+------------------------------------------------------------------ Hügel-König
+function Core:updateHill(dt)
+	local c = { 0, 0 }
+	for _, u in ipairs(self.units) do
+		if not u.dead and math.abs(u.x - self.HILL_X) < self.HILL_R then c[u.side] = c[u.side] + 1 end
+	end
+	local owner = 0
+	if c[1] > 0 and c[2] == 0 then owner = 1 elseif c[2] > 0 and c[1] == 0 then owner = 2 end
+	if owner ~= 0 then
+		self.hill[owner] = self.hill[owner] + dt * (1.2 + 0.12 * math.min(c[owner], 10))
+		if self.hill[owner] >= 100 then self.hill[owner] = 100; self:finish(owner); return end
+	end
+	if owner ~= self.hillOwner then
+		self.hillOwner = owner
+		if owner ~= 0 then self.fx("announce", { text = "HÜGEL EROBERT!", cls = "warn", side = owner }) end
 	end
 end
 
@@ -1275,6 +1514,7 @@ end
 function Core:damage(e, amount, src, heavy, proj)
 	if e.dead then return end
 	amount = amount * rand(0.88, 1.12)
+	if self.mode == "sudden" then amount = amount * 1.5 end
 	if src and src.side and self.rage[src.side] > 0 then amount = amount * 1.4 end
 	local dir = -e.dir
 	if src and src.x then dir = (e.x >= src.x) and 1 or -1 end
@@ -1428,7 +1668,7 @@ function Core:updateProjs(dt)
 end
 
 return Core
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000000000000000000000000000006"><Properties><string name="Name">Data</string><ProtectedString name="Source"><![CDATA[-- Spielerdaten: Münzen, Helme, Waffenstufen. Speichert per DataStore.
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000000000000000000000000000007"><Properties><string name="Name">Data</string><ProtectedString name="Source"><![CDATA[-- Spielerdaten: Münzen, Helme, Waffenstufen. Speichert per DataStore.
 -- Läuft auch in Roblox Studio ohne API-Zugriff (dann nur für die aktuelle Sitzung).
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
@@ -1590,6 +1830,20 @@ function Data.setBestWave(player, w)
 	if d and w > (d.bestWave or 0) then d.bestWave = w; Data.publish(player) end
 end
 
+-- Tägliche Belohnung: gibt { coins, streak } zurück oder nil, wenn heute schon abgeholt
+function Data.daily(player)
+	local d = cache[player]
+	if not d then return nil end
+	local today = math.floor(os.time() / 86400)
+	if (d.lastDaily or 0) >= today then return nil end
+	if (d.lastDaily or 0) == today - 1 then d.streak = math.min((d.streak or 0) + 1, 7) else d.streak = 1 end
+	d.lastDaily = today
+	local coins = 75 + d.streak * 25
+	d.coins = d.coins + coins
+	Data.publish(player)
+	return { coins = coins, streak = d.streak }
+end
+
 -- Autosave
 task.spawn(function()
 	while true do
@@ -1602,7 +1856,7 @@ if not RunService:IsStudio() then
 end
 
 return Data
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000000000000000000000000000007"><Properties><string name="Name">Arena</string><ProtectedString name="Source"><![CDATA[-- Baut die Arena (Boden, Berge, Deko, Burgen) und das Licht.
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX00000000000000000000000000000008"><Properties><string name="Name">Arena</string><ProtectedString name="Source"><![CDATA[-- Baut die Arena (Boden, Berge, Deko, Burgen) und das Licht.
 local Lighting = game:GetService("Lighting")
 local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("PK"):WaitForChild("Config"))
 
@@ -1768,7 +2022,7 @@ function Arena.collapse(side)
 end
 
 return Arena
-]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX0000000000000000000000000000000E"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX0000000000000000000000000000000D"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX0000000000000000000000000000000C"><Properties><string name="Name">PigmentKriegClient</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Client. Kamera, Steuerung, Animation aller Einheiten, Effekte.
+]]></ProtectedString></Properties></Item></Item></Item><Item class="StarterPlayer" referent="RBX0000000000000000000000000000000F"><Properties><string name="Name">StarterPlayer</string></Properties><Item class="StarterPlayerScripts" referent="RBX0000000000000000000000000000000E"><Properties><string name="Name">StarterPlayerScripts</string></Properties><Item class="LocalScript" referent="RBX0000000000000000000000000000000D"><Properties><string name="Name">PigmentKriegClient</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: Client. Kamera, Steuerung, Animation aller Einheiten, Effekte.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -1780,6 +2034,8 @@ local player = Players.LocalPlayer
 local PK = ReplicatedStorage:WaitForChild("PK")
 local Config = require(PK:WaitForChild("Config"))
 local Pose = require(PK:WaitForChild("Pose"))
+local Lang = require(PK:WaitForChild("Lang"))
+local T = Lang.t
 local Render = require(script:WaitForChild("Render"))
 local UI = require(script:WaitForChild("UI"))
 local remotes = PK:WaitForChild("Remotes")
@@ -1960,13 +2216,13 @@ UI.onSpawn = function(t)
 	if not canAct() then return end
 	local def = Config.UNITS[t]
 	local gold = State:GetAttribute("Gold" .. mySide()) or 0
-	if gold < def.cost then UI.toast("Zu wenig Gold für " .. def.name, 1.2); return end
+	if gold < def.cost then UI.toast(T("Zu wenig Gold für %s", T(def.name)), 1.2); return end
 	Action:FireServer("spawn", t)
 end
 UI.onAbility = function(k)
 	if not canAct() then return end
 	local cd = State:GetAttribute("Ab" .. mySide() .. "_" .. k) or 0
-	if cd > 0 then UI.toast(Config.ABILITIES[k].name .. " lädt noch " .. math.ceil(cd) .. " s", 1.2); return end
+	if cd > 0 then UI.toast(T("%s lädt noch %d s", T(Config.ABILITIES[k].name), math.ceil(cd)), 1.2); return end
 	if k == "meteor" then
 		if targeting then cancelAim(); return end
 		targeting = true
@@ -2180,8 +2436,12 @@ handlers.round = function(e)
 	UI.reward = nil
 end
 handlers.bought = function(e)
-	UI.toast("Gekauft: " .. tostring(e[2].name) .. "  Danke!", 3)
+	UI.toast(T("Gekauft: %s  Danke!", T(tostring(e[2].name))), 3)
 	sound("ping", 0.6, 1.2, 0.1)
+end
+handlers.daily = function(e)
+	UI.showDaily(e[2])
+	sound("ping", 0.6, 1.5, 0.1)
 end
 handlers.reward = function(e)
 	UI.showReward(e[2])
@@ -2197,6 +2457,23 @@ FxEvent.OnClientEvent:Connect(function(batch)
 		end
 	end
 end)
+
+------------------------------------------------------------------ Hügel-Zone
+local hillPart = Render.newPart(Render.root, Color3.fromRGB(255, 204, 61), Enum.PartType.Cylinder, Enum.Material.Neon, Vector3.new(0.12, 34, 34))
+hillPart.CastShadow = false
+hillPart.Transparency = 1
+hillPart.CFrame = CFrame.new(Config.WORLD_W / 2 * K, 0.08, 0) * CFrame.Angles(0, 0, math.pi / 2)
+local lastHill = { 0, 0 }
+local function updateHill(dt)
+	local on = State:GetAttribute("Mode") == "hill" and (State:GetAttribute("Phase") == "battle" or State:GetAttribute("Phase") == "countdown")
+	if not on then hillPart.Transparency = 1; return end
+	local h1, h2 = State:GetAttribute("Hill1") or 0, State:GetAttribute("Hill2") or 0
+	local col = Color3.fromRGB(255, 204, 61)
+	if h1 > lastHill[1] then col = Color3.fromRGB(40, 40, 48) elseif h2 > lastHill[2] then col = Color3.fromRGB(250, 250, 250) end
+	lastHill[1], lastHill[2] = h1, h2
+	hillPart.Color = hillPart.Color:Lerp(col, math.min(1, dt * 3))
+	hillPart.Transparency = 0.55 + math.sin(time * 3) * 0.1
+end
 
 ------------------------------------------------------------------ Bild-Schleife
 local TRAIL_WIN = { sword = { 0.36, 0.62 }, spear = { 0.47, 0.62 }, ninja = { 0.35, 0.66 }, giant = { 0.46, 0.62 }, shield = { 0.38, 0.58 } }
@@ -2273,6 +2550,7 @@ RunService:BindToRenderStep("PigmentKrieg", Enum.RenderPriority.Camera.Value + 1
 	Render.updateProjs(dt, parts, cfs)
 	if #parts > 0 then workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged) end
 	Render.updateDecals(dt)
+	updateHill(dt)
 	updateCamera(dt)
 	UI.update()
 end)
@@ -2280,7 +2558,7 @@ end)
 -- Charakter wird nicht gebraucht (Strategie-Ansicht)
 player.CharacterAdded:Connect(function(c) task.defer(function() c:Destroy() end) end)
 print("[PigmentKrieg] Client bereit")
-]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX0000000000000000000000000000000A"><Properties><string name="Name">Render</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: zeichnet Stickmen, Waffen, Helme, Ragdolls, Projektile und Effekte (nur auf dem Client).
+]]></ProtectedString></Properties><Item class="ModuleScript" referent="RBX0000000000000000000000000000000B"><Properties><string name="Name">Render</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: zeichnet Stickmen, Waffen, Helme, Ragdolls, Projektile und Effekte (nur auf dem Client).
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -2953,7 +3231,7 @@ function Render.clearProjs()
 end
 
 return Render
-]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX0000000000000000000000000000000B"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: komplette Benutzeroberfläche (Menü, Shop, Schmiede, Kampf-HUD). Funktioniert mit Maus und Touch.
+]]></ProtectedString></Properties></Item><Item class="ModuleScript" referent="RBX0000000000000000000000000000000C"><Properties><string name="Name">UI</string><ProtectedString name="Source"><![CDATA[-- Pigment Krieg: komplette Benutzeroberfläche (Menü, Shop, Schmiede, Kampf-HUD). Funktioniert mit Maus und Touch.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -2964,6 +3242,9 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local PK = ReplicatedStorage:WaitForChild("PK")
 local Config = require(PK:WaitForChild("Config"))
 local Pose = require(PK:WaitForChild("Pose"))
+local Lang = require(PK:WaitForChild("Lang"))
+local T = Lang.t
+local SocialService = game:GetService("SocialService")
 
 local UI = {}
 local player = Players.LocalPlayer
@@ -2993,6 +3274,7 @@ local function pad(n) return make("UIPadding", { PaddingLeft = UDim.new(0, n), P
 local function label(props)
 	local max = props.Max or 40
 	props.Max = nil
+	if props.Text then props.Text = T(props.Text) end
 	props.BackgroundTransparency = 1
 	props.Font = props.Font or BODY
 	props.TextColor3 = props.TextColor3 or PAPER
@@ -3003,6 +3285,7 @@ local function button(props, children)
 	local max, r = props.Max or 22, props.R or 12
 	props.Max = nil
 	props.R = nil
+	if props.Text then props.Text = T(props.Text) end
 	props.AutoButtonColor = true
 	props.Font = props.Font or BODY
 	props.TextColor3 = props.TextColor3 or PAPER
@@ -3035,6 +3318,7 @@ end
 
 ------------------------------------------------------------------ Aufbau
 function UI.init(ctx)
+	Lang.setLocale(player.LocaleId)
 	UI.Render = ctx.Render
 	UI.Action = ctx.Action
 	UI.State = ctx.State
@@ -3057,6 +3341,7 @@ function UI.init(ctx)
 	UI.buildHud(base)
 	UI.buildMenu(base)
 	UI.buildOverlays(base)
+	UI.buildExtras(base)
 	return UI
 end
 
@@ -3122,7 +3407,7 @@ function UI.buildHud(base)
 		local holder = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 1, -30), Position = UDim2.fromOffset(4, 6), Parent = b })
 		label({ Text = tostring(def.cost), Font = DISPLAY, TextColor3 = GOLD, Size = UDim2.fromOffset(44, 18), Position = UDim2.new(1, -6, 0, 4), AnchorPoint = Vector2.new(1, 0), TextXAlignment = Enum.TextXAlignment.Right, Max = 16, TextStrokeTransparency = 0.5, ZIndex = 3, Parent = b })
 		label({ Text = tostring(i), Size = UDim2.fromOffset(16, 14), Position = UDim2.fromOffset(6, 5), TextColor3 = MUTE, Max = 12, ZIndex = 3, Parent = b })
-		label({ Text = string.upper(def.name), Size = UDim2.new(1, -6, 0, 18), Position = UDim2.new(0.5, 0, 1, -5), AnchorPoint = Vector2.new(0.5, 1), Max = 14, ZIndex = 3, Parent = b })
+		label({ Text = string.upper(T(def.name)), Size = UDim2.new(1, -6, 0, 18), Position = UDim2.new(0.5, 0, 1, -5), AnchorPoint = Vector2.new(0.5, 1), Max = 14, ZIndex = 3, Parent = b })
 		local cd = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, Size = UDim2.fromScale(1, 0), Position = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(0, 1), ZIndex = 4, Parent = b }, { corner(14) })
 		b.MouseButton1Down:Connect(function() UI.onSpawn(t) end)
 		UI.unitBtns[t] = { btn = b, holder = holder, cd = cd, stroke = b:FindFirstChildOfClass("UIStroke") }
@@ -3135,7 +3420,7 @@ function UI.buildHud(base)
 			make("UICorner", { CornerRadius = UDim.new(1, 0) }), make("UIStroke", { Color = Color3.fromRGB(255, 106, 60), Transparency = 0.6, Thickness = 2 }),
 		})
 		label({ Text = A.icon, Font = DISPLAY, Size = UDim2.new(1, 0, 0.55, 0), Position = UDim2.fromScale(0, 0.08), Max = 32, ZIndex = 3, Parent = b })
-		label({ Text = string.upper(A.name), Size = UDim2.new(0.9, 0, 0.2, 0), Position = UDim2.fromScale(0.05, 0.62), Max = 11, ZIndex = 3, Parent = b })
+		label({ Text = string.upper(T(A.name)), Size = UDim2.new(0.9, 0, 0.2, 0), Position = UDim2.fromScale(0.05, 0.62), Max = 11, ZIndex = 3, Parent = b })
 		label({ Text = A.key, Size = UDim2.fromOffset(18, 16), Position = UDim2.new(1, -4, 0, 0), AnchorPoint = Vector2.new(1, 0), TextColor3 = MUTE, Max = 12, ZIndex = 3, Parent = b })
 		local cd = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.35, Size = UDim2.fromScale(1, 0), Position = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(0, 1), ZIndex = 4, Parent = b }, { make("UICorner", { CornerRadius = UDim.new(1, 0) }) })
 		b.MouseButton1Down:Connect(function() UI.onAbility(k) end)
@@ -3180,7 +3465,20 @@ function UI.buildMenu(base)
 	-- Schlacht: Team + Arena
 	local play = UI.panes.play
 	make("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, Parent = play })
-	label({ Text = "WÄHLE DEIN TEAM", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, Max = 16, LayoutOrder = 1, Parent = play })
+	-- Großer Spielen-Bereich
+	local top = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -10, 0, 96), LayoutOrder = -3, Parent = play })
+	UI.playBtn = button({ Text = "SPIELEN", BackgroundColor3 = Color3.fromRGB(40, 200, 90), TextColor3 = PAPER, Size = UDim2.new(0.5, -6, 1, -26), Font = DISPLAY, Max = 46, R = 18, Parent = top })
+	make("UIStroke", { Color = Color3.fromRGB(10, 90, 40), Thickness = 3, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = UI.playBtn })
+	make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(170, 170, 170)), Parent = UI.playBtn })
+	label({ Text = "Gegen echte Spieler", TextColor3 = GREEN, Size = UDim2.new(0.5, -6, 0, 22), Position = UDim2.new(0, 0, 1, -22), Max = 16, Parent = top })
+	UI.trainBtn = button({ Text = "TRAINING", BackgroundColor3 = Color3.fromRGB(70, 72, 84), TextColor3 = PAPER, Size = UDim2.new(0.25, -6, 1, -26), Position = UDim2.new(0.5, 6, 0, 0), Font = DISPLAY, Max = 28, R = 18, Parent = top })
+	label({ Text = "Gegen den Computer", TextColor3 = MUTE, Size = UDim2.new(0.25, -6, 0, 22), Position = UDim2.new(0.5, 6, 1, -22), Max = 14, Parent = top })
+	UI.inviteBtn = button({ Text = "FREUNDE EINLADEN", BackgroundColor3 = Color3.fromRGB(0, 120, 220), TextColor3 = PAPER, Size = UDim2.new(0.25, -6, 1, -26), Position = UDim2.new(0.75, 6, 0, 0), Font = DISPLAY, Max = 20, R = 18, Parent = top })
+	UI.onlineLabel = label({ Text = "", TextColor3 = MUTE, Size = UDim2.new(0.25, -6, 0, 22), Position = UDim2.new(0.75, 6, 1, -22), Max = 14, Parent = top })
+	UI.playBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("play"); UI.menuForced = false end)
+	UI.trainBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("training"); UI.menuForced = false end)
+	UI.inviteBtn.MouseButton1Click:Connect(function() UI.invite() end)
+	label({ Text = "ODER WÄHLE DEIN TEAM", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, Max = 16, LayoutOrder = 1, Parent = play })
 	local teams = make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -10, 0, 120), LayoutOrder = 2, Parent = play }, {
 		make("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 12) }),
 	})
@@ -3208,7 +3506,7 @@ function UI.buildMenu(base)
 		make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(a.sky[1], a.sky[2], a.sky[3]), Color3.fromRGB(a.ground[1], a.ground[2], a.ground[3])), Parent = b })
 		local st = make("UIStroke", { Color = GOLD, Thickness = 3, Transparency = 1, Parent = b })
 		label({ Text = a.name, Font = DISPLAY, Size = UDim2.new(1, -12, 0, 24), Position = UDim2.new(0, 6, 1, -48), TextXAlignment = Enum.TextXAlignment.Left, Max = 18, TextStrokeTransparency = 0.3, Parent = b })
-		label({ Text = string.rep("●", i) .. string.rep("○", 5 - i) .. "   +" .. a.reward .. " Münzen", TextColor3 = GOLD, Size = UDim2.new(1, -12, 0, 18), Position = UDim2.new(0, 6, 1, -22), TextXAlignment = Enum.TextXAlignment.Left, Max = 13, TextStrokeTransparency = 0.3, Parent = b })
+		label({ Text = string.rep("●", i) .. string.rep("○", 5 - i) .. "   +" .. a.reward .. " " .. T("Münzen"), TextColor3 = GOLD, Size = UDim2.new(1, -12, 0, 18), Position = UDim2.new(0, 6, 1, -22), TextXAlignment = Enum.TextXAlignment.Left, Max = 13, TextStrokeTransparency = 0.3, Parent = b })
 		b.MouseButton1Click:Connect(function() UI.Action:FireServer("vote", i); UI.myVote = i end)
 		UI.arenaBtns[i] = { btn = b, stroke = st }
 	end
@@ -3230,6 +3528,8 @@ function UI.buildMenu(base)
 	UI.lobbyHint = label({ Text = "Tippe auf ein Team, um mitzukämpfen. Ist ein Team leer, spielt der Computer.", TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 40), Max = 16, LayoutOrder = 7, TextWrapped = true, Parent = play })
 	local help = "Steuerung PC: 1–7 Krieger · R Meteor · F Kriegsschrei · H Heilwelle · Q/E Verteidigen/Angriff · A/D oder Mausrad: Kamera\nHandy: Knöpfe unten antippen, übers Feld wischen = Kamera"
 	label({ Text = help, TextColor3 = MUTE, Size = UDim2.new(1, 0, 0, 44), Max = 14, LayoutOrder = 8, TextWrapped = true, Font = Enum.Font.Gotham, Parent = play })
+	label({ Text = "TOP 10 SIEGE", TextColor3 = GOLD, Font = DISPLAY, Size = UDim2.new(1, 0, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, Max = 20, LayoutOrder = -2, Parent = play })
+	UI.topLabel = label({ Text = "Noch keine Einträge", TextColor3 = PAPER, Size = UDim2.new(1, -10, 0, 48), TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true, Max = 15, Font = Enum.Font.Gotham, LayoutOrder = -1, Parent = play })
 
 	-- Shop
 	local shop = UI.panes.shop
@@ -3293,13 +3593,13 @@ function UI.buildMenu(base)
 	for _, key in ipairs({ "vip", "rainbow" }) do
 		local P = Config.PASSES[key]
 		o = o + 1
-		UI.passBtns[key] = card(o, (key == "vip" and "👑 " or "🌈 ") .. P.name, P.desc .. " · für immer", P.robux, key == "vip" and Color3.fromRGB(150, 110, 10) or Color3.fromRGB(120, 40, 160), function() UI.buyPass(key) end)
+		UI.passBtns[key] = card(o, (key == "vip" and "👑 " or "🌈 ") .. T(P.name), T(P.desc) .. T(" · für immer"), P.robux, key == "vip" and Color3.fromRGB(150, 110, 10) or Color3.fromRGB(120, 40, 160), function() UI.buyPass(key) end)
 	end
 	for _, key in ipairs(Config.PRODUCT_ORDER) do
 		local P = Config.PRODUCTS[key]
 		o = o + 1
 		local desc = P.coins and "Sofort aufs Konto, für Waffen und Helme" or "Premium-Helm für deine ganze Armee"
-		card(o, (P.coins and "🪙 " or "⛑ ") .. P.name, desc, P.robux, P.coins and Color3.fromRGB(40, 90, 60) or Color3.fromRGB(70, 30, 90), function() UI.buyProduct(key) end)
+		card(o, (P.coins and "🪙 " or "⛑ ") .. T(P.name), T(desc), P.robux, P.coins and Color3.fromRGB(40, 90, 60) or Color3.fromRGB(70, 30, 90), function() UI.buyProduct(key) end)
 	end
 
 	UI.setTab("play")
@@ -3312,7 +3612,7 @@ function UI.buyProduct(key)
 end
 function UI.buyPass(key)
 	local P = Config.PASSES[key]
-	if player:GetAttribute("Pass_" .. key) then UI.toast("Du hast " .. P.name .. " schon!", 2); return end
+	if player:GetAttribute("Pass_" .. key) then UI.toast(T("Du hast %s schon!", T(P.name)), 2); return end
 	if not P or P.id == 0 then UI.toast("Dieser Pass ist noch nicht eingerichtet (Pass-ID fehlt)", 2.5); return end
 	MarketplaceService:PromptGamePassPurchase(player, P.id)
 end
@@ -3331,10 +3631,12 @@ function UI.buildOverlays(base)
 	UI.announce = label({ Text = "", Font = DISPLAY, Size = UDim2.fromOffset(900, 110), Position = UDim2.fromScale(0.5, 0.3), AnchorPoint = Vector2.new(0.5, 0.5), Max = 96, TextStrokeTransparency = 0, Visible = false, ZIndex = 20, Parent = base })
 	UI.annScale = make("UIScale", { Parent = UI.announce })
 	UI.toastLabel = make("TextLabel", { Text = "", Font = DISPLAY, TextColor3 = INK, BackgroundColor3 = PAPER, Size = UDim2.fromOffset(560, 44), Position = UDim2.fromScale(0.5, 0.17), AnchorPoint = Vector2.new(0.5, 0.5), TextScaled = true, Visible = false, ZIndex = 21, Parent = base }, { corner(22), pad(8), make("UITextSizeConstraint", { MaxTextSize = 20 }) })
-	UI.endPanel = make("Frame", { BackgroundColor3 = GLASS, BackgroundTransparency = 0.05, Size = UDim2.fromOffset(480, 380), Position = UDim2.fromScale(0.5, 0.48), AnchorPoint = Vector2.new(0.5, 0.5), Visible = false, ZIndex = 15, Parent = base }, { corner(20), stroke(nil, 1, 0.8) })
+	UI.endPanel = make("Frame", { BackgroundColor3 = GLASS, BackgroundTransparency = 0.05, Size = UDim2.fromOffset(480, 430), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), Visible = false, ZIndex = 15, Parent = base }, { corner(20), stroke(nil, 1, 0.8) })
 	UI.againBtn = button({ Text = "NOCHMAL  ▶", BackgroundColor3 = GOLD, TextColor3 = INK, Size = UDim2.new(1, -40, 0, 58), Position = UDim2.fromOffset(20, 236), Font = DISPLAY, Max = 28, ZIndex = 16, Parent = UI.endPanel })
 	UI.toMenuBtn = button({ Text = "ZUM MENÜ  (Shop · Waffen · Modus)", BackgroundColor3 = PAPER, TextColor3 = INK, Size = UDim2.new(1, -40, 0, 50), Position = UDim2.fromOffset(20, 302), Font = DISPLAY, Max = 20, ZIndex = 16, Parent = UI.endPanel })
 	UI.againBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("again"); UI.againPressed = true end)
+	local inv2 = button({ Text = "FREUNDE EINLADEN", BackgroundColor3 = Color3.fromRGB(0, 120, 220), Size = UDim2.new(1, -40, 0, 40), Position = UDim2.fromOffset(20, 362), Font = DISPLAY, Max = 18, ZIndex = 16, Parent = UI.endPanel })
+	inv2.MouseButton1Click:Connect(function() UI.invite() end)
 	UI.toMenuBtn.MouseButton1Click:Connect(function() UI.Action:FireServer("menu"); UI.menuForced = false; UI.setTab("play") end)
 	UI.endTitle = label({ Text = "SIEG!", Font = DISPLAY, Size = UDim2.new(1, -20, 0, 80), Position = UDim2.fromOffset(10, 16), Max = 72, ZIndex = 16, Parent = UI.endPanel })
 	UI.endSub = label({ Text = "", TextColor3 = MUTE, Size = UDim2.new(1, -20, 0, 26), Position = UDim2.fromOffset(10, 100), Max = 18, ZIndex = 16, Parent = UI.endPanel })
@@ -3343,13 +3645,52 @@ function UI.buildOverlays(base)
 	UI.waveLabel = label({ Text = "", Font = DISPLAY, TextColor3 = Color3.fromRGB(255, 140, 90), Size = UDim2.fromOffset(300, 30), Position = UDim2.new(0.5, 0, 0, 84), AnchorPoint = Vector2.new(0.5, 0), Max = 26, TextStrokeTransparency = 0.3, Parent = UI.hud })
 end
 
+function UI.invite()
+	local ok, can = pcall(function() return SocialService:CanSendGameInviteAsync(player) end)
+	if ok and can then pcall(function() SocialService:PromptGameInvite(player) end)
+	else UI.toast("Einladen ist gerade nicht möglich", 2) end
+end
+
+function UI.buildExtras(base)
+	-- Gegnersuche
+	UI.searchPanel = make("Frame", { BackgroundColor3 = GLASS, BackgroundTransparency = 0.05, Size = UDim2.fromOffset(520, 230), Position = UDim2.fromScale(0.5, 0.42), AnchorPoint = Vector2.new(0.5, 0.5), Visible = false, ZIndex = 14, Parent = base }, { corner(20), stroke(GREEN, 2, 0.3) })
+	UI.searchTitle = label({ Text = "SUCHE GEGNER …", Font = DISPLAY, TextColor3 = GREEN, Size = UDim2.new(1, -20, 0, 50), Position = UDim2.fromOffset(10, 12), Max = 40, ZIndex = 15, Parent = UI.searchPanel })
+	UI.searchInfo = label({ Text = "", TextColor3 = MUTE, Size = UDim2.new(1, -30, 0, 40), Position = UDim2.fromOffset(15, 66), Max = 16, TextWrapped = true, ZIndex = 15, Parent = UI.searchPanel })
+	local b1 = button({ Text = "Jetzt gegen Computer", BackgroundColor3 = Color3.fromRGB(70, 72, 84), Size = UDim2.new(0.5, -25, 0, 52), Position = UDim2.new(0, 20, 1, -72), Font = DISPLAY, Max = 18, ZIndex = 15, Parent = UI.searchPanel })
+	local b2 = button({ Text = "FREUNDE EINLADEN", BackgroundColor3 = Color3.fromRGB(0, 120, 220), Size = UDim2.new(0.5, -25, 0, 52), Position = UDim2.new(0.5, 5, 1, -72), Font = DISPLAY, Max = 18, ZIndex = 15, Parent = UI.searchPanel })
+	b1.MouseButton1Click:Connect(function() UI.Action:FireServer("training") end)
+	b2.MouseButton1Click:Connect(function() UI.invite() end)
+	-- Tägliche Belohnung
+	UI.dailyPanel = make("Frame", { BackgroundColor3 = Color3.fromRGB(60, 40, 0), Size = UDim2.fromOffset(420, 260), Position = UDim2.fromScale(0.5, 0.45), AnchorPoint = Vector2.new(0.5, 0.5), Visible = false, ZIndex = 30, Parent = base }, { corner(22), stroke(GOLD, 3, 0) })
+	make("UIGradient", { Rotation = 90, Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(150, 90, 10)), Parent = UI.dailyPanel })
+	label({ Text = "TÄGLICHE BELOHNUNG", Font = DISPLAY, Size = UDim2.new(1, -20, 0, 40), Position = UDim2.fromOffset(10, 14), Max = 30, TextStrokeTransparency = 0.3, ZIndex = 31, Parent = UI.dailyPanel })
+	UI.dailyStreak = label({ Text = "", Size = UDim2.new(1, -20, 0, 24), Position = UDim2.fromOffset(10, 60), Max = 18, TextStrokeTransparency = 0.5, ZIndex = 31, Parent = UI.dailyPanel })
+	UI.dailyCoins = label({ Text = "", Font = DISPLAY, TextColor3 = PAPER, Size = UDim2.new(1, -20, 0, 60), Position = UDim2.fromOffset(10, 94), Max = 52, TextStrokeTransparency = 0.2, ZIndex = 31, Parent = UI.dailyPanel })
+	local claim = button({ Text = "ABHOLEN", BackgroundColor3 = Color3.fromRGB(40, 200, 90), Size = UDim2.new(1, -60, 0, 54), Position = UDim2.new(0, 30, 1, -72), Font = DISPLAY, Max = 28, ZIndex = 31, Parent = UI.dailyPanel })
+	claim.MouseButton1Click:Connect(function() UI.dailyPanel.Visible = false end)
+	-- Hügel-Punkte
+	UI.hillFrame = make("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(420, 44), Position = UDim2.new(0.5, 0, 0, 118), AnchorPoint = Vector2.new(0.5, 0), Visible = false, Parent = UI.hud })
+	label({ Text = "HÜGEL", Font = DISPLAY, TextColor3 = GOLD, Size = UDim2.new(1, 0, 0, 16), Max = 16, TextStrokeTransparency = 0.3, Parent = UI.hillFrame })
+	UI.hillBars = {}
+	for s = 1, 2 do
+		local bg = make("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.4, Size = UDim2.new(0.5, -4, 0, 16), Position = UDim2.new(s == 1 and 0 or 0.5, s == 1 and 0 or 4, 0, 22), Parent = UI.hillFrame }, { corner(8) })
+		UI.hillBars[s] = make("Frame", { BackgroundColor3 = s == 1 and Color3.fromRGB(30, 30, 36) or PAPER, Size = UDim2.fromScale(0, 1), AnchorPoint = Vector2.new(s == 1 and 1 or 0, 0), Position = UDim2.fromScale(s == 1 and 1 or 0, 0), Parent = bg }, { corner(8), stroke(GOLD, 1, 0.4) })
+	end
+end
+
+function UI.showDaily(r)
+	UI.dailyStreak.Text = T("Tag %d in Folge!", r.streak)
+	UI.dailyCoins.Text = "+" .. r.coins .. " 🪙"
+	UI.dailyPanel.Visible = true
+end
+
 local annToken = 0
 function UI.say(text, cls)
 	annToken = annToken + 1
 	local my = annToken
 	local a = UI.announce
 	local colors = { ok = GOLD, boss = Color3.fromRGB(255, 61, 61), kill = Color3.fromRGB(255, 90, 90), warn = Color3.fromRGB(255, 179, 71), rage = Color3.fromRGB(255, 106, 60), count = PAPER }
-	a.Text = text
+	a.Text = Lang.say(text)
 	a.TextColor3 = colors[cls] or PAPER
 	a.Visible = true
 	a.Rotation = cls == "count" and 0 or -3
@@ -3368,7 +3709,7 @@ local toastToken = 0
 function UI.toast(msg, t)
 	toastToken = toastToken + 1
 	local my = toastToken
-	UI.toastLabel.Text = msg
+	UI.toastLabel.Text = T(msg)
 	UI.toastLabel.Visible = true
 	task.delay(t or 2, function() if my == toastToken then UI.toastLabel.Visible = false end end)
 end
@@ -3387,7 +3728,7 @@ function UI.refreshData(force)
 	local d = UI.data()
 	if not d then return end
 	local viewSide = side == 0 and 1 or side
-	UI.coinLabel.Text = d.coins .. " Münzen"
+	UI.coinLabel.Text = T("%d Münzen", d.coins)
 	-- Team-Karten
 	for s = 1, 2 do
 		local tb = UI.teamBtns[s]
@@ -3408,12 +3749,12 @@ function UI.refreshData(force)
 		local eq = d.helmet == id
 		it.stroke.Transparency = eq and 0 or 1
 		if it.rbtn then it.rbtn.Visible = not owned end
-		if eq then it.btn.Text = "Ausgerüstet"; it.btn.BackgroundColor3 = Color3.fromRGB(58, 58, 64); it.btn.TextColor3 = MUTE
-		elseif owned then it.btn.Text = "Anziehen"; it.btn.BackgroundColor3 = PAPER; it.btn.TextColor3 = INK
+		if eq then it.btn.Text = T("Ausgerüstet"); it.btn.BackgroundColor3 = Color3.fromRGB(58, 58, 64); it.btn.TextColor3 = MUTE
+		elseif owned then it.btn.Text = T("Anziehen"); it.btn.BackgroundColor3 = PAPER; it.btn.TextColor3 = INK
 		elseif it.def.pass then
-			it.btn.Text = "Mit VIP-Pass"; it.btn.BackgroundColor3 = Color3.fromRGB(0, 150, 70); it.btn.TextColor3 = PAPER
+			it.btn.Text = T("Mit VIP-Pass"); it.btn.BackgroundColor3 = Color3.fromRGB(0, 150, 70); it.btn.TextColor3 = PAPER
 		else
-			it.btn.Text = it.def.price .. " Münzen"
+			it.btn.Text = T("%d Münzen", it.def.price)
 			local can = d.coins >= it.def.price
 			it.btn.BackgroundColor3 = can and GOLD or Color3.fromRGB(58, 58, 64)
 			it.btn.TextColor3 = can and INK or MUTE
@@ -3433,7 +3774,7 @@ function UI.refreshData(force)
 		local lv, max, cost, title
 		if r.kind == "upgrade" then
 			lv = d.wlv[key]; max = 5; cost = Config.UPGRADE_COST[lv]
-			title = Config.UNITS[key].name .. "  ·  " .. Config.TIERS[lv].name
+			title = T(Config.UNITS[key].name) .. "  ·  " .. T(Config.TIERS[lv].name)
 			pips(r.pips, lv, 5, tierCols)
 			if not r.hasPreview or r.previewTier ~= lv or r.previewSide ~= viewSide or r.previewHelmet ~= d.helmet then
 				for _, c in ipairs(r.holder:GetChildren()) do if c:IsA("ViewportFrame") then c:Destroy() end end
@@ -3442,7 +3783,7 @@ function UI.refreshData(force)
 			end
 		elseif r.kind == "abilityUp" then
 			lv = d.ab[key]; max = 3; cost = Config.ABILITY_COST[lv]
-			title = Config.ABILITIES[key].name .. "  ·  Stufe " .. lv
+			title = T(Config.ABILITIES[key].name) .. "  ·  " .. T("Stufe %d", lv)
 			pips(r.pips, lv, 3, Color3.fromRGB(255, 106, 60))
 			if not r.hasPreview then
 				label({ Text = Config.ABILITIES[key].icon, Font = DISPLAY, Size = UDim2.fromScale(1, 1), Max = 40, Parent = r.holder })
@@ -3452,7 +3793,7 @@ function UI.refreshData(force)
 			local x
 			for _, e in ipairs(Config.EXTRAS) do if e.id == key then x = e end end
 			lv = d[key]; max = x.max; cost = Config.extraCost(x, lv)
-			title = x.name .. "  ·  Stufe " .. lv
+			title = T(x.name) .. "  ·  " .. T("Stufe %d", lv)
 			pips(r.pips, lv, max, GOLD)
 			if not r.hasPreview then
 				label({ Text = key == "armor" and "🛡" or (key == "mine" and "⛏" or "🏰"), Size = UDim2.fromScale(1, 1), Max = 40, Parent = r.holder })
@@ -3463,8 +3804,8 @@ function UI.refreshData(force)
 		local maxed = lv >= max
 		local can = not maxed and d.coins >= cost
 		if maxed then r.btn.Text = "MAX"
-		elseif r.kind == "upgrade" then r.btn.Text = Config.TIERS[lv + 1].name .. " · " .. cost
-		else r.btn.Text = "Verbessern · " .. cost end
+		elseif r.kind == "upgrade" then r.btn.Text = T(Config.TIERS[lv + 1].name) .. " · " .. cost
+		else r.btn.Text = T("Verbessern · %d", cost) end
 		r.btn.BackgroundColor3 = can and GOLD or Color3.fromRGB(58, 58, 64)
 		r.btn.TextColor3 = can and INK or MUTE
 	end
@@ -3486,33 +3827,55 @@ function UI.update(view)
 	for i, ab in pairs(UI.arenaBtns) do ab.stroke.Transparency = (UI.myVote == i) and 0 or 1 end
 	for m, mb in pairs(UI.modeBtns) do mb.stroke.Transparency = ((UI.myMode or "classic") == m) and 0 or 1 end
 	for key, b in pairs(UI.passBtns) do
-		if player:GetAttribute("Pass_" .. key) then b.Text = "Gekauft ✓"; b.BackgroundColor3 = Color3.fromRGB(58, 58, 64) end
+		if player:GetAttribute("Pass_" .. key) then b.Text = T("Gekauft ✓"); b.BackgroundColor3 = Color3.fromRGB(58, 58, 64) end
 	end
 	for s = 1, 2 do
 		local ai = S:GetAttribute("AI" .. s)
 		local n = 0
 		for _, p in ipairs(Players:GetPlayers()) do if p:GetAttribute("Side") == s then n = n + 1 end end
-		UI.teamInfo[s].Text = n > 0 and (n .. " Spieler") or (ai == false and "" or "Computer")
+		UI.teamInfo[s].Text = n > 0 and (n .. " " .. T("Spieler")) or (ai == false and "" or T("Computer"))
 	end
 
 	local arenaIdx = S:GetAttribute("Arena") or 1
 	local mode = S:GetAttribute("Mode") or "classic"
-	UI.arenaLabel.Text = string.upper(Config.ARENAS[arenaIdx].name .. "  ·  " .. Config.MODES[mode].name)
+	UI.arenaLabel.Text = string.upper(T(Config.ARENAS[arenaIdx].name) .. "  ·  " .. T(Config.MODES[mode].name))
 	local wave = S:GetAttribute("Wave") or 0
-	UI.waveLabel.Text = (mode == "waves" and wave > 0) and ("WELLE " .. wave) or ""
+	UI.waveLabel.Text = (mode == "waves" and wave > 0) and T("WELLE %d", wave) or ""
 	for s = 1, 2 do
 		local hp, mx = S:GetAttribute("BaseHP" .. s) or 1, S:GetAttribute("BaseMax" .. s) or 1
 		local fill = s == 1 and UI.hp1 or UI.hp2
 		fill.Size = UDim2.fromScale(math.clamp(hp / math.max(mx, 1), 0, 1), 1)
 		local you = s == 1 and UI.you1 or UI.you2
-		you.Text = (side == s) and "DEIN TEAM" or (S:GetAttribute("AI" .. s) and "COMPUTER" or "")
+		you.Text = (side == s) and T("DEIN TEAM") or (S:GetAttribute("AI" .. s) and T("COMPUTER") or "")
+	end
+
+	-- Online, Bestenliste, Gegnersuche, Hügel
+	UI.onlineLabel.Text = #Players:GetPlayers() .. " " .. T("Spieler online")
+	local topRaw = S:GetAttribute("Top")
+	if topRaw and topRaw ~= UI.lastTop then
+		UI.lastTop = topRaw
+		local ok, list = pcall(function() return HttpService:JSONDecode(topRaw) end)
+		if ok and type(list) == "table" and #list > 0 then
+			local parts = {}
+			for i, e in ipairs(list) do table.insert(parts, i .. ". " .. tostring(e.n) .. "  " .. tostring(e.w)) end
+			UI.topLabel.Text = table.concat(parts, "   ·   ")
+		end
+	end
+	local sEnd = S:GetAttribute("SearchEnd") or 0
+	UI.searchPanel.Visible = side ~= 0 and phase == "lobby" and sEnd > now and not menuOpen
+	if UI.searchPanel.Visible then
+		UI.searchInfo.Text = T("Kommt niemand, startet der Kampf in %d s gegen den Computer.", math.max(0, math.ceil(sEnd - now)))
+	end
+	UI.hillFrame.Visible = mode == "hill" and (phase == "battle" or phase == "countdown")
+	if UI.hillFrame.Visible then
+		for s2 = 1, 2 do UI.hillBars[s2].Size = UDim2.fromScale(math.clamp((S:GetAttribute("Hill" .. s2) or 0) / 100, 0, 1), 1) end
 	end
 
 	-- Phase
 	local pend = S:GetAttribute("PhaseEnd") or 0
 	if phase == "countdown" then
 		local n = math.max(0, math.ceil(pend - now))
-		UI.phaseLabel.Text = "GLEICH GEHT'S LOS"
+		UI.phaseLabel.Text = T("GLEICH GEHT'S LOS")
 		if n ~= lastCount and side ~= 0 then
 			lastCount = n
 			if n > 0 then UI.say(tostring(n), "count") end
@@ -3520,11 +3883,11 @@ function UI.update(view)
 	elseif phase == "battle" then
 		if lastCount ~= nil and lastCount <= 1 and side ~= 0 then UI.say("KAMPF!", "ok") end
 		lastCount = nil
-		UI.phaseLabel.Text = "KAMPF"
+		UI.phaseLabel.Text = T("KAMPF")
 	elseif phase == "end" then
-		UI.phaseLabel.Text = "RUNDE VORBEI"
+		UI.phaseLabel.Text = T("RUNDE VORBEI")
 	else
-		UI.phaseLabel.Text = "WARTEN"
+		UI.phaseLabel.Text = T("WARTEN")
 	end
 
 	-- Ende
@@ -3534,23 +3897,24 @@ function UI.update(view)
 		local winner = S:GetAttribute("Winner") or 0
 		local won = winner == side
 		if mode == "waves" then
-			UI.endTitle.Text = "WELLE " .. wave
+			UI.endTitle.Text = T("WELLE %d", wave)
 			UI.endTitle.TextColor3 = Color3.fromRGB(255, 140, 90)
-			UI.endSub.Text = "So lange habt ihr durchgehalten!"
+			UI.endSub.Text = T("So lange habt ihr durchgehalten!")
 		else
-			UI.endTitle.Text = won and "SIEG!" or "NIEDERLAGE"
+			UI.endTitle.Text = T(won and "SIEG!" or "NIEDERLAGE")
 			UI.endTitle.TextColor3 = won and GOLD or RED
-			UI.endSub.Text = won and ("Das " .. Config.SIDES[3 - side].name .. "-Pigment ist zerflossen.") or ("Das " .. Config.SIDES[3 - side].name .. "-Pigment hat gewonnen.")
+			local en = T(Config.SIDES[3 - side].name)
+			UI.endSub.Text = won and T("Das %s-Pigment ist zerflossen.", en) or T("Das %s-Pigment hat gewonnen.", en)
 		end
 		local r = UI.reward
-		UI.endCoins.Text = r and ("+" .. r.coins .. " Münzen  ·  " .. r.kills .. " besiegt" .. (r.vip and "  ·  VIP x2" or "")) or ""
+		UI.endCoins.Text = r and (T("+%d Münzen  ·  %d besiegt", r.coins, r.kills) .. (r.vip and "  ·  VIP x2" or "")) or ""
 		local left = math.max(0, math.ceil(pend - now))
 		if UI.againPressed then
-			UI.endNext.Text = "Warte auf die anderen Spieler … (" .. left .. " s)"
-			UI.againBtn.Text = "BEREIT ✓"
+			UI.endNext.Text = T("Warte auf die anderen Spieler … (%d s)", left)
+			UI.againBtn.Text = T("BEREIT ✓")
 		else
-			UI.endNext.Text = "Ohne Auswahl geht es in " .. left .. " s zurück ins Menü"
-			UI.againBtn.Text = "NOCHMAL  ▶"
+			UI.endNext.Text = T("Ohne Auswahl geht es in %d s zurück ins Menü", left)
+			UI.againBtn.Text = T("NOCHMAL  ▶")
 		end
 	else
 		UI.reward = (phase == "end") and UI.reward or nil
@@ -3559,9 +3923,9 @@ function UI.update(view)
 
 	if side == 0 then return end
 	local gold = S:GetAttribute("Gold" .. side) or 0
-	UI.goldLabel.Text = "GOLD " .. gold .. "    ☠ " .. (S:GetAttribute("Kills" .. side) or 0)
+	UI.goldLabel.Text = T("GOLD") .. " " .. gold .. "    ☠ " .. (S:GetAttribute("Kills" .. side) or 0)
 	local rage = S:GetAttribute("Rage" .. side) or 0
-	UI.rageLabel.Text = rage > 0 and string.format("KRIEGSSCHREI %.1f s", rage) or ""
+	UI.rageLabel.Text = rage > 0 and T("KRIEGSSCHREI %.1f s", rage) or ""
 	local cmd = S:GetAttribute("Cmd" .. side) or "attack"
 	UI.cmdAtk.BackgroundColor3 = cmd == "attack" and PAPER or GLASS
 	UI.cmdAtk.TextColor3 = cmd == "attack" and INK or PAPER

@@ -24,6 +24,10 @@ function Core.new(Config, arenaIdx, fx, mode)
 	self.waveQueue = {}
 	self.waveSpawnT = 0
 	self.bossT = { 50, 50 }
+	self.hill = { 0, 0 }
+	self.hillOwner = 0
+	self.HILL_X = Config.WORLD_W / 2
+	self.HILL_R = 170
 	self.C = Config
 	self.W = Config.WORLD_W
 	self.arenaIdx = arenaIdx
@@ -77,6 +81,10 @@ function Core:configureSide(side, opts)
 	end
 	if self.mode == "turbo" then self.income[side] = self.income[side] * 2.2 end
 	if self.mode == "boss" and opts.ai then self.income[side] = self.income[side] * 0.6 end
+	if self.mode == "sudden" then
+		b.maxHp = b.maxHp * 0.35
+		self.gold[side] = 350
+	end
 	if self.mode == "waves" and side == 2 then
 		-- Wellen statt normaler KI, Burg unzerstörbar
 		self.ai[2].on = false
@@ -248,6 +256,7 @@ function Core:update(dt)
 			end
 		end
 		if self.mode == "waves" then self:updateWaves(dt) end
+		if self.mode == "hill" then self:updateHill(dt) end
 	end
 	for _, u in ipairs(self.units) do
 		if not u.dead then self:updateUnit(u, dt) end
@@ -291,6 +300,24 @@ function Core:updateWaves(dt)
 	elseif #self.waveQueue == 0 and self.waveBoss then
 		self.waveBoss = false
 		self:spawnBoss(2)
+	end
+end
+
+------------------------------------------------------------------ Hügel-König
+function Core:updateHill(dt)
+	local c = { 0, 0 }
+	for _, u in ipairs(self.units) do
+		if not u.dead and math.abs(u.x - self.HILL_X) < self.HILL_R then c[u.side] = c[u.side] + 1 end
+	end
+	local owner = 0
+	if c[1] > 0 and c[2] == 0 then owner = 1 elseif c[2] > 0 and c[1] == 0 then owner = 2 end
+	if owner ~= 0 then
+		self.hill[owner] = self.hill[owner] + dt * (1.2 + 0.12 * math.min(c[owner], 10))
+		if self.hill[owner] >= 100 then self.hill[owner] = 100; self:finish(owner); return end
+	end
+	if owner ~= self.hillOwner then
+		self.hillOwner = owner
+		if owner ~= 0 then self.fx("announce", { text = "HÜGEL EROBERT!", cls = "warn", side = owner }) end
 	end
 end
 
@@ -522,6 +549,7 @@ end
 function Core:damage(e, amount, src, heavy, proj)
 	if e.dead then return end
 	amount = amount * rand(0.88, 1.12)
+	if self.mode == "sudden" then amount = amount * 1.5 end
 	if src and src.side and self.rage[src.side] > 0 then amount = amount * 1.4 end
 	local dir = -e.dir
 	if src and src.x then dir = (e.x >= src.x) and 1 or -1 end

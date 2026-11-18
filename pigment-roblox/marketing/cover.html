@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pigment Clash Cover</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Bungee&display=swap">
+<style>
+  html, body { margin: 0; background: #000; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<!-- Zeichenfunktionen der Web-Version (drawStick, poseFor, TEAM, TIERS ...). Das Ende der Datei bricht ab, weil es hier kein Spielfeld gibt; die Funktionen sind dann schon da. -->
+<script src="../../pigment-battle/game.js"></script>
+<script>
+window.addEventListener('error', e => e.preventDefault());
+const params = new URLSearchParams(location.search);
+const MODE = params.get('mode') || 'thumb';
+const W = MODE === 'icon' ? 512 : 1920, H = MODE === 'icon' ? 512 : 1080;
+const cv = document.getElementById('c'); cv.width = W; cv.height = H;
+const g = cv.getContext('2d');
+const R = mulberry(7);
+const rr = (a, b) => a + R() * (b - a);
+
+function unit(type, color, dir, scale, opts = {}) {
+  return Object.assign({ type, def: UNITS[type], dir, color, scale, tier: 4, helmet: 'none', flash: 0, hurt: 0, phase: 0, seed: 3,
+    state: 'idle', moving: false, combo: 0, atkT: 0, blockT: 0, cheer: 0, healGlow: 0, rage: false }, opts);
+}
+function stick(u, x, y) { drawStick(g, x, y, u, poseFor(u, 0.4), 0.4); }
+
+function splatter(cx, cy, r, color, n) {
+  g.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU, d = Math.pow(R(), 0.6) * r, s = rr(2, r * 0.09);
+    g.beginPath(); g.ellipse(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.8, s * rr(1, 2.2), s, a, 0, TAU); g.fill();
+  }
+  g.beginPath(); g.arc(cx, cy, r * 0.32, 0, TAU); g.fill();
+  for (let i = 0; i < 14; i++) {
+    const a = R() * TAU, len = r * rr(0.4, 1.1);
+    g.lineWidth = rr(3, r * 0.06); g.strokeStyle = color; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * len, cy + Math.sin(a) * len); g.stroke();
+  }
+}
+
+function background() {
+  // diagonal geteilte Leinwand mit ausgefranster Farbkante
+  g.fillStyle = '#0b0b10'; g.fillRect(0, 0, W, H);
+  g.save();
+  g.beginPath();
+  const pts = 60;
+  g.moveTo(W * 0.62, -10);
+  for (let i = 0; i <= pts; i++) {
+    const t = i / pts;
+    const x = W * (0.62 - 0.26 * t) + Math.sin(t * 37) * W * 0.012 + (R() - 0.5) * W * 0.02;
+    g.lineTo(x, t * (H + 20));
+  }
+  g.lineTo(W + 10, H + 10); g.lineTo(W + 10, -10); g.closePath();
+  const lg = g.createLinearGradient(W * 0.4, 0, W, H);
+  lg.addColorStop(0, '#ffffff'); lg.addColorStop(1, '#d9d9d2');
+  g.fillStyle = lg; g.fill();
+  g.restore();
+  // Tinte
+  for (let i = 0; i < (MODE === 'icon' ? 5 : 9); i++) splatter(rr(0, W * 0.4), rr(0, H), rr(W * 0.03, W * 0.08), 'rgba(255,255,255,0.10)', 30);
+  for (let i = 0; i < (MODE === 'icon' ? 5 : 9); i++) splatter(rr(W * 0.62, W), rr(0, H), rr(W * 0.03, W * 0.08), 'rgba(0,0,0,0.10)', 30);
+  // Lichtstrahlen aus der Mitte
+  const cx = W * 0.5, cy = H * (MODE === 'icon' ? 0.6 : 0.56);
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 18; i++) {
+    const a = i / 18 * TAU + 0.1;
+    g.fillStyle = i % 2 ? 'rgba(255,170,40,0.10)' : 'rgba(255,60,220,0.08)';
+    g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, W * 1.2, a, a + 0.12); g.closePath(); g.fill();
+  }
+  const rg = g.createRadialGradient(cx, cy, 0, cx, cy, W * 0.28);
+  rg.addColorStop(0, 'rgba(255,240,200,0.95)'); rg.addColorStop(0.15, 'rgba(255,170,60,0.6)'); rg.addColorStop(1, 'rgba(255,60,200,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, W, H);
+  g.restore();
+  return { cx, cy };
+}
+
+function sparks(cx, cy, n, r) {
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU, d = rr(r * 0.1, r);
+    g.strokeStyle = R() < 0.5 ? 'rgba(255,230,140,0.9)' : 'rgba(255,120,240,0.85)';
+    g.lineWidth = rr(1.5, 4); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * d * 0.3, cy + Math.sin(a) * d * 0.3); g.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); g.stroke();
+  }
+  g.restore();
+}
+
+function inkFlying(cx, cy, color, dir, n, spread) {
+  g.fillStyle = color;
+  for (let i = 0; i < n; i++) {
+    const x = cx + dir * rr(0, spread), y = cy + rr(-spread * 0.4, spread * 0.3), s = rr(3, 11) * (W / 1920) * 1.4;
+    g.beginPath(); g.ellipse(x, y, s * 1.8, s, rr(-0.5, 0.5), 0, TAU); g.fill();
+  }
+}
+
+function title(x, y, size) {
+  g.save();
+  g.translate(x, y); g.rotate(-0.045);
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  g.font = `${size}px "Luckiest Guy", Impact, sans-serif`;
+  const words = [['PIGMENT', '#ffffff', '#c9c9c9'], ['CLASH', '#ffe14a', '#ff8a00']];
+  const w1 = g.measureText('PIGMENT ').width, w2 = g.measureText('CLASH').width;
+  let px = -(w1 + w2) / 2;
+  for (const [i, [word, c1, c2]] of words.entries()) {
+    const ww = g.measureText(word).width;
+    const wx = px + ww / 2;
+    // 3D-Tiefe
+    for (let d = Math.round(size * 0.09); d > 0; d--) { g.fillStyle = '#000'; g.fillText(word, wx + d * 0.5, d); }
+    g.lineJoin = 'round';
+    g.lineWidth = size * 0.16; g.strokeStyle = '#000'; g.strokeText(word, wx, 0);
+    const gr = g.createLinearGradient(0, -size * 0.8, 0, 0);
+    gr.addColorStop(0, c1); gr.addColorStop(1, c2);
+    g.fillStyle = gr; g.fillText(word, wx, 0);
+    g.globalAlpha = 0.35; g.fillStyle = '#fff'; g.save(); g.beginPath(); g.rect(wx - ww, -size * 0.85, ww * 2, size * 0.3); g.clip(); g.fillText(word, wx, 0); g.restore(); g.globalAlpha = 1;
+    px += (i === 0 ? w1 : 0);
+  }
+  g.restore();
+}
+
+function ribbon(x, y, w, h, text, size) {
+  g.save(); g.translate(x, y); g.rotate(-0.045);
+  g.fillStyle = '#000'; g.fillRect(-w / 2 + 8, -h / 2 + 8, w, h);
+  const gr = g.createLinearGradient(-w / 2, 0, w / 2, 0);
+  gr.addColorStop(0, '#111'); gr.addColorStop(0.5, '#ff2d55'); gr.addColorStop(1, '#f5f5f5');
+  g.fillStyle = gr; g.fillRect(-w / 2, -h / 2, w, h);
+  g.lineWidth = 6; g.strokeStyle = '#000'; g.strokeRect(-w / 2, -h / 2, w, h);
+  g.font = `${size}px "Luckiest Guy", Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = size * 0.18; g.strokeStyle = '#000'; g.strokeText(text, 0, 4);
+  g.fillStyle = '#fff'; g.fillText(text, 0, 4);
+  g.restore();
+}
+
+function sticker(x, y, r, text, bg, size) {
+  g.save(); g.translate(x, y); g.rotate(0.18);
+  g.beginPath();
+  for (let i = 0; i < 24; i++) { const a = i / 24 * TAU, rad = i % 2 ? r * 0.82 : r; g.lineTo(Math.cos(a) * rad, Math.sin(a) * rad); }
+  g.closePath(); g.fillStyle = bg; g.fill(); g.lineWidth = 6; g.strokeStyle = '#000'; g.stroke();
+  g.font = `${size}px "Luckiest Guy", Impact, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = size * 0.2; g.strokeStyle = '#000'; g.strokeText(text, 0, 4); g.fillStyle = '#fff'; g.fillText(text, 0, 4);
+  g.restore();
+}
+
+function groundShadow(x, y, w) {
+  g.fillStyle = 'rgba(0,0,0,0.28)'; g.beginPath(); g.ellipse(x, y + 4, w, w * 0.12, 0, 0, TAU); g.fill();
+}
+
+function drawThumb() {
+  const { cx, cy } = background();
+  const S = 1;
+  // hinten: Titanen
+  const bt = unit('giant', 'black', 1, 5.6, { state: 'attack', atkT: 0.4, tier: 4, helmet: 'viking' });
+  const wt = unit('giant', 'white', -1, 5.6, { state: 'attack', atkT: 0.45, tier: 3, helmet: 'crown' });
+  groundShadow(330, 1010, 220); stick(bt, 330, 1010);
+  groundShadow(1600, 1010, 220); stick(wt, 1600, 1010);
+  // Mitte hinten: Bogen & Magier
+  const ba = unit('archer', 'black', 1, 3.2, { state: 'attack', atkT: 0.5, tier: 3, helmet: 'ninja' });
+  stick(ba, 560, 1040);
+  const wm = unit('mage', 'white', -1, 3.4, { state: 'attack', atkT: 0.5, tier: 4, helmet: 'sparta' });
+  stick(wm, 1390, 1040);
+  // Ninja im Salto
+  const bn = unit('ninja', 'black', 1, 3.0, { state: 'attack', atkT: 0.55, combo: 3, tier: 4 });
+  stick(bn, 700, 760);
+  // vorne: Hauptkampf in der Mitte
+  sparks(cx, cy - 40, 70, 260);
+  const bs = unit('sword', 'black', 1, 6.2, { state: 'attack', atkT: 0.5, tier: 4, helmet: 'knight' });
+  const ws = unit('spear', 'white', -1, 6.0, { state: 'attack', atkT: 0.56, tier: 3, helmet: 'knight' });
+  groundShadow(760, 1075, 160); stick(bs, 770, 1080);
+  groundShadow(1180, 1075, 160); stick(ws, 1160, 1080);
+  inkFlying(cx - 40, cy - 60, '#000', -1, 30, 360);
+  inkFlying(cx + 40, cy - 60, '#fff', 1, 30, 360);
+  sparks(cx, cy - 40, 50, 160);
+  // Titel
+  title(W / 2, 205, 190);
+  ribbon(W / 2, 300, 560, 74, 'BLACK  VS  WHITE', 50);
+  sticker(W - 170, 150, 115, 'PVP!', '#ff2d55', 64);
+  sticker(170, 160, 100, '6 MODES', '#2fb84f', 34);
+}
+
+function drawIcon() {
+  const { cx, cy } = background();
+  const bs = unit('sword', 'black', 1, 3.0, { state: 'attack', atkT: 0.5, tier: 4, helmet: 'knight' });
+  const ws = unit('sword', 'white', -1, 3.0, { state: 'attack', atkT: 0.53, tier: 3, helmet: 'crown' });
+  sparks(cx, cy, 50, 160);
+  stick(bs, 170, 540);
+  stick(ws, 345, 540);
+  inkFlying(cx - 20, cy - 30, '#000', -1, 16, 150);
+  inkFlying(cx + 20, cy - 30, '#fff', 1, 16, 150);
+  sparks(cx, cy - 20, 30, 90);
+  word('PIGMENT', W / 2, 92, 78, '#ffffff', '#c9c9c9');
+  word('CLASH', W / 2, 176, 92, '#ffe14a', '#ff8a00');
+}
+
+function word(text, x, y, size, c1, c2) {
+  g.save(); g.translate(x, y); g.rotate(-0.05);
+  g.textAlign = 'center'; g.font = `${size}px "Luckiest Guy", Impact, sans-serif`;
+  for (let d = Math.round(size * 0.09); d > 0; d--) { g.fillStyle = '#000'; g.fillText(text, d * 0.5, d); }
+  g.lineJoin = 'round'; g.lineWidth = size * 0.18; g.strokeStyle = '#000'; g.strokeText(text, 0, 0);
+  const gr = g.createLinearGradient(0, -size * 0.8, 0, 0); gr.addColorStop(0, c1); gr.addColorStop(1, c2);
+  g.fillStyle = gr; g.fillText(text, 0, 0);
+  g.restore();
+}
+
+document.fonts.load('100px "Luckiest Guy"').finally(() => {
+  if (MODE === 'icon') drawIcon(); else drawThumb();
+  document.body.dataset.done = '1';
+});
+</script>
+</body>
+</html>

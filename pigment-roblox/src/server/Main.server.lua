@@ -3,6 +3,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
 
 Players.CharacterAutoLoads = false
 
@@ -29,6 +31,7 @@ local phase = "lobby"
 local phaseEnd = 0
 local arenaIdx = 1
 local mode = "classic"
+local searchEnd = nil
 local unitInst = {}   -- id -> Configuration
 local fxQueue = {}
 local lastSent = {}   -- id -> {x, hp, moving, dir}
@@ -175,6 +178,8 @@ local function startRound()
 		end
 	end
 	for _, p in ipairs(Players:GetPlayers()) do p:SetAttribute("Ready", false) end
+	searchEnd = nil
+	State:SetAttribute("SearchEnd", 0)
 	State:SetAttribute("Arena", arenaIdx)
 	State:SetAttribute("Mode", mode)
 	State:SetAttribute("Wave", 0)
@@ -186,6 +191,50 @@ local function startRound()
 	setPhase("countdown", 4)
 	table.insert(fxQueue, { "round", arenaIdx })
 end
+
+-- Ranglisten -------------------------------------------------------------
+local winsStore = nil
+pcall(function() winsStore = DataStoreService:GetOrderedDataStore("PK_Wins_v1") end)
+local nameCache = {}
+
+local function updateLeaderstats(player)
+	local d = Data.get(player)
+	if not d then return end
+	local ls = player:FindFirstChild("leaderstats")
+	if not ls then
+		ls = Instance.new("Folder")
+		ls.Name = "leaderstats"
+		local w = Instance.new("IntValue"); w.Name = "Wins"; w.Parent = ls
+		local k = Instance.new("IntValue"); k.Name = "Kills"; k.Parent = ls
+		ls.Parent = player
+	end
+	ls.Wins.Value = d.wins
+	ls.Kills.Value = d.kills
+end
+
+local function refreshTop()
+	if not winsStore then return end
+	local ok, pages = pcall(function() return winsStore:GetSortedAsync(false, 10) end)
+	if not ok or not pages then return end
+	local list = {}
+	for _, e in ipairs(pages:GetCurrentPage()) do
+		local id = tonumber(e.key)
+		local name = id and nameCache[id]
+		if id and not name then
+			local okN, n = pcall(function() return Players:GetNameFromUserIdAsync(id) end)
+			name = okN and n or ("#" .. tostring(id))
+			nameCache[id] = name
+		end
+		table.insert(list, { n = name or "?", w = e.value })
+	end
+	State:SetAttribute("Top", HttpService:JSONEncode(list))
+end
+task.spawn(function()
+	while true do
+		refreshTop()
+		task.wait(60)
+	end
+end)
 
 local function endRound(winner)
 	State:SetAttribute("Winner", winner)
@@ -207,6 +256,11 @@ local function endRound(winner)
 			local vip = p:GetAttribute("Pass_vip") == true
 			if vip then coins = coins * 2 end
 			Data.reward(p, coins, won, kills)
+			updateLeaderstats(p)
+			if won and winsStore then
+				local dd = Data.get(p)
+				task.spawn(function() pcall(function() winsStore:SetAsync(tostring(p.UserId), dd.wins) end) end)
+			end
 			FxEvent:FireClient(p, { { "reward", { coins = coins, won = won, kills = kills, wave = battle.wave, vip = vip } } })
 		end
 	end
@@ -227,15 +281,32 @@ Action.OnServerEvent:Connect(function(player, kind, a, b)
 	if not d then return end
 	local side = sideOf(player)
 
-	if kind == "side" and (a == 1 or a == 2) then
-		if mode == "waves" and battle and not battle.over then a = 1 end
-		player:SetAttribute("Side", a)
+	local function joinSide(s)
+		if mode == "waves" and battle and not battle.over and phase ~= "end" then s = 1 end
+		player:SetAttribute("Side", s)
 		player:SetAttribute("Ready", false)
-		if battle and not battle.over then
-			local o = sideOpts(a)
-			battle:setControl(a, false)
-			battle.abLv[a] = o.ab
+		if battle and not battle.over and (phase == "battle" or phase == "countdown") then
+			local wasAI = battle.ai[s].on
+			local o = sideOpts(s)
+			battle:setControl(s, false)
+			battle.abLv[s] = o.ab
+			if wasAI and #playersOn(3 - s) > 0 then
+				table.insert(fxQueue, { "announce", { text = "EIN GEGNER IST BEIGETRETEN!", cls = "boss" } })
+			end
 		end
+	end
+	if kind == "side" and (a == 1 or a == 2) then
+		player:SetAttribute("Training", false)
+		joinSide(a)
+	elseif kind == "play" then
+		-- Schnelles Spiel: ins Team mit weniger Spielern
+		player:SetAttribute("Training", false)
+		local n1, n2 = #playersOn(1), #playersOn(2)
+		if sideOf(player) == 1 then n1 = n1 - 1 elseif sideOf(player) == 2 then n2 = n2 - 1 end
+		joinSide(n2 < n1 and 2 or 1)
+	elseif kind == "training" then
+		player:SetAttribute("Training", true)
+		if sideOf(player) == 0 then joinSide(1) end
 	elseif kind == "vote" and Config.ARENAS[a] then
 		player:SetAttribute("Vote", a)
 	elseif kind == "modeVote" and type(a) == "string" and Config.MODES[a] then
@@ -301,10 +372,21 @@ MarketplaceService.ProcessReceipt = function(info)
 	return Enum.ProductPurchaseDecision.NotProcessedYet
 end
 
+local function welcome(player)
+	updateLeaderstats(player)
+	local r = Data.daily(player)
+	if r then
+		task.delay(4, function()
+			if player.Parent then FxEvent:FireClient(player, { { "daily", r } }) end
+		end)
+	end
+end
+
 Players.PlayerAdded:Connect(function(player)
 	player:SetAttribute("Side", 0)
 	Data.load(player)
 	checkPasses(player)
+	welcome(player)
 	if player.Character then player.Character:Destroy() end
 end)
 for _, p in ipairs(Players:GetPlayers()) do
@@ -312,6 +394,7 @@ for _, p in ipairs(Players:GetPlayers()) do
 		p:SetAttribute("Side", 0)
 		Data.load(p)
 		checkPasses(p)
+		welcome(p)
 	end)
 end
 Players.PlayerRemoving:Connect(function(player)
@@ -343,6 +426,8 @@ local function sync()
 		end
 	end
 	State:SetAttribute("BossId", battle.boss and battle.boss.id or 0)
+	State:SetAttribute("Hill1", math.floor(battle.hill[1]))
+	State:SetAttribute("Hill2", math.floor(battle.hill[2]))
 	for _, u in ipairs(battle.units) do
 		local c = unitInst[u.id]
 		local ls = lastSent[u.id]
@@ -365,7 +450,22 @@ RunService.Heartbeat:Connect(function(dt)
 	local anyPlayer = #playersOn(1) + #playersOn(2) > 0
 
 	if phase == "lobby" then
-		if anyPlayer then startRound() end
+		local h1, h2 = #playersOn(1), #playersOn(2)
+		local training = false
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p:GetAttribute("Training") and sideOf(p) ~= 0 then training = true end
+		end
+		if h1 + h2 == 0 then
+			if searchEnd then searchEnd = nil; State:SetAttribute("SearchEnd", 0) end
+		elseif (h1 > 0 and h2 > 0) or training or chooseMode() == "waves" then
+			startRound()
+		else
+			if not searchEnd then
+				searchEnd = now + Config.SEARCH_TIME
+				State:SetAttribute("SearchEnd", searchEnd)
+			end
+			if now >= searchEnd then startRound() end
+		end
 	elseif phase == "countdown" or phase == "battle" then
 		battle:update(dt)
 		if phase == "countdown" and now >= phaseEnd then setPhase("battle") end

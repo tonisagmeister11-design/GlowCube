@@ -21,6 +21,7 @@ return function(M, S, out, decode)
 	local pk = mk("Folder", "PK", RS)
 	mk("ModuleScript", "Config", pk, S["shared/Config.lua"])
 	mk("ModuleScript", "Pose", pk, S["shared/Pose.lua"])
+	mk("ModuleScript", "Lang", pk, S["shared/Lang.lua"])
 	local server = mk("Script", "PigmentKriegServer", SSS, S["server/Main.server.lua"])
 	for _, n in ipairs({ "BattleCore", "Data", "Arena" }) do mk("ModuleScript", n, server, S["server/" .. n .. ".lua"]) end
 	local client = I.new("LocalScript"); client.Name = "PigmentKriegClient"; client.Source = S["client/Main.client.lua"]
@@ -58,6 +59,7 @@ return function(M, S, out, decode)
 	-- echte Menü-Knöpfe drücken: Arena 2 abstimmen, dann Team Schwarz
 	local function pressWithText(txt)
 		for _, d in ipairs(gui:GetDescendants()) do
+			if d._class == "TextButton" and d.Text == txt then d.MouseButton1Click:Fire(); return true end
 			if d._class == "TextButton" then
 				for _, c in ipairs(d:GetDescendants()) do
 					if c._class == "TextLabel" and c.Text == txt then
@@ -72,6 +74,12 @@ return function(M, S, out, decode)
 	tick(0.1)
 	assert(pressWithText("SCHWARZ"), "Team-Knopf nicht gefunden")
 	tick(0.3); check("Arena gewählt und Team Schwarz beigetreten")
+	assert(phase() == "lobby" and (state:GetAttribute("SearchEnd") or 0) > 0, "Gegnersuche startet nicht")
+	local searchPanel
+	for _, d in ipairs(gui:GetDescendants()) do if d._class == "TextLabel" and tostring(d.Text):find("SUCHE GEGNER") then searchPanel = d end end
+	assert(searchPanel, "Suchanzeige fehlt")
+	check("Gegnersuche läuft (15 s, dann Computer)")
+	tick(15.5)
 	out("   Phase " .. tostring(phase()) .. ", Arena " .. tostring(state:GetAttribute("Arena")))
 	tick(4.5); check("Countdown")
 	assert(phase() == "battle", "kein Kampf gestartet")
@@ -161,11 +169,36 @@ return function(M, S, out, decode)
 	-- Neue Runde: Boss-Ansturm mit VIP-Krone
 	assert(pressWithText("Boss-Ansturm"))
 	tick(0.2)
-	assert(pressWithText("WEISS"))
+	assert(pressWithText("TRAINING"), "Training-Knopf fehlt")
 	tick(5)
+	assert(phase() == "battle", "Training startet nicht sofort: " .. tostring(phase()))
 	for _ = 1, 60 do key("One"); key("Seven"); key("Six"); tick(1) end
 	check("Boss-Ansturm als Team Weiß mit VIP-Krone (Phase " .. tostring(phase()) .. ", Boss " .. tostring(state:GetAttribute("BossId")) .. ")")
 	out("   Server-Aktionen " .. tostring(M.serverEvents) .. ", Effekt-Pakete " .. tostring(M.clientEvents))
+	-- Zweiter Spieler: SPIELEN -> kommt ins andere Team, Computer wird ersetzt
+	local p2 = M.addPlayer(202)
+	tick(0.5)
+	action.OnServerEvent:Fire(p2, "play")
+	tick(1)
+	assert(p2:GetAttribute("Side") == 2, "Spieler 2 nicht ins freie Team: " .. tostring(p2:GetAttribute("Side")))
+	assert(state:GetAttribute("AI2") == false, "Computer nicht durch Spieler ersetzt")
+	for _ = 1, 20 do key("One"); action.OnServerEvent:Fire(p2, "spawn", "giant"); tick(1) end
+	check("PvP: zweiter Spieler ersetzt den Computer")
+	-- Hügel-König PvP
+	for _ = 1, 400 do if phase() == "end" then break end; key("Seven"); key("Two"); action.OnServerEvent:Fire(p2, "spawn", "sword"); tick(1) end
+	action.OnServerEvent:Fire(p2, "modeVote", "hill"); tick(0.1)
+	action:FireServer("modeVote", "hill"); tick(0.1)
+	action:FireServer("again"); tick(0.1)
+	action.OnServerEvent:Fire(p2, "again"); tick(0.5)
+	assert(state:GetAttribute("Mode") == "hill", "Hügel-Modus nicht gewählt")
+	tick(4.5)
+	for _ = 1, 300 do
+		if phase() == "end" then break end
+		key("One"); key("Four"); action.OnServerEvent:Fire(p2, "spawn", "sword"); tick(1)
+	end
+	check("Hügel-König PvP: Punkte " .. tostring(state:GetAttribute("Hill1")) .. " / " .. tostring(state:GetAttribute("Hill2")) .. ", Gewinner " .. tostring(state:GetAttribute("Winner")))
+	local ls = p.leaderstats
+	out("   Rangliste von Spieler 1: Wins " .. ls.Wins.Value .. ", Kills " .. ls.Kills.Value .. ", Einladungen " .. tostring(M.invites))
 	-- Spieler verlässt das Spiel
 	p.Parent = nil
 	M.players._signals.PlayerRemoving = M.players._signals.PlayerRemoving

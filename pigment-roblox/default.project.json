@@ -6,7 +6,8 @@
       "PK": {
         "$className": "Folder",
         "Config": { "$path": "src/shared/Config.lua" },
-        "Pose": { "$path": "src/shared/Pose.lua" }
+        "Pose": { "$path": "src/shared/Pose.lua" },
+        "Lang": { "$path": "src/shared/Lang.lua" }
       }
     },
     "ServerScriptService": {
