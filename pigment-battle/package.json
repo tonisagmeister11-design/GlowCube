@@ -1,0 +1,23 @@
+{
+  "name": "pigment-krieg",
+  "productName": "Pigment Krieg",
+  "version": "2.0.0",
+  "description": "Schwarz gegen Weiß – Strategiespiel",
+  "main": "desktop/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win portable",
+    "build:mac": "electron-builder --mac dir",
+    "build:linux": "electron-builder --linux dir"
+  },
+  "build": {
+    "appId": "game.pigmentkrieg",
+    "files": ["index.html", "game.js", "manifest.json", "assets/**", "desktop/**"],
+    "directories": { "output": "release" },
+    "win": { "icon": "assets/icon.png" }
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  }
+}

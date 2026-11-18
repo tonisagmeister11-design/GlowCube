@@ -147,7 +147,66 @@ h3 { font-family: var(--display); font-size: 13px; letter-spacing: .12em; color:
   .ubtn { width: min(13vw, 76px); }
   .pane { padding: 10px; }
 }
-@media (prefers-reduced-motion: reduce) { .go { animation: none; } }
+
+/* ---------- Upgrade 2 ---------- */
+.barrow { display: flex; gap: 14px; justify-content: center; align-items: flex-end; flex-wrap: wrap; }
+#units { flex-wrap: nowrap; }
+.ubtn.ready { border-color: rgba(255,204,61,.55); }
+.ubtn.ready::after { content: ""; position: absolute; inset: 0; border-radius: 12px; box-shadow: inset 0 0 14px rgba(255,204,61,.25); pointer-events: none; }
+#abil { display: flex; gap: 8px; }
+.abtn { position: relative; width: min(12vw, 70px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #4a2a2a, #1a1012); border: 2px solid rgba(255,255,255,.2); display: grid; place-items: center; box-shadow: 0 4px 0 #111; }
+.abtn .ai { font-size: clamp(18px, 3vw, 28px); line-height: 1; margin-top: -8px; }
+.abtn .an { position: absolute; bottom: 9%; font-size: 8px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.abtn .ak { position: absolute; top: -4px; right: -2px; font-size: 10px; background: #000; border-radius: 6px; padding: 1px 5px; opacity: .7; }
+.abtn svg { position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); transform: rotate(-90deg); pointer-events: none; }
+.abtn circle { fill: none; stroke: rgba(0,0,0,.7); stroke-width: 20; stroke-dasharray: 62.83; stroke-dashoffset: 0; }
+.abtn.cool { filter: saturate(.3); }
+.abtn.ready { border-color: #ff6a3c; box-shadow: 0 4px 0 #111, 0 0 18px rgba(255,106,60,.55); animation: breathe 1.6s ease-in-out infinite; }
+.abtn.arm { border-color: #fff; box-shadow: 0 0 0 4px rgba(255,90,60,.7), 0 0 26px rgba(255,90,60,.8); }
+@keyframes breathe { 50% { transform: scale(1.06); } }
+@media (pointer: coarse) { .abtn .ak { display: none; } }
+#bossbar { position: absolute; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 96px); transform: translateX(-50%); width: min(60vw, 520px); text-align: center; font-family: var(--display); font-size: 13px; color: #ffb3b3; text-shadow: 0 2px 0 #000; }
+#bossbar div { height: 14px; margin-top: 4px; background: rgba(0,0,0,.6); border: 2px solid #ff4a4a; border-radius: 8px; overflow: hidden; box-shadow: 0 0 18px rgba(255,74,74,.45); }
+#bossbar i { display: block; height: 100%; background: linear-gradient(90deg, #ff2a2a, #ff8a3c); transition: width .25s; }
+#ragehud { position: absolute; left: max(12px, env(safe-area-inset-left)); top: calc(max(8px, env(safe-area-inset-top)) + 88px); font-family: var(--display); font-size: 14px; color: #ff6a3c; text-shadow: 0 2px 0 #000; }
+#aimHint { position: absolute; left: 50%; top: 32%; transform: translateX(-50%); background: rgba(120,20,10,.85); border: 1px solid #ff6a3c; padding: 8px 8px 8px 14px; border-radius: 999px; font-weight: 800; font-size: 13px; display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+#aimHint button { background: rgba(0,0,0,.4); padding: 6px 10px; border-radius: 999px; font-size: 12px; }
+.ann { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); font-family: var(--display); font-size: clamp(30px, 7vw, 76px); white-space: nowrap; pointer-events: none; z-index: 15; color: #fff;
+  -webkit-text-stroke: 2px #000; text-shadow: 0 6px 0 rgba(0,0,0,.5), 0 0 30px rgba(255,255,255,.35); }
+.ann.in { animation: annIn 1.5s cubic-bezier(.2,1.4,.4,1) forwards; }
+.ann.count { font-size: clamp(60px, 14vw, 150px); }
+.ann.count.in { animation: annCount .9s ease-out forwards; }
+.ann.ok { color: var(--gold); }
+.ann.kill { color: #ff5a5a; font-size: clamp(26px, 5vw, 56px); top: 24%; }
+.ann.boss { color: #ff3d3d; text-shadow: 0 0 40px rgba(255,0,0,.8), 0 6px 0 #000; }
+.ann.warn { color: #ffb347; font-size: clamp(20px, 4vw, 40px); top: 22%; }
+.ann.rage { color: #ff6a3c; }
+@keyframes annIn { 0% { transform: translate(-50%, -50%) scale(2.6) rotate(-6deg); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1) rotate(-2deg); opacity: 1; } 80% { transform: translate(-50%, -50%) scale(1.05) rotate(-2deg); opacity: 1; } 100% { transform: translate(-50%, -60%) scale(1.1) rotate(-2deg); opacity: 0; } }
+@keyframes annCount { 0% { transform: translate(-50%, -50%) scale(3); opacity: 0; } 25% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(.6); opacity: 0; } }
+.estars { display: flex; justify-content: center; gap: 8px; font-size: 46px; line-height: 1; }
+.estars span { color: #3a3a40; text-shadow: 0 3px 0 #000; }
+.estars span.on { color: var(--gold); animation: starPop .5s cubic-bezier(.2,1.8,.4,1) both; text-shadow: 0 0 20px rgba(255,204,61,.7), 0 3px 0 #000; }
+@keyframes starPop { from { transform: scale(0) rotate(-90deg); } }
+.arena { position: relative; }
+.arena .ast { position: absolute; top: 6px; left: 8px; display: flex; gap: 2px; font-size: 14px; }
+.arena .ast b { color: rgba(0,0,0,.45); text-shadow: 0 0 2px rgba(255,255,255,.4); }
+.arena .ast b.on { color: var(--gold); text-shadow: 0 1px 2px #000; }
+.arena .am .diff { color: #ff8a5c !important; letter-spacing: 2px; }
+.statsbox { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+.statsbox div { background: rgba(255,255,255,.05); border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
+.statsbox b { font-family: var(--display); font-size: 20px; display: block; font-weight: 400; font-variant-numeric: tabular-nums; }
+.statsbox span { font-size: 11px; color: var(--mute); }
+.orow { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.tog { min-width: 90px; padding: 7px 12px; border-radius: 999px; background: #3a3a40; font-weight: 800; font-size: 13px; }
+.tog.on { background: var(--paper); color: var(--ink); }
+.keys { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; font-size: 13px; color: var(--mute); }
+.keys span { background: rgba(255,255,255,.05); padding: 6px 10px; border-radius: 8px; }
+kbd { font-family: var(--display); font-size: 11px; background: #000; color: #fff; border: 1px solid #555; border-bottom-width: 3px; border-radius: 5px; padding: 1px 6px; }
+.btn2.danger { width: 100%; color: #ff8a8a; border-color: rgba(255,74,74,.4); }
+.btn2.danger.arm { background: #a01818; color: #fff; }
+@media (max-height: 460px) { .abtn { width: min(9vw, 54px); } #bossbar { top: 62px; } .ann.count { font-size: 80px; } }
+@media (orientation: portrait) and (max-width: 600px) { .statsbox { grid-template-columns: repeat(2, 1fr); } .abtn { width: 15vw; } #units { gap: 4px; } .ubtn { width: 12.5vw; } }
+@media (prefers-reduced-motion: reduce) { .go, .abtn.ready { animation: none; } }
 </style>
 </head>
 <body>
@@ -164,6 +223,7 @@ h3 { font-family: var(--display); font-size: 13px; letter-spacing: .12em; color:
       <button class="tab" data-t="play">Schlacht</button>
       <button class="tab" data-t="shop">Helme</button>
       <button class="tab" data-t="upg">Waffen</button>
+      <button class="tab" data-t="opt">Mehr</button>
     </nav>
     <div class="pane" id="p_play">
       <h3>DEIN TEAM</h3>
@@ -178,6 +238,15 @@ h3 { font-family: var(--display); font-size: 13px; letter-spacing: .12em; color:
     <div class="pane" id="p_shop" hidden>
       <h3>HELME FÜR DEINE ARMEE</h3>
       <div class="shop" id="shop"></div>
+    </div>
+    <div class="pane" id="p_opt" hidden>
+      <h3>DEINE BILANZ</h3>
+      <div class="statsbox" id="statsBox"></div>
+      <h3>EINSTELLUNGEN</h3>
+      <div id="opts"></div>
+      <h3>STEUERUNG AM PC</h3>
+      <div class="keys"><span><kbd>1</kbd>–<kbd>7</kbd> Krieger</span><span><kbd>R</kbd> Meteor</span><span><kbd>F</kbd> Kriegsschrei</span><span><kbd>H</kbd> Heilwelle</span><span><kbd>Q</kbd>/<kbd>E</kbd> Verteidigen/Angriff</span><span><kbd>A</kbd>/<kbd>D</kbd> Kamera</span><span><kbd>Esc</kbd> Pause</span></div>
+      <button class="btn2 danger" id="reset">Fortschritt zurücksetzen</button>
     </div>
     <div class="pane" id="p_upg" hidden>
       <h3>WAFFEN SCHMIEDEN · HOLZ → EISEN → GOLD → DIAMANT → PLASMA</h3>
@@ -200,7 +269,10 @@ h3 { font-family: var(--display); font-size: 13px; letter-spacing: .12em; color:
     <button class="cmd on" id="cmdAtk">⚔ ANGRIFF</button>
   </div>
   <div id="rotate">↻ Dreh dein Handy quer</div>
-  <div id="bar"><div id="units"></div></div>
+  <div id="bossbar" hidden><span>👑 BOSS-TITAN</span><div><i id="bossfill"></i></div></div>
+  <div id="ragehud" hidden></div>
+  <div id="aimHint" hidden>Tippe aufs Schlachtfeld, um den Meteor zu werfen <button id="aimCancel">Abbrechen</button></div>
+  <div id="bar"><div class="barrow"><div id="units"></div><div id="abil"></div></div></div>
 </section>
 
 <div class="modal" id="pause" hidden>
@@ -213,6 +285,8 @@ h3 { font-family: var(--display); font-size: 13px; letter-spacing: .12em; color:
 <div class="modal" id="end" hidden>
   <div class="card">
     <h2 id="endTitle">SIEG!</h2>
+    <div class="estars" id="endStars"></div>
+    <p id="endBest" style="margin:0;color:var(--gold);font-weight:800;min-height:1em"></p>
     <p id="endSub" style="margin:0;color:var(--mute)"></p>
     <div class="stats"><div><span>BESIEGT</span><b id="endKills">0</b></div><div><span>MÜNZEN</span><b id="endCoins" style="color:var(--gold)">0</b></div></div>
     <button class="go" id="again">NOCHMAL</button>
@@ -220,6 +294,7 @@ h3 { font-family: var(--display); font-size: 13px; letter-spacing: .12em; color:
   </div>
 </div>
 <div id="toast" hidden></div>
+<div id="announce" class="ann" hidden></div>
 
 <script src="game.js"></script>
 </body>
